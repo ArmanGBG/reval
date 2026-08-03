@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import TaskCard from './TaskCard';
 import ManualEntrySheet from './ManualEntrySheet';
 import AiEntryModal from './AiEntryModal';
+import { WeeklyPlanner } from './WeeklyPlanner';
 
 // ===== Persian Date Helpers =====
 const PERSIAN_DAYS = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
@@ -198,6 +199,7 @@ export default function PlanView() {
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [weeklyPlannerOpen, setWeeklyPlannerOpen] = useState(false);
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
 
   // Derived
@@ -289,7 +291,16 @@ export default function PlanView() {
           >
             {headerTitle}
           </motion.h1>
-          <PatternButton onClick={() => setPatternModalOpen(true)} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWeeklyPlannerOpen(true)}
+              className="icon-btn w-10 h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--accent)]"
+              aria-label="برنامه هفتگی"
+            >
+              <CalendarDays className="w-4.5 h-4.5" />
+            </button>
+            <PatternButton onClick={() => setPatternModalOpen(true)} />
+          </div>
         </div>
 
         <DateStatsBar dateStats={dateStats} />
@@ -377,7 +388,16 @@ export default function PlanView() {
               {headerTitle}
             </motion.h1>
           </div>
-          <PatternButton onClick={() => setPatternModalOpen(true)} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWeeklyPlannerOpen(true)}
+              className="btn-hover flex items-center gap-2 h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-sm font-medium"
+            >
+              <CalendarDays className="w-4 h-4" />
+              برنامه هفتگی
+            </button>
+            <PatternButton onClick={() => setPatternModalOpen(true)} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -456,6 +476,13 @@ export default function PlanView() {
                 >
                   <Wand2 className="w-4 h-4" />
                   هوش مصنوعی
+                </button>
+                <button
+                  onClick={() => setWeeklyPlannerOpen(true)}
+                  className="btn-hover flex items-center justify-center gap-2 w-full py-2.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] font-medium text-sm min-h-[44px]"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  برنامه هفتگی
                 </button>
               </div>
             </div>
@@ -577,6 +604,12 @@ export default function PlanView() {
         selectedDate={selectedDate}
         existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === 's1').length}
         onConfirm={handleAIConfirm}
+      />
+
+      {/* Weekly Planner Modal */}
+      <WeeklyPlanner
+        open={weeklyPlannerOpen}
+        onOpenChange={setWeeklyPlannerOpen}
       />
 
       {/* Settings / Partial Completion Dialog */}

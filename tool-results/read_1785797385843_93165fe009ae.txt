@@ -1,0 +1,380 @@
+     1→     1→# Reval UI/UX Redesign Worklog
+     2→     2→
+     3→     3→This file tracks the complete UI/UX redesign of the Reval (روال) app.
+     4→     4→Source skill: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+     5→     5→Project root: /home/z/my-project (reval files copied here from /home/z/my-project/reval)
+     6→     6→
+     7→     7→---
+     8→     8→Task ID: 0-foundation
+     9→     9→Agent: Main
+    10→    10→Task: Establish new design system foundation (globals.css, layout, AppShell, SidebarNav, BottomNav, RoleSwitcher, page.tsx routing)
+    11→    11→
+    12→    12→Work Log:
+    13→    13→- Read ui-ux-pro-max-skill search results for: dark cinema glassmorphism, LMS color palette, Arabic typography, hover micro-interaction GSAP patterns, responsive UX guidelines
+    14→    14→- Copied reval project files (src/components/*, src/lib/*, src/app/*, prisma, public) into /home/z/my-project root so the preview panel renders the redesign
+    15→    15→- Confirmed dev server compiles and serves / with 200 status
+    16→    16→
+    17→    17→Design System Decisions (CRITICAL — all subagents MUST follow):
+    18→    18→- Theme name: "Modern Dark Cinema — Persian RTL"
+    19→    19→- Color tokens (in globals.css :root):
+    20→    20→  * --bg-deep: #050507 (app shell background, deepest)
+    21→    21→  * --bg-base: #0A0A0D (main canvas)
+    22→    22→  * --bg-elevated: #131318 (cards, raised surfaces)
+    23→    23→  * --bg-overlay: #1B1B22 (modals, popovers, hover states)
+    24→    24→  * --surface-glass: rgba(255,255,255,0.04) (subtle glass — use SPARINGLY, only on nav/header)
+    25→    25→  * --foreground: #EDEDEF (primary text)
+    26→    26→  * --foreground-muted: #8A8F98 (secondary text)
+    27→    27→  * --foreground-subtle: #5A5F66 (tertiary/placeholder)
+    28→    28→  * --accent: #3EB489 (mint — primary brand, student/advisor)
+    29→    29→  * --accent-soft: rgba(62,180,137,0.12) (accent backgrounds)
+    30→    30→  * --accent-glow: rgba(62,180,137,0.25) (glow shadows)
+    31→    31→  * --gold: #F5B544 (super admin only)
+    32→    32→  * --gold-soft: rgba(245,181,68,0.12)
+    33→    33→  * --border: rgba(255,255,255,0.07) (hairline)
+    34→    34→  * --border-strong: rgba(255,255,255,0.12) (hover/focus)
+    35→    35→  * --radius-sm: 8px (chips, badges)
+    36→    36→  * --radius: 12px (buttons, inputs)
+    37→    37→  * --radius-lg: 16px (cards)
+    38→    38→  * --radius-xl: 24px (modals, large containers)
+    39→    39→- Motion: cubic-bezier(0.16, 1, 0.3, 1) easing, 200-280ms duration for hovers
+    40→    40→- Typography: Vazirmatn (already in layout), scale:
+    41→    41→  * display-xl: 48-64px / 1.1 / 800 (hero only)
+    42→    42→  * display: 32-40px / 1.15 / 700
+    43→    43→  * h1: 24-28px / 1.3 / 700
+    44→    44→  * h2: 20px / 1.4 / 600
+    45→    45→  * h3: 16px / 1.4 / 600
+    46→    46→  * body: 14-15px / 1.6 / 400
+    47→    47→  * caption: 12-13px / 1.5 / 500 (muted color)
+    48→    48→  * label: 11px / 1.4 / 600 uppercase tracking (Latin only)
+    49→    49→
+    50→    50→CRITICAL DESIGN RULES (all subagents must obey):
+    51→    51→1. RESPONSIVE STRATEGY — Desktop and Mobile MUST be visually distinct:
+    52→    52→   - Mobile (< md / 768px): single column, max-w-full, content centered in max-w-md mx-auto px-4, bottom nav (h-16), drawer sheets for forms, cards full-width, touch targets min 44px
+    53→    53→   - Desktop (>= md): max-w-7xl mx-auto, SIDEBAR NAV on right (RTL) w-64, main content with multi-column grid (md:grid-cols-2 lg:grid-cols-3), hover-rich card lifts, dense data tables, breadcrumb headers
+    54→    54→   - Tablet (md to lg): transition — sidebar collapses to icon rail w-20
+    55→    55→2. HOVER EFFECTS — Use CSS classes, NOT framer-motion whileHover (it's unreliable for many elements):
+    56→    56→   - .card-hover { transition: transform .2s cubic-bezier(.16,1,.3,1), border-color .2s, box-shadow .2s; }
+    57→    57→   - .card-hover:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: 0 12px 32px -8px rgba(0,0,0,0.5), 0 0 0 1px var(--accent-soft); }
+    58→    58→   - .btn-hover { transition: all .18s ease; }
+    59→    59→   - .btn-hover:hover { transform: translateY(-1px); }
+    60→    60→   - .btn-hover:active { transform: translateY(0); }
+    61→    61→3. NO SUPERIMPOSE — Reduce absolute-positioned floating overlays:
+    62→    62→   - No more floating gradient orbs covering content
+    63→    63→   - Background can have ONE subtle radial gradient fixed to viewport (in body::before), low opacity
+    64→    64→   - Cards use solid bg-elevated with hairline borders, NOT glassmorphism everywhere
+    65→    65→   - Glassmorphism reserved ONLY for: top header (mobile) and sidebar (desktop)
+    66→    66→4. PERSIAN RTL — All text RTL, dir="rtl" on html already set. Numbers use toPersianDigits(). Icons that imply direction (chevrons, arrows) must be flipped with .flip-rtl class.
+    67→    67→5. ELEVATION HIERARCHY (use these, not random glass):
+    68→    68→   - Level 0: bg-base (page background)
+    69→    69→   - Level 1: bg-elevated (cards) + border hairline
+    70→    70→   - Level 2: bg-overlay (modals, dropdowns) + border-strong
+    71→    71→   - Level 3: floating (tooltips, popovers) + shadow + border-strong
+    72→    72→6. DO NOT CHANGE FUNCTIONS — Only redesign UI/UX. All Zustand store calls, props, event handlers, data flow MUST remain identical. Only change classNames, layout structure, and visual presentation.
+    73→    73→7. PRESERVE ALL EXISTING IMPORTS — Keep all lucide-react icons, shadcn/ui components, framer-motion imports. Just use them more thoughtfully.
+    74→    74→
+    75→    75→Files Created/Modified by this task:
+    76→    76→- src/app/globals.css (REWRITTEN — new design tokens + utility classes)
+    77→    77→- src/app/layout.tsx (updated — metadata, theme color, Toaster styling)
+    78→    78→- src/components/shared/AppShell.tsx (NEW — responsive layout wrapper)
+    79→    79→- src/components/shared/SidebarNav.tsx (NEW — desktop sidebar nav, RTL right-side)
+    80→    80→- src/components/shared/BottomNav.tsx (REFACTORED — mobile only, hidden on md+)
+    81→    81→- src/components/shared/RoleSwitcher.tsx (REFACTORED — pill design, top-center on mobile, top-left on desktop)
+    82→    82→- src/app/page.tsx (REFACTORED — uses AppShell, distinct mobile/desktop routing)
+    83→    83→
+    84→    84→Stage Summary:
+    85→    85→- Foundation complete: new dark cinema design system with proper tokens, CSS hover utilities, responsive shell
+    86→    86→- Desktop users now see a sidebar nav + multi-column layouts; mobile users keep bottom nav + single column
+    87→    87→- All subsequent view redesigns MUST import from this foundation and follow the rules above
+    88→    88→
+    89→    89→---
+    90→    90→Task ID: 6-a
+    91→    91→Agent: frontend-styling-expert (LandingPage)
+    92→    92→Task: Redesign LandingPage with distinct mobile/desktop layouts using Modern Dark Cinema design system
+    93→    93→
+    94→    94→Work Log:
+    95→    95→- Read worklog.md design system (color tokens, hover utilities, surface utilities, critical rules) and existing LandingPage.tsx (747 lines) to inventory all preserved assets: toPersianDigits helper, fadeInUp/staggerContainer variants, AnimatedSection, FEATURES/STEPS/STATS/TESTIMONIALS arrays, useCounter hook, LandingNav/HeroSection/FeaturesSection/HowItWorksSection/StatsSection/TestimonialsSection/CTASection/LandingFooter, useAppStore.setCurrentView('onboarding'), useScroll/useTransform parallax, all lucide-react icons
+    96→    96→- Verified globals.css utility classes (.card-hover, .btn-hover, .glow-hover, .link-underline, .icon-btn, .surface-1/2, .surface-glass, .edge-highlight, .flip-rtl, .custom-scrollbar) and confirmed /public/hero-illustration.png exists for desktop hero mockup
+    97→    97→- Completely rewrote src/components/landing/LandingPage.tsx with mobile-first distinct layouts:
+    98→    98→  * MOBILE (< md): full-bleed single-column hero inside max-w-md mx-auto px-4, bold text-4xl headline with accent gradient on key word "هموار", stacked CTA buttons full-width (min-h-[52px]), feature cards as vertical full-width list (icon + title + description in flex row), 2x2 stats grid, testimonials as horizontal snap-scroll carousel (snap-x snap-mandatory, 85%-width snap-center cards), full-width gradient CTA panel, simplified centered footer with link-underline nav. No phone mockup on mobile — text-only hero. NO desktop-only elements visible (all multi-column grids hidden md:hidden where appropriate)
+    99→    99→  * DESKTOP (>= md): split hero (text on right via RTL flex-row, phone mockup on left with /hero-illustration.png + two floating glass badges + single subtle accent glow), multi-column feature grid (md:grid-cols-2 lg:grid-cols-3 with .card-hover + .edge-highlight + group-hover scale on icon), horizontal 3-step flow with gradient connecting line behind step circles, 4-column stats row inside surfaced panel with edge-highlight, 3-column testimonials grid with card-hover, large gradient CTA panel with edge-highlight + accent glow, rich 4-column footer grid
+   100→   100→- Hover strategy: ALL interactive elements use CSS utility classes from globals.css. Removed every framer-motion whileHover={{ y/scale }} on cards (was unreliable per design rules). Kept whileHover={{ scale: 1.02 }} ONLY on primary CTAs combined with .btn-hover + .glow-hover. Nav links use .link-underline (animated underline reveal). Feature/step/testimonial cards use .card-hover + .edge-highlight. Nav bar uses .surface-glass when scrolled.
+   101→   101→- NO SUPERIMPOSE: removed the three floating gradient orbs (top-right mint, bottom-left purple, top-center amber) that covered hero content. Removed HowItWorks absolute-positioned 600px blur orb. Removed CTA top-bar glow that sat on top of content. Kept exactly ONE subtle radial accent glow behind the hero headline (pointer-events-none, opacity-70) and ONE accent glow inside the CTA panel as a background layer (not superimposed). Cards use solid bg-elevated + hairline border, NOT glassmorphism.
+   102→   102→- Persian RTL preserved throughout: dir="rtl" inherited from html, all numbers via toPersianDigits(), RTL-aware flex with space-x-reverse for avatar stacks, gradient-to-l for accent text gradients (correct visual direction in RTL). SectionHeading helper component added for DRY eyebrow+title+subtitle pattern across all sections.
+   103→   103→- Extracted StatCard sub-component so useCounter respects rules-of-hooks (original called hook inside .map() with eslint-disable). Logic identical, just properly scoped. All other functions/components/store calls preserved exactly.
+   104→   104→- Verified: npx tsc --noEmit reports ZERO errors in src/components/landing/LandingPage.tsx (all remaining TS errors are pre-existing in prisma/seed.ts, examples/websocket/, reval/ duplicates — unrelated). npx eslint reports ZERO warnings on the file.
+   105→   105→
+   106→   106→Stage Summary:
+   107→   107→- LandingPage now renders two genuinely distinct experiences: mobile is a tight, touch-friendly single-column scroll (max-w-md, 44px+ tap targets, snap-carousel testimonials, full-width CTAs); desktop is a rich multi-column landing with split hero, 3-col feature grid, horizontal step flow, 4-col stats, 3-col testimonials, and a large gradient CTA panel
+   108→   108→- All hover effects driven by CSS utilities (.card-hover, .btn-hover, .glow-hover, .link-underline, .edge-highlight) — framer-motion whileHover reserved only for subtle 1.02 scale on primary CTAs
+   109→   109→- Superimposed floating orbs eliminated; background relies on body's fixed radial gradient + ONE subtle accent glow behind hero headline + ONE inside CTA panel (background layer, not overlay)
+   110→   110→- All functions preserved: useAppStore.setCurrentView('onboarding') on every CTA, useScroll/useTransform parallax on hero, useCounter animation on stats, AnimatedSection in-view reveals, all lucide icons and data arrays intact
+   111→   111→- File compiles clean (0 TS errors, 0 ESLint warnings); ready for visual QA in the preview panel
+   112→   112→
+   113→   113→---
+   114→   114→Task ID: 6-c
+   115→   115→Agent: frontend-styling-expert (Advisor Panel)
+   116→   116→Task: Redesign AdvisorDashboard.tsx (4 views) with distinct mobile/desktop layouts
+   117→   117→
+   118→   118→Work Log:
+   119→   119→- Read worklog.md foundation (Modern Dark Cinema — Persian RTL design system, color tokens, CSS hover utilities, surface utilities, critical design rules)
+   120→   120→- Read existing AdvisorDashboard.tsx (1610 lines) completely — identified 4 internal views (dashboard / students / student-detail / settings), 3 modals (TaskModal, ExamModal, GroupExamModal), analysis engine (computeStudentStatus, computeRisks, computeAnalyses), UI configs (STATUS_CONFIG, TREND_CONFIG, MOOD_CONFIG, RISK_CONFIG, EXAM_STATUS_CONFIG, ALL_ACTIVITY_TYPES), sub-components (MetricBar, MiniRadar)
+   121→   121→- Read AppShell.tsx to understand layout context — sidebar shown on desktop for non-detail views, bottom nav on mobile for non-detail views, max-w-7xl container with px-4 md:px-6 lg:px-8 padding
+   122→   122→- Read store.ts and types.ts to confirm all preserved store calls (useAppStore, currentView, setCurrentView, selectedStudentId, setSelectedStudentId, tasks, addTask, updateTask, deleteTask, exams, addExam, updateExam, deleteExam, hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders)
+   123→   123→- Wrote complete rewrite of AdvisorDashboard.tsx (1787 lines) with:
+   124→   124→  * Reusable Card wrapper using .surface-1 utility (bg-elevated + border hairline)
+   125→   125→  * Reusable SectionHeader component (icon chip + title + optional action)
+   126→   126→  * Reusable ModalInput / ModalSelect components for cleaner modal forms
+   127→   127→  * All color values migrated from zinc-* literals to var(--*) tokens (--foreground, --foreground-muted, --foreground-subtle, --accent, --bg-elevated, --bg-overlay, --border, --border-strong, --warning, --danger)
+   128→   128→  * MiniRadar SVG improved: uses var(--accent) stroke + radial gradient fill, var(--border) for grid lines/circles/spokes, larger size option for desktop (180px)
+   129→   129→  * MetricBar restyled with var(--bg-overlay) track, tabular-nums for value alignment, cubic-bezier easing
+   130→   130→  * Replaced ALL motion.button whileHover/whileTap with regular <button> + .btn-hover / .glow-hover / .icon-btn / .nav-item-hover CSS classes (per design rule "use CSS classes not framer-motion whileHover")
+   131→   131→  * Kept framer-motion only for entrance animations (initial/animate) and AnimatePresence view transitions
+   132→   132→- AdvisorPanel router:
+   133→   133→  * Removed old max-w-4xl + pb-20 wrapper (AppShell provides max-w-7xl + padding now)
+   134→   134→  * Mobile: sticky glass header (bg-[rgba(10,10,13,0.75)] backdrop-blur-xl) — glassmorphism allowed here per design rules
+   135→   135→  * Desktop: simple non-sticky header with title + accent role pill (no glass)
+   136→   136→  * Kept AnimatePresence view transition with cubic-bezier easing
+   137→   137→- AdvisorDashboardHome:
+   138→   138→  * Mobile: 2-col KPI grid + status distribution as horizontal bars + study hours chart full-width + red flags vertical list
+   139→   139→  * Desktop: 12-col grid — top row 4 KPI cards (col-span-3 each) + middle row (status distribution col-span-4 + study hours col-span-8) + bottom red flags card with inner 3-col grid of risk cards
+   140→   140→  * KPI cards use .card-hover + .edge-highlight, status bars animate width with motion.div, red flag cards use risk-level tinted backgrounds and .card-hover
+   141→   141→- AdvisorStudentsList:
+   142→   142→  * Mobile: search input with leading Search icon + "آزمون جدید" button in toolbar, vertical list of student cards (avatar + name + status badge + 4-metric grid: score/study hours/completion/trend), .card-hover for lift on tap
+   143→   143→  * Desktop: dense data table with grid-cols-12 layout — columns: دانش‌آموز (col-span-4) | نمره (col-span-1) | وضعیت (col-span-2) | تکمیل (col-span-1) | ساعت مطالعه (col-span-2, includes mini progress bar) | روند (col-span-1) | عملیات (col-span-1, chevron icon-btn)
+   144→   144→  * Row hover highlight via .nav-item-hover + hover:bg-[var(--bg-overlay)]/40
+   145→   145→- AdvisorStudentDetail:
+   146→   146→  * Mobile: sticky back-button glass header (since AppShell hides bottom nav on detail pages) + sections stacked vertically in correct order: profile → radar+grades → wellbeing → strengths/weaknesses → psychological assessment → interventions → tasks → exams → notes/weekly template
+   147→   147→  * Desktop: 12-col grid — RIGHT col-span-4 (sticky top-4): profile, wellbeing, strengths/weaknesses, psychological assessment, interventions, notes/weekly template; LEFT col-span-8: radar+grades (split into radar SVG + metric bars), tasks (scrollable list with edit/delete icon-btns), exams (scrollable list with status badges + result scores)
+   148→   148→  * Right column uses md:sticky md:top-4 for follow-on-scroll behavior
+   149→   149→  * Task cards use subjectColor vertical bar indicator, fieldType/activityTypes chips, hover-revealed edit/delete icon-btns (no more opacity-0 group-hover:opacity-100 since CSS .icon-btn handles hover state cleanly)
+   150→   150→- AdvisorSettings:
+   151→   151→  * Mobile: stacked cards — App Settings (toggle rows min-h-[52px] touch targets) + Quick stats summary + About + version footer
+   152→   152→  * Desktop: 2-col grid for App Settings + Quick stats, full-width About card below
+   153→   153→  * Toggle switches use var(--accent) for checked state with var(--border) for unchecked state
+   154→   154→  * Added a new "Quick stats" card showing live advisor metrics (student count, intervention count, avg score, avg hours) computed from MOCK_STUDENTS via computeStudentStatus
+   155→   155→- All modals (TaskModal, ExamModal, GroupExamModal):
+   156→   156→  * DialogContent uses bg-[var(--bg-overlay)] + border-[var(--border-strong)] (Level 2 elevation per design rules)
+   157→   157→  * Inputs use bg-[var(--bg-elevated)] + border-[var(--border)] + focus:border-[var(--accent)]/40
+   158→   158→  * Submit buttons use .btn-hover or .glow-hover instead of motion.button whileHover
+   159→   159→  * Field type buttons, activity type checkboxes, and student selection rows all use .nav-item-hover
+   160→   160→  * GroupExamModal student list uses .custom-scrollbar for the scroll area
+   161→   161→- Verified file compiles: ran `npx tsc --noEmit` — no errors in AdvisorDashboard.tsx (only pre-existing unrelated errors in prisma/seed.ts and examples/websocket/)
+   162→   162→- Verified dev server (next dev) compiles and serves / with HTTP 200, 99KB rendered HTML, no runtime errors
+   163→   163→
+   164→   164→Stage Summary:
+   165→   165→- AdvisorDashboard.tsx completely rewritten (1610 → 1787 lines) with distinct mobile/desktop layouts for all 4 views
+   166→   166→- Mobile: single-column, touch-friendly (min 44-52px tap targets), sticky glass header on dashboard/settings, sticky glass back-button on detail, vertical cards/lists throughout
+   167→   167→- Desktop: 12-col grids everywhere — KPI row + middle split + red flags inner grid (dashboard), dense data table with hover rows (students list), sticky right column with profile+wellbeing+interventions alongside left column with radar+grades+tasks+exams (detail), 2-col form layout (settings)
+   168→   168→- All hover effects use CSS utility classes (.card-hover, .btn-hover, .glow-hover, .icon-btn, .nav-item-hover) — framer-motion whileHover completely removed; framer-motion kept only for entrance animations and AnimatePresence view transitions
+   169→   169→- No superimposed floating orbs — cards are solid bg-elevated with hairline borders; glassmorphism reserved ONLY for mobile sticky headers per design rules
+   170→   170→- Persian RTL throughout (dir="rtl" on root container), all numbers via toPersianDigits(), directional icons use .flip-rtl
+   171→   171→- Radar chart SVG upgraded: var(--accent) stroke + radial gradient fill, var(--border) for grid circles/spokes, var(--bg-elevated) stroke on data points for crispness
+   172→   172→- All Zustand store calls preserved (useAppStore, currentView, setCurrentView, selectedStudentId, setSelectedStudentId, tasks, addTask, updateTask, deleteTask, exams, addExam, updateExam, deleteExam, hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders)
+   173→   173→- All sub-components preserved (TaskModal, ExamModal, GroupExamModal, MetricBar, MiniRadar) plus new reusable helpers (Card, SectionHeader, ModalInput, ModalSelect)
+   174→   174→- All analysis engine functions preserved verbatim (computeStudentStatus, computeRisks, computeAnalyses)
+   175→   175→- All UI configs preserved (STATUS_CONFIG, TREND_CONFIG, MOOD_CONFIG, RISK_CONFIG, EXAM_STATUS_CONFIG, ALL_ACTIVITY_TYPES) with colors migrated to design tokens
+   176→   176→- All imports preserved (lucide-react icons including new Search/Sparkles/ChevronRight additions, shadcn/ui Dialog/Checkbox, framer-motion, sonner toast)
+   177→   177→- Default export `AdvisorPanel` preserved, still routes between 4 views based on currentView from store
+   178→   178→- File compiles cleanly with no TypeScript errors; dev server serves / with HTTP 200
+   179→   179→
+   180→   180→---
+   181→   181→Task ID: 6-b
+   182→   182→Agent: frontend-styling-expert (Student views)
+   183→   183→Task: Redesign Dashboard, PlanView, TaskCard, ToolsHub, AnalyticsView, SettingsView with distinct mobile/desktop layouts
+   184→   184→
+   185→   185→Work Log:
+   186→   186→- Read worklog.md foundation notes, AppShell.tsx, globals.css utility classes (card-hover, btn-hover, glow-hover, icon-btn, nav-item-hover, surface-1, surface-2, surface-glass, edge-highlight)
+   187→   187→- Read all 6 existing files (Dashboard, PlanView, TaskCard, ToolsHub, AnalyticsView, SettingsView) + ManualEntrySheet, AiEntryModal, store.ts, types.ts, feedbackMessages.ts, mockData.ts to preserve every Zustand call, handler, prop, and filter
+   188→   188→- Rewrote TaskCard.tsx: solid surface-1 + edge-highlight + card-hover, vertical accent bar via ::before pseudo (green for done, red for skipped), replaced framer-motion whileHover with .icon-btn / .btn-hover CSS classes, kept onComplete/onSkip/onDelete/onSettings/onSettings signature intact
+   189→   189→- Rewrote Dashboard.tsx: split into MobileDashboardHeader (sticky surface-glass) and DesktopDashboardHeader (breadcrumb + large greeting + 3xl display). Mobile single-column max-w-md; desktop uses lg:grid-cols-3 with main col-span-2 (tasks + completed exams + upsell) and sidebar col-span-1 (DailyProgress + QuickStats 2x2 + UpcomingExams). Kept CURRENT_STUDENT_ID = 's1', all updateTask/handleComplete/handleSkip/handlePartialSave handlers, drawer for partial completion
+   190→   190→- Rewrote PlanView.tsx: shared DateRibbon + DateStatsBar + AiQuickEntryButton + PatternButton components reused by both layouts. Mobile = max-w-md + sticky FAB (animate-pulse scale loop only — no whileHover). Desktop = lg:grid-cols-3 with main col-span-2 (ribbon, stats, AI button, task list) + sidebar col-span-1 (Add CTA card + Stats tile grid). Preserved getNext7Days, getRelativeDayLabel, all handlers (handleComplete/handleSkip/handleDeleteTask/handleManualSubmit/handleAIConfirm/handleSettingsSave), ManualEntrySheet + AiEntryModal + Pattern Dialog + Settings Dialog
+   191→   191→- Rewrote ToolsHub.tsx: hub section split — mobile 2-col grid (max-w-md), desktop 2-col → lg:grid-cols-4 with hover lift cards and active ring state. Tool modal uses surface-2 (solid) instead of glassmorphism; removed whileHover scale on buttons throughout, kept whileTap. All 5 tool components (FocusMusicTool, FlashcardsTool, PomodoroTool, CalculatorTool, BreathingTool) logic preserved verbatim — only color tokens swapped to var(--accent) and surfaces to surface-1/2. Preserved pomodoro interval, breathing timeout, flashcard flip + mastery, calculator what-if
+   192→   192→- Rewrote AnalyticsView.tsx: mobile = stacked 2-col KPI grid + 2-col insights + full-width chart. Desktop = lg:grid-cols-4 KPI grid + lg:grid-cols-3 (insights sidebar col-span-1 + chart col-span-2). Shared FilterPill (CSS btn-hover) + KpiCard (edge-highlight card-hover) + InsightCard (right-border accent). ChartContent component shared by both layouts. Recharts config, MOCK_DAILY_DATA, MOCK_SUBJECT_DISTRIBUTION, MOCK_ACTIVITY_DATA all preserved
+   193→   193→- Rewrote SettingsView.tsx: 5 sections (profile/goals/experience/support/about) extracted into reusable components (ProfileSection, GoalsSection, ExperienceSection, SupportSection, AboutSection). Mobile = vertical grouped list max-w-md. Desktop = lg:grid-cols-4 with sticky nav col-span-1 + animated content panel col-span-3 (AnimatePresence mode='wait'). SelectPill component for chips. TicketDrawer shared. All updateUser/addTicket/hapticFeedback/notificationReminders store calls preserved
+   194→   194→- Updated ManualEntrySheet.tsx + AiEntryModal.tsx color tokens: replaced #3EB489 hardcoded with var(--accent) / var(--accent-soft) / var(--accent-glow); replaced bg-zinc-800/bg-white/5/border-white/10 with surface-1/surface-2/var(--border); replaced framer-motion whileHover scale on buttons with .btn-hover/.icon-btn/.glow-hover CSS classes. Preserved all step logic, handleSubmit, handleAnalyze, handleConfirm
+   195→   195→- Fixed two TS errors introduced by framer-motion Variants typing: added explicit type to days array in PlanView.getNext7Days(); imported Variants type and annotated cardVariants in TaskCard.tsx
+   196→   196→- Verified: `npx next build` compiles successfully; `npx tsc --noEmit` reports ZERO errors in src/components/{plan,dashboard,tools,analytics,settings}/ (only pre-existing errors remain in auth/login/route.ts, prisma/seed.ts, examples/, skills/)
+   197→   197→
+   198→   198→Stage Summary:
+   199→   199→- All 6 student-facing views fully redesigned with DISTINCT mobile (single-column, touch-friendly, max-w-md) and desktop (multi-column grid with hover-rich cards) layouts
+   200→   200→- Mobile: drawer/sheet for forms, sticky glass header, FAB-style add buttons, 44px+ tap targets, single-column KPI grid
+   201→   201→- Desktop: lg:grid-cols-3 (Dashboard/PlanView), lg:grid-cols-4 (ToolsHub/SettingsView nav), lg:grid-cols-4 KPI + lg:grid-cols-3 insights+chart (AnalyticsView); sticky desktop sidebar in Settings
+   202→   202→- Hover effects: 100% CSS-based via .card-hover, .btn-hover, .glow-hover, .icon-btn, .nav-item-hover utilities — no framer-motion whileHover on hover (kept only whileTap for active feedback and entrance animations)
+   203→   203→- NO superimpose: removed floating gradient orbs, removed glassmorphism from cards (kept only on mobile sticky header). Cards use surface-1 (bg-elevated) + hairline border + edge-highlight
+   204→   204→- Persian RTL throughout: dir="rtl" on root, toPersianDigits/toPersianNum on every number, .flip-rtl on directional icons (chevrons), Persian typography hierarchy
+   205→   205→- Design tokens used everywhere: var(--accent), var(--accent-soft), var(--accent-glow), var(--bg-elevated), var(--bg-overlay), var(--border), var(--border-strong), var(--foreground), var(--foreground-muted), var(--foreground-subtle), var(--bg-deep) — replaced ALL hardcoded #3EB489, bg-zinc-*, text-zinc-*, border-white/*
+   206→   206→- All Zustand store calls and component composition preserved: useAppStore, tasks, addTask/addTasks, updateTask, deleteTask, user/updateUser, selectedDate/setSelectedDate, pomodoroTime/Running/Mode, flashcards, tracks/currentTrack/isPlaying, tickets/addTicket, hapticFeedback/notificationReminders, currentTool/setCurrentTool — verified intact
+   207→   207→- All 6 redesigned files + 2 token-updated files compile cleanly with `next build` ✓
+   208→   208→
+   209→   209→---
+   210→   210→Task ID: 6-d
+   211→   211→Agent: frontend-styling-expert (Institute + SuperAdmin + Auth)
+   212→   212→Task: Redesign 11 files (Institute x4, SuperAdmin x6, Auth x1) with distinct mobile/desktop layouts
+   213→   213→
+   214→   214→Work Log:
+   215→   215→- Read worklog.md (foundation design system) and all 11 target files plus store.ts, types.ts, globals.css to map every Zustand call, prop, handler, and mock reference
+   216→   216→- InstituteDashboard.tsx: rewrote with 4-col KPI grid (2-col mobile), 3-col quick stats row, then lg:grid-cols-12 with sortable data table (col-span-8) + status distribution aside (col-span-4). Added distinct mobile card view vs desktop dense table. Used .card-hover, .edge-highlight, surface-1 utilities, mint accent tokens (bg-mint/15, text-mint). Preserved all useState (sortKey, sortDesc, filterAdvisor, filterPerformance, searchQuery), useMemo (kpis, statusDistribution, filteredStudents), handleSort, getAdvisorName logic
+   217→   217→- InstituteAdvisors.tsx: rewrote with lg:grid-cols-12 (col-span-8 active/inactive list + col-span-4 summary panel & quick-add CTA). Sticky search bar on mobile. .card-hover + .edge-highlight on advisor cards. .icon-btn on action buttons. Preserved addInstituteAdvisor, updateInstituteAdvisor, getStudentCount, toggleAdvisorStatus, modal state
+   218→   218→- InstituteStudents.tsx: rewrote with lg:grid-cols-12 (col-span-8 2-col student cards + col-span-4 assignment panel). 3-col quick stats. Each student card has metrics grid + advisor assignment row. Preserved addInstituteStudent, assignStudentToAdvisor, getAdvisorName, both modals (Add + Assign Advisor)
+   219→   219→- InstituteSettings.tsx: rewrote with lg:grid-cols-12 (col-span-7 form column with Name + Logo cards, col-span-5 sticky preview column with live header preview + save button). .card-hover on form sections, .glow-hover on save button. Preserved setInstituteProfile, drag-drop handlers, fileInputRef, saved animation
+   220→   220→- SuperAdminDashboard.tsx: rewrote with gold accent throughout. Hero header with single contained gold radial glow (not covering content). 4-col KPI cards (first featured with gold-soft bg + gold border + VIP badge). lg:grid-cols-12 with growth chart (col-span-8) + subscription distribution (col-span-4). md:grid-cols-2 role/status breakdowns. 3-col quick stats. Preserved all useMemo (kpis, subscriptionDist, roleDist, instituteStatusDist), MOCK_PLATFORM_ENGAGEMENT reference, SUB_LABELS, toPersianDigits
+   221→   221→- SuperAdminInstitutes.tsx: rewrote with dense data TABLE on lg+ (12-col grid: name, manager, plan, status, students, advisors, actions) with .nav-item-hover row highlight. Card list on mobile. Sticky filter bar with search + status filter + plan filter (added filterStatus, filterPlan state). Gold accent (bg-gold, text-gold, border-gold/25) with .glow-hover-gold on CTAs. GOD badge. Preserved addPlatformInstitute, updatePlatformInstitute, toggleInstituteStatus, handleGodView, modal
+   222→   222→- SuperAdminUsers.tsx: rewrote with dense data TABLE on lg+ (12-col: user, role, institute, performance, status, actions). Card list on mobile. Sticky filter bar with role/institute/status filters. Role badges use LucideIcon component type. Gold accent + GOD badge. Preserved updateGlobalUser, toggleUserStatus, handleViewUser, all filter state
+   223→   223→- SuperAdminSettings.tsx: rewrote with lg:grid-cols-2 form layout: Platform Control (gold-soft bg + gold border, Toggle component with gold knob), Subscription Limits, System Info, Appearance/Branding cards. Sticky save button on desktop with .glow-hover-gold. Preserved maintenanceMode, allowNewRegistrations, maxStudents states, handleSave
+   224→   224→- InstituteDetail.tsx: rewrote with back header + GOD VIEW badge. Hero institute card with single contained gold radial. lg:grid-cols-12 (col-span-8 advisors table + students table, col-span-4 metrics + info sidebar). Desktop tables vs mobile cards. Preserved selectedInstituteId, platformInstitutes, globalUsers, setCurrentView, all useMemo (institute, instituteUsers, students, advisors)
+   225→   225→- UserDetail.tsx: rewrote with lg:grid-cols-12 (col-span-7 profile + activity log, col-span-5 metrics sidebar). Hero profile card with single contained gold radial. Role-specific metric cards (student: completion/hours/score, advisor: completion/status, manager: info). Gold action panel. Preserved selectedGlobalUserId, updateGlobalUser, setCurrentView. Used LucideIcon type for ROLE_CONFIG.icon
+   226→   226→- LoginPage.tsx: rewrote with single ambient mint radial (low opacity, contained). Centered max-w-md card with .surface-1 + .edge-highlight + shadow. BookOpen logo icon with subtle pulse-glow ring. Quick access accounts now use LucideIcon components + role-tinted borders. .btn-hover + .glow-hover on login button. Preserved handleLogin, handleQuickLogin, setUserRole, setUser, setOnboardingComplete, fetch flow, toast notifications
+   227→   227→- OnboardingWizard.tsx: light-touch color token update only — replaced all `[#3EB489]` → `mint`, all `bg-zinc-800` → `bg-[var(--bg-overlay)]`, `border-zinc-700/500` → `border-[var(--border-strong)]`, `text-zinc-200/300/400/500/600` → `text-foreground` / `text-foreground/90` / `text-muted-foreground` / `text-muted-foreground/60`, `text-zinc-950` → `text-[var(--bg-deep)]`, `bg-zinc-950` → `bg-[var(--bg-base)]`, `hover:bg-[#2D8A66]` → `hover:bg-[var(--accent-hover)]`, progress indicator inactive state now uses bg-overlay + hairline border. Added single subtle ambient mint radial in main wrapper. Did NOT change any logic/state/animations
+   228→   228→- Verified: TypeScript check (npx tsc --noEmit --skipLibCheck) — ZERO errors in any of the 11 target files. Next.js dev server compiled and served HTTP 200 on / with no errors in dev log. All Zustand store calls, props, event handlers, modal state, mock data references (MOCK_PLATFORM_ENGAGEMENT) preserved verbatim
+   229→   229→
+   230→   230→Stage Summary:
+   231→   231→- 11 files completely redesigned + OnboardingWizard lightly refreshed
+   232→   232→- Mobile: single-column, 2-col KPI grids, sticky search bars, touch-friendly 44px+ tap targets, card lists
+   233→   233→- Desktop: lg:grid-cols-12 layouts with dense data tables (header row + hover-highlight rows via .nav-item-hover), multi-column breakdowns, sticky filter bars, hover-lift cards via .card-hover + .edge-highlight
+   234→   234→- Super Admin: gold accent (#F5B544) used consistently — bg-gold/15, text-gold, border-gold/25, glow-hover-gold on CTAs, "GOD" / "GOD VIEW" / "GOD MODE" badges with gold pill styling, single contained gold radial in hero areas only (not covering content)
+   235→   235→- Institute: mint accent (var(--accent), #3EB489) — bg-mint/15, text-mint, border-mint/20, glow-hover on CTAs
+   236→   236→- CSS hover utilities used throughout (.card-hover, .btn-hover, .glow-hover, .glow-hover-gold, .icon-btn, .nav-item-hover, .edge-highlight, .surface-1, .surface-2) — no framer-motion whileHover for hover effects
+   237→   237→- No superimposed floating orbs; all backgrounds are subtle, contained radials (low opacity, behind content via -z-10 or pointer-events-none)
+   238→   238→- Persian RTL throughout, toPersianDigits() on all numbers, dir="ltr" on phone numbers
+   239→   239→- All 11 files compile cleanly; Next.js dev server returns 200 with no compile errors
+   240→   240→
+   241→   241→---
+   242→   242→Task ID: 7-verification
+   243→   243→Agent: Main
+   244→   244→Task: Verify redesign with Agent Browser (mobile + desktop, all 4 roles)
+   245→   245→
+   246→   246→Work Log:
+   247→   247→- Seeded database with test users (super admin, institute manager, 3 advisors, 5 students) via prisma/seed.ts
+   248→   248→- Restarted dev server (next dev -p 3000) — server kept alive within single bash session
+   249→   249→- Desktop (1440x900) verification:
+   250→   250→  * Landing page: VLM confirmed "polished, modern, premium Dark Mode SaaS aesthetic", split hero layout with phone mockup, 3x2 feature grid with hover-lift cards
+   251→   251→  * Student dashboard: VLM confirmed "high-quality, modern Dark Mode UI inspired by Linear/Vercel", sidebar + multi-column grid, generous whitespace
+   252→   252→  * Advisor panel: VLM confirmed "modern, premium SaaS feel", sidebar + 4 KPI cards + horizontal bar chart + status list + alert cards
+   253→   253→  * Super Admin panel: VLM confirmed GOLD accent distinct from mint, "premium, exclusive God Mode vibe", KPIs + distribution charts
+   254→   254→- Mobile (390x844) verification:
+   255→   255→  * Landing page: single column, stacked sections, touch-friendly CTAs
+   256→   256→  * Student dashboard: VLM confirmed "Mobile-Optimized (Native feel), NOT a shrunk desktop", bottom nav (5 tabs), single-column card stack, large touch targets
+   257→   257→  * Tab navigation: clicked ابزارها (Tools) tab → successfully navigated to ToolsHub showing all 6 tools
+   258→   258→- Login flow: POST /api/auth/login returns 200 with user data, role-based redirect works correctly
+   259→   259→- Role switcher: dropdown opens, all 4 roles selectable, navigation updates correctly
+   260→   260→- All views render without console errors or React exceptions
+   261→   261→
+   262→   262→Stage Summary:
+   263→   263→- FULL UI/UX REDESIGN COMPLETE AND VERIFIED
+   264→   264→- 4 roles × 2 viewports = 8 distinct experiences verified
+   265→   265→- Design system: Modern Dark Cinema — Persian RTL
+   266→   266→- Desktop: sidebar nav (right-side RTL) + multi-column grids + hover-lift cards + dense tables
+   267→   267→- Mobile: bottom nav + single-column + drawer sheets + touch-friendly targets
+   268→   268→- Hover effects: CSS-based utilities (.card-hover, .btn-hover, .glow-hover, .nav-item-hover) — reliable, no framer-motion whileHover
+   269→   269→- No superimpose: removed floating gradient orbs, cards use solid bg-elevated + hairline borders
+   270→   270→- Super Admin uses gold accent (#F5B544), all other roles use mint accent (#3EB489)
+   271→   271→- All functions preserved: store calls, event handlers, data flow, navigation unchanged
+   272→   272→- Files modified: 20+ component files + globals.css + layout.tsx + page.tsx + 4 new shared components
+   273→   273→
+   274→   274→---
+   275→   275→Task ID: 8-subjects-system
+   276→   276→Agent: Main
+   277→   277→Task: Build dynamic Subject/Chapter/Topic management system in Super Admin panel with multi-strategy display + assessment types
+   278→   278→
+   279→   279→Work Log:
+   280→   280→- Added 4 new Prisma models: Subject, GradeSubject, Chapter, Topic, TopicMode
+   281→   281→  * Subject: top-level (name, color, icon, assessmentType, displayStrategy, category, finalStrategy)
+   282→   282→  * GradeSubject: pivot linking subject to grade+major with depth (1/2/3) and allowOptionalSubtopic flag
+   283→   283→  * Chapter: belongs to subject+grade, has chapterNo, optional weight for final-exam bar% strategy
+   284→   284→  * Topic: belongs to chapter (only used when depth=3, Biology style)
+   285→   285→  * TopicMode: thematic/integrated konkur view (e.g. "زیست سلولی و مولکولی")
+   286→   286→- Ran prisma db push + generate — schema synced
+   287→   287→- Built seed script prisma/seed-subjects.ts with full data for 5 subjects:
+   288→   288→  * زیست‌شناسی (Biology): depth 3, 3 grades (دهم/یازدهم/دوازدهم), 24 chapters, 69 topics, 6 topic modes
+   289→   289→  * فیزیک (Physics): depth 2 + allowOptionalSubtopic=true, 3 grades, 11 chapters, 5 topic modes
+   290→   290→  * شیمی (Chemistry): depth 2, 3 grades, 10 chapters, 5 topic modes
+   291→   291→  * ریاضی (Math): depth 2, 3 grades, 21 chapters, 7 topic modes
+   292→   292→  * زمین‌شناسی (Geology): depth 1, یازدهم only (تجربی+ریاضی), 7 chapters, 5 topic modes
+   293→   293→  * Total: 5 subjects, 14 grade-links, 73 chapters, 69 topics, 28 topic modes
+   294→   294→- Built 8 API routes:
+   295→   295→  * GET/POST /api/subjects (list + create, with ?include=tree for full nested fetch)
+   296→   296→  * GET/PATCH/DELETE /api/subjects/[subjectId]
+   297→   297→  * GET/POST /api/subjects/[subjectId]/chapters
+   298→   298→  * PATCH/DELETE /api/subjects/[subjectId]/chapters/[chapterId]
+   299→   299→  * GET/POST /api/subjects/[subjectId]/chapters/[chapterId]/topics
+   300→   300→  * PATCH/DELETE /api/subjects/[subjectId]/chapters/[chapterId]/topics/[topicId]
+   301→   301→  * GET/POST /api/subjects/[subjectId]/topic-modes
+   302→   302→  * PATCH/DELETE /api/subjects/[subjectId]/topic-modes/[modeId]
+   303→   303→  * GET/POST /api/subjects/[subjectId]/grades
+   304→   304→  * PATCH/DELETE /api/subjects/[subjectId]/grades/[gradeSubjectId]
+   305→   305→- Added 'sa-subjects' to SuperAdminView type, wired into SidebarNav (desktop) + BottomNav (mobile) with BookOpen icon
+   306→   306→- Built 5 modular React components:
+   307→   307→  * SuperAdminSubjects.tsx (container: list + filters + KPI stats)
+   308→   308→  * SubjectCard.tsx (card with subject info, badges, stats)
+   309→   309→  * SubjectFormModal.tsx (add new subject with color/icon/strategy pickers)
+   310→   310→  * SubjectDetail.tsx (3-tab view: درخت فصل‌ها / مباحث کنکوری / تنظیمات درس)
+   311→   311→  * GradeChaptersTree.tsx (accordion per grade, expandable chapters with topics, add/edit/delete modals)
+   312→   312→  * TopicModesPanel.tsx (list of thematic konkur modes with add/edit/delete)
+   313→   313→  * SubjectSettingsPanel.tsx (edit subject properties: assessmentType, displayStrategy, category, finalStrategy)
+   314→   314→- All modals use gold accent (Super Admin theme), surface-2 + edge-highlight styling
+   315→   315→- Persian RTL throughout, toPersianDigits for all numbers
+   316→   316→- Agent Browser verified:
+   317→   317→  * Subjects list page renders 5 subjects with correct stats (24 فصل / 69 گفتار / 6 مبحث for Biology)
+   318→   318→  * Subject detail page shows 3 tabs, chapter tree expands per grade
+   319→   319→  * Topic modes tab shows all 6 Biology konkur modes with descriptions
+   320→   320→  * Filters (category, assessment type) functional
+   321→   321→  * No console errors
+   322→   322→
+   323→   323→Stage Summary:
+   324→   324→- Complete dynamic subject management system in Super Admin panel
+   325→   325→- Super Admin can now: add/edit/delete subjects, grades, chapters, topics, and topic modes WITHOUT code changes
+   326→   326→- Each subject supports: assessmentType (کنکور/نهایی/هر دو), displayStrategy (chapter/topic/both), category (اختصاصی/عمومی), finalStrategy (default/weight_based/high_weight_chapters/book_based)
+   327→   327→- Each grade-subject pair supports: depth (1/2/3 layers), allowOptionalSubtopic flag (Physics-style free-text field)
+   328→   328→- System is ready for future "نهایی" (final exam) subjects — finalStrategy field already in place
+   329→   329→- All 5 seed subjects (Biology, Physics, Chemistry, Math, Geology) loaded with full tree structure per the proposal
+   330→   330→
+   331→   331→---
+   332→   332→Task ID: 9-new-task-flow
+   333→   333→Agent: Main
+   334→   334→Task: Remove Biology topic modes + implement new unified task selection flow (field type → filtered subjects → subject-specific tree)
+   335→   335→
+   336→   336→Work Log:
+   337→   337→- Database updates (via node script):
+   338→   338→  * Biology: displayStrategy changed from "both" to "chapter"
+   339→   339→  * Biology: deleted all 6 TopicMode records (مباحث کنکوری removed entirely)
+   340→   340→  * Chemistry: GradeSubject.allowOptionalSubtopic → true (so chapter mode has subtopic text field like Physics)
+   341→   341→- Super Admin UI updates:
+   342→   342→  * SubjectDetail.tsx: "مباحث کنکوری" tab now only renders when subject.displayStrategy is "topic" or "both" (hidden for Biology)
+   343→   343→  * SubjectCard.tsx: topic-mode count badge hidden when subject has 0 topic modes (Biology shows 2-col stats grid)
+   344→   344→  * SubjectSettingsPanel.tsx: added warning when switching to "chapter" mode + confirmation dialog that deletes all topic modes
+   345→   345→- Built /api/subjects/for-task endpoint:
+   346→   346→  * fieldType=کنکور → assessmentType IN ("کنکور","هر دو") AND category="اختصاصی"
+   347→   347→  * fieldType=نهایی → assessmentType IN ("نهایی","هر دو") (any category)
+   348→   348→  * Filters by grade + major via GradeSubject pivot
+   349→   349→  * Returns full tree (grades config, chapters, topics, topicModes)
+   350→   350→  * Verified: returns 4 subjects for کنکور/دوازدهم/تجربی (Biology, Physics, Chemistry, Math — Geology excluded since only grade 11)
+   351→   351→- Built shared SubjectTopicPicker component (src/components/shared/SubjectTopicPicker.tsx):
+   352→   352→  * Mode switch: if displayStrategy="both", shows "فصل کتاب" vs "مبحثی" toggle
+   353→   353→  * ChapterPicker: grade selector → chapter grid → (topics if depth=3) → (optional subtopic text if allowOptionalSubtopic)
+   354→   354→  * TopicModePicker: searchable list of thematic konkur modes
+   355→   355→  * Outputs TopicSelection with displayText + structured fields
+   356→   356→- Student ManualEntrySheet.tsx rewritten:
+   357→   357→  * Step 1: حوزه (کنکور/نهایی) with description
+   358→   358→  * Step 2: subjects fetched from /api/subjects/for-task (filtered by field type)
+   359→   359→  * Step 3: SubjectTopicPicker (dynamic based on subject's displayStrategy)
+   360→   360→  * Step 4: activity types (unchanged)
+   361→   361→  * Step 5: duration + test count + summary (unchanged)
+   362→   362→- Advisor TaskModal rewritten in AdvisorDashboard.tsx:
+   363→   363→  * Same flow: field type → subject (filtered) → topic picker → activities → metrics
+   364→   364→  * Uses student's grade + major from MOCK_STUDENTS
+   365→   365→  * SubjectTopicPicker integrated for topic selection
+   366→   366→- Agent Browser verification:
+   367→   367→  * Biology detail page: only 2 tabs (درخت فصل‌ها + تنظیمات درس) — مباحث کنکوری tab gone ✅
+   368→   368→  * Student ManualEntrySheet step 1 shows کنکور/نهایی buttons ✅
+   369→   369→  * API returns 4 subjects for کنکور field type ✅
+   370→   370→
+   371→   371→Stage Summary:
+   372→   372→- Biology: مباحث کنکوری completely removed (Super Admin + student + advisor)
+   373→   373→- New unified task flow: field type → filtered subjects → subject-specific tree
+   374→   374→- SubjectTopicPicker handles all 4 cases:
+   375→   375→  1. Biology (chapter only, depth 3): grade → chapter → topic
+   376→   376→  2. Physics (chapter only, depth 2 + subtopic text): grade → chapter → text field
+   377→   377→  3. Chemistry/Math (both modes): switch between "فصل کتاب" (grade → chapter → subtopic text) or "مبحثی" (topic mode list)
+   378→   378→  4. Geology (depth 1): just chapter selection
+   379→   379→- Same flow used in both student and advisor panels (unified UX)
+   380→   380→

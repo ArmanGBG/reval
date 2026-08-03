@@ -44,8 +44,8 @@ interface GradeChaptersTreeProps {
 
 const DEPTH_LABELS: Record<number, string> = {
   1: '۱ لایه (فقط فصل)',
-  2: '۲ لایه (پایه ➔ فصل)',
-  3: '۳ لایه (پایه ➔ فصل ➔ گفتار)',
+  2: '۲ لایه (پایه - فصل)',
+  3: '۳ لایه (پایه - فصل - گفتار)',
 };
 
 export function GradeChaptersTree({

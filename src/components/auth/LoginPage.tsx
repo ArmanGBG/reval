@@ -70,7 +70,7 @@ export default function LoginPage() {
 
       setOnboardingComplete(true);
 
-      toast.success(`خوش آمدی ${data.user.name}! 👋`, {
+      toast.success(`خوش آمدی، ${data.user.name}`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
       });
     } catch {
@@ -111,8 +111,6 @@ export default function LoginPage() {
             <div className="w-20 h-20 rounded-[20px] bg-mint/15 border border-mint/25 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-mint/10">
               <BookOpen className="w-9 h-9 text-mint" />
             </div>
-            {/* Subtle pulse glow ring */}
-            <div className="absolute inset-0 rounded-[20px] bg-mint/20 blur-xl -z-10 animate-pulse" />
           </div>
           <h1 className="text-3xl font-black text-foreground tracking-tight">روال</h1>
           <p className="text-sm text-muted-foreground mt-1.5">مسیر مطالعه‌ات رو هموار کن</p>

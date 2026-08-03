@@ -79,43 +79,31 @@ const FEATURES = [
     icon: BookOpen,
     title: 'برنامه‌ریزی هوشمند',
     description: 'برنامه مطالعه شخصی‌سازی شده بر اساس اهداف و رشته تحصیلی‌ات',
-    color: '#3EB489',
-    gradient: 'from-[#3EB489]/20 to-[#3EB489]/5',
   },
   {
     icon: Music,
     title: 'موزیک تمرکز',
     description: 'موسیقی و صداهای محیطی برای افزایش تمرکز و بهره‌وری',
-    color: '#F59E0B',
-    gradient: 'from-[#F59E0B]/20 to-[#F59E0B]/5',
   },
   {
     icon: Brain,
     title: 'فلش‌کارت هوشمند',
     description: 'یادگیری فعال با تکرار فاصله‌دار و دسته‌بندی دروس',
-    color: '#8B5CF6',
-    gradient: 'from-[#8B5CF6]/20 to-[#8B5CF6]/5',
   },
   {
     icon: Timer,
     title: 'تایمر پومودورو',
     description: 'مدیریت زمان مطالعه با تکنیک پومودورو و استراحت‌های هوشمند',
-    color: '#EC4899',
-    gradient: 'from-[#EC4899]/20 to-[#EC4899]/5',
   },
   {
     icon: Calculator,
     title: 'محاسبه‌گر درصد',
     description: 'محاسبه دقیق درصد کنکور با فرمول رسمی و تحلیل نتایج',
-    color: '#EF4444',
-    gradient: 'from-[#EF4444]/20 to-[#EF4444]/5',
   },
   {
     icon: Heart,
     title: 'اورژانس استرس',
     description: 'تمرینات تنفسی و آرام‌بخش برای مدیریت استرس کنکور',
-    color: '#06B6D4',
-    gradient: 'from-[#06B6D4]/20 to-[#06B6D4]/5',
   },
 ];
 
@@ -377,7 +365,7 @@ function HeroSection() {
               onClick={() => setCurrentView('onboarding')}
               className="btn-hover glow-hover w-full px-6 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-h-[52px]"
             >
-              شروع کن — رایگانه
+              شروع کن
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -463,7 +451,7 @@ function HeroSection() {
                 onClick={() => setCurrentView('onboarding')}
                 className="btn-hover glow-hover px-8 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-w-[200px] shadow-[0_8px_24px_-6px_var(--accent-glow)]"
               >
-                شروع کن — رایگانه
+                شروع کن
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -595,9 +583,9 @@ function FeaturesSection() {
             <AnimatedSection key={feature.title} delay={index * 0.05}>
               <div className="card-hover edge-highlight flex items-start gap-4 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 min-h-[44px]">
                 <div
-                  className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center`}
+                  className="flex-shrink-0 w-12 h-12 rounded-xl bg-[var(--accent-soft)] flex items-center justify-center"
                 >
-                  <feature.icon className="w-6 h-6" style={{ color: feature.color }} />
+                  <feature.icon className="w-6 h-6 text-[var(--accent)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-bold text-[var(--foreground)] mb-1">
@@ -627,9 +615,9 @@ function FeaturesSection() {
               className="card-hover edge-highlight group bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6"
             >
               <div
-                className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105`}
+                className="w-14 h-14 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105"
               >
-                <feature.icon className="w-7 h-7" style={{ color: feature.color }} />
+                <feature.icon className="w-7 h-7 text-[var(--accent)]" />
               </div>
               <h3 className="text-lg font-bold text-[var(--foreground)] mb-2">
                 {feature.title}
@@ -860,7 +848,7 @@ function CTASection() {
                 onClick={() => setCurrentView('onboarding')}
                 className="btn-hover glow-hover w-full px-6 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-h-[52px]"
               >
-                شروع کن — رایگانه
+                شروع کن
               </motion.button>
               <div className="mt-5 flex items-center justify-center gap-4 text-xs text-[var(--foreground-muted)]">
                 <div className="flex items-center gap-1.5">
@@ -906,7 +894,7 @@ function CTASection() {
                 onClick={() => setCurrentView('onboarding')}
                 className="btn-hover glow-hover px-10 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-lg shadow-[0_8px_24px_-6px_var(--accent-glow)]"
               >
-                شروع کن — رایگانه
+                شروع کن
               </motion.button>
               <div className="mt-6 flex items-center justify-center gap-6 text-sm text-[var(--foreground-muted)]">
                 <div className="flex items-center gap-1.5">
@@ -1027,7 +1015,7 @@ function LandingFooter() {
             © ۱۴۰۴ روال. تمامی حقوق محفوظ است.
           </p>
           <span className="text-xs text-[var(--foreground-subtle)]">
-            ساخته شده با ❤️ برای دانش‌آموزان ایران
+            ساخته شده برای دانش‌آموزان ایران
           </span>
         </div>
       </div>

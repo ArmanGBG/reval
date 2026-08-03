@@ -149,7 +149,7 @@ export default function TaskCard({ task, index, onComplete, onSkip, onDelete, on
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           {isPending ? (
             <>
-              {/* Complete ✔️ */}
+              {/* Complete */}
               <button
                 onClick={() => {
                   onComplete(task.id);
@@ -166,7 +166,7 @@ export default function TaskCard({ task, index, onComplete, onSkip, onDelete, on
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
               </button>
-              {/* Skip ❌ */}
+              {/* Skip */}
               <button
                 onClick={() => {
                   onSkip(task.id);

@@ -1,0 +1,1053 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useRef } from 'react';
+     4→import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+     5→import { useAppStore } from '@/lib/store';
+     6→import {
+     7→  BookOpen,
+     8→  Brain,
+     9→  Timer,
+    10→  Calculator,
+    11→  Heart,
+    12→  Music,
+    13→  Target,
+    14→  Sparkles,
+    15→  TrendingUp,
+    16→  ChevronDown,
+    17→  Zap,
+    18→  Shield,
+    19→  Users,
+    20→  Star,
+    21→  CheckCircle2,
+    22→  Play,
+    23→} from 'lucide-react';
+    24→
+    25→// ===== Helper: Convert number to Persian digits =====
+    26→function toPersianDigits(num: number): string {
+    27→  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    28→  return num
+    29→    .toString()
+    30→    .split('')
+    31→    .map((d) => persianDigits[parseInt(d)] ?? d)
+    32→    .join('');
+    33→}
+    34→
+    35→// ===== Animation Variants =====
+    36→const fadeInUp = {
+    37→  hidden: { opacity: 0, y: 30 },
+    38→  visible: { opacity: 1, y: 0 },
+    39→};
+    40→
+    41→const staggerContainer = {
+    42→  hidden: { opacity: 0 },
+    43→  visible: {
+    44→    opacity: 1,
+    45→    transition: { staggerChildren: 0.1 },
+    46→  },
+    47→};
+    48→
+    49→// ===== Section Wrapper with InView Animation =====
+    50→function AnimatedSection({
+    51→  children,
+    52→  className = '',
+    53→  delay = 0,
+    54→}: {
+    55→  children: React.ReactNode;
+    56→  className?: string;
+    57→  delay?: number;
+    58→}) {
+    59→  const ref = useRef(null);
+    60→  const isInView = useInView(ref, { once: true, margin: '-80px' });
+    61→
+    62→  return (
+    63→    <motion.div
+    64→      ref={ref}
+    65→      initial="hidden"
+    66→      animate={isInView ? 'visible' : 'hidden'}
+    67→      variants={fadeInUp}
+    68→      transition={{ duration: 0.6, delay, ease: 'easeOut' }}
+    69→      className={className}
+    70→    >
+    71→      {children}
+    72→    </motion.div>
+    73→  );
+    74→}
+    75→
+    76→// ===== Data =====
+    77→const FEATURES = [
+    78→  {
+    79→    icon: BookOpen,
+    80→    title: 'برنامه‌ریزی هوشمند',
+    81→    description: 'برنامه مطالعه شخصی‌سازی شده بر اساس اهداف و رشته تحصیلی‌ات',
+    82→    color: '#3EB489',
+    83→    gradient: 'from-[#3EB489]/20 to-[#3EB489]/5',
+    84→  },
+    85→  {
+    86→    icon: Music,
+    87→    title: 'موزیک تمرکز',
+    88→    description: 'موسیقی و صداهای محیطی برای افزایش تمرکز و بهره‌وری',
+    89→    color: '#F59E0B',
+    90→    gradient: 'from-[#F59E0B]/20 to-[#F59E0B]/5',
+    91→  },
+    92→  {
+    93→    icon: Brain,
+    94→    title: 'فلش‌کارت هوشمند',
+    95→    description: 'یادگیری فعال با تکرار فاصله‌دار و دسته‌بندی دروس',
+    96→    color: '#8B5CF6',
+    97→    gradient: 'from-[#8B5CF6]/20 to-[#8B5CF6]/5',
+    98→  },
+    99→  {
+   100→    icon: Timer,
+   101→    title: 'تایمر پومودورو',
+   102→    description: 'مدیریت زمان مطالعه با تکنیک پومودورو و استراحت‌های هوشمند',
+   103→    color: '#EC4899',
+   104→    gradient: 'from-[#EC4899]/20 to-[#EC4899]/5',
+   105→  },
+   106→  {
+   107→    icon: Calculator,
+   108→    title: 'محاسبه‌گر درصد',
+   109→    description: 'محاسبه دقیق درصد کنکور با فرمول رسمی و تحلیل نتایج',
+   110→    color: '#EF4444',
+   111→    gradient: 'from-[#EF4444]/20 to-[#EF4444]/5',
+   112→  },
+   113→  {
+   114→    icon: Heart,
+   115→    title: 'اورژانس استرس',
+   116→    description: 'تمرینات تنفسی و آرام‌بخش برای مدیریت استرس کنکور',
+   117→    color: '#06B6D4',
+   118→    gradient: 'from-[#06B6D4]/20 to-[#06B6D4]/5',
+   119→  },
+   120→];
+   121→
+   122→const STEPS = [
+   123→  {
+   124→    number: '۱',
+   125→    title: 'ثبت‌نام و هدف‌گذاری',
+   126→    description: 'رشته، پایه و هدفتو مشخص کن. ما مسیرتو طراحی می‌کنیم.',
+   127→    icon: Target,
+   128→  },
+   129→  {
+   130→    number: '۲',
+   131→    title: 'برنامه‌ریزی خودکار',
+   132→    description: 'روال بر اساس اهدافت برنامه روزانه‌ات رو می‌سازه.',
+   133→    icon: Sparkles,
+   134→  },
+   135→  {
+   136→    number: '۳',
+   137→    title: 'پیشرفت و تحلیل',
+   138→    description: 'پیشرفتو رصد کن، نقطه ضعف‌هاتو بشناس و بهبود بزن.',
+   139→    icon: TrendingUp,
+   140→  },
+   141→];
+   142→
+   143→const STATS = [
+   144→  { value: 12000, label: 'دانش‌آموز فعال', suffix: '+' },
+   145→  { value: 95, label: 'رضایت کاربران', suffix: '%' },
+   146→  { value: 40, label: 'افزایش بهره‌وری', suffix: '%' },
+   147→  { value: 500, label: 'ساعت مطالعه روزانه', suffix: '+' },
+   148→];
+   149→
+   150→const TESTIMONIALS = [
+   151→  {
+   152→    name: 'سارا محمدی',
+   153→    grade: 'پشت کنکوری - تجربی',
+   154→    text: 'روال واقعاً مسیر مطالعه‌ام رو منظم کرد. دیگه نمی‌دونم بدون روال چی کار می‌کردم!',
+   155→    avatar: '🦊',
+   156→  },
+   157→  {
+   158→    name: 'امیرحسین رضایی',
+   159→    grade: 'دوازدهم - ریاضی',
+   160→    text: 'محاسبه‌گر درصد و فلش‌کارت‌ها عالین. تمرکزم خیلی بیشتر شده.',
+   161→    avatar: '🐺',
+   162→  },
+   163→  {
+   164→    name: 'فاطمه احمدی',
+   165→    grade: 'یازدهم - انسانی',
+   166→    text: 'اورژانس استرس واقعاً کمکم کرده. قبل از امتحانا تنفس عمیق می‌کنم.',
+   167→    avatar: '🦁',
+   168→  },
+   169→];
+   170→
+   171→// ===== Counter Animation Hook =====
+   172→function useCounter(end: number, duration = 2000, startOnView = true) {
+   173→  const [count, setCount] = useState(0);
+   174→  const ref = useRef(null);
+   175→  const isInView = useInView(ref, { once: true });
+   176→
+   177→  useEffect(() => {
+   178→    if (!startOnView || !isInView) return;
+   179→
+   180→    let startTime: number | null = null;
+   181→    const step = (timestamp: number) => {
+   182→      if (!startTime) startTime = timestamp;
+   183→      const progress = Math.min((timestamp - startTime) / duration, 1);
+   184→      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+   185→      setCount(Math.floor(eased * end));
+   186→      if (progress < 1) {
+   187→        requestAnimationFrame(step);
+   188→      }
+   189→    };
+   190→    requestAnimationFrame(step);
+   191→  }, [end, duration, isInView, startOnView]);
+   192→
+   193→  return { count, ref };
+   194→}
+   195→
+   196→// ===== Stat Card (extracted so useCounter respects rules of hooks) =====
+   197→function StatCard({ stat }: { stat: { value: number; label: string; suffix: string } }) {
+   198→  const { count, ref } = useCounter(stat.value, 2000);
+   199→  return (
+   200→    <div
+   201→      ref={ref}
+   202→      className="text-center px-3 py-4 md:py-6 rounded-[var(--radius)] md:rounded-2xl md:surface-1 md:card-hover md:edge-highlight"
+   203→    >
+   204→      <motion.div
+   205→        initial={{ opacity: 0, scale: 0.5 }}
+   206→        whileInView={{ opacity: 1, scale: 1 }}
+   207→        viewport={{ once: true }}
+   208→        className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--accent)] mb-1 md:mb-2 tracking-tight tabular-nums"
+   209→      >
+   210→        {toPersianDigits(count)}
+   211→        {stat.suffix}
+   212→      </motion.div>
+   213→      <p className="text-xs md:text-sm text-[var(--foreground-muted)] leading-snug">
+   214→        {stat.label}
+   215→      </p>
+   216→    </div>
+   217→  );
+   218→}
+   219→
+   220→// ===== Section Heading (eyebrow + title + subtitle) =====
+   221→function SectionHeading({
+   222→  eyebrow,
+   223→  eyebrowIcon: EyebrowIcon,
+   224→  title,
+   225→  highlight,
+   226→  subtitle,
+   227→}: {
+   228→  eyebrow: string;
+   229→  eyebrowIcon: React.ComponentType<{ className?: string }>;
+   230→  title: string;
+   231→  highlight: string;
+   232→  subtitle: string;
+   233→}) {
+   234→  return (
+   235→    <AnimatedSection className="text-center mb-10 md:mb-16">
+   236→      <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-[var(--accent-soft)] border border-[var(--accent-soft)] mb-3 md:mb-4">
+   237→        <EyebrowIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-[var(--accent)]" />
+   238→        <span className="text-xs md:text-sm text-[var(--accent)] font-medium">{eyebrow}</span>
+   239→      </div>
+   240→      <h2 className="text-2xl md:text-4xl font-black text-[var(--foreground)] mb-3 md:mb-4 leading-tight">
+   241→        {title} <span className="text-[var(--accent)]">{highlight}</span>
+   242→      </h2>
+   243→      <p className="text-sm md:text-lg text-[var(--foreground-muted)] max-w-2xl mx-auto leading-relaxed">
+   244→        {subtitle}
+   245→      </p>
+   246→    </AnimatedSection>
+   247→  );
+   248→}
+   249→
+   250→// ===== Navbar Component =====
+   251→function LandingNav() {
+   252→  const [scrolled, setScrolled] = useState(false);
+   253→  const { setCurrentView } = useAppStore();
+   254→
+   255→  useEffect(() => {
+   256→    const handleScroll = () => setScrolled(window.scrollY > 20);
+   257→    window.addEventListener('scroll', handleScroll, { passive: true });
+   258→    return () => window.removeEventListener('scroll', handleScroll);
+   259→  }, []);
+   260→
+   261→  return (
+   262→    <motion.nav
+   263→      initial={{ y: -20, opacity: 0 }}
+   264→      animate={{ y: 0, opacity: 1 }}
+   265→      transition={{ duration: 0.5 }}
+   266→      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+   267→        scrolled ? 'surface-glass' : 'bg-transparent border-b border-transparent'
+   268→      }`}
+   269→    >
+   270→      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+   271→        {/* Logo */}
+   272→        <div className="flex items-center gap-2">
+   273→          <div className="w-9 h-9 rounded-[var(--radius)] bg-[var(--accent)] flex items-center justify-center shadow-[0_4px_14px_-2px_var(--accent-glow)]">
+   274→            <span className="text-[var(--bg-deep)] font-black text-base">ر</span>
+   275→          </div>
+   276→          <span className="text-lg font-bold text-[var(--foreground)]">روال</span>
+   277→        </div>
+   278→
+   279→        {/* Nav Links — desktop only */}
+   280→        <div className="hidden md:flex items-center gap-8">
+   281→          <a
+   282→            href="#features"
+   283→            className="link-underline text-sm text-[var(--foreground-muted)]"
+   284→          >
+   285→            ویژگی‌ها
+   286→          </a>
+   287→          <a
+   288→            href="#how-it-works"
+   289→            className="link-underline text-sm text-[var(--foreground-muted)]"
+   290→          >
+   291→            نحوه کار
+   292→          </a>
+   293→          <a
+   294→            href="#testimonials"
+   295→            className="link-underline text-sm text-[var(--foreground-muted)]"
+   296→          >
+   297→            نظرات
+   298→          </a>
+   299→        </div>
+   300→
+   301→        {/* CTA */}
+   302→        <motion.button
+   303→          whileHover={{ scale: 1.02 }}
+   304→          whileTap={{ scale: 0.97 }}
+   305→          onClick={() => setCurrentView('onboarding')}
+   306→          className="btn-hover glow-hover px-5 py-2.5 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm min-h-[44px] flex items-center"
+   307→        >
+   308→          شروع کن
+   309→        </motion.button>
+   310→      </div>
+   311→    </motion.nav>
+   312→  );
+   313→}
+   314→
+   315→// ===== Hero Section =====
+   316→function HeroSection() {
+   317→  const { setCurrentView } = useAppStore();
+   318→  const { scrollY } = useScroll();
+   319→  const heroY = useTransform(scrollY, [0, 500], [0, 120]);
+   320→  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0]);
+   321→
+   322→  return (
+   323→    <section className="relative min-h-screen flex items-center overflow-hidden pt-16 pb-12 md:pb-0">
+   324→      {/* ONE subtle accent glow behind hero headline — no other orbs */}
+   325→      <div
+   326→        aria-hidden
+   327→        className="pointer-events-none absolute top-1/3 right-1/2 translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,var(--accent-soft)_0%,transparent_70%)] blur-3xl opacity-70"
+   328→      />
+   329→
+   330→      <motion.div
+   331→        style={{ y: heroY, opacity: heroOpacity }}
+   332→        className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-6"
+   333→      >
+   334→        {/* ===== Mobile layout: full-bleed single column ===== */}
+   335→        <div className="md:hidden max-w-md mx-auto text-center pt-8">
+   336→          <motion.div
+   337→            initial={{ opacity: 0, y: 20 }}
+   338→            animate={{ opacity: 1, y: 0 }}
+   339→            transition={{ duration: 0.6, delay: 0.2 }}
+   340→            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--accent-soft)] border border-[var(--accent-soft)] mb-5"
+   341→          >
+   342→            <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
+   343→            <span className="text-xs text-[var(--accent)] font-medium">همراه هوشمند کنکور</span>
+   344→          </motion.div>
+   345→
+   346→          <motion.h1
+   347→            initial={{ opacity: 0, y: 20 }}
+   348→            animate={{ opacity: 1, y: 0 }}
+   349→            transition={{ duration: 0.6, delay: 0.3 }}
+   350→            className="text-4xl font-black text-[var(--foreground)] leading-[1.15] mb-5"
+   351→          >
+   352→            مسیر مطالعه‌ات رو{' '}
+   353→            <span className="bg-gradient-to-l from-[var(--accent-hover)] to-[var(--accent)] bg-clip-text text-transparent">
+   354→              هموار
+   355→            </span>{' '}
+   356→            کن
+   357→          </motion.h1>
+   358→
+   359→          <motion.p
+   360→            initial={{ opacity: 0, y: 20 }}
+   361→            animate={{ opacity: 1, y: 0 }}
+   362→            transition={{ duration: 0.6, delay: 0.4 }}
+   363→            className="text-base text-[var(--foreground-muted)] leading-relaxed mb-7"
+   364→          >
+   365→            روال، اپلیکیشن مدیریت مطالعه و بهره‌وری دانش‌آموزی. برنامه‌ریزی هوشمند، ابزارهای تمرکز و تحلیل پیشرفت — همه در یک جا.
+   366→          </motion.p>
+   367→
+   368→          <motion.div
+   369→            initial={{ opacity: 0, y: 20 }}
+   370→            animate={{ opacity: 1, y: 0 }}
+   371→            transition={{ duration: 0.6, delay: 0.5 }}
+   372→            className="flex flex-col gap-3 mb-6"
+   373→          >
+   374→            <motion.button
+   375→              whileHover={{ scale: 1.02 }}
+   376→              whileTap={{ scale: 0.97 }}
+   377→              onClick={() => setCurrentView('onboarding')}
+   378→              className="btn-hover glow-hover w-full px-6 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-h-[52px]"
+   379→            >
+   380→              شروع کن — رایگانه
+   381→            </motion.button>
+   382→            <motion.button
+   383→              whileHover={{ scale: 1.02 }}
+   384→              whileTap={{ scale: 0.97 }}
+   385→              onClick={() => {
+   386→                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+   387→              }}
+   388→              className="btn-hover w-full px-6 py-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--foreground)] font-bold text-base min-h-[52px]"
+   389→            >
+   390→              بیشتر بدون
+   391→            </motion.button>
+   392→          </motion.div>
+   393→
+   394→          {/* Social proof — mobile */}
+   395→          <motion.div
+   396→            initial={{ opacity: 0 }}
+   397→            animate={{ opacity: 1 }}
+   398→            transition={{ duration: 0.6, delay: 0.7 }}
+   399→            className="flex items-center justify-center gap-2.5"
+   400→          >
+   401→            <div className="flex -space-x-2 space-x-reverse">
+   402→              {['🦊', '🐺', '🦁', '🐯'].map((emoji, i) => (
+   403→                <div
+   404→                  key={i}
+   405→                  className="w-8 h-8 rounded-full bg-[var(--bg-overlay)] border-2 border-[var(--bg-base)] flex items-center justify-center text-sm"
+   406→                >
+   407→                  {emoji}
+   408→                </div>
+   409→              ))}
+   410→            </div>
+   411→            <div className="text-xs">
+   412→              <span className="text-[var(--foreground)] font-bold">+۱۲,۰۰۰</span>
+   413→              <span className="text-[var(--foreground-muted)]"> دانش‌آموز فعال</span>
+   414→            </div>
+   415→          </motion.div>
+   416→        </div>
+   417→
+   418→        {/* ===== Desktop layout: split (text right, mockup left) ===== */}
+   419→        <div className="hidden md:flex flex-row items-center gap-12 lg:gap-16 py-20">
+   420→          {/* Text — appears on RIGHT in RTL */}
+   421→          <div className="flex-1 text-right">
+   422→            <motion.div
+   423→              initial={{ opacity: 0, y: 20 }}
+   424→              animate={{ opacity: 1, y: 0 }}
+   425→              transition={{ duration: 0.6, delay: 0.2 }}
+   426→              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accent-soft)] border border-[var(--accent-soft)] mb-6"
+   427→            >
+   428→              <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+   429→              <span className="text-sm text-[var(--accent)] font-medium">همراه هوشمند کنکور</span>
+   430→            </motion.div>
+   431→
+   432→            <motion.h1
+   433→              initial={{ opacity: 0, y: 20 }}
+   434→              animate={{ opacity: 1, y: 0 }}
+   435→              transition={{ duration: 0.6, delay: 0.3 }}
+   436→              className="text-5xl lg:text-6xl font-black text-[var(--foreground)] leading-[1.1] mb-6 tracking-tight"
+   437→            >
+   438→              مسیر مطالعه‌ات رو{' '}
+   439→              <span className="bg-gradient-to-l from-[var(--accent-hover)] to-[var(--accent)] bg-clip-text text-transparent">
+   440→                هموار
+   441→              </span>{' '}
+   442→              کن
+   443→            </motion.h1>
+   444→
+   445→            <motion.p
+   446→              initial={{ opacity: 0, y: 20 }}
+   447→              animate={{ opacity: 1, y: 0 }}
+   448→              transition={{ duration: 0.6, delay: 0.4 }}
+   449→              className="text-lg lg:text-xl text-[var(--foreground-muted)] leading-relaxed mb-8 max-w-xl mr-0"
+   450→            >
+   451→              روال، اپلیکیشن مدیریت مطالعه و بهره‌وری دانش‌آموزی. برنامه‌ریزی هوشمند، ابزارهای تمرکز و تحلیل پیشرفت — همه در یک جا.
+   452→            </motion.p>
+   453→
+   454→            <motion.div
+   455→              initial={{ opacity: 0, y: 20 }}
+   456→              animate={{ opacity: 1, y: 0 }}
+   457→              transition={{ duration: 0.6, delay: 0.5 }}
+   458→              className="flex flex-row items-center gap-4 justify-start mb-8"
+   459→            >
+   460→              <motion.button
+   461→                whileHover={{ scale: 1.02 }}
+   462→                whileTap={{ scale: 0.97 }}
+   463→                onClick={() => setCurrentView('onboarding')}
+   464→                className="btn-hover glow-hover px-8 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-w-[200px] shadow-[0_8px_24px_-6px_var(--accent-glow)]"
+   465→              >
+   466→                شروع کن — رایگانه
+   467→              </motion.button>
+   468→              <motion.button
+   469→                whileHover={{ scale: 1.02 }}
+   470→                whileTap={{ scale: 0.97 }}
+   471→                onClick={() => {
+   472→                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+   473→                }}
+   474→                className="btn-hover px-8 py-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-strong)] text-[var(--foreground)] font-bold text-base min-w-[200px]"
+   475→              >
+   476→                بیشتر بدون
+   477→              </motion.button>
+   478→            </motion.div>
+   479→
+   480→            {/* Social proof — desktop */}
+   481→            <motion.div
+   482→              initial={{ opacity: 0 }}
+   483→              animate={{ opacity: 1 }}
+   484→              transition={{ duration: 0.6, delay: 0.7 }}
+   485→              className="flex items-center gap-3 justify-start"
+   486→            >
+   487→              <div className="flex -space-x-2 space-x-reverse">
+   488→                {['🦊', '🐺', '🦁', '🐯'].map((emoji, i) => (
+   489→                  <div
+   490→                    key={i}
+   491→                    className="w-9 h-9 rounded-full bg-[var(--bg-overlay)] border-2 border-[var(--bg-base)] flex items-center justify-center text-base"
+   492→                  >
+   493→                    {emoji}
+   494→                  </div>
+   495→                ))}
+   496→              </div>
+   497→              <div className="text-sm">
+   498→                <span className="text-[var(--foreground)] font-bold">+۱۲,۰۰۰</span>
+   499→                <span className="text-[var(--foreground-muted)]"> دانش‌آموز فعال</span>
+   500→              </div>
+   501→            </motion.div>
+   502→          </div>
+   503→
+   504→          {/* Phone Mockup — appears on LEFT in RTL */}
+   505→          <motion.div
+   506→            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+   507→            animate={{ opacity: 1, scale: 1, y: 0 }}
+   508→            transition={{ duration: 0.8, delay: 0.4 }}
+   509→            className="flex-1 relative max-w-sm lg:max-w-md"
+   510→          >
+   511→            <div className="relative">
+   512→              {/* Single subtle glow behind phone */}
+   513→              <div
+   514→                aria-hidden
+   515→                className="absolute inset-0 bg-[var(--accent-glow)] blur-[60px] rounded-full scale-75 opacity-60"
+   516→              />
+   517→
+   518→              {/* Phone frame */}
+   519→              <div className="relative bg-[var(--bg-elevated)] rounded-[2.5rem] border border-[var(--border-strong)] p-3 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.7)]">
+   520→                <div className="bg-[var(--bg-deep)] rounded-[2rem] overflow-hidden aspect-[9/16]">
+   521→                  <img
+   522→                    src="/hero-illustration.png"
+   523→                    alt="اپلیکیشن روال"
+   524→                    className="w-full h-full object-cover object-center"
+   525→                  />
+   526→                </div>
+   527→              </div>
+   528→
+   529→              {/* Floating badge — top */}
+   530→              <motion.div
+   531→                animate={{ y: [0, -8, 0] }}
+   532→                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+   533→                className="absolute -top-4 -right-4 surface-glass rounded-2xl px-4 py-3 shadow-lg"
+   534→              >
+   535→                <div className="flex items-center gap-2">
+   536→                  <div className="w-8 h-8 rounded-lg bg-[var(--accent-soft)] flex items-center justify-center">
+   537→                    <CheckCircle2 className="w-4 h-4 text-[var(--accent)]" />
+   538→                  </div>
+   539→                  <div>
+   540→                    <p className="text-xs font-bold text-[var(--foreground)]">وظیفه انجام شد</p>
+   541→                    <p className="text-[10px] text-[var(--foreground-muted)]">ریاضی — حد و پیوستگی</p>
+   542→                  </div>
+   543→                </div>
+   544→              </motion.div>
+   545→
+   546→              {/* Floating badge — bottom */}
+   547→              <motion.div
+   548→                animate={{ y: [0, 8, 0] }}
+   549→                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+   550→                className="absolute -bottom-2 -left-4 surface-glass rounded-2xl px-4 py-3 shadow-lg"
+   551→              >
+   552→                <div className="flex items-center gap-2">
+   553→                  <div className="w-8 h-8 rounded-lg bg-[rgba(139,92,246,0.18)] flex items-center justify-center">
+   554→                    <Timer className="w-4 h-4 text-[#8B5CF6]" />
+   555→                  </div>
+   556→                  <div>
+   557→                    <p className="text-xs font-bold text-[var(--foreground)]">۲۵ دقیقه مطالعه</p>
+   558→                    <p className="text-[10px] text-[var(--foreground-muted)]">پومودورو فعال</p>
+   559→                  </div>
+   560→                </div>
+   561→              </motion.div>
+   562→            </div>
+   563→          </motion.div>
+   564→        </div>
+   565→      </motion.div>
+   566→
+   567→      {/* Scroll indicator — desktop only */}
+   568→      <motion.div
+   569→        animate={{ y: [0, 8, 0] }}
+   570→        transition={{ duration: 2, repeat: Infinity }}
+   571→        className="hidden md:block absolute bottom-8 left-1/2 -translate-x-1/2"
+   572→      >
+   573→        <ChevronDown className="w-6 h-6 text-[var(--foreground-subtle)]" />
+   574→      </motion.div>
+   575→    </section>
+   576→  );
+   577→}
+   578→
+   579→// ===== Features Section =====
+   580→function FeaturesSection() {
+   581→  return (
+   582→    <section id="features" className="relative py-16 md:py-24 px-4 md:px-6">
+   583→      <div className="max-w-7xl mx-auto">
+   584→        <SectionHeading
+   585→          eyebrow="ابزارهای قدرتمند"
+   586→          eyebrowIcon={Zap}
+   587→          title="همه چیز که برای"
+   588→          highlight="موفقیت"
+   589→          subtitle="از برنامه‌ریزی هوشمند تا مدیریت استرس، روال تمام ابزارهای مورد نیاز تو رو در اختیارت می‌ذاره"
+   590→        />
+   591→
+   592→        {/* Mobile: vertical full-width list */}
+   593→        <div className="md:hidden max-w-md mx-auto flex flex-col gap-3">
+   594→          {FEATURES.map((feature, index) => (
+   595→            <AnimatedSection key={feature.title} delay={index * 0.05}>
+   596→              <div className="card-hover edge-highlight flex items-start gap-4 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-4 min-h-[44px]">
+   597→                <div
+   598→                  className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center`}
+   599→                >
+   600→                  <feature.icon className="w-6 h-6" style={{ color: feature.color }} />
+   601→                </div>
+   602→                <div className="flex-1 min-w-0">
+   603→                  <h3 className="text-base font-bold text-[var(--foreground)] mb-1">
+   604→                    {feature.title}
+   605→                  </h3>
+   606→                  <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+   607→                    {feature.description}
+   608→                  </p>
+   609→                </div>
+   610→              </div>
+   611→            </AnimatedSection>
+   612→          ))}
+   613→        </div>
+   614→
+   615→        {/* Desktop: multi-column grid with hover-lift cards */}
+   616→        <motion.div
+   617→          initial="hidden"
+   618→          whileInView="visible"
+   619→          viewport={{ once: true, margin: '-50px' }}
+   620→          variants={staggerContainer}
+   621→          className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6"
+   622→        >
+   623→          {FEATURES.map((feature) => (
+   624→            <motion.div
+   625→              key={feature.title}
+   626→              variants={fadeInUp}
+   627→              className="card-hover edge-highlight group bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6"
+   628→            >
+   629→              <div
+   630→                className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105`}
+   631→              >
+   632→                <feature.icon className="w-7 h-7" style={{ color: feature.color }} />
+   633→              </div>
+   634→              <h3 className="text-lg font-bold text-[var(--foreground)] mb-2">
+   635→                {feature.title}
+   636→              </h3>
+   637→              <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+   638→                {feature.description}
+   639→              </p>
+   640→            </motion.div>
+   641→          ))}
+   642→        </motion.div>
+   643→      </div>
+   644→    </section>
+   645→  );
+   646→}
+   647→
+   648→// ===== How It Works Section =====
+   649→function HowItWorksSection() {
+   650→  return (
+   651→    <section id="how-it-works" className="relative py-16 md:py-24 px-4 md:px-6">
+   652→      <div className="max-w-7xl mx-auto">
+   653→        <SectionHeading
+   654→          eyebrow="ساده و سریع"
+   655→          eyebrowIcon={Play}
+   656→          title="در"
+   657→          highlight="سه قدم"
+   658→          subtitle="فقط چند دقیقه وقت بذار و مسیر مطالعه‌ات رو شروع کن"
+   659→        />
+   660→
+   661→        {/* Mobile: vertical step list */}
+   662→        <div className="md:hidden max-w-md mx-auto flex flex-col gap-4">
+   663→          {STEPS.map((step, index) => (
+   664→            <AnimatedSection key={step.number} delay={index * 0.1}>
+   665→              <div className="relative flex items-start gap-4 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-5 card-hover edge-highlight">
+   666→                {/* Step number badge */}
+   667→                <div className="flex-shrink-0 relative">
+   668→                  <div className="w-14 h-14 rounded-2xl bg-[var(--accent-soft)] border border-[var(--accent-soft)] flex items-center justify-center">
+   669→                    <step.icon className="w-6 h-6 text-[var(--accent)]" />
+   670→                  </div>
+   671→                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--accent)] text-[var(--bg-deep)] text-xs font-black flex items-center justify-center">
+   672→                    {step.number}
+   673→                  </span>
+   674→                </div>
+   675→                <div className="flex-1 pt-1">
+   676→                  <h3 className="text-base font-bold text-[var(--foreground)] mb-1">
+   677→                    {step.title}
+   678→                  </h3>
+   679→                  <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+   680→                    {step.description}
+   681→                  </p>
+   682→                </div>
+   683→              </div>
+   684→            </AnimatedSection>
+   685→          ))}
+   686→        </div>
+   687→
+   688→        {/* Desktop: horizontal 3-step flow with connecting line */}
+   689→        <div className="hidden md:grid grid-cols-3 gap-8 relative">
+   690→          {/* Connecting line */}
+   691→          <div
+   692→            aria-hidden
+   693→            className="absolute top-12 right-[16.66%] left-[16.66%] h-px bg-gradient-to-l from-[var(--accent-soft)] via-[var(--accent-glow)] to-[var(--accent-soft)]"
+   694→          />
+   695→
+   696→          {STEPS.map((step, index) => (
+   697→            <AnimatedSection key={step.number} delay={index * 0.15}>
+   698→              <div className="relative text-center">
+   699→                {/* Step number circle */}
+   700→                <div className="relative mx-auto w-24 h-24 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center mb-6 card-hover edge-highlight">
+   701→                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--accent-soft)] to-transparent" />
+   702→                  <span className="relative text-4xl font-black text-[var(--accent)]">
+   703→                    {step.number}
+   704→                  </span>
+   705→                </div>
+   706→
+   707→                <div className="w-12 h-12 rounded-xl bg-[var(--accent-soft)] flex items-center justify-center mx-auto mb-4">
+   708→                  <step.icon className="w-6 h-6 text-[var(--accent)]" />
+   709→                </div>
+   710→
+   711→                <h3 className="text-lg font-bold text-[var(--foreground)] mb-2">
+   712→                  {step.title}
+   713→                </h3>
+   714→                <p className="text-sm text-[var(--foreground-muted)] leading-relaxed max-w-xs mx-auto">
+   715→                  {step.description}
+   716→                </p>
+   717→              </div>
+   718→            </AnimatedSection>
+   719→          ))}
+   720→        </div>
+   721→      </div>
+   722→    </section>
+   723→  );
+   724→}
+   725→
+   726→// ===== Stats Section =====
+   727→function StatsSection() {
+   728→  return (
+   729→    <section className="relative py-12 md:py-20 px-4 md:px-6">
+   730→      <div className="max-w-7xl mx-auto">
+   731→        {/* Mobile: 2x2 grid, no container card */}
+   732→        <div className="md:hidden max-w-md mx-auto grid grid-cols-2 gap-3">
+   733→          {STATS.map((stat) => (
+   734→            <StatCard key={stat.label} stat={stat} />
+   735→          ))}
+   736→        </div>
+   737→
+   738→        {/* Desktop: 4-column row inside a surfaced panel */}
+   739→        <div className="hidden md:block bg-[var(--bg-elevated)] rounded-[var(--radius-xl)] border border-[var(--border)] p-10 lg:p-12 relative overflow-hidden edge-highlight">
+   740→          <div
+   741→            aria-hidden
+   742→            className="absolute inset-0 bg-gradient-to-bl from-[var(--accent-soft)] via-transparent to-transparent opacity-60"
+   743→          />
+   744→          <div className="relative grid grid-cols-4 gap-6">
+   745→            {STATS.map((stat) => (
+   746→              <StatCard key={stat.label} stat={stat} />
+   747→            ))}
+   748→          </div>
+   749→        </div>
+   750→      </div>
+   751→    </section>
+   752→  );
+   753→}
+   754→
+   755→// ===== Testimonials Section =====
+   756→function TestimonialsSection() {
+   757→  return (
+   758→    <section id="testimonials" className="relative py-16 md:py-24 px-4 md:px-6">
+   759→      <div className="max-w-7xl mx-auto">
+   760→        <SectionHeading
+   761→          eyebrow="نظرات کاربران"
+   762→          eyebrowIcon={Users}
+   763→          title="دانش‌آموزا"
+   764→          highlight="راضین"
+   765→          subtitle="ببین دیگران چه می‌گن درباره تجربه‌شون با روال"
+   766→        />
+   767→
+   768→        {/* Mobile: horizontal snap-scroll carousel */}
+   769→        <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory flex gap-4 pb-4 custom-scrollbar">
+   770→          {TESTIMONIALS.map((testimonial) => (
+   771→            <div
+   772→              key={testimonial.name}
+   773→              className="flex-shrink-0 w-[85%] snap-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-5 card-hover edge-highlight"
+   774→            >
+   775→              <div className="flex items-center gap-1 mb-3">
+   776→                {Array.from({ length: 5 }).map((_, i) => (
+   777→                  <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
+   778→                ))}
+   779→              </div>
+   780→              <p className="text-sm text-[var(--foreground)] leading-relaxed mb-4">
+   781→                {testimonial.text}
+   782→              </p>
+   783→              <div className="flex items-center gap-3">
+   784→                <div className="w-10 h-10 rounded-full bg-[var(--bg-overlay)] flex items-center justify-center text-lg">
+   785→                  {testimonial.avatar}
+   786→                </div>
+   787→                <div>
+   788→                  <p className="text-sm font-bold text-[var(--foreground)]">{testimonial.name}</p>
+   789→                  <p className="text-xs text-[var(--foreground-muted)]">{testimonial.grade}</p>
+   790→                </div>
+   791→              </div>
+   792→            </div>
+   793→          ))}
+   794→        </div>
+   795→
+   796→        {/* Desktop: 3-column grid */}
+   797→        <motion.div
+   798→          initial="hidden"
+   799→          whileInView="visible"
+   800→          viewport={{ once: true, margin: '-50px' }}
+   801→          variants={staggerContainer}
+   802→          className="hidden md:grid grid-cols-3 gap-6"
+   803→        >
+   804→          {TESTIMONIALS.map((testimonial) => (
+   805→            <motion.div
+   806→              key={testimonial.name}
+   807→              variants={fadeInUp}
+   808→              className="card-hover edge-highlight bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6"
+   809→            >
+   810→              <div className="flex items-center gap-1 mb-4">
+   811→                {Array.from({ length: 5 }).map((_, i) => (
+   812→                  <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
+   813→                ))}
+   814→              </div>
+   815→              <p className="text-sm text-[var(--foreground)] leading-relaxed mb-5">
+   816→                {testimonial.text}
+   817→              </p>
+   818→              <div className="flex items-center gap-3">
+   819→                <div className="w-10 h-10 rounded-full bg-[var(--bg-overlay)] flex items-center justify-center text-lg">
+   820→                  {testimonial.avatar}
+   821→                </div>
+   822→                <div>
+   823→                  <p className="text-sm font-bold text-[var(--foreground)]">{testimonial.name}</p>
+   824→                  <p className="text-xs text-[var(--foreground-muted)]">{testimonial.grade}</p>
+   825→                </div>
+   826→              </div>
+   827→            </motion.div>
+   828→          ))}
+   829→        </motion.div>
+   830→      </div>
+   831→    </section>
+   832→  );
+   833→}
+   834→
+   835→// ===== CTA Section =====
+   836→function CTASection() {
+   837→  const { setCurrentView } = useAppStore();
+   838→
+   839→  return (
+   840→    <section className="relative py-12 md:py-24 px-4 md:px-6">
+   841→      <div className="max-w-7xl mx-auto">
+   842→        {/* Mobile: full-width gradient panel with full-width button */}
+   843→        <AnimatedSection className="md:hidden">
+   844→          <div className="relative overflow-hidden rounded-2xl bg-[var(--bg-elevated)] border border-[var(--accent-soft)] p-6 edge-highlight">
+   845→            <div
+   846→              aria-hidden
+   847→              className="absolute inset-0 bg-gradient-to-bl from-[var(--accent-soft)] via-transparent to-transparent"
+   848→            />
+   849→            <div className="relative text-center">
+   850→              <h2 className="text-2xl font-black text-[var(--foreground)] mb-3 leading-tight">
+   851→                آماده‌ای مسیرت رو{' '}
+   852→                <span className="text-[var(--accent)]">شروع</span> کنی؟
+   853→              </h2>
+   854→              <p className="text-sm text-[var(--foreground-muted)] mb-6 leading-relaxed">
+   855→                همین الان ثبت‌نام کن و به هزاران دانش‌آموز دیگر بپیوند. روال رایگانه!
+   856→              </p>
+   857→              <motion.button
+   858→                whileHover={{ scale: 1.02 }}
+   859→                whileTap={{ scale: 0.97 }}
+   860→                onClick={() => setCurrentView('onboarding')}
+   861→                className="btn-hover glow-hover w-full px-6 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-h-[52px]"
+   862→              >
+   863→                شروع کن — رایگانه
+   864→              </motion.button>
+   865→              <div className="mt-5 flex items-center justify-center gap-4 text-xs text-[var(--foreground-muted)]">
+   866→                <div className="flex items-center gap-1.5">
+   867→                  <Shield className="w-3.5 h-3.5 text-[var(--accent)]" />
+   868→                  <span>بدون کارت بانکی</span>
+   869→                </div>
+   870→                <div className="flex items-center gap-1.5">
+   871→                  <Zap className="w-3.5 h-3.5 text-[var(--accent)]" />
+   872→                  <span>شروع فوری</span>
+   873→                </div>
+   874→              </div>
+   875→            </div>
+   876→          </div>
+   877→        </AnimatedSection>
+   878→
+   879→        {/* Desktop: large gradient panel */}
+   880→        <AnimatedSection className="hidden md:block">
+   881→          <div className="relative overflow-hidden rounded-[var(--radius-xl)] bg-[var(--bg-elevated)] border border-[var(--accent-soft)] p-12 lg:p-16 edge-highlight">
+   882→            {/* Gradient background layer */}
+   883→            <div
+   884→              aria-hidden
+   885→              className="absolute inset-0 bg-gradient-to-bl from-[var(--accent-soft)] via-[var(--accent-soft)] to-transparent opacity-80"
+   886→            />
+   887→            <div
+   888→              aria-hidden
+   889→              className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-32 bg-[var(--accent-glow)] blur-[80px] opacity-50"
+   890→            />
+   891→
+   892→            <div className="relative text-center max-w-2xl mx-auto">
+   893→              <h2 className="text-3xl lg:text-4xl font-black text-[var(--foreground)] mb-4 leading-tight">
+   894→                آماده‌ای مسیرت رو{' '}
+   895→                <span className="bg-gradient-to-l from-[var(--accent-hover)] to-[var(--accent)] bg-clip-text text-transparent">
+   896→                  شروع
+   897→                </span>{' '}
+   898→                کنی؟
+   899→              </h2>
+   900→              <p className="text-base lg:text-lg text-[var(--foreground-muted)] mb-8 leading-relaxed">
+   901→                همین الان ثبت‌نام کن و به هزاران دانش‌آموز دیگر بپیوند. روال رایگانه!
+   902→              </p>
+   903→              <motion.button
+   904→                whileHover={{ scale: 1.02 }}
+   905→                whileTap={{ scale: 0.97 }}
+   906→                onClick={() => setCurrentView('onboarding')}
+   907→                className="btn-hover glow-hover px-10 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-lg shadow-[0_8px_24px_-6px_var(--accent-glow)]"
+   908→              >
+   909→                شروع کن — رایگانه
+   910→              </motion.button>
+   911→              <div className="mt-6 flex items-center justify-center gap-6 text-sm text-[var(--foreground-muted)]">
+   912→                <div className="flex items-center gap-1.5">
+   913→                  <Shield className="w-4 h-4 text-[var(--accent)]" />
+   914→                  <span>بدون نیاز به کارت بانکی</span>
+   915→                </div>
+   916→                <div className="flex items-center gap-1.5">
+   917→                  <Zap className="w-4 h-4 text-[var(--accent)]" />
+   918→                  <span>شروع فوری</span>
+   919→                </div>
+   920→              </div>
+   921→            </div>
+   922→          </div>
+   923→        </AnimatedSection>
+   924→      </div>
+   925→    </section>
+   926→  );
+   927→}
+   928→
+   929→// ===== Footer =====
+   930→function LandingFooter() {
+   931→  return (
+   932→    <footer className="border-t border-[var(--border)] py-10 md:py-12 px-4 md:px-6">
+   933→      <div className="max-w-7xl mx-auto">
+   934→        {/* Mobile: simplified footer */}
+   935→        <div className="md:hidden max-w-md mx-auto">
+   936→          <div className="flex items-center gap-2 mb-4 justify-center">
+   937→            <div className="w-8 h-8 rounded-[var(--radius)] bg-[var(--accent)] flex items-center justify-center">
+   938→              <span className="text-[var(--bg-deep)] font-black text-sm">ر</span>
+   939→            </div>
+   940→            <span className="text-lg font-bold text-[var(--foreground)]">روال</span>
+   941→          </div>
+   942→          <p className="text-xs text-[var(--foreground-muted)] leading-relaxed text-center mb-6">
+   943→            مسیر مطالعه‌ات رو هموار کن. همراه هوشمند تو در مسیر کنکور.
+   944→          </p>
+   945→          <div className="flex items-center justify-center gap-4 text-xs">
+   946→            <a href="#features" className="link-underline text-[var(--foreground-muted)]">
+   947→              ویژگی‌ها
+   948→            </a>
+   949→            <a href="#how-it-works" className="link-underline text-[var(--foreground-muted)]">
+   950→              نحوه کار
+   951→            </a>
+   952→            <a href="#testimonials" className="link-underline text-[var(--foreground-muted)]">
+   953→              نظرات
+   954→            </a>
+   955→          </div>
+   956→          <div className="mt-6 pt-6 border-t border-[var(--border)] text-center">
+   957→            <p className="text-xs text-[var(--foreground-subtle)]">
+   958→              © ۱۴۰۴ روال. تمامی حقوق محفوظ است.
+   959→            </p>
+   960→          </div>
+   961→        </div>
+   962→
+   963→        {/* Desktop: rich grid footer */}
+   964→        <div className="hidden md:grid grid-cols-4 gap-8 mb-8">
+   965→          {/* Brand */}
+   966→          <div className="col-span-1">
+   967→            <div className="flex items-center gap-2 mb-4">
+   968→              <div className="w-8 h-8 rounded-[var(--radius)] bg-[var(--accent)] flex items-center justify-center">
+   969→                <span className="text-[var(--bg-deep)] font-black text-sm">ر</span>
+   970→              </div>
+   971→              <span className="text-lg font-bold text-[var(--foreground)]">روال</span>
+   972→            </div>
+   973→            <p className="text-sm text-[var(--foreground-muted)] leading-relaxed">
+   974→              مسیر مطالعه‌ات رو هموار کن. همراه هوشمند تو در مسیر کنکور.
+   975→            </p>
+   976→          </div>
+   977→
+   978→          {/* Links */}
+   979→          <div>
+   980→            <h4 className="text-sm font-bold text-[var(--foreground)] mb-4">محصول</h4>
+   981→            <div className="space-y-2.5">
+   982→              {['ویژگی‌ها', 'قیمت‌گذاری', 'سوالات متداول', 'بروزرسانی‌ها'].map((link) => (
+   983→                <a
+   984→                  key={link}
+   985→                  href="#"
+   986→                  className="link-underline block text-sm text-[var(--foreground-muted)]"
+   987→                >
+   988→                  {link}
+   989→                </a>
+   990→              ))}
+   991→            </div>
+   992→          </div>
+   993→
+   994→          <div>
+   995→            <h4 className="text-sm font-bold text-[var(--foreground)] mb-4">پشتیبانی</h4>
+   996→            <div className="space-y-2.5">
+   997→              {['تماس با ما', 'راهنمای استفاده', 'گزارش مشکل', 'پیشنهاد ویژگی'].map((link) => (
+   998→                <a
+   999→                  key={link}
+  1000→                  href="#"
+  1001→                  className="link-underline block text-sm text-[var(--foreground-muted)]"
+  1002→                >
+  1003→                  {link}
+  1004→                </a>
+  1005→              ))}
+  1006→            </div>
+  1007→          </div>
+  1008→
+  1009→          <div>
+  1010→            <h4 className="text-sm font-bold text-[var(--foreground)] mb-4">قانونی</h4>
+  1011→            <div className="space-y-2.5">
+  1012→              {['حریم خصوصی', 'شرایط استفاده', 'لایسنس'].map((link) => (
+  1013→                <a
+  1014→                  key={link}
+  1015→                  href="#"
+  1016→                  className="link-underline block text-sm text-[var(--foreground-muted)]"
+  1017→                >
+  1018→                  {link}
+  1019→                </a>
+  1020→              ))}
+  1021→            </div>
+  1022→          </div>
+  1023→        </div>
+  1024→
+  1025→        <div className="hidden md:flex border-t border-[var(--border)] pt-8 items-center justify-between">
+  1026→          <p className="text-xs text-[var(--foreground-subtle)]">
+  1027→            © ۱۴۰۴ روال. تمامی حقوق محفوظ است.
+  1028→          </p>
+  1029→          <span className="text-xs text-[var(--foreground-subtle)]">
+  1030→            ساخته شده با ❤️ برای دانش‌آموزان ایران
+  1031→          </span>
+  1032→        </div>
+  1033→      </div>
+  1034→    </footer>
+  1035→  );
+  1036→}
+  1037→
+  1038→// ===== Main Landing Page Component =====
+  1039→export default function LandingPage() {
+  1040→  return (
+  1041→    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--foreground)] overflow-x-hidden">
+  1042→      <LandingNav />
+  1043→      <HeroSection />
+  1044→      <FeaturesSection />
+  1045→      <HowItWorksSection />
+  1046→      <StatsSection />
+  1047→      <TestimonialsSection />
+  1048→      <CTASection />
+  1049→      <LandingFooter />
+  1050→    </div>
+  1051→  );
+  1052→}
+  1053→

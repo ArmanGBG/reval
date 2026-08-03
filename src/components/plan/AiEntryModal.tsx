@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wand2, Sparkles, X, Trash2 } from 'lucide-react';
+import { Wand2, Sparkles, X, Trash2, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { ParsedTask, Task } from '@/lib/types';
 import { SUBJECTS } from '@/lib/constants/mockData';
@@ -43,7 +43,7 @@ function AnalyzingSpinner() {
         animate={{ opacity: 1 }}
         className="text-sm text-[var(--foreground-muted)]"
       >
-        در حال تحلیل متنی... 🪄
+        در حال تحلیل متنی...
       </motion.p>
     </div>
   );
@@ -92,11 +92,17 @@ function ParsedTaskCard({
 
         {/* Metrics */}
         <div className="flex items-center gap-2 mt-1 text-xs text-[var(--foreground-subtle)]">
-          <span>⏱ {toPersianNum(parsed.target_time_minutes)} دقیقه</span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {toPersianNum(parsed.target_time_minutes)} دقیقه
+          </span>
           {parsed.target_test_count > 0 && (
             <>
               <span className="w-px h-3 bg-[var(--border)]" />
-              <span>📝 {toPersianNum(parsed.target_test_count)} تست</span>
+              <span className="flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                {toPersianNum(parsed.target_test_count)} تست
+              </span>
             </>
           )}
         </div>
@@ -189,7 +195,7 @@ export default function AiEntryModal({
       };
     });
     onConfirm(newTasks);
-    toast.success(`${toPersianNum(newTasks.length)} تسک اضافه شد! 🪄`);
+    toast.success(`${toPersianNum(newTasks.length)} تسک اضافه شد`);
     handleClose();
   }, [parsedTasks, selectedDate, existingTaskCount, onConfirm]);
 
@@ -210,7 +216,7 @@ export default function AiEntryModal({
             <Wand2 className="w-5 h-5 text-[var(--accent)]" />
           </DialogTitle>
           <DialogDescription className="text-[var(--foreground-muted)] text-right">
-            برنامه‌ت رو برام بنویس، بقیه‌ش با من! 🪄
+            برنامه‌ت رو برام بنویس، بقیه‌ش با من
           </DialogDescription>
         </DialogHeader>
 

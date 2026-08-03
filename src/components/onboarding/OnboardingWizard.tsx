@@ -18,18 +18,7 @@ const GRADE_LABELS: Record<Grade, string> = {
   'پشت کنکوری': 'پشت کنکوری',
 };
 const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی', 'معارف'];
-const MAJOR_ICONS: Record<Major, string> = {
-  'تجربی': '🧪',
-  'ریاضی': '📐',
-  'انسانی': '📖',
-  'معارف': '🕌',
-};
 const GOALS: Goal[] = ['کنکور', 'نهایی', 'هر دو'];
-const GOAL_ICONS: Record<Goal, string> = {
-  'کنکور': '🎯',
-  'نهایی': '📝',
-  'هر دو': '⚡',
-};
 const DAILY_HOURS = [4, 6, 8, 10];
 
 // ===== Animation Variants =====
@@ -316,7 +305,6 @@ function StepAcademic({
                   }
                 `}
               >
-                <span className="ml-2">{MAJOR_ICONS[m]}</span>
                 {m}
               </button>
             ))}
@@ -375,7 +363,6 @@ function StepGoals({
                   }
                 `}
               >
-                <span className="ml-2">{GOAL_ICONS[g]}</span>
                 {g}
               </button>
             ))}
@@ -612,7 +599,7 @@ export default function OnboardingWizard() {
               whileTap={{ scale: 0.95 }}
               className="h-12 px-6 bg-mint hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--bg-deep)] font-bold rounded-xl transition-all duration-200"
             >
-              🚀 ساخت مرکز فرماندهی من
+              شروع کن
             </motion.button>
           )}
         </div>

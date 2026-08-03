@@ -174,12 +174,13 @@ const TREND_CONFIG: Record<TrendDirection, { icon: React.ReactNode; color: strin
   stable: { icon: <Minus className="w-3.5 h-3.5" />, color: 'text-[var(--foreground-muted)]' },
 };
 
-const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; emoji: string }> = {
-  excellent: { label: 'عالی', color: 'text-[var(--accent)]', emoji: '😊' },
-  good: { label: 'خوب', color: 'text-[var(--accent)]', emoji: '🙂' },
-  fair: { label: 'متوسط', color: 'text-[var(--warning)]', emoji: '😐' },
-  poor: { label: 'ضعیف', color: 'text-orange-400', emoji: '😟' },
-  critical: { label: 'بحرانی', color: 'text-[var(--danger)]', emoji: '😰' },
+// Mood is rendered via color + label only (no emoji decorations) for a cleaner minimalist UI.
+const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; bg: string; ring: string; dot: string }> = {
+  excellent: { label: 'عالی', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', ring: 'ring-[var(--accent)]/40', dot: 'bg-[var(--accent)]' },
+  good: { label: 'خوب', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', ring: 'ring-[var(--accent)]/30', dot: 'bg-[var(--accent)]' },
+  fair: { label: 'متوسط', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', ring: 'ring-[var(--warning)]/40', dot: 'bg-[var(--warning)]' },
+  poor: { label: 'ضعیف', color: 'text-orange-400', bg: 'bg-orange-400/10', ring: 'ring-orange-400/40', dot: 'bg-orange-400' },
+  critical: { label: 'بحرانی', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', ring: 'ring-[var(--danger)]/40', dot: 'bg-[var(--danger)]' },
 };
 
 const RISK_CONFIG = {
@@ -449,7 +450,7 @@ function TaskModal({
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
                   }`}
                 >
-                  {ft === 'کنکور' ? '🎯 ' : '📚 '}{ft}
+                  {ft}
                 </button>
               ))}
             </div>
@@ -1338,7 +1339,9 @@ function AdvisorStudentDetail() {
             <Card>
               <SectionHeader icon={<Heart className="w-4 h-4" />} title="وضعیت روانی" accent={moodAccent === 'orange' ? '#FB923C' : moodAccent} />
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">{MOOD_CONFIG[student.mood].emoji}</span>
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${MOOD_CONFIG[student.mood].bg} ${MOOD_CONFIG[student.mood].ring}`}>
+                  <span className={`w-2.5 h-2.5 rounded-full ${MOOD_CONFIG[student.mood].dot}`} />
+                </span>
                 <div>
                   <p className={`font-bold ${MOOD_CONFIG[student.mood].color}`}>{MOOD_CONFIG[student.mood].label}</p>
                   <p className="text-[11px] text-[var(--foreground-muted)]">آخرین جلسه: {toPersianDigits(student.lastSessionDate)}</p>
@@ -1790,7 +1793,7 @@ function AdvisorSettings() {
       {/* Version */}
       <div className="text-center space-y-1 pb-4 pt-2">
         <p className="text-[var(--foreground-muted)] text-sm font-medium">روال نسخه ۱.۰.۰ — پنل مشاور</p>
-        <p className="text-[var(--foreground-subtle)] text-xs">ساخته شده با ❤️ برای مشاوران تحصیلی</p>
+        <p className="text-[var(--foreground-subtle)] text-xs">ساخته شده برای مشاوران تحصیلی</p>
       </div>
     </div>
   );

@@ -168,13 +168,13 @@ function DailyProgress({ completedCount, totalCount }: { completedCount: number;
       {remaining > 0 && (
         <div className="flex items-center gap-1.5 mt-3 text-[11px] text-[var(--foreground-muted)]">
           <Flame className="w-3.5 h-3.5 text-[var(--warning)]" />
-          <span>{toPersianDigits(remaining)} وظیفه باقی‌مانده — بزن بریم!</span>
+          <span>{toPersianDigits(remaining)} وظیفه باقی‌مانده</span>
         </div>
       )}
       {remaining === 0 && totalCount > 0 && (
         <div className="flex items-center gap-1.5 mt-3 text-[11px] text-[var(--accent)]">
           <Check className="w-3.5 h-3.5" />
-          <span>هدف امروز کامل شد — برکانا! 🔥</span>
+          <span>هدف امروز کامل شد</span>
         </div>
       )}
     </div>

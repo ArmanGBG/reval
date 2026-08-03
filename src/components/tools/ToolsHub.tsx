@@ -18,7 +18,6 @@ const TOOLS = [
     title: 'موزیک تمرکز',
     description: 'تمرکزتو با موسیقی بالا ببر',
     icon: Music,
-    emoji: '🎵',
     color: '#3EB489',
   },
   {
@@ -26,7 +25,6 @@ const TOOLS = [
     title: 'فلش‌کارت هوشمند',
     description: 'یادگیری فعال با فلش‌کارت',
     icon: Brain,
-    emoji: '🃏',
     color: '#F59E0B',
   },
   {
@@ -34,7 +32,6 @@ const TOOLS = [
     title: 'پومودورو',
     description: 'مدیریت زمان مطالعه',
     icon: Timer,
-    emoji: '⏱️',
     color: '#8B5CF6',
   },
   {
@@ -42,7 +39,6 @@ const TOOLS = [
     title: 'محاسبه‌گر درصد',
     description: 'درصد کنکور رو حساب کن',
     icon: Calculator,
-    emoji: '📊',
     color: '#EF4444',
   },
   {
@@ -50,7 +46,6 @@ const TOOLS = [
     title: 'اورژانس استرس',
     description: 'تنفس عمیق و آرامش',
     icon: Heart,
-    emoji: '🧘',
     color: '#06B6D4',
   },
 ];
@@ -76,6 +71,8 @@ export default function ToolsHub() {
     setActiveTool(null);
     setCurrentTool(null);
   }, [setCurrentTool]);
+
+  const activeToolObj = TOOLS.find((t) => t.id === activeTool) || null;
 
   return (
     <div dir="rtl">
@@ -204,16 +201,21 @@ export default function ToolsHub() {
               {/* Modal Header */}
               <div className="sticky top-0 z-10 flex items-center justify-between p-4 md:p-5 surface-2 border-b border-[var(--border)]">
                 <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center text-xl"
-                    style={{
-                      background: `linear-gradient(135deg, ${TOOLS.find((t) => t.id === activeTool)?.color}22, ${TOOLS.find((t) => t.id === activeTool)?.color}08)`,
-                    }}
-                  >
-                    {TOOLS.find((t) => t.id === activeTool)?.emoji}
-                  </div>
+                  {activeToolObj && (() => {
+                    const HeaderIcon = activeToolObj.icon;
+                    return (
+                      <div
+                        className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center"
+                        style={{
+                          background: `linear-gradient(135deg, ${activeToolObj.color}22, ${activeToolObj.color}08)`,
+                        }}
+                      >
+                        <HeaderIcon className="w-5 h-5" style={{ color: activeToolObj.color }} />
+                      </div>
+                    );
+                  })()}
                   <h2 className="text-base md:text-lg font-bold text-[var(--foreground)]">
-                    {TOOLS.find((t) => t.id === activeTool)?.title}
+                    {activeToolObj?.title}
                   </h2>
                 </div>
                 <button
@@ -478,7 +480,7 @@ function FlashcardsTool() {
     setNewBack('');
     setNewSubject('');
     setShowAddForm(false);
-    toast('کارت جدید اضافه شد! 🎉');
+    toast('کارت جدید اضافه شد');
   }, [newFront, newBack, newSubject, addFlashcard]);
 
   // Count cards per mastery
@@ -500,7 +502,7 @@ function FlashcardsTool() {
               : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)]'
           }`}
         >
-          📖 مطالعه
+          مطالعه
         </button>
         <button
           onClick={() => { setTab('marked'); setMasteryFilter('all'); setCurrentIndex(0); setIsFlipped(false); }}
@@ -510,7 +512,7 @@ function FlashcardsTool() {
               : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)]'
           }`}
         >
-          🏷️ نشانه‌گذاری شده
+          نشانه‌گذاری شده
           {(reviewCount + weakCount) > 0 && (
             <span className="absolute -top-1 -left-1 w-5 h-5 bg-[var(--warning)] rounded-full text-[10px] font-bold text-[var(--bg-deep)] flex items-center justify-center">
               {toPersianNum(reviewCount + weakCount)}
@@ -572,7 +574,7 @@ function FlashcardsTool() {
               : 'bg-[rgba(16,185,129,0.08)] text-[#34D399] border-[rgba(16,185,129,0.2)]'
           }`}
         >
-          🟢 مسلط ({toPersianNum(masteredCount)})
+          مسلط ({toPersianNum(masteredCount)})
         </button>
         <button
           onClick={() => { setMasteryFilter('review'); setCurrentIndex(0); setIsFlipped(false); }}
@@ -582,7 +584,7 @@ function FlashcardsTool() {
               : 'bg-[rgba(245,181,68,0.08)] text-[var(--warning)] border-[rgba(245,181,68,0.2)]'
           }`}
         >
-          🟠 مرور ({toPersianNum(reviewCount)})
+          مرور ({toPersianNum(reviewCount)})
         </button>
         <button
           onClick={() => { setMasteryFilter('weak'); setCurrentIndex(0); setIsFlipped(false); }}
@@ -592,7 +594,7 @@ function FlashcardsTool() {
               : 'bg-[rgba(239,68,68,0.08)] text-[#F87171] border-[rgba(239,68,68,0.2)]'
           }`}
         >
-          🔴 ضعف ({toPersianNum(weakCount)})
+          ضعف ({toPersianNum(weakCount)})
         </button>
       </div>
 
@@ -737,19 +739,19 @@ function FlashcardsTool() {
                     onClick={() => handleMastery('mastered')}
                     className="btn-hover flex-1 bg-[rgba(16,185,129,0.12)] text-[#34D399] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(16,185,129,0.2)] border border-[rgba(16,185,129,0.2)]"
                   >
-                    🟢 مسلط
+                    مسلط
                   </button>
                   <button
                     onClick={() => handleMastery('review')}
                     className="btn-hover flex-1 bg-[rgba(245,181,68,0.12)] text-[var(--warning)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(245,181,68,0.2)] border border-[rgba(245,181,68,0.2)]"
                   >
-                    🟠 مرور
+                    مرور
                   </button>
                   <button
                     onClick={() => handleMastery('weak')}
                     className="btn-hover flex-1 bg-[rgba(239,68,68,0.12)] text-[#F87171] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.2)]"
                   >
-                    🔴 ضعف
+                    ضعف
                   </button>
                 </div>
               </motion.div>
@@ -778,13 +780,12 @@ function FlashcardsTool() {
         </div>
       ) : (
         <div className="surface-1 rounded-[var(--radius-lg)] p-8 text-center">
-          <p className="text-4xl mb-3">{tab === 'marked' ? '🏷️' : '📚'}</p>
           <p className="text-[var(--foreground-muted)] text-sm">
             {tab === 'marked'
               ? 'هنوز کارتی نشانه‌گذاری نشده'
               : selectedSubject
-              ? `فلش‌کارت ${selectedSubject} نداری! دکمه افزودن رو بزن`
-              : 'فلش‌کارت نداری! دکمه افزودن رو بزن'}
+              ? `فلش‌کارت ${selectedSubject} نداری`
+              : 'فلش‌کارت نداری'}
           </p>
         </div>
       )}
@@ -813,11 +814,11 @@ function PomodoroTool() {
         if (currentTime <= 1) {
           setPomodoroRunning(false);
           if (pomodoroMode === 'work') {
-            toast('آفرین! وقت استراحت 🎉');
+            toast('وقت استراحت');
             setPomodoroMode('break');
             setPomodoroTime(5 * 60);
           } else {
-            toast('استراحت تموم شد! بزن بریم 💪');
+            toast('استراحت تموم شد');
             setPomodoroMode('work');
             setPomodoroTime(25 * 60);
           }
@@ -861,7 +862,7 @@ function PomodoroTool() {
             : 'bg-[rgba(59,130,246,0.12)] text-[#60A5FA] border-[rgba(59,130,246,0.3)]'
         }`}
       >
-        {pomodoroMode === 'work' ? '🔥 زمان مطالعه' : '☕ استراحت'}
+        {pomodoroMode === 'work' ? 'زمان مطالعه' : 'استراحت'}
       </motion.div>
 
       {/* Circular Progress */}
@@ -985,7 +986,7 @@ function CalculatorTool() {
   const resultMessage = isNegative
     ? 'درصد منفی! بیشتر تلاش کن'
     : result >= 70
-    ? 'عالیه! روال ادامه بده 💪'
+    ? 'عالیه! روال ادامه بده'
     : result >= 50
     ? 'خوبه! ادامه بده'
     : result >= 30
@@ -1006,7 +1007,7 @@ function CalculatorTool() {
       {/* Inputs */}
       <div className="space-y-3 mb-5">
         <div>
-          <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block font-medium">تعداد درست ✅</label>
+          <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block font-medium">تعداد درست</label>
           <input
             type="number"
             inputMode="numeric"
@@ -1018,7 +1019,7 @@ function CalculatorTool() {
           />
         </div>
         <div>
-          <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block font-medium">نزده ⬜</label>
+          <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block font-medium">نزده</label>
           <input
             type="number"
             inputMode="numeric"
@@ -1030,7 +1031,7 @@ function CalculatorTool() {
           />
         </div>
         <div>
-          <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block font-medium">غلط ❌</label>
+          <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block font-medium">غلط</label>
           <input
             type="number"
             inputMode="numeric"
@@ -1071,7 +1072,6 @@ function CalculatorTool() {
             >
               {isNegative ? (
                 <span className="flex flex-col items-center gap-2">
-                  <span className="text-4xl">⚠️</span>
                   <span className="text-[#F87171] text-xl">درصد منفی!</span>
                 </span>
               ) : (
@@ -1084,7 +1084,6 @@ function CalculatorTool() {
           </>
         ) : (
           <div className="py-4">
-            <p className="text-3xl mb-2">📊</p>
             <p className="text-[var(--foreground-subtle)] text-sm">اعداد رو وارد کن تا درصد محاسبه بشه</p>
           </div>
         )}
@@ -1099,7 +1098,6 @@ function CalculatorTool() {
           className="mt-4 bg-[var(--accent-soft)] rounded-[var(--radius-lg)] border border-[var(--accent)]/15 p-4"
         >
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-base">💡</span>
             <p className="text-xs font-bold text-[var(--accent)]">اگه غلط‌ها رو نزده می‌ذاشتی</p>
           </div>
           <div className="flex items-center justify-between">

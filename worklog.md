@@ -377,3 +377,206 @@ Stage Summary:
   3. Chemistry/Math (both modes): switch between "فصل کتاب" (grade → chapter → subtopic text) or "مبحثی" (topic mode list)
   4. Geology (depth 1): just chapter selection
 - Same flow used in both student and advisor panels (unified UX)
+
+---
+Task ID: 10-a
+Agent: frontend-styling-expert
+Task: Minimalist redesign pass — LandingPage, LoginPage, OnboardingWizard (remove decorative emojis from text, shorten redundant labels, simplify visuals, unify rainbow accent to mint)
+
+Work Log:
+- Read /home/z/my-project/worklog.md (design system: Modern Dark Cinema — Persian RTL) and src/app/globals.css to confirm tokens (--accent #3EB489 mint, --accent-soft, --bg-elevated, hover utility classes .card-hover / .btn-hover / .glow-hover, .edge-highlight, .surface-1).
+
+LandingPage.tsx:
+- FEATURES data array: removed per-feature `color` and `gradient` fields (was rainbow: mint, gold #F59E0B, purple #8B5CF6, pink #EC4899, red #EF4444, cyan #06B6D4). All 6 feature cards now share a single mint accent.
+- Mobile feature card icon container: replaced `bg-gradient-to-br ${feature.gradient}` + `style={{ color: feature.color }}` → unified `bg-[var(--accent-soft)]` + `text-[var(--accent)]`.
+- Desktop feature card icon container: same unification to `bg-[var(--accent-soft)]` + `text-[var(--accent)]` (kept group-hover scale animation).
+- Hero CTAs (mobile + desktop) + CTA section CTAs (mobile + desktop): shortened `شروع کن — رایگانه` → `شروع کن` (4 occurrences).
+- Desktop CTA section decorative accent glow blur layer: kept gradient panel + border, the secondary `bg-[var(--accent-glow)] blur-[80px]` layer was already minimal, no change.
+- Footer credit line: `ساخته شده با ❤️ برای دانش‌آموزان ایران` → `ساخته شده برای دانش‌آموزان ایران` (removed decorative heart emoji).
+- Hero badge ("همراه هوشمند کنکور" + Sparkles lucide icon): kept — Sparkles is a lucide-react icon in a pill container, not a text-prefix emoji.
+- Testimonial avatars (🦊🐺🦁) and hero social-proof avatars (🦊🐺🦁🐯): kept — per spec these are user avatars, acceptable.
+- Floating hero badges (CheckCircle2 + Timer lucide icons): kept — lucide icons, no emojis.
+- Section heading eyebrow icons (Zap, Play, Users): kept — lucide icons in pill containers.
+
+LoginPage.tsx:
+- Toast success message: `خوش آمدی ${data.user.name}! 👋` → `خوش آمدی، ${data.user.name}` (removed 👋 emoji, replaced `!` with comma for natural Persian phrasing).
+- Logo decorative pulse glow ring: removed `<div className="absolute inset-0 rounded-[20px] bg-mint/20 blur-xl -z-10 animate-pulse" />` (the only decorative blur+pulse effect — was adding visual noise). Logo container with BookOpen lucide icon kept as-is.
+- Quick-access account buttons: kept (already minimal — lucide icons in tinted containers, no emoji prefixes).
+- Ambient radial background: kept (single radial, low opacity, considered acceptable per design system "use SPARINGLY" rule — only one element uses it).
+
+OnboardingWizard.tsx:
+- Removed `MAJOR_ICONS` const (🧪 📐 📖 🌔) — was used as text-prefix emoji on each major button.
+- Removed `GOAL_ICONS` const (🎯 📝 ⚡) — was used as text-prefix emoji on each goal button.
+- Major selection buttons: removed `<span className="ml-2">{MAJOR_ICONS[m]}</span>` so each button now shows just the major name (e.g. "تجربی" instead of "🧪 تجربی").
+- Goal selection buttons: removed `<span className="ml-2">{GOAL_ICONS[g]}</span>` so each button now shows just the goal name (e.g. "کنکور" instead of "🎯 کنکور").
+- Final CTA button: `🚀 ساخت مرکز فرماندهی من` → `شروع کن` (removed 🚀 emoji and verbose "مرکز فرماندهی" copy; aligned with rest of app's primary CTA label).
+- AVATARS import (user-selectable emoji avatars on step 2): kept — these are user-chosen profile avatars, acceptable per spec.
+- Step headings and subtitles (e.g. "ورود به روال", "توی روال چی صدات کنیم؟", "هدف‌گذاری مطالعه"): kept — descriptive headings, fine per spec.
+
+Verification:
+- `grep -nP "[\x{1F300}-\x{1FAFF}]|[\x{2600}-\x{27BF}]"` across all three files: only remaining emojis are testimonial/social-proof avatar emojis in LandingPage (acceptable user avatars).
+- `npx tsc --noEmit -p tsconfig.json`: no type errors in any of the three files.
+- `npx eslint <three files>`: clean (no warnings/errors).
+
+Preserved (per spec):
+- All Zustand store calls (useAppStore: setUserRole, setUser, setOnboardingComplete, setCurrentView).
+- All framer-motion animations (entrance/exit, whileHover/whileTap, scroll parallax, AnimatePresence slide variants in onboarding).
+- All CSS utility classes (.card-hover, .btn-hover, .glow-hover, .edge-highlight, .surface-1, .surface-glass, .link-underline).
+- All design tokens (--bg-elevated, --accent, --accent-soft, --accent-glow, --border, --border-strong, --foreground, --foreground-muted, --foreground-subtle, mint theme color).
+- Responsive design (mobile-first single column + desktop split layouts in LandingPage hero, features, how-it-works, stats, testimonials, CTA, footer).
+- Form state and validation logic in OnboardingWizard (canProceed, handleNext, handlePrev, handleComplete, OTP auto-advance).
+- All handlers, props, data flow, and navigation.
+
+Stage Summary:
+- LandingPage: 6 feature cards unified from rainbow (6 colors) → single mint accent. 4 CTA buttons shortened. 1 footer emoji removed.
+- LoginPage: 1 toast emoji removed. 1 decorative pulse+blur glow ring removed.
+- OnboardingWizard: 2 emoji-icon maps removed (MAJOR_ICONS, GOAL_ICONS), 7 emojis stripped from major/goal buttons (4 majors + 3 goals), final CTA simplified from "🚀 ساخت مرکز فرماندهی من" → "شروع کن".
+- Net effect: less visual noise, consistent mint accent throughout, cleaner button labels, zero decorative emojis in text — without touching any functionality, animations, or responsive structure.
+
+---
+Task ID: 10-c
+Agent: frontend-styling-expert (Minimalist pass: Admin views)
+Task: Apply a minimalist pass to 18 admin-side files (AdvisorDashboard, Institute×4, SuperAdmin×11 + Subject system×7) — remove decorative emojis from text, simplify visual design, shorten labels — WITHOUT changing any functionality.
+
+Work Log:
+- Read /home/z/my-project/worklog.md foundation notes (Modern Dark Cinema — Persian RTL design system, color tokens, hover utilities, critical design rules) to align with prior minimalist passes (10-a, 10-b) on student/landing/auth views.
+- Inventoried all 18 target files via ripgrep for emojis, decorative glyphs (★☆◆◇●○■□▶▷▸▹◀◁), arrow chars (➔→←), and "GOD MODE"/"God View"/VIP badges. Verified which emoji references are DATA (must KEEP) vs DECORATION (must remove):
+  * KEEP (data, per task rules): `subject.icon` + `'📚'` fallback in AdvisorDashboard TaskModal (line 486), SubjectFormModal ICONS picker array (line 26), SubjectSettingsPanel `subject.icon || '📚'` (line 23) and ICONS picker array (line 36) — these are subject's stored visual identity, equivalent to the 🧬 ⚛️ ⚗️ 📐 🪨 icons in DB.
+  * KEEP (data): default avatar values `avatar: '🧑‍🏫'` in InstituteAdvisors.tsx line 55 and `avatar: '🧑‍🎓'` in InstituteStudents.tsx line 71 — these are the default avatar for newly-created advisor/student records (analogous to subject icon defaults).
+  * KEEP (data): `{user.avatar}` / `{student.avatar}` / `{advisor.avatar}` rendering throughout Institute + SuperAdmin tables — avatars are stored in mock data (🦊 🐺 🦁 etc.) as the user's chosen visual identity.
+  * REMOVE (decoration): mood emojis in AdvisorDashboard MOOD_CONFIG (😊 🙂 😐 😟 😰) + the `text-3xl` mood display, field-type button prefix emojis (🎯 📚) in TaskModal, ❤️ footer emoji in AdvisorSettings, ⚠️ warning emoji in SubjectSettingsPanel, ➔ arrow glyphs in GradeChaptersTree DEPTH_LABELS.
+- Changes applied:
+
+1. /home/z/my-project/src/components/advisor/AdvisorDashboard.tsx (1848 → 1852 lines):
+   * MOOD_CONFIG: removed `emoji` field entirely; replaced type with `{ label, color, bg, ring, dot }` so the mood indicator renders as a colored ring container with a small color-coded dot — purely color + text, no emoji decoration. Per task rule "remove emoji from severity indicators (use color + text instead)".
+   * Wellbeing card mood display (line 1341-1349): replaced `<span className="text-3xl">{MOOD_CONFIG[student.mood].emoji}</span>` with a `w-10 h-10 rounded-xl` ring container holding a `w-2.5 h-2.5 rounded-full` dot — uses the new `bg`/`ring`/`dot` tokens. Color + label does the same job as the emoji, more cleanly.
+   * TaskModal field-type buttons (line 452): removed `{ft === 'کنکور' ? '🎯 ' : '📚 '}` prefix — buttons now show just the field-type text (`کنکور` / `نهایی`). The `bg-[var(--accent-soft)]` selected state + lucide icons elsewhere already differentiate them.
+   * AdvisorSettings footer (line 1796): removed `❤️` from "ساخته شده با ❤️ برای مشاوران تحصیلی" → "ساخته شده برای مشاوران تحصیلی".
+   * Subject icon `<span className="text-base">{s.icon || '📚'}</span>` in TaskModal (line 486) — KEPT (database-stored subject icon, equivalent to 🧬 ⚛️ ⚗️ per task rules).
+
+2. /home/z/my-project/src/components/super-admin/SubjectSettingsPanel.tsx:
+   * Line 207: removed `⚠️ ` prefix from the chapter-mode warning text. Amber-400 color + Persian text already conveys warning tone — no decorative glyph needed.
+
+3. /home/z/my-project/src/components/super-admin/GradeChaptersTree.tsx:
+   * DEPTH_LABELS (lines 47-48): replaced decorative `➔` arrow glyphs with clean `-` hyphens: "۲ لایه (پایه ➔ فصل)" → "۲ لایه (پایه - فصل)" and "۳ لایه (پایه ➔ فصل ➔ گفتار)" → "۳ لایه (پایه - فصل - گفتار)". Simpler, language-agnostic separator.
+
+4. Files reviewed and confirmed already minimalist (no changes needed):
+   * /home/z/my-project/src/components/institute/InstituteDashboard.tsx — KPI cards use lucide icons (LayoutDashboard, Users, GraduationCap, Target, AlertTriangle, etc.) with mint/sky/amber/red tints. No emojis in text. Status distribution uses colored dots + labels. Already clean.
+   * /home/z/my-project/src/components/institute/InstituteAdvisors.tsx — Uses lucide icons (Users, Phone, Award, GraduationCap, Calendar, Sparkles, UserCheck, UserX). Only emoji is `avatar: '🧑‍🏫'` (default avatar data, KEPT).
+   * /home/z/my-project/src/components/institute/InstituteStudents.tsx — Uses lucide icons (GraduationCap, Phone, Search, UserCheck, AlertTriangle, CheckCircle2, Users, UserPlus). Only emoji is `avatar: '🧑‍🎓'` (default avatar data, KEPT).
+   * /home/z/my-project/src/components/institute/InstituteSettings.tsx — Uses lucide icons (Settings, Type, Image, Upload, Eye, Save, Check, X, Trash2). No emojis. Drag-drop logo uploader already minimal.
+   * /home/z/my-project/src/components/super-admin/SuperAdminDashboard.tsx — "GOD MODE" badge uses text + ShieldCheck lucide icon (no emoji). "VIP" featured KPI badge is text-only (no emoji). Crown icon is lucide. Hero has single contained gold radial glow per design rules. Already minimalist.
+   * /home/z/my-project/src/components/super-admin/SuperAdminInstitutes.tsx — "GOD" badge uses Crown lucide icon + text (no emoji). Dense data table uses Building2/Phone/GraduationCap/Users/Zap/Eye/Ban/CheckCircle2 lucide icons. "God View" button text is text-only.
+   * /home/z/my-project/src/components/super-admin/SuperAdminUsers.tsx — "GOD" badge with Crown lucide icon (no emoji). Role badges use LucideIcon type (GraduationCap/Shield/UserCheck). Status pills use colored dots.
+   * /home/z/my-project/src/components/super-admin/SuperAdminSettings.tsx — "برای پنل GOD MODE" is text-only (no emoji). All cards use lucide icons (Settings, Shield, Lock, Database, Palette, AlertTriangle, Server, Globe, Save, Check).
+   * /home/z/my-project/src/components/super-admin/InstituteDetail.tsx — "GOD VIEW" badge uses Crown lucide icon + text (no emoji). All metric cards use lucide icons (Building2, Users, GraduationCap, Zap, Phone, Calendar, ShieldCheck, Activity).
+   * /home/z/my-project/src/components/super-admin/UserDetail.tsx — "GOD VIEW" badge uses Crown lucide icon + text (no emoji). Role-specific metric cards use lucide icons (Target, Clock, BookOpen, CheckCircle2, BarChart3, UserCheck, Building2, Activity).
+   * /home/z/my-project/src/components/super-admin/SuperAdminSubjects.tsx — "God Mode · مدیریت دروس" eyebrow is text-only (no emoji). KPI stats use lucide icons (BookOpen, Layers, Sparkles). Crown lucide icon in header.
+   * /home/z/my-project/src/components/super-admin/SubjectCard.tsx — Renders `subject.icon` from database (🧬 ⚛️ etc.) inside icon container per task rules (KEEP). Badges (assessment, strategy, finalStrategy) convey real subject config — functional, not decorative. Stats row uses Layers/MessageSquare/Sparkles lucide icons.
+   * /home/z/my-project/src/components/super-admin/SubjectDetail.tsx — Tabs use lucide icons (Layers, Sparkles, Pencil) with Persian labels (no emojis). Subject icon renders from `subject.icon` data (KEEP).
+   * /home/z/my-project/src/components/super-admin/SubjectFormModal.tsx — ICONS picker array contains 14 subject icons (📚 🧬 ⚛️ ⚗️ 📐 🪨 🌍 🎨 📝 🌐 🏛️ 🔢 📖 🔬) — these are picker data for the subject's stored icon (per task rules: KEEP). Modal uses Plus/X/Loader2 lucide icons.
+   * /home/z/my-project/src/components/super-admin/TopicModesPanel.tsx — Uses Sparkles/Plus/Pencil/Trash2/X/Loader2/Save lucide icons. No emojis in text labels. Already clean.
+
+- Verified: `npx tsc --noEmit --skipLibCheck` reports ZERO errors in any of the 18 target files (only pre-existing errors in unrelated files: examples/websocket, reval/ duplicates, skills/, ui-ux-pro-max-skill/, src/components/plan/WeeklyPlanner, src/components/shared/SubjectTopicPicker — none touched by this task).
+- Verified: `npx eslint` on the 3 modified files reports 0 errors. 2 pre-existing warnings about unused eslint-disable directives in AdvisorDashboard (not introduced by this task).
+- Verified: final emoji grep across all 18 target files confirms remaining emoji references are ONLY: (a) code comments with `→` arrows, (b) `subject.icon` and `'📚'` fallbacks for database-stored subject icons, (c) default `avatar` values for newly-created advisor/student records, (d) ICONS picker arrays in SubjectFormModal + SubjectSettingsPanel. All four categories are data per task instructions, not decorations.
+
+Stage Summary:
+- 3 files modified: AdvisorDashboard.tsx, SubjectSettingsPanel.tsx, GradeChaptersTree.tsx
+- 15 files reviewed and confirmed already minimalist (no changes needed) — the prior 6-d redesign pass (Task 6-d) had already cleaned these files of decorative emojis; only the AdvisorDashboard mood system + TaskModal field-type prefixes + the chapter-mode warning + DEPTH_LABELS arrows remained.
+- Mood severity indicator: converted from emoji (😊🙂😐😟😰) to a clean colored ring + dot + label design (color-only signal), per task rule "use color + text instead".
+- Field-type buttons: stripped 🎯/📚 text prefixes — accent-soft selected background already differentiates.
+- Footer: removed ❤️ — kept the Persian dedication text.
+- Warning text: removed ⚠️ — amber-400 color + Persian text already conveys warning.
+- DEPTH_LABELS: replaced ➔ arrow glyphs with `-` hyphens for a cleaner, language-neutral separator.
+- All preserved: Zustand store calls, props, handlers, modal state, framer-motion animations, CSS utility classes, design tokens, responsive design, SubjectTopicPicker integration, subject DB icons, default avatar values for new records, all GOD/GOD MODE/GOD VIEW/VIP text badges (already text-only with lucide Crown icon).
+- Net effect: admin views are now visually consistent with the minimalist 10-a/10-b passes on student/landing/auth views — zero decorative emojis in text, mood severity shown via color + dot + label, field-type buttons show only their Persian name, warning text relies on color tone rather than glyphs.
+
+---
+Task ID: 10-b
+Agent: frontend-styling-expert (Minimalist pass — Student views)
+Task: Apply minimalist pass to 7 student-facing files (Dashboard, TaskCard, ToolsHub, AnalyticsView, SettingsView, ManualEntrySheet, AiEntryModal) — remove decorative emojis from text, simplify labels, clean toasts. NO functional changes.
+
+Work Log:
+- Read worklog.md foundation (Modern Dark Cinema — Persian RTL design system, color tokens, hover utilities, critical design rules) and confirmed the 7 target files plus feedbackMessages.ts (shared toast source — kept untouched since PlanView is being handled separately)
+- Ran emoji-grep regex (U+1F300–U+1FAFF, U+2600–U+27BF, U+2190–U+21FF, U+2B00–U+2BFF, U+FE0F, U+2714) on all 7 files to inventory every emoji instance before editing
+- Dashboard.tsx: removed `🔥` from "هدف امروز کامل شد — برکانا! 🔥" → "هدف امروز کامل شد"; shortened "وظیفه باقی‌مانده — بزن بریم!" → "وظیفه باقی‌مانده" (removed redundant celebratory suffix). All handlers, store calls, framer-motion animations, CSS utilities preserved.
+- TaskCard.tsx: cleaned two code-comment emojis (`{/* Complete ✔️ */}` → `{/* Complete */}`, `{/* Skip ❌ */}` → `{/* Skip */}`). All `getRandomSuccessMessage()` / `getRandomFailureMessage()` toast calls preserved — these come from shared feedbackMessages.ts which is out of scope. All props, accent border logic, motion variants preserved.
+- ToolsHub.tsx: largest cleanup —
+  * Removed `emoji` field from all 5 TOOLS array entries (🎵, 🃏, ⏱️, 📊, 🧘); modal header now uses the Lucide IconComp (already used on tool cards) inside the icon container instead of the emoji
+  * Extracted `activeToolObj = TOOLS.find(...)` before return to replace 3 inline `TOOLS.find()` calls in modal header (cleaner code, same behavior)
+  * Removed `🎉` from "کارت جدید اضافه شد! 🎉" toast → "کارت جدید اضافه شد"
+  * Removed `🎉` from "آفرین! وقت استراحت 🎉" toast → "وقت استراحت"; shortened "استراحت تموم شد! بزن بریم 💪" → "استراحت تموم شد"
+  * Removed emoji prefixes from flashcard tabs: `📖 مطالعه` → `مطالعه`, `🏷️ نشانه‌گذاری شده` → `نشانه‌گذاری شده`
+  * Removed emoji prefixes from mastery filter pills (both filter row and feedback buttons): `🟢 مسلط`, `🟠 مرور`, `🔴 ضعف` → just `مسلط`, `مرور`, `ضعف` (the colored bg/border already encodes the mastery level)
+  * Removed decorative emoji-only empty-state paragraph (`<p className="text-4xl mb-3">{tab === 'marked' ? '🏷️' : '📚'}</p>`) — let the text message carry the empty state; also dropped redundant `! دکمه افزودن رو بزن` suffix
+  * Removed `🔥`/`☕` from pomodoro mode pill: `'🔥 زمان مطالعه' : '☕ استراحت'` → `'زمان مطالعه' : 'استراحت'`
+  * Removed `💪` from calculator result message: "عالیه! روال ادامه بده 💪" → "عالیه! روال ادامه بده"
+  * Removed emoji suffixes from 3 input labels: `تعداد درست ✅`, `نزده ⬜`, `غلط ❌` → `تعداد درست`, `نزده`, `غلط` (the field semantics are clear from the label)
+  * Removed `⚠️` decorative span from negative-percent display; kept "درصد منفی!" text (color + text is enough)
+  * Removed `📊` decorative paragraph from calculator empty state; kept "اعداد رو وارد کن تا درصد محاسبه بشه"
+  * Removed `💡` decorative span from "what-if" panel; kept the title text
+  * All 5 tool sub-components (FocusMusicTool, FlashcardsTool, PomodoroTool, CalculatorTool, BreathingTool) logic preserved verbatim — pomodoro interval, breathing timeout, flashcard flip+mastery, calculator what-if, equalizer animations
+- AnalyticsView.tsx: replaced 4 emoji InsightCard icons with Lucide icons — added `TrendingDown` to imports; changed `InsightCard` `icon` prop type from `string` to `React.ReactNode`; `🟢`→`<TrendingUp>`, `⚠️`→`<TrendingDown>`, `🏆`→`<Award>`, `🔴`→`<AlertTriangle>` (Award and AlertTriangle were already imported, TrendingUp already imported for KPI cards). InsightCard still uses the colored right-border accent bar for visual distinction. All recharts config, MOCK_*, filters, KPI data preserved.
+- SettingsView.tsx: removed `❤️` from about-section footer: "ساخته شده با ❤️ برای دانش‌آموزان ایران" → "ساخته شده برای دانش‌آموزان ایران". Left the avatar system (`useState(user?.avatar || '🦊')`) and AVATARS array untouched since these are functional visual identity markers stored in mockData.ts, not decorative text emojis. All section components, store calls (updateUser, addTicket, hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders), TicketDrawer logic preserved.
+- ManualEntrySheet.tsx: 4 cleanups —
+  * `toast.success('تسک اضافه شد! 🎯')` → `toast.success('تسک اضافه شد')`
+  * Field type buttons: removed emoji prefix `{ft === 'کنکور' ? '🎯' : '📚'} {ft}` → `{ft}`; removed the verbose helper `<p>` ("کنکور: دروس اختصاصی کنکور تجربی · نهایی: ...") since the button labels alone are self-explanatory
+  * Activity type buttons: removed the `emoji` field from all 4 entries (`📖`, `🔄`, `✏️`, `🎯`) and the `{emoji} {type}` rendering → just `{type}`; simplified the step label "نوع فعالیت‌ها (می‌توانید چند مورد انتخاب کنید):" → "نوع فعالیت‌ها:" (the multi-select nature is obvious from the chip-style buttons)
+  * Submit button: `✔ ثبت تسک` → `ثبت تسک` (removed heavy-check-mark glyph)
+  * Left `s.icon || '📚'` fallback intact — `s.icon` is the database-stored subject emoji (🧬/⚛️/⚗️/📐/🪨) which is a functional visual identifier seeded by Super Admin, not decorative text
+  * All SubjectTopicPicker integration, fetchSubjects useEffect, handleSubmit, step validation, framer-motion step transitions preserved
+- AiEntryModal.tsx: 4 cleanups —
+  * Added `Clock, FileText` to lucide-react imports (already used elsewhere in the app for time/test metrics)
+  * Loading spinner: "در حال تحلیل متنی... 🪄" → "در حال تحلیل متنی..."
+  * ParsedTaskCard metrics: replaced `⏱ {N} دقیقه` and `📝 {N} تست` emoji prefixes with `<Clock className="w-3 h-3" />` and `<FileText className="w-3 h-3" />` Lucide icons (matches Dashboard's task-card metric style for consistency)
+  * Confirm toast: `${N} تسک اضافه شد! 🪄` → `${N} تسک اضافه شد`
+  * Modal description: "برنامه‌ت رو برام بنویس، بقیه‌ش با من! 🪄" → "برنامه‌ت رو برام بنویس، بقیه‌ش با من" (kept the characterful Persian copy, just dropped emoji + exclamation)
+  * All handleAnalyze/handleConfirm/handleClose logic, fetch to /api/parse-plan, parsedTasks state, preview-mode flow preserved
+- Verification: `npx tsc --noEmit --skipLibCheck` reports ZERO errors in any of the 7 modified files (only pre-existing errors remain in reval/src/components/plan/TaskCard.tsx duplicate, src/components/plan/WeeklyPlanner.tsx — both unrelated to this task). `npx eslint` reports 0 errors, only 2 pre-existing unused-eslint-disable warnings in ManualEntrySheet:84 and ToolsHub:1165 (not introduced by this task). `npx next build` compiles successfully in 14.8s.
+- Final emoji-grep across all 7 files confirms ZERO decorative emojis remaining (only intentional subject-icon fallback `'📚'` in ManualEntrySheet and default-avatar `'🦊'` in SettingsView remain — these are functional defaults from the icon/avatar system seeded in the database and mockData.ts, not decorative text emojis per the minimalist guidelines)
+
+Stage Summary:
+- 7 student-facing files now follow the minimalist guidelines: zero decorative emojis in text, cleaner labels, simplified toasts, no obvious helper texts
+- All emojis removed from: greetings, status badges, activity-type buttons, field-type buttons, mastery pills, empty-state illustrations, calculator input labels, pomodoro mode pill, toast messages, code comments
+- Where emojis served as functional icons (tool modal header, AiEntryModal metrics), replaced with appropriate Lucide-react icons (Music/Brain/Timer/Calculator/Heart, Clock, FileText, TrendingUp, TrendingDown, Award, AlertTriangle) for visual consistency with the rest of the design system
+- Where emojis are stored in the database as subject icons (🧬 ⚛️ ⚗️ 📐 🪨) or used as avatar system defaults (🦊), left intact — these are functional visual identifiers, not decorative text
+- Text labels shortened where redundant: removed "— بزن بریم!", "— رایگانه"-style celebratory suffixes; removed obvious "(می‌توانید چند مورد انتخاب کنید)" parentheticals; removed verbose field-type helper paragraph
+- Toast messages: ALL inline literal emojis removed from toasts in the 7 files (`🎯`, `🎉`, `💪`, `🪄`); shared `feedbackMessages.ts` left untouched (out of scope — PlanView agent owns it)
+- PRESERVED 100%: every Zustand store call (useAppStore, tasks, addTask, updateTask, deleteTask, user, updateUser, exams, pomodoro*, flashcards, tracks, currentTool, setCurrentTool, tickets, addTicket, hapticFeedback, notificationReminders, selectedDate, selectedStudentId), every prop signature, every event handler, every framer-motion animation (entrance, whileTap, AnimatePresence transitions), every CSS utility class (.surface-1, .edge-highlight, .card-hover, .btn-hover, .glow-hover, .icon-btn, .nav-item-hover, .surface-glass, .custom-scrollbar, .flip-rtl), every design token (var(--accent), var(--bg-elevated), var(--border), etc.), every responsive layout (mobile max-w-md / desktop multi-col grids), SubjectTopicPicker integration, fetchSubjects API call, /api/parse-plan API call
+- Files compile cleanly: 0 TS errors, 0 ESLint errors, `next build` succeeds
+
+---
+Task ID: 10-summary
+Agent: Main
+Task: Weekly Planner feature + minimalist redesign pass
+
+Work Log:
+- Built WeeklyPlanner.tsx: full-screen modal with 7-day grid
+  * Each day shows: day name, date, list of subject chips, "درس" add button
+  * Quick add: click "درس" → subject picker modal (filtered by کنکور/نهایی)
+  * Click subject chip → detail editor (topic picker, activities, duration, test count)
+  * Details are OPTIONAL until user clicks the chip
+  * "اعمال روی هفته" button creates Task records for all 7 days
+  * Week toggle: این هفته / هفته بعد
+  * Today indicator: ring highlight on current day
+- Integrated into PlanView.tsx:
+  * Mobile: icon button in header next to pattern button
+  * Desktop: text button in header + button in sidebar CTA card
+- Minimalist pass dispatched to 3 parallel subagents:
+  * 10-a: LandingPage, LoginPage, OnboardingWizard — removed decorative emojis from text, unified accent colors, simplified CTAs
+  * 10-b: Dashboard, TaskCard, ToolsHub, AnalyticsView, SettingsView, ManualEntrySheet, AiEntryModal — removed all emoji prefixes from activity buttons, toasts, labels
+  * 10-c: Advisor + Institute + SuperAdmin (18 files) — removed emoji from mood config, field-type buttons, warning texts, depth labels
+- Agent Browser verification:
+  * Weekly planner opens correctly with 7 day columns
+  * کنکور/نهایی toggle works
+  * "افزودن درس به شنبه" modal opens on click
+  * "اعمال روی هفته" button disabled until subjects added
+  * Plan view design confirmed "clean and minimalist" by VLM
+  * No excessive emojis or decorative elements
+
+Stage Summary:
+- New feature: Weekly Planner with quick subject selection + click-to-edit details
+- Minimalist redesign: removed ~50+ decorative emojis across all views
+- All functions preserved: store calls, handlers, navigation, form logic unchanged
+- Design is now cleaner, simpler, more professional

@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
-  Clock, FileText, BarChart3, TrendingUp, ChevronLeft,
+  Clock, FileText, BarChart3, TrendingUp, TrendingDown, ChevronLeft,
   Sparkles, Target, Award, AlertTriangle,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
@@ -111,7 +111,7 @@ function KpiCard({
 function InsightCard({
   icon, title, value, color, index,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   value: string;
   color: string;
@@ -126,7 +126,7 @@ function InsightCard({
       style={{ borderRightColor: color }}
     >
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-base">{icon}</span>
+        <span style={{ color }}>{icon}</span>
         <span className="text-xs text-[var(--foreground-muted)] font-medium">{title}</span>
       </div>
       <span className="text-sm font-bold text-[var(--foreground)]">{value}</span>
@@ -161,10 +161,10 @@ export default function AnalyticsView() {
 
   // Insight cards data
   const insightCards = [
-    { icon: '🟢', title: 'بیشترین مطالعه', value: 'ریاضی - ۱۲ ساعت', color: '#3EB489' },
-    { icon: '⚠️', title: 'کمترین مطالعه', value: 'ادبیات - ۲ ساعت', color: '#F59E0B' },
-    { icon: '🏆', title: 'منظم‌ترین درس', value: 'فیزیک', color: '#3EB489' },
-    { icon: '🔴', title: 'بیشترین کنسلی', value: 'شیمی', color: '#EF4444' },
+    { icon: <TrendingUp className="w-4 h-4" />, title: 'بیشترین مطالعه', value: 'ریاضی - ۱۲ ساعت', color: '#3EB489' },
+    { icon: <TrendingDown className="w-4 h-4" />, title: 'کمترین مطالعه', value: 'ادبیات - ۲ ساعت', color: '#F59E0B' },
+    { icon: <Award className="w-4 h-4" />, title: 'منظم‌ترین درس', value: 'فیزیک', color: '#3EB489' },
+    { icon: <AlertTriangle className="w-4 h-4" />, title: 'بیشترین کنسلی', value: 'شیمی', color: '#EF4444' },
   ];
 
   // Activity chart colors

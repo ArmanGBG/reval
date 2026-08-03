@@ -1,0 +1,831 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Check, X, Settings, Calendar, Bell, Diamond, Clock, Trophy,
+     7→  FileText, Flame, Target, ChevronLeft,
+     8→} from 'lucide-react';
+     9→import { toast } from 'sonner';
+    10→import { useAppStore } from '@/lib/store';
+    11→import { Task, Exam } from '@/lib/types';
+    12→import {
+    13→  getRandomSuccessMessage,
+    14→  getRandomFailureMessage,
+    15→  getGreeting,
+    16→  getPersianDate,
+    17→} from '@/lib/constants/feedbackMessages';
+    18→import {
+    19→  Drawer,
+    20→  DrawerContent,
+    21→  DrawerHeader,
+    22→  DrawerTitle,
+    23→  DrawerDescription,
+    24→  DrawerFooter,
+    25→  DrawerClose,
+    26→} from '@/components/ui/drawer';
+    27→import { Button } from '@/components/ui/button';
+    28→import { Input } from '@/components/ui/input';
+    29→import { Label } from '@/components/ui/label';
+    30→
+    31→// Current student ID (matches MOCK_STUDENTS s1)
+    32→const CURRENT_STUDENT_ID = 's1';
+    33→
+    34→// ===== Helper: Convert number to Persian digits =====
+    35→function toPersianDigits(num: number | string): string {
+    36→  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    37→  return num
+    38→    .toString()
+    39→    .split('')
+    40→    .map((d) => persianDigits[parseInt(d)] ?? d)
+    41→    .join('');
+    42→}
+    43→
+    44→// ============================================================
+    45→// MOBILE HEADER (sticky glassmorphism — mobile only)
+    46→// ============================================================
+    47→function MobileDashboardHeader({ userName }: { userName: string }) {
+    48→  const [greeting] = useState(() => getGreeting(userName));
+    49→
+    50→  return (
+    51→    <div className="md:hidden sticky top-0 z-30 -mx-4 px-4 py-3 surface-glass border-b border-[var(--border)] mb-5">
+    52→      <div className="flex items-start justify-between gap-3">
+    53→        <div className="flex flex-col gap-1 min-w-0 flex-1">
+    54→          <span className="text-[11px] text-[var(--foreground-muted)] font-medium tracking-wide">
+    55→            {getPersianDate()}
+    56→          </span>
+    57→          <h1 className="text-base font-bold text-[var(--foreground)] leading-snug line-clamp-2">
+    58→            {greeting}
+    59→          </h1>
+    60→        </div>
+    61→        <div className="flex items-center gap-2 shrink-0">
+    62→          <button
+    63→            className="icon-btn min-w-[40px] min-h-[40px] flex items-center justify-center rounded-[var(--radius)] bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--foreground-muted)]"
+    64→            aria-label="تقویم"
+    65→          >
+    66→            <Calendar className="w-5 h-5" />
+    67→          </button>
+    68→          <button
+    69→            className="icon-btn min-w-[40px] min-h-[40px] flex items-center justify-center rounded-[var(--radius)] bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--foreground-muted)] relative"
+    70→            aria-label="اعلان‌ها"
+    71→          >
+    72→            <Bell className="w-5 h-5" />
+    73→            <span className="absolute top-2 left-2 w-2 h-2 bg-[var(--accent)] rounded-full ring-2 ring-[var(--bg-elevated)]" />
+    74→          </button>
+    75→        </div>
+    76→      </div>
+    77→    </div>
+    78→  );
+    79→}
+    80→
+    81→// ============================================================
+    82→// DESKTOP HEADER (rich, breadcrumb-style — desktop only)
+    83→// ============================================================
+    84→function DesktopDashboardHeader({ userName }: { userName: string }) {
+    85→  const [greeting] = useState(() => getGreeting(userName));
+    86→
+    87→  return (
+    88→    <div className="hidden md:flex items-end justify-between mb-8 pb-6 border-b border-[var(--border)]">
+    89→      <div className="flex flex-col gap-2 min-w-0">
+    90→        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
+    91→          <span>داشبورد</span>
+    92→          <ChevronLeft className="w-3 h-3 flip-rtl" />
+    93→          <span className="text-[var(--accent)]">امروز</span>
+    94→        </div>
+    95→        <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)] leading-tight">
+    96→          {greeting}
+    97→        </h1>
+    98→        <span className="text-sm text-[var(--foreground-muted)] font-medium">
+    99→          {getPersianDate()}
+   100→        </span>
+   101→      </div>
+   102→      <div className="flex items-center gap-2 shrink-0">
+   103→        <button
+   104→          className="icon-btn h-10 px-3 flex items-center gap-2 rounded-[var(--radius)] bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-sm font-medium"
+   105→          aria-label="تقویم"
+   106→        >
+   107→          <Calendar className="w-4 h-4" />
+   108→          <span>تقویم</span>
+   109→        </button>
+   110→        <button
+   111→          className="icon-btn h-10 px-3 flex items-center gap-2 rounded-[var(--radius)] bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-sm font-medium relative"
+   112→          aria-label="اعلان‌ها"
+   113→        >
+   114→          <Bell className="w-4 h-4" />
+   115→          <span className="bg-[var(--accent-soft)] text-[var(--accent)] text-[10px] font-bold rounded-full px-1.5 py-0.5">
+   116→            ۳
+   117→          </span>
+   118→        </button>
+   119→      </div>
+   120→    </div>
+   121→  );
+   122→}
+   123→
+   124→// ============================================================
+   125→// DAILY PROGRESS CARD
+   126→// ============================================================
+   127→function DailyProgress({ completedCount, totalCount }: { completedCount: number; totalCount: number }) {
+   128→  const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+   129→  const remaining = Math.max(0, totalCount - completedCount);
+   130→
+   131→  return (
+   132→    <div className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 md:p-5">
+   133→      <div className="flex items-center justify-between mb-3">
+   134→        <div className="flex items-center gap-2">
+   135→          <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--accent-soft)] flex items-center justify-center">
+   136→            <Target className="w-4 h-4 text-[var(--accent)]" />
+   137→          </div>
+   138→          <div className="flex flex-col">
+   139→            <span className="text-sm font-semibold text-[var(--foreground)]">پیشرفت امروز</span>
+   140→            <span className="text-[11px] text-[var(--foreground-muted)]">
+   141→              {toPersianDigits(completedCount)} از {toPersianDigits(totalCount)} وظیفه
+   142→            </span>
+   143→          </div>
+   144→        </div>
+   145→        <motion.span
+   146→          key={percentage}
+   147→          initial={{ opacity: 0, scale: 0.85 }}
+   148→          animate={{ opacity: 1, scale: 1 }}
+   149→          className="text-2xl md:text-3xl font-bold text-[var(--accent)] tabular-nums"
+   150→        >
+   151→          {toPersianDigits(percentage)}<span className="text-base">٪</span>
+   152→        </motion.span>
+   153→      </div>
+   154→
+   155→      {/* Progress bar */}
+   156→      <div className="w-full h-2.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
+   157→        <motion.div
+   158→          className="h-full rounded-full relative"
+   159→          style={{
+   160→            background: `linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%)`,
+   161→          }}
+   162→          initial={{ width: 0 }}
+   163→          animate={{ width: `${percentage}%` }}
+   164→          transition={{ duration: 0.8, ease: 'easeOut' }}
+   165→        />
+   166→      </div>
+   167→
+   168→      {remaining > 0 && (
+   169→        <div className="flex items-center gap-1.5 mt-3 text-[11px] text-[var(--foreground-muted)]">
+   170→          <Flame className="w-3.5 h-3.5 text-[var(--warning)]" />
+   171→          <span>{toPersianDigits(remaining)} وظیفه باقی‌مانده — بزن بریم!</span>
+   172→        </div>
+   173→      )}
+   174→      {remaining === 0 && totalCount > 0 && (
+   175→        <div className="flex items-center gap-1.5 mt-3 text-[11px] text-[var(--accent)]">
+   176→          <Check className="w-3.5 h-3.5" />
+   177→          <span>هدف امروز کامل شد — برکانا! 🔥</span>
+   178→        </div>
+   179→      )}
+   180→    </div>
+   181→  );
+   182→}
+   183→
+   184→// ============================================================
+   185→// TASK CARD (dashboard variant — read-only display)
+   186→// ============================================================
+   187→function DashboardTaskCard({
+   188→  task,
+   189→  index,
+   190→  onComplete,
+   191→  onSkip,
+   192→  onPartialOpen,
+   193→}: {
+   194→  task: Task;
+   195→  index: number;
+   196→  onComplete: () => void;
+   197→  onSkip: () => void;
+   198→  onPartialOpen: () => void;
+   199→}) {
+   200→  const isCompleted = task.completed === true;
+   201→  const isSkipped = task.completed === false;
+   202→  const isPending = task.completed === null;
+   203→
+   204→  const accentBorder = isCompleted
+   205→    ? 'before:bg-[var(--accent)]'
+   206→    : isSkipped
+   207→      ? 'before:bg-[var(--danger)]'
+   208→      : 'before:bg-transparent';
+   209→
+   210→  return (
+   211→    <motion.div
+   212→      initial={{ opacity: 0, y: 12 }}
+   213→      animate={{ opacity: 1, y: 0 }}
+   214→      transition={{ duration: 0.3, delay: index * 0.05 }}
+   215→      className={`surface-1 edge-highlight card-hover relative overflow-hidden rounded-[var(--radius-lg)] p-3.5 md:p-4
+   216→        before:absolute before:right-0 before:top-0 before:bottom-0 before:w-[3px]
+   217→        ${accentBorder}
+   218→        ${isCompleted || isSkipped ? 'opacity-65' : ''}
+   219→      `}
+   220→    >
+   221→      <div className="flex items-start justify-between gap-3">
+   222→        <div className="flex-1 min-w-0">
+   223→          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+   224→            <span
+   225→              className="w-2 h-2 rounded-full shrink-0"
+   226→              style={{ backgroundColor: task.subjectColor }}
+   227→            />
+   228→            <span className="font-bold text-[var(--foreground)] text-sm truncate">{task.subject}</span>
+   229→            <span
+   230→              className={`text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
+   231→                task.fieldType === 'کنکور'
+   232→                  ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+   233→                  : 'bg-[rgba(245,181,68,0.12)] text-[var(--warning)]'
+   234→              }`}
+   235→            >
+   236→              {task.fieldType}
+   237→            </span>
+   238→          </div>
+   239→          <p className="text-xs text-[var(--foreground-muted)] mb-2 line-clamp-1">{task.topic}</p>
+   240→          <div className="flex items-center gap-3 text-[11px] text-[var(--foreground-muted)]">
+   241→            <span className="flex items-center gap-1">
+   242→              <Clock className="w-3 h-3" />
+   243→              {toPersianDigits(task.targetTimeMinutes)} دقیقه
+   244→            </span>
+   245→            {task.targetTestCount > 0 && (
+   246→              <span className="flex items-center gap-1">
+   247→                <FileText className="w-3 h-3" />
+   248→                {toPersianDigits(task.targetTestCount)} تست
+   249→              </span>
+   250→            )}
+   251→          </div>
+   252→        </div>
+   253→
+   254→        {isPending && (
+   255→          <div className="flex items-center gap-1 shrink-0">
+   256→            <button
+   257→              onClick={onComplete}
+   258→              className="icon-btn w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(62,180,137,0.2)] flex items-center justify-center hover:bg-[rgba(62,180,137,0.2)]"
+   259→              aria-label="انجام شد"
+   260→            >
+   261→              <Check className="w-4 h-4" />
+   262→            </button>
+   263→            <button
+   264→              onClick={onSkip}
+   265→              className="icon-btn w-9 h-9 rounded-[var(--radius-sm)] bg-[rgba(239,68,68,0.1)] text-[#F87171] border border-[rgba(239,68,68,0.2)] flex items-center justify-center hover:bg-[rgba(239,68,68,0.2)]"
+   266→              aria-label="نادیده گرفته"
+   267→            >
+   268→              <X className="w-4 h-4" />
+   269→            </button>
+   270→            <button
+   271→              onClick={onPartialOpen}
+   272→              className="icon-btn w-9 h-9 rounded-[var(--radius-sm)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)]"
+   273→              aria-label="تکمیل جزئی"
+   274→            >
+   275→              <Settings className="w-4 h-4" />
+   276→            </button>
+   277→          </div>
+   278→        )}
+   279→
+   280→        {(isCompleted || isSkipped) && (
+   281→          <div className="flex items-center shrink-0">
+   282→            {isCompleted && (
+   283→              <span className="flex items-center gap-1 text-[var(--accent)] text-[11px] font-medium bg-[var(--accent-soft)] px-2 py-1 rounded-md">
+   284→                <Check className="w-3.5 h-3.5" />
+   285→                انجام شد
+   286→              </span>
+   287→            )}
+   288→            {isSkipped && (
+   289→              <span className="flex items-center gap-1 text-[#F87171] text-[11px] font-medium bg-[rgba(239,68,68,0.12)] px-2 py-1 rounded-md">
+   290→                <X className="w-3.5 h-3.5" />
+   291→                نادیده
+   292→              </span>
+   293→            )}
+   294→          </div>
+   295→        )}
+   296→      </div>
+   297→    </motion.div>
+   298→  );
+   299→}
+   300→
+   301→// ============================================================
+   302→// UPCOMING EXAMS
+   303→// ============================================================
+   304→function UpcomingExams({ exams }: { exams: Exam[] }) {
+   305→  const upcomingExams = useMemo(
+   306→    () => exams
+   307→      .filter((e) => e.studentIds.includes(CURRENT_STUDENT_ID) && e.status === 'upcoming')
+   308→      .sort((a, b) => a.date.localeCompare(b.date)),
+   309→    [exams]
+   310→  );
+   311→
+   312→  if (upcomingExams.length === 0) return null;
+   313→
+   314→  return (
+   315→    <div>
+   316→      <SectionHeader icon={<FileText className="w-4 h-4" />} title="آزمون‌های پیش رو" count={upcomingExams.length} />
+   317→      <div className="space-y-2.5">
+   318→        {upcomingExams.map((exam, index) => (
+   319→          <motion.div
+   320→            key={exam.id}
+   321→            initial={{ opacity: 0, y: 12 }}
+   322→            animate={{ opacity: 1, y: 0 }}
+   323→            transition={{ delay: index * 0.07 }}
+   324→            className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-3.5 md:p-4"
+   325→          >
+   326→            <div className="flex items-center justify-between gap-3">
+   327→              <div className="flex items-center gap-3 min-w-0">
+   328→                <div
+   329→                  className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center shrink-0"
+   330→                  style={{ backgroundColor: `${exam.subjectColor}1A` }}
+   331→                >
+   332→                  <Trophy className="w-5 h-5" style={{ color: exam.subjectColor }} />
+   333→                </div>
+   334→                <div className="min-w-0">
+   335→                  <p className="text-sm font-bold text-[var(--foreground)] truncate">{exam.title}</p>
+   336→                  <p className="text-xs text-[var(--foreground-muted)] truncate">{exam.subject}</p>
+   337→                </div>
+   338→              </div>
+   339→              <div className="text-left shrink-0">
+   340→                <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
+   341→                  <Calendar className="w-3.5 h-3.5" />
+   342→                  <span className="tabular-nums">{toPersianDigits(parseInt(exam.date.split('-')[2]))}</span>
+   343→                </div>
+   344→                <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)] mt-1">
+   345→                  <Clock className="w-3.5 h-3.5" />
+   346→                  <span className="tabular-nums">{toPersianDigits(exam.startTime)}</span>
+   347→                </div>
+   348→              </div>
+   349→            </div>
+   350→            <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-[var(--border)] text-[11px] text-[var(--foreground-muted)]">
+   351→              <span>مدت: <span className="text-[var(--foreground)] font-medium">{toPersianDigits(exam.duration)} دقیقه</span></span>
+   352→              <span className="w-px h-3 bg-[var(--border)]" />
+   353→              <span>نمره کل: <span className="text-[var(--foreground)] font-medium">{toPersianDigits(exam.totalScore)}</span></span>
+   354→            </div>
+   355→          </motion.div>
+   356→        ))}
+   357→      </div>
+   358→    </div>
+   359→  );
+   360→}
+   361→
+   362→// ============================================================
+   363→// COMPLETED EXAMS
+   364→// ============================================================
+   365→function CompletedExams({ exams }: { exams: Exam[] }) {
+   366→  const completedExams = useMemo(
+   367→    () => exams
+   368→      .filter((e) => e.studentIds.includes(CURRENT_STUDENT_ID) && e.status === 'completed')
+   369→      .sort((a, b) => b.date.localeCompare(a.date)),
+   370→    [exams]
+   371→  );
+   372→
+   373→  if (completedExams.length === 0) return null;
+   374→
+   375→  return (
+   376→    <div>
+   377→      <SectionHeader icon={<Trophy className="w-4 h-4 text-[var(--warning)]" />} title="نتایج آزمون‌ها" count={completedExams.length} />
+   378→      <div className="space-y-2.5">
+   379→        {completedExams.map((exam, index) => {
+   380→          const myResult = exam.results.find((r) => r.studentId === CURRENT_STUDENT_ID);
+   381→          const scorePercent = myResult?.score ? Math.round((myResult.score / exam.totalScore) * 100) : 0;
+   382→          const scoreColor = scorePercent >= 80 ? 'var(--accent)' : scorePercent >= 60 ? 'var(--warning)' : '#EF4444';
+   383→
+   384→          return (
+   385→            <motion.div
+   386→              key={exam.id}
+   387→              initial={{ opacity: 0, y: 12 }}
+   388→              animate={{ opacity: 1, y: 0 }}
+   389→              transition={{ delay: index * 0.07 }}
+   390→              className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-3.5 md:p-4"
+   391→            >
+   392→              <div className="flex items-center justify-between gap-3">
+   393→                <div className="flex items-center gap-3 min-w-0">
+   394→                  <div
+   395→                    className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center shrink-0"
+   396→                    style={{ backgroundColor: `${exam.subjectColor}1A` }}
+   397→                  >
+   398→                    <FileText className="w-5 h-5" style={{ color: exam.subjectColor }} />
+   399→                  </div>
+   400→                  <div className="min-w-0">
+   401→                    <p className="text-sm font-bold text-[var(--foreground)] truncate">{exam.title}</p>
+   402→                    <p className="text-xs text-[var(--foreground-muted)] truncate">{exam.subject}</p>
+   403→                  </div>
+   404→                </div>
+   405→                {myResult?.score !== null && myResult?.score !== undefined && (
+   406→                  <div className="text-center shrink-0">
+   407→                    <p className="text-xl font-bold tabular-nums" style={{ color: scoreColor }}>
+   408→                      {toPersianDigits(myResult.score)}
+   409→                    </p>
+   410→                    <p className="text-[10px] text-[var(--foreground-muted)]">از {toPersianDigits(exam.totalScore)}</p>
+   411→                  </div>
+   412→                )}
+   413→              </div>
+   414→              {myResult?.score !== null && myResult?.score !== undefined && (
+   415→                <div className="mt-3">
+   416→                  <div className="w-full h-1.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
+   417→                    <motion.div
+   418→                      className="h-full rounded-full"
+   419→                      style={{ backgroundColor: scoreColor }}
+   420→                      initial={{ width: 0 }}
+   421→                      animate={{ width: `${scorePercent}%` }}
+   422→                      transition={{ duration: 0.6, ease: 'easeOut' }}
+   423→                    />
+   424→                  </div>
+   425→                  {myResult.rank && (
+   426→                    <p className="text-[10px] text-[var(--foreground-muted)] mt-1.5">
+   427→                      رتبه {toPersianDigits(myResult.rank)} از {toPersianDigits(exam.studentIds.length)}
+   428→                    </p>
+   429→                  )}
+   430→                </div>
+   431→              )}
+   432→            </motion.div>
+   433→          );
+   434→        })}
+   435→      </div>
+   436→    </div>
+   437→  );
+   438→}
+   439→
+   440→// ============================================================
+   441→// SECTION HEADER
+   442→// ============================================================
+   443→function SectionHeader({ icon, title, count, action }: { icon: React.ReactNode; title: string; count?: number; action?: React.ReactNode }) {
+   444→  return (
+   445→    <div className="flex items-center justify-between mb-3">
+   446→      <div className="flex items-center gap-2">
+   447→        <span className="text-[var(--foreground-muted)]">{icon}</span>
+   448→        <h3 className="text-sm font-bold text-[var(--foreground)]">{title}</h3>
+   449→        {count !== undefined && count > 0 && (
+   450→          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] font-bold">
+   451→            {toPersianDigits(count)}
+   452→          </span>
+   453→        )}
+   454→      </div>
+   455→      {action}
+   456→    </div>
+   457→  );
+   458→}
+   459→
+   460→// ============================================================
+   461→// QUICK STATS (desktop sidebar)
+   462→// ============================================================
+   463→function QuickStats({ tasks }: { tasks: Task[] }) {
+   464→  const todayDate = new Date().toISOString().split('T')[0];
+   465→  const todayTasks = tasks.filter((t) => t.date === todayDate && t.studentId === CURRENT_STUDENT_ID);
+   466→  const completed = todayTasks.filter((t) => t.completed === true).length;
+   467→  const totalTests = todayTasks.reduce((sum, t) => sum + (t.actualTestCount ?? t.targetTestCount), 0);
+   468→  const totalMinutes = todayTasks.reduce((sum, t) => sum + (t.actualTimeMinutes ?? t.targetTimeMinutes), 0);
+   469→  const hours = Math.floor(totalMinutes / 60);
+   470→  const mins = totalMinutes % 60;
+   471→
+   472→  const stats = [
+   473→    { label: 'وظایف امروز', value: toPersianDigits(todayTasks.length), icon: FileText, color: 'var(--accent)' },
+   474→    { label: 'انجام شده', value: toPersianDigits(completed), icon: Check, color: 'var(--accent)' },
+   475→    { label: 'ساعت مطالعه', value: `${toPersianDigits(hours)}:${toPersianDigits(mins.toString().padStart(2, '0'))}`, icon: Clock, color: 'var(--warning)' },
+   476→    { label: 'تست‌ها', value: toPersianDigits(totalTests), icon: Target, color: '#A78BFA' },
+   477→  ];
+   478→
+   479→  return (
+   480→    <div className="grid grid-cols-2 gap-2.5">
+   481→      {stats.map((stat) => {
+   482→        const Icon = stat.icon;
+   483→        return (
+   484→          <div
+   485→            key={stat.label}
+   486→            className="surface-1 edge-highlight rounded-[var(--radius)] p-3 flex flex-col gap-1.5"
+   487→          >
+   488→            <Icon className="w-4 h-4" style={{ color: stat.color }} />
+   489→            <span className="text-lg font-bold text-[var(--foreground)] tabular-nums leading-none">{stat.value}</span>
+   490→            <span className="text-[10px] text-[var(--foreground-muted)]">{stat.label}</span>
+   491→          </div>
+   492→        );
+   493→      })}
+   494→    </div>
+   495→  );
+   496→}
+   497→
+   498→// ============================================================
+   499→// PARTIAL COMPLETION BOTTOM SHEET
+   500→// ============================================================
+   501→function PartialCompletionSheet({
+   502→  task,
+   503→  open,
+   504→  onOpenChange,
+   505→  onSave,
+   506→}: {
+   507→  task: Task | null;
+   508→  open: boolean;
+   509→  onOpenChange: (open: boolean) => void;
+   510→  onSave: (id: string, actualTime: number, actualTests: number) => void;
+   511→}) {
+   512→  const [actualTime, setActualTime] = useState('');
+   513→  const [actualTests, setActualTests] = useState('');
+   514→
+   515→  const handleSave = useCallback(() => {
+   516→    if (!task) return;
+   517→    const time = parseInt(actualTime) || 0;
+   518→    const tests = parseInt(actualTests) || 0;
+   519→    onSave(task.id, time, tests);
+   520→    setActualTime('');
+   521→    setActualTests('');
+   522→    onOpenChange(false);
+   523→  }, [task, actualTime, actualTests, onSave, onOpenChange]);
+   524→
+   525→  if (!task) return null;
+   526→
+   527→  return (
+   528→    <Drawer open={open} onOpenChange={onOpenChange}>
+   529→      <DrawerContent className="surface-2 border-t border-[var(--border-strong)]">
+   530→        <DrawerHeader className="text-right">
+   531→          <DrawerTitle className="text-[var(--foreground)] text-base">ثبت تکمیل جزئی</DrawerTitle>
+   532→          <DrawerDescription className="text-[var(--foreground-muted)] text-sm">
+   533→            {task.subject} - {task.topic}
+   534→          </DrawerDescription>
+   535→        </DrawerHeader>
+   536→
+   537→        <div className="px-4 pb-2 space-y-4">
+   538→          <div className="space-y-2">
+   539→            <Label htmlFor="actual-time" className="text-[var(--foreground)] text-sm">
+   540→              زمان واقعی مطالعه
+   541→            </Label>
+   542→            <div className="flex items-center gap-2">
+   543→              <Input
+   544→                id="actual-time"
+   545→                type="number"
+   546→                inputMode="numeric"
+   547→                placeholder={toPersianDigits(task.targetTimeMinutes)}
+   548→                value={actualTime}
+   549→                onChange={(e) => setActualTime(e.target.value)}
+   550→                className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] text-right"
+   551→                dir="ltr"
+   552→              />
+   553→              <span className="text-xs text-[var(--foreground-muted)] whitespace-nowrap">دقیقه</span>
+   554→            </div>
+   555→            <span className="text-xs text-[var(--foreground-muted)]">
+   556→              هدف: {toPersianDigits(task.targetTimeMinutes)} دقیقه
+   557→            </span>
+   558→          </div>
+   559→
+   560→          <div className="space-y-2">
+   561→            <Label htmlFor="actual-tests" className="text-[var(--foreground)] text-sm">
+   562→              تعداد تست‌های حل شده
+   563→            </Label>
+   564→            <div className="flex items-center gap-2">
+   565→              <Input
+   566→                id="actual-tests"
+   567→                type="number"
+   568→                inputMode="numeric"
+   569→                placeholder={toPersianDigits(task.targetTestCount)}
+   570→                value={actualTests}
+   571→                onChange={(e) => setActualTests(e.target.value)}
+   572→                className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] text-right"
+   573→                dir="ltr"
+   574→              />
+   575→              <span className="text-xs text-[var(--foreground-muted)] whitespace-nowrap">تست</span>
+   576→            </div>
+   577→            <span className="text-xs text-[var(--foreground-muted)]">
+   578→              هدف: {toPersianDigits(task.targetTestCount)} تست
+   579→            </span>
+   580→          </div>
+   581→        </div>
+   582→
+   583→        <DrawerFooter className="pt-4">
+   584→          <Button
+   585→            onClick={handleSave}
+   586→            className="glow-hover w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--bg-deep)] font-bold min-h-[44px]"
+   587→          >
+   588→            ذخیره
+   589→          </Button>
+   590→          <DrawerClose asChild>
+   591→            <Button
+   592→              variant="ghost"
+   593→              className="w-full text-[var(--foreground-muted)] hover:text-[var(--foreground)] min-h-[44px]"
+   594→            >
+   595→              انصراف
+   596→            </Button>
+   597→          </DrawerClose>
+   598→        </DrawerFooter>
+   599→      </DrawerContent>
+   600→    </Drawer>
+   601→  );
+   602→}
+   603→
+   604→// ============================================================
+   605→// UPSELL BANNER
+   606→// ============================================================
+   607→function UpsellBanner({ hasAdvisor }: { hasAdvisor: boolean }) {
+   608→  if (hasAdvisor) return null;
+   609→
+   610→  return (
+   611→    <motion.div
+   612→      initial={{ opacity: 0, y: 12 }}
+   613→      animate={{ opacity: 1, y: 0 }}
+   614→      transition={{ duration: 0.4, delay: 0.4 }}
+   615→      className="card-hover cursor-pointer rounded-[var(--radius-lg)] overflow-hidden relative"
+   616→    >
+   617→      <div className="surface-1 edge-highlight p-4 flex items-center gap-3">
+   618→        <div className="w-10 h-10 rounded-[var(--radius)] bg-[var(--accent-soft)] flex items-center justify-center shrink-0">
+   619→          <Diamond className="w-5 h-5 text-[var(--accent)]" />
+   620→        </div>
+   621→        <div className="flex-1 min-w-0">
+   622→          <p className="text-sm font-bold text-[var(--foreground)]">نیاز به مشاور داری؟!</p>
+   623→          <p className="text-xs text-[var(--foreground-muted)] mt-0.5">همین الان با مشاوران ما صحبت کن</p>
+   624→        </div>
+   625→        <ChevronLeft className="w-5 h-5 text-[var(--accent)] flip-rtl shrink-0" />
+   626→      </div>
+   627→    </motion.div>
+   628→  );
+   629→}
+   630→
+   631→// ============================================================
+   632→// MAIN DASHBOARD COMPONENT
+   633→// ============================================================
+   634→export default function Dashboard() {
+   635→  const { user, tasks, exams, updateTask } = useAppStore();
+   636→  const [partialTask, setPartialTask] = useState<Task | null>(null);
+   637→  const [sheetOpen, setSheetOpen] = useState(false);
+   638→
+   639→  // Filter today's tasks for the current student
+   640→  const todayDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+   641→  const todayTasks = useMemo(
+   642→    () =>
+   643→      tasks
+   644→        .filter((t) => t.date === todayDate && t.studentId === CURRENT_STUDENT_ID)
+   645→        .sort((a, b) => a.order - b.order),
+   646→    [tasks, todayDate]
+   647→  );
+   648→
+   649→  // Calculate completion stats
+   650→  const completedCount = useMemo(
+   651→    () => todayTasks.filter((t) => t.completed === true).length,
+   652→    [todayTasks]
+   653→  );
+   654→  const totalCount = todayTasks.length;
+   655→
+   656→  // Check if student has an advisor
+   657→  const hasAdvisor = user?.assignedAdvisorId !== null && user?.assignedAdvisorId !== undefined;
+   658→
+   659→  // Handlers
+   660→  const handleComplete = useCallback(
+   661→    (taskId: string) => {
+   662→      updateTask(taskId, { completed: true });
+   663→      toast.success(getRandomSuccessMessage(), {
+   664→        style: {
+   665→          background: 'var(--bg-overlay)',
+   666→          border: '1px solid var(--accent-glow)',
+   667→          color: 'var(--accent)',
+   668→        },
+   669→      });
+   670→    },
+   671→    [updateTask]
+   672→  );
+   673→
+   674→  const handleSkip = useCallback(
+   675→    (taskId: string) => {
+   676→      updateTask(taskId, { completed: false });
+   677→      toast(getRandomFailureMessage(), {
+   678→        style: {
+   679→          background: 'var(--bg-overlay)',
+   680→          border: '1px solid rgba(239,68,68,0.3)',
+   681→          color: '#F87171',
+   682→        },
+   683→      });
+   684→    },
+   685→    [updateTask]
+   686→  );
+   687→
+   688→  const handlePartialOpen = useCallback((task: Task) => {
+   689→    setPartialTask(task);
+   690→    setSheetOpen(true);
+   691→  }, []);
+   692→
+   693→  const handlePartialSave = useCallback(
+   694→    (id: string, actualTime: number, actualTests: number) => {
+   695→      updateTask(id, {
+   696→        actualTimeMinutes: actualTime,
+   697→        actualTestCount: actualTests,
+   698→        completed: true,
+   699→      });
+   700→      toast.success(getRandomSuccessMessage(), {
+   701→        style: {
+   702→          background: 'var(--bg-overlay)',
+   703→          border: '1px solid var(--accent-glow)',
+   704→          color: 'var(--accent)',
+   705→        },
+   706→      });
+   707→    },
+   708→    [updateTask]
+   709→  );
+   710→
+   711→  const userName = user?.name ?? 'رفیق';
+   712→
+   713→  return (
+   714→    <div dir="rtl">
+   715→      {/* MOBILE LAYOUT (single column, max-w-md) */}
+   716→      <div className="md:hidden max-w-md mx-auto px-4">
+   717→        <MobileDashboardHeader userName={userName} />
+   718→
+   719→        <div className="mb-5">
+   720→          <DailyProgress completedCount={completedCount} totalCount={totalCount} />
+   721→        </div>
+   722→
+   723→        <div className="mb-6">
+   724→          <UpcomingExams exams={exams} />
+   725→        </div>
+   726→
+   727→        <div className="mb-6">
+   728→          <SectionHeader icon={<FileText className="w-4 h-4" />} title="وظایف امروز" count={totalCount} />
+   729→          <div className="space-y-2.5">
+   730→            <AnimatePresence>
+   731→              {todayTasks.map((task, index) => (
+   732→                <DashboardTaskCard
+   733→                  key={task.id}
+   734→                  task={task}
+   735→                  index={index}
+   736→                  onComplete={() => handleComplete(task.id)}
+   737→                  onSkip={() => handleSkip(task.id)}
+   738→                  onPartialOpen={() => handlePartialOpen(task)}
+   739→                />
+   740→              ))}
+   741→            </AnimatePresence>
+   742→
+   743→            {todayTasks.length === 0 && (
+   744→              <div className="surface-1 rounded-[var(--radius-lg)] p-8 text-center">
+   745→                <p className="text-[var(--foreground-muted)] text-sm">وظیفه‌ای برای امروز ثبت نشده</p>
+   746→                <p className="text-xs text-[var(--foreground-subtle)] mt-1">از بخش برنامه‌ریزی وظایف خود رو اضافه کن</p>
+   747→              </div>
+   748→            )}
+   749→          </div>
+   750→        </div>
+   751→
+   752→        <div className="mb-6">
+   753→          <CompletedExams exams={exams} />
+   754→        </div>
+   755→
+   756→        <UpsellBanner hasAdvisor={hasAdvisor} />
+   757→
+   758→        <PartialCompletionSheet
+   759→          task={partialTask}
+   760→          open={sheetOpen}
+   761→          onOpenChange={setSheetOpen}
+   762→          onSave={handlePartialSave}
+   763→        />
+   764→      </div>
+   765→
+   766→      {/* DESKTOP LAYOUT (12-col grid: main + sidebar) */}
+   767→      <div className="hidden md:block">
+   768→        <DesktopDashboardHeader userName={userName} />
+   769→
+   770→        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   771→          {/* ===== Main column (tasks) — col-span-2 ===== */}
+   772→          <div className="lg:col-span-2 space-y-6">
+   773→            <section>
+   774→              <SectionHeader icon={<FileText className="w-4 h-4" />} title="وظایف امروز" count={totalCount} />
+   775→              <div className="space-y-3">
+   776→                <AnimatePresence>
+   777→                  {todayTasks.map((task, index) => (
+   778→                    <DashboardTaskCard
+   779→                      key={task.id}
+   780→                      task={task}
+   781→                      index={index}
+   782→                      onComplete={() => handleComplete(task.id)}
+   783→                      onSkip={() => handleSkip(task.id)}
+   784→                      onPartialOpen={() => handlePartialOpen(task)}
+   785→                    />
+   786→                  ))}
+   787→                </AnimatePresence>
+   788→
+   789→                {todayTasks.length === 0 && (
+   790→                  <div className="surface-1 rounded-[var(--radius-lg)] p-12 text-center">
+   791→                    <p className="text-[var(--foreground-muted)] text-base">وظیفه‌ای برای امروز ثبت نشده</p>
+   792→                    <p className="text-xs text-[var(--foreground-subtle)] mt-2">از بخش برنامه‌ریزی وظایف خود رو اضافه کن</p>
+   793→                  </div>
+   794→                )}
+   795→              </div>
+   796→            </section>
+   797→
+   798→            <section>
+   799→              <CompletedExams exams={exams} />
+   800→            </section>
+   801→
+   802→            <UpsellBanner hasAdvisor={hasAdvisor} />
+   803→          </div>
+   804→
+   805→          {/* ===== Sidebar (right in RTL = first child) — col-span-1 ===== */}
+   806→          <aside className="lg:col-span-1 space-y-5">
+   807→            <DailyProgress completedCount={completedCount} totalCount={totalCount} />
+   808→
+   809→            <div>
+   810→              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-subtle)] mb-3 px-1">
+   811→                آمار سریع
+   812→              </h3>
+   813→              <QuickStats tasks={tasks} />
+   814→            </div>
+   815→
+   816→            <UpcomingExams exams={exams} />
+   817→          </aside>
+   818→        </div>
+   819→
+   820→        <PartialCompletionSheet
+   821→          task={partialTask}
+   822→          open={sheetOpen}
+   823→          onOpenChange={setSheetOpen}
+   824→          onSave={handlePartialSave}
+   825→        />
+   826→      </div>
+   827→    </div>
+   828→  );
+   829→}
+
+[showing lines 1-829 of 830; use offset=830 with limit to continue reading]

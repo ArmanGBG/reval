@@ -126,7 +126,7 @@ export default function ManualEntrySheet({
       createdBy: 'student',
     };
     onSubmit(newTask);
-    toast.success('تسک اضافه شد! 🎯');
+    toast.success('تسک اضافه شد');
     onOpenChange(false);
     resetForm();
   }, [selectedSubject, topicSelection, activities, fieldType, duration, testCount, selectedDate, existingTaskCount, onSubmit, onOpenChange, resetForm, user]);
@@ -182,10 +182,7 @@ export default function ManualEntrySheet({
                 exit={{ opacity: 0, x: -30 }}
                 className="space-y-3"
               >
-                <p className="text-sm text-[var(--foreground)] mb-1">حوزه مطالعه را انتخاب کنید:</p>
-                <p className="text-xs text-[var(--foreground-muted)] mb-3">
-                  کنکور: دروس اختصاصی کنکور تجربی · نهایی: دروس امتحانات نهایی (عمومی + اختصاصی)
-                </p>
+                <p className="text-sm text-[var(--foreground)] mb-3">حوزه مطالعه را انتخاب کنید:</p>
                 <div className="flex gap-3">
                   {(['کنکور', 'نهایی'] as FieldType[]).map((ft) => (
                     <motion.button
@@ -202,7 +199,7 @@ export default function ManualEntrySheet({
                           : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--accent)]/30'
                       }`}
                     >
-                      {ft === 'کنکور' ? '🎯' : '📚'} {ft}
+                      {ft}
                     </motion.button>
                   ))}
                 </div>
@@ -306,15 +303,15 @@ export default function ManualEntrySheet({
                 className="space-y-2"
               >
                 <p className="text-sm text-[var(--foreground)] mb-3">
-                  نوع فعالیت‌ها (می‌توانید چند مورد انتخاب کنید):
+                  نوع فعالیت‌ها:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {([
-                    { type: 'مطالعه' as ActivityType, emoji: '📖' },
-                    { type: 'مرور' as ActivityType, emoji: '🔄' },
-                    { type: 'تست آموزشی' as ActivityType, emoji: '✏️' },
-                    { type: 'تست سنجشی' as ActivityType, emoji: '🎯' },
-                  ]).map(({ type, emoji }) => (
+                    { type: 'مطالعه' as ActivityType },
+                    { type: 'مرور' as ActivityType },
+                    { type: 'تست آموزشی' as ActivityType },
+                    { type: 'تست سنجشی' as ActivityType },
+                  ]).map(({ type }) => (
                     <motion.button
                       key={type}
                       whileTap={{ scale: 0.95 }}
@@ -325,7 +322,7 @@ export default function ManualEntrySheet({
                           : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--accent)]/30'
                       }`}
                     >
-                      {emoji} {type}
+                      {type}
                     </motion.button>
                   ))}
                 </div>
@@ -470,7 +467,7 @@ export default function ManualEntrySheet({
               onClick={handleSubmit}
               className="btn-hover glow-hover px-6 py-2 rounded-[var(--radius)] text-sm bg-[var(--accent)] text-[var(--bg-deep)] font-medium min-h-[44px] shadow-[0_8px_20px_-6px_var(--accent-glow)]"
             >
-              ✔ ثبت تسک
+              ثبت تسک
             </motion.button>
           )}
 

@@ -204,7 +204,7 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
           </div>
           {displayStrategy === 'chapter' && (
             <p className="text-[10px] text-amber-400/80 mt-2 px-1 leading-relaxed">
-              ⚠️ با انتخاب «فقط فصل‌به‌فصل»، تب «مباحث کنکوری» برای این درس پنهان می‌شود. مباحث قبلی (در صورت وجود) حذف خواهند شد.
+              با انتخاب «فقط فصل‌به‌فصل»، تب «مباحث کنکوری» برای این درس پنهان می‌شود. مباحث قبلی (در صورت وجود) حذف خواهند شد.
             </p>
           )}
         </div>

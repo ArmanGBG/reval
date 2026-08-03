@@ -380,7 +380,7 @@ function AboutSection() {
       </div>
       <div className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-5 text-center space-y-1">
         <p className="text-[var(--foreground)] text-sm font-bold">روال نسخه ۱.۰.۰</p>
-        <p className="text-[var(--foreground-muted)] text-xs">ساخته شده با ❤️ برای دانش‌آموزان ایران</p>
+        <p className="text-[var(--foreground-muted)] text-xs">ساخته شده برای دانش‌آموزان ایران</p>
       </div>
     </section>
   );
