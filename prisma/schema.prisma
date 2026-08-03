@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ===== Reval (روال) - Prisma Schema =====
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +9,121 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===== User (all roles) =====
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  phone             String   @unique
+  password          String   // plaintext for dev only
+  name              String
+  avatar            String   @default("🦊")
+  role              String   @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
+  grade             String?  // دهم, یازدهم, دوازدهم, پشت کنکوری
+  major             String?  // تجربی, ریاضی, انسانی, معارف
+  goal              String?  // کنکور, نهایی, هر دو
+  dailyTargetHours  Int      @default(6)
+  instituteId       String?
+  assignedAdvisorId String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  institute         Institute?  @relation("InstituteMembers", fields: [instituteId], references: [id])
+  managedInstitute  Institute?  @relation("InstituteManager")
+  assignedAdvisor   User?       @relation("AdvisorStudents", fields: [assignedAdvisorId], references: [id])
+  students          User[]      @relation("AdvisorStudents")
+  tasks             Task[]
+  examParticipants   ExamParticipant[]
+  examResults       ExamResult[]
+  createdTasks      Task[]      @relation("TaskCreator")
+  createdExams      Exam[]      @relation("ExamCreator")
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ===== Institute =====
+model Institute {
+  id                String   @id @default(cuid())
+  name              String
+  logoUrl           String?
+  managerId         String   @unique
+  subscriptionPlan  String   @default("free") // free, basic, pro, enterprise
+  status            String   @default("active") // active, suspended, trial
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  manager           User     @relation("InstituteManager", fields: [managerId], references: [id])
+  members           User[]   @relation("InstituteMembers")
+  exams             Exam[]
+}
+
+// ===== Task =====
+model Task {
+  id                String   @id @default(cuid())
+  studentId         String
+  subject           String
+  subjectColor      String
+  topic             String
+  fieldType         String   // کنکور, نهایی
+  activityTypes     String   // JSON array stored as string
+  targetTimeMinutes Int
+  actualTimeMinutes Int?
+  targetTestCount   Int
+  actualTestCount   Int?
+  completed         Boolean? // null = pending, true = done, false = skipped
+  date              String   // ISO date string
+  order             Int
+  createdBy         String   // "student" or "advisor"
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  student           User     @relation(fields: [studentId], references: [id])
+  creator           User?    @relation("TaskCreator", fields: [createdById], references: [id])
+}
+
+// ===== Exam =====
+model Exam {
+  id            String   @id @default(cuid())
+  title         String
+  subject       String
+  subjectColor  String
+  date          String
+  startTime     String
+  duration      Int
+  totalScore    Int
+  status        String   @default("upcoming") // upcoming, in-progress, completed
+  createdById   String
+  instituteId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  creator       User     @relation("ExamCreator", fields: [createdById], references: [id])
+  institute     Institute? @relation(fields: [instituteId], references: [id])
+  participants  ExamParticipant[]
+  results       ExamResult[]
+}
+
+// ===== Exam Participant =====
+model ExamParticipant {
+  id        String @id @default(cuid())
+  examId    String
+  studentId String
+
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+// ===== Exam Result =====
+model ExamResult {
+  id        String @id @default(cuid())
+  examId    String
+  studentId String
+  score     Int?
+  rank      Int?
+
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
 }

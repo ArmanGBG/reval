@@ -1,38 +1,31 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Vazirmatn } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const vazirmatn = Vazirmatn({
+  variable: "--font-vazirmatn",
+  subsets: ["arabic"],
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "روال | Reval — مسیر مطالعه‌ات رو هموار کن",
+  description:
+    "اپلیکیشن مدیریت مطالعه و بهره‌وری دانش‌آموزی. روالت رو بساز، هدف‌گذاری کن، و مسیرت رو هموار کن.",
+  keywords: ["روال", "Reval", "مطالعه", "کنکور", "بهره‌وری", "دانش‌آموز"],
+  authors: [{ name: "Reval Team" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
-  openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0A0A0D",
 };
 
 export default function RootLayout({
@@ -41,12 +34,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${vazirmatn.variable} font-sans antialiased`}
+        style={{
+          backgroundColor: "var(--bg-base)",
+          color: "var(--foreground)",
+        }}
       >
         {children}
-        <Toaster />
+        <Toaster
+          position="top-center"
+          dir="rtl"
+          toastOptions={{
+            style: {
+              background: "var(--bg-overlay)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border-strong)",
+              direction: "rtl",
+              fontFamily: "var(--font-vazirmatn)",
+              borderRadius: "12px",
+              fontSize: "14px",
+              boxShadow: "0 12px 32px -10px rgba(0,0,0,0.6)",
+            },
+          }}
+          richColors
+        />
       </body>
     </html>
   );

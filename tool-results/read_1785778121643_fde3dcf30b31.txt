@@ -1,0 +1,1611 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { useAppStore } from '@/lib/store';
+     6→import { MOCK_STUDENTS, SUBJECTS, TOPICS } from '@/lib/constants/mockData';
+     7→import {
+     8→  StudentProfile,
+     9→  StudentStatus,
+    10→  StudentRisk,
+    11→  StudentAnalysis,
+    12→  TrendDirection,
+    13→  MoodLevel,
+    14→  Task,
+    15→  Exam,
+    16→  FieldType,
+    17→  ActivityType,
+    18→  ExamStatus,
+    19→} from '@/lib/types';
+    20→import {
+    21→  Dialog,
+    22→  DialogContent,
+    23→  DialogHeader,
+    24→  DialogTitle,
+    25→  DialogDescription,
+    26→  DialogFooter,
+    27→  DialogClose,
+    28→} from '@/components/ui/dialog';
+    29→import { Checkbox } from '@/components/ui/checkbox';
+    30→import {
+    31→  AlertTriangle,
+    32→  TrendingUp,
+    33→  Minus,
+    34→  AlertCircle,
+    35→  CheckCircle2,
+    36→  XCircle,
+    37→  Brain,
+    38→  Heart,
+    39→  Clock,
+    40→  Target,
+    41→  BookOpen,
+    42→  Timer,
+    43→  Zap,
+    44→  Users,
+    45→  ArrowUpRight,
+    46→  ArrowDownRight,
+    47→  Activity,
+    48→  Eye,
+    49→  ChevronLeft,
+    50→  LayoutDashboard,
+    51→  Shield,
+    52→  Flame,
+    53→  Calendar,
+    54→  FileText,
+    55→  UserCheck,
+    56→  ClipboardList,
+    57→  Plus,
+    58→  Pencil,
+    59→  Trash2,
+    60→  GraduationCap,
+    61→} from 'lucide-react';
+    62→import { toast } from 'sonner';
+    63→
+    64→// ===== Helper =====
+    65→function toPersianDigits(num: number | string): string {
+    66→  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    67→  return num.toString().split('').map((d) => persianDigits[parseInt(d)] ?? d).join('');
+    68→}
+    69→
+    70→// ===== Analysis Engine =====
+    71→function computeStudentStatus(student: StudentProfile): StudentStatus {
+    72→  const studyRatio = student.studyHoursPerWeek / student.studyHoursTarget;
+    73→  if (student.mockExamScore >= 75 && studyRatio >= 0.85 && student.taskCompletionRate >= 75 && student.mood !== 'poor' && student.mood !== 'critical') return 'excellent';
+    74→  if (student.mockExamScore < 40 || student.mood === 'critical' || student.attendanceRate < 60 || student.taskCompletionRate < 30) return 'critical';
+    75→  if (student.mockExamScore < 55 || student.mood === 'poor' || (student.mockExamScore - student.previousMockScore < -8 && student.studyHoursTrend === 'down') || student.attendanceRate < 70) return 'at-risk';
+    76→  if (student.mockExamScore >= 55 && student.taskCompletionRate >= 55 && studyRatio >= 0.65) return 'good';
+    77→  return 'fair';
+    78→}
+    79→
+    80→function computeRisks(students: StudentProfile[]): StudentRisk[] {
+    81→  return students.map((student) => {
+    82→    const reasons: string[] = [];
+    83→    let level: 'high' | 'medium' | 'low' = 'low';
+    84→    const scoreDiff = student.mockExamScore - student.previousMockScore;
+    85→
+    86→    if (student.mockExamScore < 40) { reasons.push(`نمره آزمون بسیار پایین (${toPersianDigits(student.mockExamScore)})`); level = 'high'; }
+    87→    if (scoreDiff < -8) { reasons.push(`افت شدید نمره (${toPersianDigits(Math.abs(scoreDiff))} نمره کاهش)`); level = 'high'; }
+    88→    if (student.studyHoursTrend === 'down' && student.studyHoursPerWeek < student.studyHoursTarget * 0.7) { reasons.push(`کاهش ساعت مطالعه (${toPersianDigits(student.studyHoursPerWeek)} ساعت از ${toPersianDigits(student.studyHoursTarget)})`); level = level === 'high' ? 'high' : 'medium'; }
+    89→    if (student.mood === 'critical' || student.mood === 'poor') { reasons.push(`وضعیت روحی ${student.mood === 'critical' ? 'بحرانی' : 'ضعیف'}`); level = 'high'; }
+    90→    if (student.attendanceRate < 65) { reasons.push(`حضور کم (${toPersianDigits(student.attendanceRate)}٪)`); level = level === 'high' ? 'high' : 'medium'; }
+    91→    if (student.taskCompletionRate < 35) { reasons.push(`تکمیل وظایف پایین (${toPersianDigits(student.taskCompletionRate)}٪)`); level = level === 'high' ? 'high' : 'medium'; }
+    92→    if (student.stressLevel >= 8) { reasons.push(`استرس بالا (${toPersianDigits(student.stressLevel)}/۱۰)`); level = level === 'high' ? 'high' : 'medium'; }
+    93→    if (student.motivationLevel <= 3) { reasons.push(`انگیزه پایین (${toPersianDigits(student.motivationLevel)}/۱۰)`); level = level === 'high' ? 'high' : 'medium'; }
+    94→
+    95→    let immediateAction = '';
+    96→    if (level === 'high') {
+    97→      if (student.mood === 'critical' || student.mood === 'poor') immediateAction = 'جلسه فوری با روانشناس + بازنگری برنامه';
+    98→      else if (student.attendanceRate < 65) immediateAction = 'تماس با خانواده + بررسی موانع حضور';
+    99→      else immediateAction = 'جلسه اضطراری + تمرکز بر ۲ درس ضعیف';
+   100→    } else if (level === 'medium') {
+   101→      immediateAction = 'جلسه هفتگی + هدف‌گذاری خرد';
+   102→    } else {
+   103→      immediateAction = 'ادامه برنامه + تشویق و تثبیت';
+   104→    }
+   105→
+   106→    return { studentId: student.id, level, reasons, immediateAction };
+   107→  });
+   108→}
+   109→
+   110→function computeAnalyses(students: StudentProfile[]): StudentAnalysis[] {
+   111→  return students.map((student) => {
+   112→    const strengths: string[] = [];
+   113→    const weaknesses: string[] = [];
+   114→    const interventions: string[] = [];
+   115→
+   116→    if (student.mockExamScore >= 70) strengths.push(`نمره آزمون خوب (${toPersianDigits(student.mockExamScore)})`);
+   117→    if (student.studyHoursTrend === 'up') strengths.push('روند افزایشی ساعت مطالعه');
+   118→    if (student.attendanceRate >= 90) strengths.push(`حضور منظم (${toPersianDigits(student.attendanceRate)}٪)`);
+   119→    if (student.taskCompletionRate >= 80) strengths.push(`تکمیل بالا (${toPersianDigits(student.taskCompletionRate)}٪)`);
+   120→    if (student.motivationLevel >= 7) strengths.push(`انگیزه بالا (${toPersianDigits(student.motivationLevel)}/۱۰)`);
+   121→    if (student.pomodoroSessionsPerWeek >= 15) strengths.push('استفاده منظم از پومودورو');
+   122→    const strongSubjects = Object.entries(student.schoolGrades).filter(([_, g]) => g >= 17).map(([n]) => n);
+   123→    if (strongSubjects.length > 0) strengths.push(`قوی در: ${strongSubjects.join('، ')}`);
+   124→
+   125→    if (student.mockExamScore < 55) weaknesses.push(`نمره پایین (${toPersianDigits(student.mockExamScore)})`);
+   126→    if (student.studyHoursTrend === 'down') weaknesses.push('کاهش ساعت مطالعه');
+   127→    if (student.attendanceRate < 75) weaknesses.push(`حضور ناکافی (${toPersianDigits(student.attendanceRate)}٪)`);
+   128→    if (student.taskCompletionRate < 50) weaknesses.push(`تکمیل پایین (${toPersianDigits(student.taskCompletionRate)}٪)`);
+   129→    if (student.stressLevel >= 7) weaknesses.push(`استرس بالا (${toPersianDigits(student.stressLevel)}/۱۰)`);
+   130→    const weakSubjects = Object.entries(student.schoolGrades).filter(([_, g]) => g < 13).map(([n]) => n);
+   131→    if (weakSubjects.length > 0) weaknesses.push(`ضعیف در: ${weakSubjects.join('، ')}`);
+   132→    const deficit = student.studyHoursTarget - student.studyHoursPerWeek;
+   133→    if (deficit > 10) weaknesses.push(`کمبود ${toPersianDigits(deficit)} ساعت مطالعه`);
+   134→
+   135→    let psychologicalAssessment = '';
+   136→    if (student.mood === 'critical') psychologicalAssessment = 'وضعیت بحرانی. نیاز به ارجاع فوری به روانشناس. علائم فرسودگی و احتمال افسردگی.';
+   137→    else if (student.mood === 'poor') psychologicalAssessment = 'وضعیت ضعیف. نشانه‌های فرسودگی تحصیلی. نیاز به کاهش فشار و تمرکز بر سلامت روان.';
+   138→    else if (student.stressLevel >= 7 && student.motivationLevel <= 5) psychologicalAssessment = 'استرس بالا + انگیزه پایین - الگوی خطرناک. احتمال شروع فرسودگی.';
+   139→    else if (student.stressLevel >= 7) psychologicalAssessment = 'استرس بالا اما انگیزه حفظ شده. در معرض خطر فرسودگی.';
+   140→    else if (student.motivationLevel >= 7 && student.stressLevel <= 5) psychologicalAssessment = 'تعادل خوب بین انگیزه و استرس. ادامه روند فعلی توصیه می‌شود.';
+   141→    else psychologicalAssessment = 'وضعیت متوسط. نیاز به پیگیری و تقویت انگیزه.';
+   142→
+   143→    if (weakSubjects.length > 0) interventions.push(`تخصیص ${toPersianDigits(weakSubjects.length * 2)} ساعت اضافی برای ${weakSubjects.join(' و ')} - مطالعه صبحگاهی`);
+   144→    if (student.studyHoursTrend === 'down') interventions.push(`بازنگری برنامه: کاهش حجم و افزایش کیفیت - تکنیک پومودورو`);
+   145→    if (student.taskCompletionRate < 50) interventions.push(`شروع با وظایف کوچک‌تر: تقسیم هر وظیفه به ${toPersianDigits(3)} بخش`);
+   146→    if (student.stressLevel >= 7) interventions.push('استفاده روزانه از اورژانس استرس + تمرین ذهن‌آگاهی ۱۰ دقیقه');
+   147→    if (student.attendanceRate < 75) interventions.push('برنامه انعطاف‌پذیر: امکان جبران آنلاین + جلسه هفتگی');
+   148→    if (student.motivationLevel <= 4) interventions.push('هدف‌گذاری خرد: اهداف روزانه کوچک + پاداش هفتگی');
+   149→    if (student.flashcardsMastered < student.flashcardsTotal * 0.4) interventions.push(`${toPersianDigits(15)} دقیقه فلش‌کارت قبل از خواب - دروس ضعیف`);
+   150→    if (student.mockExamScore >= 75 && student.taskCompletionRate >= 80) interventions.push('ادامه روند + تست‌های سنجشی سخت‌تر + مدیریت زمان آزمون');
+   151→    if (student.weeksUntilExam <= 16 && student.mockExamScore < 60) interventions.push('تمرکز بر تست‌زنی دروس با بالاترین ضریب + مرور سریع');
+   152→
+   153→    return { studentId: student.id, strengths, weaknesses, psychologicalAssessment, interventions };
+   154→  });
+   155→}
+   156→
+   157→// ===== UI Configs =====
+   158→const STATUS_CONFIG: Record<StudentStatus, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+   159→  excellent: { label: 'عالی', color: 'text-[#3EB489]', bg: 'bg-[#3EB489]/15', icon: <CheckCircle2 className="w-4 h-4" /> },
+   160→  good: { label: 'خوب', color: 'text-[#3EB489]', bg: 'bg-[#3EB489]/10', icon: <CheckCircle2 className="w-4 h-4" /> },
+   161→  fair: { label: 'متوسط', color: 'text-amber-400', bg: 'bg-amber-400/10', icon: <Minus className="w-4 h-4" /> },
+   162→  'at-risk': { label: 'در خطر', color: 'text-orange-400', bg: 'bg-orange-400/10', icon: <AlertCircle className="w-4 h-4" /> },
+   163→  critical: { label: 'بحرانی', color: 'text-rose-400', bg: 'bg-rose-400/15', icon: <AlertTriangle className="w-4 h-4" /> },
+   164→};
+   165→
+   166→const TREND_CONFIG: Record<TrendDirection, { icon: React.ReactNode; color: string }> = {
+   167→  up: { icon: <ArrowUpRight className="w-4 h-4" />, color: 'text-[#3EB489]' },
+   168→  down: { icon: <ArrowDownRight className="w-4 h-4" />, color: 'text-rose-400' },
+   169→  stable: { icon: <Minus className="w-4 h-4" />, color: 'text-zinc-400' },
+   170→};
+   171→
+   172→const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; emoji: string }> = {
+   173→  excellent: { label: 'عالی', color: 'text-[#3EB489]', emoji: '😊' },
+   174→  good: { label: 'خوب', color: 'text-[#3EB489]', emoji: '🙂' },
+   175→  fair: { label: 'متوسط', color: 'text-amber-400', emoji: '😐' },
+   176→  poor: { label: 'ضعیف', color: 'text-orange-400', emoji: '😟' },
+   177→  critical: { label: 'بحرانی', color: 'text-rose-400', emoji: '😰' },
+   178→};
+   179→
+   180→const RISK_CONFIG = {
+   181→  high: { label: 'بالا', color: 'text-rose-400', bg: 'bg-rose-400/15', border: 'border-rose-400/30' },
+   182→  medium: { label: 'متوسط', color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/30' },
+   183→  low: { label: 'پایین', color: 'text-[#3EB489]', bg: 'bg-[#3EB489]/10', border: 'border-[#3EB489]/30' },
+   184→};
+   185→
+   186→const EXAM_STATUS_CONFIG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
+   187→  upcoming: { label: 'پیش‌رو', color: 'text-[#8B5CF6]', bg: 'bg-[#8B5CF6]/15' },
+   188→  'in-progress': { label: 'در حال برگزاری', color: 'text-amber-400', bg: 'bg-amber-400/15' },
+   189→  completed: { label: 'برگزار شده', color: 'text-[#3EB489]', bg: 'bg-[#3EB489]/15' },
+   190→};
+   191→
+   192→const ALL_ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+   193→
+   194→// ===== Sub-Components =====
+   195→function MetricBar({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
+   196→  const pct = Math.min((value / max) * 100, 100);
+   197→  return (
+   198→    <div className="flex items-center gap-2">
+   199→      <span className="text-[10px] text-zinc-400 w-16 text-right shrink-0">{label}</span>
+   200→      <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+   201→        <motion.div className="h-full rounded-full" style={{ backgroundColor: color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+   202→      </div>
+   203→      <span className="text-[10px] text-zinc-400 w-8 text-left shrink-0">{toPersianDigits(value)}</span>
+   204→    </div>
+   205→  );
+   206→}
+   207→
+   208→function MiniRadar({ grades }: { grades: Record<string, number> }) {
+   209→  const entries = Object.entries(grades);
+   210→  const size = 120;
+   211→  const cx = size / 2;
+   212→  const cy = size / 2;
+   213→  const r = size / 2 - 15;
+   214→  const points = entries.map(([_, val], i) => {
+   215→    const angle = (Math.PI * 2 * i) / entries.length - Math.PI / 2;
+   216→    return { x: cx + r * (val / 20) * Math.cos(angle), y: cy + r * (val / 20) * Math.sin(angle) };
+   217→  });
+   218→  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+   219→
+   220→  return (
+   221→    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto">
+   222→      {[0.25, 0.5, 0.75, 1].map((s) => <circle key={s} cx={cx} cy={cy} r={r * s} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1} />)}
+   223→      {entries.map(([_, _v], i) => { const a = (Math.PI * 2 * i) / entries.length - Math.PI / 2; return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />; })}
+   224→      <path d={pathData} fill="rgba(62,180,137,0.15)" stroke="#3EB489" strokeWidth={1.5} />
+   225→      {points.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill="#3EB489" />)}
+   226→      {entries.map(([name], i) => { const a = (Math.PI * 2 * i) / entries.length - Math.PI / 2; return <text key={i} x={cx + (r + 12) * Math.cos(a)} y={cy + (r + 12) * Math.sin(a)} textAnchor="middle" dominantBaseline="middle" className="fill-zinc-400 text-[7px]" style={{ fontFamily: 'var(--font-vazirmatn)' }}>{name}</text>; })}
+   227→    </svg>
+   228→  );
+   229→}
+   230→
+   231→// ===== Task Modal (Add / Edit) =====
+   232→function TaskModal({
+   233→  open,
+   234→  onOpenChange,
+   235→  studentId,
+   236→  editTask,
+   237→}: {
+   238→  open: boolean;
+   239→  onOpenChange: (open: boolean) => void;
+   240→  studentId: string;
+   241→  editTask: Task | null;
+   242→}) {
+   243→  const { addTask, updateTask } = useAppStore();
+   244→  const isEdit = editTask !== null;
+   245→
+   246→  const [subject, setSubject] = useState(editTask?.subject ?? '');
+   247→  const [topic, setTopic] = useState(editTask?.topic ?? '');
+   248→  const [fieldType, setFieldType] = useState<FieldType>(editTask?.fieldType ?? 'کنکور');
+   249→  const [activityTypes, setActivityTypes] = useState<ActivityType[]>(editTask?.activityTypes ?? []);
+   250→  const [targetTimeMinutes, setTargetTimeMinutes] = useState(editTask?.targetTimeMinutes ?? 60);
+   251→  const [targetTestCount, setTargetTestCount] = useState(editTask?.targetTestCount ?? 20);
+   252→  const [date, setDate] = useState(editTask?.date ?? new Date().toISOString().split('T')[0]);
+   253→
+   254→  // Reset form when modal opens or editTask changes
+   255→  const resetForm = () => {
+   256→    setSubject(editTask?.subject ?? '');
+   257→    setTopic(editTask?.topic ?? '');
+   258→    setFieldType(editTask?.fieldType ?? 'کنکور');
+   259→    setActivityTypes(editTask?.activityTypes ?? []);
+   260→    setTargetTimeMinutes(editTask?.targetTimeMinutes ?? 60);
+   261→    setTargetTestCount(editTask?.targetTestCount ?? 20);
+   262→    setDate(editTask?.date ?? new Date().toISOString().split('T')[0]);
+   263→  };
+   264→
+   265→  const handleSubjectChange = (val: string) => {
+   266→    setSubject(val);
+   267→    setTopic(''); // reset topic when subject changes
+   268→  };
+   269→
+   270→  const toggleActivity = (act: ActivityType) => {
+   271→    setActivityTypes(prev =>
+   272→      prev.includes(act) ? prev.filter(a => a !== act) : [...prev, act]
+   273→    );
+   274→  };
+   275→
+   276→  const handleSubmit = () => {
+   277→    if (!subject) {
+   278→      toast.error('لطفاً درس را انتخاب کنید');
+   279→      return;
+   280→    }
+   281→    if (activityTypes.length === 0) {
+   282→      toast.error('لطفاً حداقل یک نوع فعالیت انتخاب کنید');
+   283→      return;
+   284→    }
+   285→
+   286→    const subjectObj = SUBJECTS.find(s => s.name === subject);
+   287→    const subjectColor = subjectObj?.color ?? '#3EB489';
+   288→
+   289→    if (isEdit && editTask) {
+   290→      updateTask(editTask.id, {
+   291→        subject,
+   292→        subjectColor,
+   293→        topic,
+   294→        fieldType,
+   295→        activityTypes,
+   296→        targetTimeMinutes,
+   297→        targetTestCount,
+   298→        date,
+   299→      });
+   300→      toast.success('وظیفه با موفقیت ویرایش شد');
+   301→    } else {
+   302→      const newTask: Task = {
+   303→        id: crypto.randomUUID(),
+   304→        studentId,
+   305→        subject,
+   306→        subjectColor,
+   307→        topic,
+   308→        fieldType,
+   309→        activityTypes,
+   310→        targetTimeMinutes,
+   311→        actualTimeMinutes: null,
+   312→        targetTestCount,
+   313→        actualTestCount: null,
+   314→        completed: null,
+   315→        date,
+   316→        order: Date.now(),
+   317→        createdBy: 'advisor',
+   318→      };
+   319→      addTask(newTask);
+   320→      toast.success('وظیفه جدید با موفقیت اضافه شد');
+   321→    }
+   322→    onOpenChange(false);
+   323→  };
+   324→
+   325→  const availableTopics = subject ? (TOPICS[subject] ?? []) : [];
+   326→
+   327→  return (
+   328→    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+   329→      <DialogContent className="bg-zinc-900 border-white/10 text-zinc-200 max-h-[90vh] overflow-y-auto" dir="rtl">
+   330→        <DialogHeader>
+   331→          <DialogTitle className="text-zinc-100">{isEdit ? 'ویرایش وظیفه' : 'افزودن وظیفه جدید'}</DialogTitle>
+   332→          <DialogDescription className="text-zinc-400">
+   333→            {isEdit ? 'جزئیات وظیفه را ویرایش کنید' : 'یک وظیفه جدید برای دانش‌آموز تعریف کنید'}
+   334→          </DialogDescription>
+   335→        </DialogHeader>
+   336→
+   337→        <div className="space-y-4">
+   338→          {/* Subject */}
+   339→          <div>
+   340→            <label className="text-xs text-zinc-400 mb-1 block">درس</label>
+   341→            <select
+   342→              value={subject}
+   343→              onChange={(e) => handleSubjectChange(e.target.value)}
+   344→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#3EB489]/30"
+   345→            >
+   346→              <option value="">انتخاب درس...</option>
+   347→              {SUBJECTS.map(s => (
+   348→                <option key={s.name} value={s.name}>{s.name}</option>
+   349→              ))}
+   350→            </select>
+   351→          </div>
+   352→
+   353→          {/* Topic */}
+   354→          <div>
+   355→            <label className="text-xs text-zinc-400 mb-1 block">مبحث</label>
+   356→            <input
+   357→              type="text"
+   358→              value={topic}
+   359→              onChange={(e) => setTopic(e.target.value)}
+   360→              placeholder="مبحث درسی..."
+   361→              list="topic-suggestions"
+   362→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-[#3EB489]/30"
+   363→            />
+   364→            {availableTopics.length > 0 && (
+   365→              <datalist id="topic-suggestions">
+   366→                {availableTopics.map(t => (
+   367→                  <option key={t} value={t} />
+   368→                ))}
+   369→              </datalist>
+   370→            )}
+   371→          </div>
+   372→
+   373→          {/* Field Type */}
+   374→          <div>
+   375→            <label className="text-xs text-zinc-400 mb-1 block">نوع</label>
+   376→            <div className="flex gap-3">
+   377→              {(['کنکور', 'نهایی'] as FieldType[]).map(ft => (
+   378→                <button
+   379→                  key={ft}
+   380→                  onClick={() => setFieldType(ft)}
+   381→                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${
+   382→                    fieldType === ft
+   383→                      ? 'bg-[#3EB489]/15 border-[#3EB489]/30 text-[#3EB489]'
+   384→                      : 'bg-zinc-800 border-white/10 text-zinc-400 hover:border-white/20'
+   385→                  }`}
+   386→                >
+   387→                  {ft}
+   388→                </button>
+   389→              ))}
+   390→            </div>
+   391→          </div>
+   392→
+   393→          {/* Activity Types */}
+   394→          <div>
+   395→            <label className="text-xs text-zinc-400 mb-2 block">نوع فعالیت</label>
+   396→            <div className="grid grid-cols-2 gap-2">
+   397→              {ALL_ACTIVITY_TYPES.map(act => (
+   398→                <label
+   399→                  key={act}
+   400→                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
+   401→                    activityTypes.includes(act)
+   402→                      ? 'bg-[#3EB489]/10 border-[#3EB489]/30 text-[#3EB489]'
+   403→                      : 'bg-zinc-800 border-white/10 text-zinc-400 hover:border-white/20'
+   404→                  }`}
+   405→                >
+   406→                  <Checkbox
+   407→                    checked={activityTypes.includes(act)}
+   408→                    onCheckedChange={() => toggleActivity(act)}
+   409→                    className="border-white/20 data-[state=checked]:bg-[#3EB489] data-[state=checked]:border-[#3EB489]"
+   410→                  />
+   411→                  <span className="text-sm">{act}</span>
+   412→                </label>
+   413→              ))}
+   414→            </div>
+   415→          </div>
+   416→
+   417→          {/* Target Time & Test Count */}
+   418→          <div className="grid grid-cols-2 gap-3">
+   419→            <div>
+   420→              <label className="text-xs text-zinc-400 mb-1 block">زمان هدف (دقیقه)</label>
+   421→              <input
+   422→                type="number"
+   423→                value={targetTimeMinutes}
+   424→                onChange={(e) => setTargetTimeMinutes(Number(e.target.value))}
+   425→                min={1}
+   426→                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#3EB489]/30"
+   427→              />
+   428→            </div>
+   429→            <div>
+   430→              <label className="text-xs text-zinc-400 mb-1 block">تعداد تست هدف</label>
+   431→              <input
+   432→                type="number"
+   433→                value={targetTestCount}
+   434→                onChange={(e) => setTargetTestCount(Number(e.target.value))}
+   435→                min={0}
+   436→                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#3EB489]/30"
+   437→              />
+   438→            </div>
+   439→          </div>
+   440→
+   441→          {/* Date */}
+   442→          <div>
+   443→            <label className="text-xs text-zinc-400 mb-1 block">تاریخ</label>
+   444→            <input
+   445→              type="date"
+   446→              value={date}
+   447→              onChange={(e) => setDate(e.target.value)}
+   448→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#3EB489]/30"
+   449→            />
+   450→          </div>
+   451→        </div>
+   452→
+   453→        <DialogFooter className="gap-2 sm:gap-0">
+   454→          <DialogClose asChild>
+   455→            <button className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg">
+   456→              انصراف
+   457→            </button>
+   458→          </DialogClose>
+   459→          <motion.button
+   460→            whileHover={{ scale: 1.02 }}
+   461→            whileTap={{ scale: 0.95 }}
+   462→            onClick={handleSubmit}
+   463→            className="px-6 py-2 bg-[#3EB489] text-white rounded-lg text-sm font-medium hover:bg-[#3EB489]/90 transition-colors"
+   464→          >
+   465→            {isEdit ? 'ذخیره تغییرات' : 'افزودن وظیفه'}
+   466→          </motion.button>
+   467→        </DialogFooter>
+   468→      </DialogContent>
+   469→    </Dialog>
+   470→  );
+   471→}
+   472→
+   473→// ===== Exam Modal (Single Student) =====
+   474→function ExamModal({
+   475→  open,
+   476→  onOpenChange,
+   477→  studentId,
+   478→}: {
+   479→  open: boolean;
+   480→  onOpenChange: (open: boolean) => void;
+   481→  studentId: string;
+   482→}) {
+   483→  const { addExam } = useAppStore();
+   484→
+   485→  const [title, setTitle] = useState('');
+   486→  const [subject, setSubject] = useState('');
+   487→  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+   488→  const [startTime, setStartTime] = useState('08:00');
+   489→  const [duration, setDuration] = useState(90);
+   490→  const [totalScore, setTotalScore] = useState(100);
+   491→
+   492→  const resetForm = () => {
+   493→    setTitle('');
+   494→    setSubject('');
+   495→    setDate(new Date().toISOString().split('T')[0]);
+   496→    setStartTime('08:00');
+   497→    setDuration(90);
+   498→    setTotalScore(100);
+   499→  };
+   500→
+   501→  const handleSubmit = () => {
+   502→    if (!title) {
+   503→      toast.error('لطفاً عنوان آزمون را وارد کنید');
+   504→      return;
+   505→    }
+   506→    if (!subject) {
+   507→      toast.error('لطفاً درس را انتخاب کنید');
+   508→      return;
+   509→    }
+   510→
+   511→    const subjectObj = SUBJECTS.find(s => s.name === subject);
+   512→    const subjectColor = subjectObj?.color ?? '#8B5CF6';
+   513→
+   514→    const newExam: Exam = {
+   515→      id: crypto.randomUUID(),
+   516→      title,
+   517→      subject,
+   518→      subjectColor,
+   519→      date,
+   520→      startTime,
+   521→      duration,
+   522→      totalScore,
+   523→      studentIds: [studentId],
+   524→      status: 'upcoming',
+   525→      results: [],
+   526→      createdBy: 'adv1',
+   527→      createdAt: new Date().toISOString(),
+   528→    };
+   529→    addExam(newExam);
+   530→    toast.success('آزمون با موفقیت ثبت شد');
+   531→    resetForm();
+   532→    onOpenChange(false);
+   533→  };
+   534→
+   535→  return (
+   536→    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+   537→      <DialogContent className="bg-zinc-900 border-white/10 text-zinc-200 max-h-[90vh] overflow-y-auto" dir="rtl">
+   538→        <DialogHeader>
+   539→          <DialogTitle className="text-zinc-100">ثبت آزمون جدید</DialogTitle>
+   540→          <DialogDescription className="text-zinc-400">
+   541→            یک آزمون جدید برای این دانش‌آموز ثبت کنید
+   542→          </DialogDescription>
+   543→        </DialogHeader>
+   544→
+   545→        <div className="space-y-4">
+   546→          {/* Title */}
+   547→          <div>
+   548→            <label className="text-xs text-zinc-400 mb-1 block">عنوان آزمون</label>
+   549→            <input
+   550→              type="text"
+   551→              value={title}
+   552→              onChange={(e) => setTitle(e.target.value)}
+   553→              placeholder="مثلاً: آزمون جامع ریاضی - اسفند"
+   554→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-[#8B5CF6]/30"
+   555→            />
+   556→          </div>
+   557→
+   558→          {/* Subject */}
+   559→          <div>
+   560→            <label className="text-xs text-zinc-400 mb-1 block">درس</label>
+   561→            <select
+   562→              value={subject}
+   563→              onChange={(e) => setSubject(e.target.value)}
+   564→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   565→            >
+   566→              <option value="">انتخاب درس...</option>
+   567→              {SUBJECTS.map(s => (
+   568→                <option key={s.name} value={s.name}>{s.name}</option>
+   569→              ))}
+   570→            </select>
+   571→          </div>
+   572→
+   573→          {/* Date */}
+   574→          <div>
+   575→            <label className="text-xs text-zinc-400 mb-1 block">تاریخ</label>
+   576→            <input
+   577→              type="date"
+   578→              value={date}
+   579→              onChange={(e) => setDate(e.target.value)}
+   580→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   581→            />
+   582→          </div>
+   583→
+   584→          {/* Start Time & Duration */}
+   585→          <div className="grid grid-cols-2 gap-3">
+   586→            <div>
+   587→              <label className="text-xs text-zinc-400 mb-1 block">ساعت شروع</label>
+   588→              <input
+   589→                type="time"
+   590→                value={startTime}
+   591→                onChange={(e) => setStartTime(e.target.value)}
+   592→                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   593→              />
+   594→            </div>
+   595→            <div>
+   596→              <label className="text-xs text-zinc-400 mb-1 block">مدت (دقیقه)</label>
+   597→              <input
+   598→                type="number"
+   599→                value={duration}
+   600→                onChange={(e) => setDuration(Number(e.target.value))}
+   601→                min={1}
+   602→                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   603→              />
+   604→            </div>
+   605→          </div>
+   606→
+   607→          {/* Total Score */}
+   608→          <div>
+   609→            <label className="text-xs text-zinc-400 mb-1 block">نمره کل</label>
+   610→            <input
+   611→              type="number"
+   612→              value={totalScore}
+   613→              onChange={(e) => setTotalScore(Number(e.target.value))}
+   614→              min={1}
+   615→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   616→            />
+   617→          </div>
+   618→        </div>
+   619→
+   620→        <DialogFooter className="gap-2 sm:gap-0">
+   621→          <DialogClose asChild>
+   622→            <button className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg">
+   623→              انصراف
+   624→            </button>
+   625→          </DialogClose>
+   626→          <motion.button
+   627→            whileHover={{ scale: 1.02 }}
+   628→            whileTap={{ scale: 0.95 }}
+   629→            onClick={handleSubmit}
+   630→            className="px-6 py-2 bg-[#8B5CF6] text-white rounded-lg text-sm font-medium hover:bg-[#8B5CF6]/90 transition-colors"
+   631→          >
+   632→            ثبت آزمون
+   633→          </motion.button>
+   634→        </DialogFooter>
+   635→      </DialogContent>
+   636→    </Dialog>
+   637→  );
+   638→}
+   639→
+   640→// ===== Group Exam Modal =====
+   641→function GroupExamModal({
+   642→  open,
+   643→  onOpenChange,
+   644→}: {
+   645→  open: boolean;
+   646→  onOpenChange: (open: boolean) => void;
+   647→}) {
+   648→  const { addExam } = useAppStore();
+   649→  const students = MOCK_STUDENTS;
+   650→
+   651→  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+   652→  const [title, setTitle] = useState('');
+   653→  const [subject, setSubject] = useState('');
+   654→  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+   655→  const [startTime, setStartTime] = useState('08:00');
+   656→  const [duration, setDuration] = useState(90);
+   657→  const [totalScore, setTotalScore] = useState(100);
+   658→
+   659→  const resetForm = () => {
+   660→    setSelectedStudentIds([]);
+   661→    setTitle('');
+   662→    setSubject('');
+   663→    setDate(new Date().toISOString().split('T')[0]);
+   664→    setStartTime('08:00');
+   665→    setDuration(90);
+   666→    setTotalScore(100);
+   667→  };
+   668→
+   669→  const toggleStudent = (id: string) => {
+   670→    setSelectedStudentIds(prev =>
+   671→      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+   672→    );
+   673→  };
+   674→
+   675→  const selectAll = () => {
+   676→    setSelectedStudentIds(students.map(s => s.id));
+   677→  };
+   678→
+   679→  const deselectAll = () => {
+   680→    setSelectedStudentIds([]);
+   681→  };
+   682→
+   683→  const handleSubmit = () => {
+   684→    if (selectedStudentIds.length === 0) {
+   685→      toast.error('لطفاً حداقل یک دانش‌آموز انتخاب کنید');
+   686→      return;
+   687→    }
+   688→    if (!title) {
+   689→      toast.error('لطفاً عنوان آزمون را وارد کنید');
+   690→      return;
+   691→    }
+   692→    if (!subject) {
+   693→      toast.error('لطفاً درس را انتخاب کنید');
+   694→      return;
+   695→    }
+   696→
+   697→    const subjectObj = SUBJECTS.find(s => s.name === subject);
+   698→    const subjectColor = subjectObj?.color ?? '#8B5CF6';
+   699→
+   700→    const newExam: Exam = {
+   701→      id: crypto.randomUUID(),
+   702→      title,
+   703→      subject,
+   704→      subjectColor,
+   705→      date,
+   706→      startTime,
+   707→      duration,
+   708→      totalScore,
+   709→      studentIds: selectedStudentIds,
+   710→      status: 'upcoming',
+   711→      results: [],
+   712→      createdBy: 'adv1',
+   713→      createdAt: new Date().toISOString(),
+   714→    };
+   715→    addExam(newExam);
+   716→    toast.success(`آزمون با موفقیت برای ${toPersianDigits(selectedStudentIds.length)} دانش‌آموز ثبت شد`);
+   717→    resetForm();
+   718→    onOpenChange(false);
+   719→  };
+   720→
+   721→  return (
+   722→    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+   723→      <DialogContent className="bg-zinc-900 border-white/10 text-zinc-200 max-h-[90vh] overflow-y-auto" dir="rtl">
+   724→        <DialogHeader>
+   725→          <DialogTitle className="text-zinc-100">آزمون جدید برای گروه</DialogTitle>
+   726→          <DialogDescription className="text-zinc-400">
+   727→            یک آزمون برای چند دانش‌آموز ثبت کنید
+   728→          </DialogDescription>
+   729→        </DialogHeader>
+   730→
+   731→        <div className="space-y-4">
+   732→          {/* Student Selection */}
+   733→          <div>
+   734→            <div className="flex items-center justify-between mb-2">
+   735→              <label className="text-xs text-zinc-400">انتخاب دانش‌آموزان</label>
+   736→              <div className="flex gap-2">
+   737→                <button onClick={selectAll} className="text-[10px] text-[#3EB489] hover:text-[#3EB489]/80">همه</button>
+   738→                <span className="text-zinc-600">|</span>
+   739→                <button onClick={deselectAll} className="text-[10px] text-zinc-400 hover:text-zinc-200">هیچکدام</button>
+   740→              </div>
+   741→            </div>
+   742→            <div className="max-h-48 overflow-y-auto bg-zinc-800/50 rounded-lg border border-white/10 p-2 space-y-1">
+   743→              {students.map(student => {
+   744→                const status = computeStudentStatus(student);
+   745→                const config = STATUS_CONFIG[status];
+   746→                return (
+   747→                  <label
+   748→                    key={student.id}
+   749→                    className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+   750→                      selectedStudentIds.includes(student.id)
+   751→                        ? 'bg-[#8B5CF6]/10 border border-[#8B5CF6]/30'
+   752→                        : 'hover:bg-zinc-700/50 border border-transparent'
+   753→                    }`}
+   754→                  >
+   755→                    <Checkbox
+   756→                      checked={selectedStudentIds.includes(student.id)}
+   757→                      onCheckedChange={() => toggleStudent(student.id)}
+   758→                      className="border-white/20 data-[state=checked]:bg-[#8B5CF6] data-[state=checked]:border-[#8B5CF6]"
+   759→                    />
+   760→                    <span className="text-lg">{student.avatar}</span>
+   761→                    <span className="text-sm text-zinc-200 flex-1">{student.name}</span>
+   762→                    <span className={`text-[10px] ${config.color}`}>{config.label}</span>
+   763→                  </label>
+   764→                );
+   765→              })}
+   766→            </div>
+   767→            {selectedStudentIds.length > 0 && (
+   768→              <p className="text-[10px] text-[#8B5CF6] mt-1">{toPersianDigits(selectedStudentIds.length)} دانش‌آموز انتخاب شده</p>
+   769→            )}
+   770→          </div>
+   771→
+   772→          {/* Title */}
+   773→          <div>
+   774→            <label className="text-xs text-zinc-400 mb-1 block">عنوان آزمون</label>
+   775→            <input
+   776→              type="text"
+   777→              value={title}
+   778→              onChange={(e) => setTitle(e.target.value)}
+   779→              placeholder="مثلاً: آزمون جامع ریاضی - اسفند"
+   780→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-[#8B5CF6]/30"
+   781→            />
+   782→          </div>
+   783→
+   784→          {/* Subject */}
+   785→          <div>
+   786→            <label className="text-xs text-zinc-400 mb-1 block">درس</label>
+   787→            <select
+   788→              value={subject}
+   789→              onChange={(e) => setSubject(e.target.value)}
+   790→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   791→            >
+   792→              <option value="">انتخاب درس...</option>
+   793→              {SUBJECTS.map(s => (
+   794→                <option key={s.name} value={s.name}>{s.name}</option>
+   795→              ))}
+   796→            </select>
+   797→          </div>
+   798→
+   799→          {/* Date */}
+   800→          <div>
+   801→            <label className="text-xs text-zinc-400 mb-1 block">تاریخ</label>
+   802→            <input
+   803→              type="date"
+   804→              value={date}
+   805→              onChange={(e) => setDate(e.target.value)}
+   806→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   807→            />
+   808→          </div>
+   809→
+   810→          {/* Start Time & Duration */}
+   811→          <div className="grid grid-cols-2 gap-3">
+   812→            <div>
+   813→              <label className="text-xs text-zinc-400 mb-1 block">ساعت شروع</label>
+   814→              <input
+   815→                type="time"
+   816→                value={startTime}
+   817→                onChange={(e) => setStartTime(e.target.value)}
+   818→                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   819→              />
+   820→            </div>
+   821→            <div>
+   822→              <label className="text-xs text-zinc-400 mb-1 block">مدت (دقیقه)</label>
+   823→              <input
+   824→                type="number"
+   825→                value={duration}
+   826→                onChange={(e) => setDuration(Number(e.target.value))}
+   827→                min={1}
+   828→                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   829→              />
+   830→            </div>
+   831→          </div>
+   832→
+   833→          {/* Total Score */}
+   834→          <div>
+   835→            <label className="text-xs text-zinc-400 mb-1 block">نمره کل</label>
+   836→            <input
+   837→              type="number"
+   838→              value={totalScore}
+   839→              onChange={(e) => setTotalScore(Number(e.target.value))}
+   840→              min={1}
+   841→              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[#8B5CF6]/30"
+   842→            />
+   843→          </div>
+   844→        </div>
+   845→
+   846→        <DialogFooter className="gap-2 sm:gap-0">
+   847→          <DialogClose asChild>
+   848→            <button className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors rounded-lg">
+   849→              انصراف
+   850→            </button>
+   851→          </DialogClose>
+   852→          <motion.button
+   853→            whileHover={{ scale: 1.02 }}
+   854→            whileTap={{ scale: 0.95 }}
+   855→            onClick={handleSubmit}
+   856→            className="px-6 py-2 bg-[#8B5CF6] text-white rounded-lg text-sm font-medium hover:bg-[#8B5CF6]/90 transition-colors"
+   857→          >
+   858→            ثبت آزمون گروهی
+   859→          </motion.button>
+   860→        </DialogFooter>
+   861→      </DialogContent>
+   862→    </Dialog>
+   863→  );
+   864→}
+   865→
+   866→// ===== ADVISOR VIEW 1: Dashboard (Global KPIs) =====
+   867→function AdvisorDashboardHome() {
+   868→  const students = MOCK_STUDENTS;
+   869→  const risks = useMemo(() => computeRisks(students), [students]);
+   870→  const statuses = useMemo(() => students.map(s => computeStudentStatus(s)), [students]);
+   871→
+   872→  const statusCounts = useMemo(() => {
+   873→    const c = { excellent: 0, good: 0, fair: 0, 'at-risk': 0, critical: 0 };
+   874→    statuses.forEach(s => c[s]++);
+   875→    return c;
+   876→  }, [statuses]);
+   877→
+   878→  const avgScore = Math.round(students.reduce((a, s) => a + s.mockExamScore, 0) / students.length);
+   879→  const avgStudy = Math.round(students.reduce((a, s) => a + s.studyHoursPerWeek, 0) / students.length);
+   880→  const avgAdherence = Math.round(students.reduce((a, s) => a + s.taskCompletionRate, 0) / students.length);
+   881→  const atRiskCount = statusCounts['at-risk'] + statusCounts.critical;
+   882→
+   883→  return (
+   884→    <div className="space-y-6">
+   885→      {/* KPI Cards */}
+   886→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   887→        {[
+   888→          { icon: <Users className="w-4 h-4 text-zinc-400" />, label: 'کل دانش‌آموزان', value: toPersianDigits(students.length), sub: '', color: 'text-zinc-100' },
+   889→          { icon: <AlertTriangle className="w-4 h-4 text-rose-400" />, label: 'نیاز به مداخله', value: toPersianDigits(atRiskCount), sub: '', color: 'text-rose-400' },
+   890→          { icon: <Target className="w-4 h-4 text-[#3EB489]" />, label: 'میانگین نمره', value: toPersianDigits(avgScore), sub: '', color: 'text-zinc-100' },
+   891→          { icon: <UserCheck className="w-4 h-4 text-amber-400" />, label: 'میانگین رعایت', value: `${toPersianDigits(avgAdherence)}٪`, sub: '', color: 'text-zinc-100' },
+   892→        ].map((kpi, i) => (
+   893→          <motion.div key={kpi.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+   894→            <div className="flex items-center gap-2 mb-2">{kpi.icon}<span className="text-xs text-zinc-400">{kpi.label}</span></div>
+   895→            <p className={`text-2xl font-black ${kpi.color}`}>{kpi.value}</p>
+   896→          </motion.div>
+   897→        ))}
+   898→      </div>
+   899→
+   900→      {/* Status Distribution */}
+   901→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+   902→        <h3 className="text-sm font-bold text-zinc-200 mb-3">توزیع وضعیت دانش‌آموزان</h3>
+   903→        <div className="flex gap-2">
+   904→          {Object.entries(statusCounts).map(([status, count]) => {
+   905→            const config = STATUS_CONFIG[status as StudentStatus];
+   906→            return (
+   907→              <div key={status} className={`flex-1 ${config.bg} rounded-lg p-3 text-center`}>
+   908→                <p className={`text-lg font-black ${config.color}`}>{toPersianDigits(count)}</p>
+   909→                <p className="text-[10px] text-zinc-400">{config.label}</p>
+   910→              </div>
+   911→            );
+   912→          })}
+   913→        </div>
+   914→      </div>
+   915→
+   916→      {/* Red Flags Summary */}
+   917→      <div className="bg-zinc-900 rounded-xl border border-rose-400/20 p-4">
+   918→        <div className="flex items-center gap-2 mb-3">
+   919→          <AlertTriangle className="w-4 h-4 text-rose-400" />
+   920→          <h3 className="text-sm font-bold text-rose-400">پرچم‌های قرمز</h3>
+   921→        </div>
+   922→        {risks.filter(r => r.level !== 'low').map(risk => {
+   923→          const student = students.find(s => s.id === risk.studentId)!;
+   924→          const config = RISK_CONFIG[risk.level];
+   925→          return (
+   926→            <div key={risk.studentId} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+   927→              <div className="flex items-center gap-2">
+   928→                <span className="text-lg">{student.avatar}</span>
+   929→                <span className="text-sm font-medium text-zinc-200">{student.name}</span>
+   930→              </div>
+   931→              <div className="flex items-center gap-2">
+   932→                <span className="text-xs text-zinc-400">{risk.reasons[0]}</span>
+   933→                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${config.bg} ${config.color}`}>خطر {config.label}</span>
+   934→              </div>
+   935→            </div>
+   936→          );
+   937→        })}
+   938→      </div>
+   939→
+   940→      {/* Weekly Study Hours */}
+   941→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+   942→        <h3 className="text-sm font-bold text-zinc-200 mb-3">ساعت مطالعه هفتگی</h3>
+   943→        <div className="space-y-2">
+   944→          {students.map(student => (
+   945→            <MetricBar key={student.id} label={student.name.split(' ')[0]} value={student.studyHoursPerWeek} max={50} color={student.studyHoursPerWeek >= student.studyHoursTarget ? '#3EB489' : student.studyHoursPerWeek >= student.studyHoursTarget * 0.7 ? '#F59E0B' : '#EF4444'} />
+   946→          ))}
+   947→        </div>
+   948→      </div>
+   949→    </div>
+   950→  );
+   951→}
+   952→
+   953→// ===== ADVISOR VIEW 2: Students List =====
+   954→function AdvisorStudentsList() {
+   955→  const { setCurrentView, setSelectedStudentId } = useAppStore();
+   956→  const students = MOCK_STUDENTS;
+   957→  const [searchQuery, setSearchQuery] = useState('');
+   958→  const [groupExamOpen, setGroupExamOpen] = useState(false);
+   959→
+   960→  const filteredStudents = useMemo(() => {
+   961→    if (!searchQuery) return students;
+   962→    return students.filter(s => s.name.includes(searchQuery) || s.grade.includes(searchQuery) || s.major.includes(searchQuery));
+   963→  }, [students, searchQuery]);
+   964→
+   965→  const handleStudentClick = (studentId: string) => {
+   966→    setSelectedStudentId(studentId);
+   967→    setCurrentView('advisor-student-detail');
+   968→  };
+   969→
+   970→  return (
+   971→    <div className="space-y-4">
+   972→      {/* Search + Group Exam Button */}
+   973→      <div className="flex gap-2">
+   974→        <div className="relative flex-1">
+   975→          <input
+   976→            type="text"
+   977→            placeholder="جستجوی دانش‌آموز..."
+   978→            value={searchQuery}
+   979→            onChange={(e) => setSearchQuery(e.target.value)}
+   980→            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-[#3EB489]/30"
+   981→          />
+   982→        </div>
+   983→        <motion.button
+   984→          whileHover={{ scale: 1.02 }}
+   985→          whileTap={{ scale: 0.95 }}
+   986→          onClick={() => setGroupExamOpen(true)}
+   987→          className="flex items-center gap-2 bg-[#8B5CF6]/15 border border-[#8B5CF6]/30 text-[#8B5CF6] rounded-xl px-4 py-3 text-sm font-medium hover:bg-[#8B5CF6]/20 transition-all shrink-0"
+   988→        >
+   989→          <GraduationCap className="w-4 h-4" />
+   990→          <span className="hidden sm:inline">آزمون جدید</span>
+   991→        </motion.button>
+   992→      </div>
+   993→
+   994→      {/* Student Cards */}
+   995→      <div className="space-y-3">
+   996→        {filteredStudents.map((student, index) => {
+   997→          const status = computeStudentStatus(student);
+   998→          const config = STATUS_CONFIG[status];
+   999→          const trend = TREND_CONFIG[student.studyHoursTrend];
+  1000→          const scoreDiff = student.mockExamScore - student.previousMockScore;
+  1001→
+  1002→          return (
+  1003→            <motion.div
+  1004→              key={student.id}
+  1005→              initial={{ opacity: 0, y: 12 }}
+  1006→              animate={{ opacity: 1, y: 0 }}
+  1007→              transition={{ delay: index * 0.05 }}
+  1008→              whileHover={{ scale: 1.01 }}
+  1009→              whileTap={{ scale: 0.98 }}
+  1010→              onClick={() => handleStudentClick(student.id)}
+  1011→              className="bg-zinc-900 rounded-xl border border-white/10 p-4 cursor-pointer hover:border-white/20 transition-all"
+  1012→            >
+  1013→              <div className="flex items-center justify-between mb-3">
+  1014→                <div className="flex items-center gap-3">
+  1015→                  <span className="text-2xl">{student.avatar}</span>
+  1016→                  <div>
+  1017→                    <p className="font-bold text-zinc-200">{student.name}</p>
+  1018→                    <p className="text-xs text-zinc-400">{student.grade} - {student.major} | {student.goal}</p>
+  1019→                  </div>
+  1020→                </div>
+  1021→                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${config.bg} ${config.color}`}>
+  1022→                  {config.icon} {config.label}
+  1023→                </span>
+  1024→              </div>
+  1025→
+  1026→              {/* Quick Stats */}
+  1027→              <div className="grid grid-cols-4 gap-2">
+  1028→                <div className="text-center">
+  1029→                  <p className="text-xs text-zinc-400">نمره</p>
+  1030→                  <p className="text-sm font-bold text-zinc-200">{toPersianDigits(student.mockExamScore)}</p>
+  1031→                  <p className={`text-[10px] ${scoreDiff >= 0 ? 'text-[#3EB489]' : 'text-rose-400'}`}>{scoreDiff >= 0 ? '+' : ''}{toPersianDigits(scoreDiff)}</p>
+  1032→                </div>
+  1033→                <div className="text-center">
+  1034→                  <p className="text-xs text-zinc-400">ساعت/هفته</p>
+  1035→                  <p className="text-sm font-bold text-zinc-200">{toPersianDigits(student.studyHoursPerWeek)}</p>
+  1036→                  <p className="text-[10px] text-zinc-400">از {toPersianDigits(student.studyHoursTarget)}</p>
+  1037→                </div>
+  1038→                <div className="text-center">
+  1039→                  <p className="text-xs text-zinc-400">تکمیل</p>
+  1040→                  <p className="text-sm font-bold text-zinc-200">{toPersianDigits(student.taskCompletionRate)}٪</p>
+  1041→                </div>
+  1042→                <div className="text-center">
+  1043→                  <p className="text-xs text-zinc-400">روند</p>
+  1044→                  <span className={`inline-flex items-center justify-center ${trend.color}`}>{trend.icon}</span>
+  1045→                </div>
+  1046→              </div>
+  1047→            </motion.div>
+  1048→          );
+  1049→        })}
+  1050→      </div>
+  1051→
+  1052→      {/* Group Exam Modal */}
+  1053→      <GroupExamModal open={groupExamOpen} onOpenChange={setGroupExamOpen} />
+  1054→    </div>
+  1055→  );
+  1056→}
+  1057→
+  1058→// ===== ADVISOR VIEW 3: Student Detail =====
+  1059→function AdvisorStudentDetail() {
+  1060→  const { selectedStudentId, setCurrentView, setSelectedStudentId, tasks, exams, addTask, updateTask, deleteTask, addExam } = useAppStore();
+  1061→  const students = MOCK_STUDENTS;
+  1062→  const analyses = useMemo(() => computeAnalyses(students), [students]);
+  1063→
+  1064→  const student = students.find(s => s.id === selectedStudentId) || null;
+  1065→  const analysis = analyses.find(a => a.studentId === selectedStudentId) || null;
+  1066→  const status = student ? computeStudentStatus(student) : null;
+  1067→  const risk = student ? computeRisks([student])[0] : null;
+  1068→
+  1069→  // Task management state
+  1070→  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  1071→  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  1072→
+  1073→  // Exam modal state
+  1074→  const [examModalOpen, setExamModalOpen] = useState(false);
+  1075→
+  1076→  // Filter tasks and exams for this student
+  1077→  const studentTasks = useMemo(() =>
+  1078→    tasks.filter(t => t.studentId === selectedStudentId),
+  1079→    [tasks, selectedStudentId]
+  1080→  );
+  1081→
+  1082→  const studentExams = useMemo(() =>
+  1083→    exams.filter(e => e.studentIds.includes(selectedStudentId ?? '')),
+  1084→    [exams, selectedStudentId]
+  1085→  );
+  1086→
+  1087→  const handleEditTask = (task: Task) => {
+  1088→    setEditingTask(task);
+  1089→    setTaskModalOpen(true);
+  1090→  };
+  1091→
+  1092→  const handleDeleteTask = (taskId: string) => {
+  1093→    deleteTask(taskId);
+  1094→    toast.success('وظیفه حذف شد');
+  1095→  };
+  1096→
+  1097→  const handleAddTask = () => {
+  1098→    setEditingTask(null);
+  1099→    setTaskModalOpen(true);
+  1100→  };
+  1101→
+  1102→  if (!student || !analysis || !status || !risk) {
+  1103→    return (
+  1104→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-8 text-center">
+  1105→        <Eye className="w-10 h-10 text-zinc-500 mx-auto mb-3" />
+  1106→        <p className="text-zinc-300 font-bold">دانش‌آموزی انتخاب نشده</p>
+  1107→      </div>
+  1108→    );
+  1109→  }
+  1110→
+  1111→  return (
+  1112→    <div className="space-y-4">
+  1113→      {/* Back Button */}
+  1114→      <motion.button
+  1115→        whileHover={{ scale: 1.02 }}
+  1116→        whileTap={{ scale: 0.95 }}
+  1117→        onClick={() => { setSelectedStudentId(null); setCurrentView('advisor-students'); }}
+  1118→        className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+  1119→      >
+  1120→        <ChevronLeft className="w-4 h-4" />
+  1121→        <span>بازگشت به لیست</span>
+  1122→      </motion.button>
+  1123→
+  1124→      {/* Student Header */}
+  1125→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+  1126→        <div className="flex items-center justify-between mb-4">
+  1127→          <div className="flex items-center gap-3">
+  1128→            <span className="text-3xl">{student.avatar}</span>
+  1129→            <div>
+  1130→              <h3 className="text-lg font-bold text-zinc-100">{student.name}</h3>
+  1131→              <p className="text-xs text-zinc-400">{student.grade} - {student.major} | {student.goal}</p>
+  1132→            </div>
+  1133→          </div>
+  1134→          <div className="flex items-center gap-2">
+  1135→            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${STATUS_CONFIG[status].bg} ${STATUS_CONFIG[status].color}`}>
+  1136→              {STATUS_CONFIG[status].icon} {STATUS_CONFIG[status].label}
+  1137→            </span>
+  1138→            <span className="text-xs text-zinc-400">{toPersianDigits(student.weeksUntilExam)} هفته تا کنکور</span>
+  1139→          </div>
+  1140→        </div>
+  1141→
+  1142→        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+  1143→          {[
+  1144→            { label: 'نمره آزمون', value: toPersianDigits(student.mockExamScore), sub: `${student.mockExamScore > student.previousMockScore ? '+' : ''}${toPersianDigits(student.mockExamScore - student.previousMockScore)}` },
+  1145→            { label: 'ساعت مطالعه', value: toPersianDigits(student.studyHoursPerWeek), sub: `از ${toPersianDigits(student.studyHoursTarget)}` },
+  1146→            { label: 'حضور', value: `${toPersianDigits(student.attendanceRate)}٪`, sub: '' },
+  1147→            { label: 'تکمیل وظایف', value: `${toPersianDigits(student.taskCompletionRate)}٪`, sub: '' },
+  1148→          ].map(kpi => (
+  1149→            <div key={kpi.label} className="bg-zinc-800/50 rounded-lg p-3 text-center">
+  1150→              <p className="text-xs text-zinc-400 mb-1">{kpi.label}</p>
+  1151→              <p className="text-xl font-black text-zinc-100">{kpi.value}</p>
+  1152→              {kpi.sub && <p className="text-[10px] text-zinc-400">{kpi.sub}</p>}
+  1153→            </div>
+  1154→          ))}
+  1155→        </div>
+  1156→      </div>
+  1157→
+  1158→      {/* Two Column: Grades + Wellbeing */}
+  1159→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1160→        <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+  1161→          <h4 className="text-sm font-bold text-zinc-200 mb-3">نمرات دروس</h4>
+  1162→          <MiniRadar grades={student.schoolGrades} />
+  1163→          <div className="mt-3 space-y-1.5">
+  1164→            {Object.entries(student.schoolGrades).map(([subject, grade]) => (
+  1165→              <MetricBar key={subject} label={subject} value={grade} max={20} color={grade >= 17 ? '#3EB489' : grade >= 14 ? '#F59E0B' : '#EF4444'} />
+  1166→            ))}
+  1167→          </div>
+  1168→        </div>
+  1169→
+  1170→        <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+  1171→          <h4 className="text-sm font-bold text-zinc-200 mb-3">وضعیت روانی</h4>
+  1172→          <div className="flex items-center gap-3 mb-4">
+  1173→            <span className="text-3xl">{MOOD_CONFIG[student.mood].emoji}</span>
+  1174→            <div>
+  1175→              <p className={`font-bold ${MOOD_CONFIG[student.mood].color}`}>{MOOD_CONFIG[student.mood].label}</p>
+  1176→              <p className="text-xs text-zinc-400">آخرین جلسه: {toPersianDigits(student.lastSessionDate)}</p>
+  1177→            </div>
+  1178→          </div>
+  1179→
+  1180→          {/* Motivation */}
+  1181→          <div className="mb-3">
+  1182→            <div className="flex items-center justify-between mb-1">
+  1183→              <span className="text-xs text-zinc-400">انگیزه</span>
+  1184→              <span className="text-xs text-zinc-200">{toPersianDigits(student.motivationLevel)}/۱۰</span>
+  1185→            </div>
+  1186→            <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+  1187→              <motion.div className="h-full rounded-full" style={{ backgroundColor: student.motivationLevel >= 7 ? '#3EB489' : student.motivationLevel >= 4 ? '#F59E0B' : '#EF4444' }} initial={{ width: 0 }} animate={{ width: `${student.motivationLevel * 10}%` }} transition={{ duration: 0.6 }} />
+  1188→            </div>
+  1189→          </div>
+  1190→
+  1191→          {/* Stress */}
+  1192→          <div className="mb-3">
+  1193→            <div className="flex items-center justify-between mb-1">
+  1194→              <span className="text-xs text-zinc-400">استرس</span>
+  1195→              <span className="text-xs text-zinc-200">{toPersianDigits(student.stressLevel)}/۱۰</span>
+  1196→            </div>
+  1197→            <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+  1198→              <motion.div className="h-full rounded-full" style={{ backgroundColor: student.stressLevel <= 3 ? '#3EB489' : student.stressLevel <= 6 ? '#F59E0B' : '#EF4444' }} initial={{ width: 0 }} animate={{ width: `${student.stressLevel * 10}%` }} transition={{ duration: 0.6 }} />
+  1199→            </div>
+  1200→          </div>
+  1201→
+  1202→          <div className="grid grid-cols-2 gap-2 mt-4">
+  1203→            <div className="bg-zinc-800/50 rounded-lg p-2.5 text-center">
+  1204→              <Timer className="w-4 h-4 text-[#8B5CF6] mx-auto mb-1" />
+  1205→              <p className="text-sm font-bold text-zinc-200">{toPersianDigits(student.pomodoroSessionsPerWeek)}</p>
+  1206→              <p className="text-[10px] text-zinc-400">پومودورو/هفته</p>
+  1207→            </div>
+  1208→            <div className="bg-zinc-800/50 rounded-lg p-2.5 text-center">
+  1209→              <BookOpen className="w-4 h-4 text-[#F59E0B] mx-auto mb-1" />
+  1210→              <p className="text-sm font-bold text-zinc-200">{toPersianDigits(student.flashcardsMastered)}/{toPersianDigits(student.flashcardsTotal)}</p>
+  1211→              <p className="text-[10px] text-zinc-400">فلش‌کارت</p>
+  1212→            </div>
+  1213→          </div>
+  1214→
+  1215→          <div className="mt-4 bg-zinc-800/50 rounded-lg p-3">
+  1216→            <p className="text-[10px] text-zinc-400 mb-1">یادداشت مشاور:</p>
+  1217→            <p className="text-xs text-zinc-300 leading-relaxed">{student.advisorNotes}</p>
+  1218→          </div>
+  1219→        </div>
+  1220→      </div>
+  1221→
+  1222→      {/* Strengths & Weaknesses */}
+  1223→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1224→        <div className="bg-zinc-900 rounded-xl border border-[#3EB489]/20 p-4">
+  1225→          <div className="flex items-center gap-2 mb-3">
+  1226→            <CheckCircle2 className="w-4 h-4 text-[#3EB489]" />
+  1227→            <h4 className="text-sm font-bold text-[#3EB489]">نقاط قوت</h4>
+  1228→          </div>
+  1229→          <div className="space-y-2">
+  1230→            {analysis.strengths.length > 0 ? analysis.strengths.map((s, i) => (
+  1231→              <div key={i} className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-[#3EB489] mt-0.5 shrink-0" /><span className="text-sm text-zinc-300">{s}</span></div>
+  1232→            )) : <p className="text-sm text-zinc-400">نقطه قوت مشخصی شناسایی نشده</p>}
+  1233→          </div>
+  1234→        </div>
+  1235→        <div className="bg-zinc-900 rounded-xl border border-rose-400/20 p-4">
+  1236→          <div className="flex items-center gap-2 mb-3">
+  1237→            <XCircle className="w-4 h-4 text-rose-400" />
+  1238→            <h4 className="text-sm font-bold text-rose-400">نقاط ضعف</h4>
+  1239→          </div>
+  1240→          <div className="space-y-2">
+  1241→            {analysis.weaknesses.length > 0 ? analysis.weaknesses.map((w, i) => (
+  1242→              <div key={i} className="flex items-start gap-2"><XCircle className="w-3.5 h-3.5 text-rose-400 mt-0.5 shrink-0" /><span className="text-sm text-zinc-300">{w}</span></div>
+  1243→            )) : <p className="text-sm text-zinc-400">نقطه ضعف مشخصی شناسایی نشده</p>}
+  1244→          </div>
+  1245→        </div>
+  1246→      </div>
+  1247→
+  1248→      {/* Psychological Assessment */}
+  1249→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+  1250→        <div className="flex items-center gap-2 mb-3">
+  1251→          <Heart className="w-4 h-4 text-[#EC4899]" />
+  1252→          <h4 className="text-sm font-bold text-zinc-200">ارزیابی روانشناختی</h4>
+  1253→        </div>
+  1254→        <p className="text-sm text-zinc-300 leading-relaxed">{analysis.psychologicalAssessment}</p>
+  1255→      </div>
+  1256→
+  1257→      {/* Interventions */}
+  1258→      <div className="bg-zinc-900 rounded-xl border border-[#3EB489]/20 p-4">
+  1259→        <div className="flex items-center gap-2 mb-3">
+  1260→          <Zap className="w-4 h-4 text-[#3EB489]" />
+  1261→          <h4 className="text-sm font-bold text-[#3EB489]">برنامه مداخله‌ای</h4>
+  1262→        </div>
+  1263→        <div className="space-y-2">
+  1264→          {analysis.interventions.map((intervention, i) => (
+  1265→            <div key={i} className="flex items-start gap-3">
+  1266→              <span className="w-6 h-6 rounded-lg bg-[#3EB489]/15 flex items-center justify-center text-xs font-bold text-[#3EB489] shrink-0">{toPersianDigits(i + 1)}</span>
+  1267→              <span className="text-sm text-zinc-300 leading-relaxed">{intervention}</span>
+  1268→            </div>
+  1269→          ))}
+  1270→        </div>
+  1271→      </div>
+  1272→
+  1273→      {/* ===== Student Tasks Section ===== */}
+  1274→      <div className="bg-zinc-900 rounded-xl border border-[#3EB489]/20 p-4">
+  1275→        <div className="flex items-center justify-between mb-3">
+  1276→          <div className="flex items-center gap-2">
+  1277→            <ClipboardList className="w-4 h-4 text-[#3EB489]" />
+  1278→            <h4 className="text-sm font-bold text-[#3EB489]">وظایف دانش‌آموز</h4>
+  1279→          </div>
+  1280→          <motion.button
+  1281→            whileHover={{ scale: 1.05 }}
+  1282→            whileTap={{ scale: 0.95 }}
+  1283→            onClick={handleAddTask}
+  1284→            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3EB489]/15 border border-[#3EB489]/30 rounded-lg text-xs font-medium text-[#3EB489] hover:bg-[#3EB489]/20 transition-all"
+  1285→          >
+  1286→            <Plus className="w-3.5 h-3.5" />
+  1287→            افزودن وظیفه
+  1288→          </motion.button>
+  1289→        </div>
+  1290→
+  1291→        {studentTasks.length === 0 ? (
+  1292→          <div className="text-center py-8">
+  1293→            <ClipboardList className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+  1294→            <p className="text-sm text-zinc-400">هنوز وظیفه‌ای برای این دانش‌آموز تعریف نشده</p>
+  1295→          </div>
+  1296→        ) : (
+  1297→          <div className="space-y-2 max-h-96 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+  1298→            {studentTasks.map((task, index) => (
+  1299→              <motion.div
+  1300→                key={task.id}
+  1301→                initial={{ opacity: 0, x: -10 }}
+  1302→                animate={{ opacity: 1, x: 0 }}
+  1303→                transition={{ delay: index * 0.03 }}
+  1304→                className="flex items-center gap-3 bg-zinc-800/50 rounded-lg p-3 border border-white/5 hover:border-white/10 transition-all group"
+  1305→              >
+  1306→                {/* Subject color indicator */}
+  1307→                <div className="w-1 h-10 rounded-full shrink-0" style={{ backgroundColor: task.subjectColor }} />
+  1308→
+  1309→                {/* Task info */}
+  1310→                <div className="flex-1 min-w-0">
+  1311→                  <div className="flex items-center gap-2 mb-0.5">
+  1312→                    <span className="text-sm font-medium text-zinc-200 truncate">{task.subject}</span>
+  1313→                    <span className="text-xs text-zinc-400">-</span>
+  1314→                    <span className="text-xs text-zinc-400 truncate">{task.topic}</span>
+  1315→                  </div>
+  1316→                  <div className="flex items-center gap-2 flex-wrap">
+  1317→                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+  1318→                      task.fieldType === 'کنکور' ? 'bg-[#3EB489]/10 text-[#3EB489]' : 'bg-amber-400/10 text-amber-400'
+  1319→                    }`}>
+  1320→                      {task.fieldType}
+  1321→                    </span>
+  1322→                    {task.activityTypes.map(at => (
+  1323→                      <span key={at} className="px-1.5 py-0.5 rounded text-[9px] bg-zinc-700/50 text-zinc-400">{at}</span>
+  1324→                    ))}
+  1325→                    <span className="text-[10px] text-zinc-500">
+  1326→                      <Clock className="w-3 h-3 inline ml-0.5" />
+  1327→                      {toPersianDigits(task.targetTimeMinutes)} دقیقه
+  1328→                    </span>
+  1329→                    {task.targetTestCount > 0 && (
+  1330→                      <span className="text-[10px] text-zinc-500">
+  1331→                        <Target className="w-3 h-3 inline ml-0.5" />
+  1332→                        {toPersianDigits(task.targetTestCount)} تست
+  1333→                      </span>
+  1334→                    )}
+  1335→                  </div>
+  1336→                </div>
+  1337→
+  1338→                {/* Created by badge */}
+  1339→                <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold shrink-0 ${
+  1340→                  task.createdBy === 'advisor'
+  1341→                    ? 'bg-[#3EB489]/10 text-[#3EB489]'
+  1342→                    : 'bg-zinc-700/50 text-zinc-400'
+  1343→                }`}>
+  1344→                  {task.createdBy === 'advisor' ? 'مشاور' : 'خودم'}
+  1345→                </span>
+  1346→
+  1347→                {/* Completed status */}
+  1348→                {task.completed !== null && (
+  1349→                  <span className={`shrink-0 ${task.completed ? 'text-[#3EB489]' : 'text-zinc-500'}`}>
+  1350→                    {task.completed ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+  1351→                  </span>
+  1352→                )}
+  1353→
+  1354→                {/* Actions */}
+  1355→                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+  1356→                  <motion.button
+  1357→                    whileHover={{ scale: 1.1 }}
+  1358→                    whileTap={{ scale: 0.9 }}
+  1359→                    onClick={(e) => { e.stopPropagation(); handleEditTask(task); }}
+  1360→                    className="p-1.5 rounded-lg hover:bg-zinc-700/50 text-zinc-400 hover:text-zinc-200 transition-colors"
+  1361→                  >
+  1362→                    <Pencil className="w-3.5 h-3.5" />
+  1363→                  </motion.button>
+  1364→                  <motion.button
+  1365→                    whileHover={{ scale: 1.1 }}
+  1366→                    whileTap={{ scale: 0.9 }}
+  1367→                    onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+  1368→                    className="p-1.5 rounded-lg hover:bg-rose-400/10 text-zinc-400 hover:text-rose-400 transition-colors"
+  1369→                  >
+  1370→                    <Trash2 className="w-3.5 h-3.5" />
+  1371→                  </motion.button>
+  1372→                </div>
+  1373→              </motion.div>
+  1374→            ))}
+  1375→          </div>
+  1376→        )}
+  1377→      </div>
+  1378→
+  1379→      {/* ===== Student Exams Section ===== */}
+  1380→      <div className="bg-zinc-900 rounded-xl border border-[#8B5CF6]/20 p-4">
+  1381→        <div className="flex items-center justify-between mb-3">
+  1382→          <div className="flex items-center gap-2">
+  1383→            <GraduationCap className="w-4 h-4 text-[#8B5CF6]" />
+  1384→            <h4 className="text-sm font-bold text-[#8B5CF6]">آزمون‌ها</h4>
+  1385→          </div>
+  1386→          <motion.button
+  1387→            whileHover={{ scale: 1.05 }}
+  1388→            whileTap={{ scale: 0.95 }}
+  1389→            onClick={() => setExamModalOpen(true)}
+  1390→            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8B5CF6]/15 border border-[#8B5CF6]/30 rounded-lg text-xs font-medium text-[#8B5CF6] hover:bg-[#8B5CF6]/20 transition-all"
+  1391→          >
+  1392→            <Plus className="w-3.5 h-3.5" />
+  1393→            ثبت آزمون
+  1394→          </motion.button>
+  1395→        </div>
+  1396→
+  1397→        {studentExams.length === 0 ? (
+  1398→          <div className="text-center py-8">
+  1399→            <GraduationCap className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
+  1400→            <p className="text-sm text-zinc-400">هنوز آزمونی برای این دانش‌آموز ثبت نشده</p>
+  1401→          </div>
+  1402→        ) : (
+  1403→          <div className="space-y-2 max-h-96 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+  1404→            {studentExams.map((exam, index) => {
+  1405→              const statusConfig = EXAM_STATUS_CONFIG[exam.status];
+  1406→              const studentResult = exam.results.find(r => r.studentId === selectedStudentId);
+  1407→              return (
+  1408→                <motion.div
+  1409→                  key={exam.id}
+  1410→                  initial={{ opacity: 0, x: -10 }}
+  1411→                  animate={{ opacity: 1, x: 0 }}
+  1412→                  transition={{ delay: index * 0.03 }}
+  1413→                  className="bg-zinc-800/50 rounded-lg p-3 border border-white/5 hover:border-white/10 transition-all"
+  1414→                >
+  1415→                  <div className="flex items-center justify-between mb-2">
+  1416→                    <div className="flex items-center gap-2">
+  1417→                      <div className="w-1 h-8 rounded-full" style={{ backgroundColor: exam.subjectColor }} />
+  1418→                      <div>
+  1419→                        <p className="text-sm font-medium text-zinc-200">{exam.title}</p>
+  1420→                        <p className="text-[10px] text-zinc-400">{exam.subject}</p>
+  1421→                      </div>
+  1422→                    </div>
+  1423→                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${statusConfig.bg} ${statusConfig.color}`}>
+  1424→                      {statusConfig.label}
+  1425→                    </span>
+  1426→                  </div>
+  1427→                  <div className="flex items-center gap-3 text-[10px] text-zinc-400">
+  1428→                    <span className="flex items-center gap-1">
+  1429→                      <Calendar className="w-3 h-3" />
+  1430→                      {toPersianDigits(exam.date)}
+  1431→                    </span>
+  1432→                    <span className="flex items-center gap-1">
+  1433→                      <Clock className="w-3 h-3" />
+  1434→                      {toPersianDigits(exam.startTime)}
+  1435→                    </span>
+  1436→                    <span className="flex items-center gap-1">
+  1437→                      <Timer className="w-3 h-3" />
+  1438→                      {toPersianDigits(exam.duration)} دقیقه
+  1439→                    </span>
+  1440→                    <span className="flex items-center gap-1">
+  1441→                      <Target className="w-3 h-3" />
+  1442→                      از {toPersianDigits(exam.totalScore)}
+  1443→                    </span>
+  1444→                    <span className="flex items-center gap-1">
+  1445→                      <Users className="w-3 h-3" />
+  1446→                      {toPersianDigits(exam.studentIds.length)} نفر
+  1447→                    </span>
+  1448→                  </div>
+  1449→                  {exam.status === 'completed' && studentResult && studentResult.score !== null && (
+  1450→                    <div className="mt-2 pt-2 border-t border-white/5">
+  1451→                      <div className="flex items-center gap-2">
+  1452→                        <span className="text-[10px] text-zinc-400">نتیجه:</span>
+  1453→                        <span className={`text-sm font-bold ${
+  1454→                          studentResult.score >= exam.totalScore * 0.7 ? 'text-[#3EB489]' :
+  1455→                          studentResult.score >= exam.totalScore * 0.5 ? 'text-amber-400' : 'text-rose-400'
+  1456→                        }`}>
+  1457→                          {toPersianDigits(studentResult.score)}
+  1458→                        </span>
+  1459→                        <span className="text-[10px] text-zinc-400">از {toPersianDigits(exam.totalScore)}</span>
+  1460→                        {studentResult.rank !== null && (
+  1461→                          <>
+  1462→                            <span className="text-[10px] text-zinc-400">|</span>
+  1463→                            <span className="text-[10px] text-zinc-400">رتبه: {toPersianDigits(studentResult.rank)}</span>
+  1464→                          </>
+  1465→                        )}
+  1466→                      </div>
+  1467→                    </div>
+  1468→                  )}
+  1469→                </motion.div>
+  1470→              );
+  1471→            })}
+  1472→          </div>
+  1473→        )}
+  1474→      </div>
+  1475→
+  1476→      {/* Assign Weekly Template */}
+  1477→      <div className="bg-zinc-900 rounded-xl border border-[#8B5CF6]/20 p-4">
+  1478→        <div className="flex items-center gap-2 mb-3">
+  1479→          <ClipboardList className="w-4 h-4 text-[#8B5CF6]" />
+  1480→          <h4 className="text-sm font-bold text-[#8B5CF6]">تخصیص الگوی هفتگی</h4>
+  1481→        </div>
+  1482→        <p className="text-sm text-zinc-400 mb-3">یک الگوی برنامه هفتگی به این دانش‌آموز تخصیص بده:</p>
+  1483→        <div className="grid grid-cols-2 gap-2">
+  1484→          {['الگوی فشرده کنکور', 'الگوی متعادل', 'الگوی مرور', 'الگوی سفارشی'].map((template, i) => (
+  1485→            <motion.button
+  1486→              key={template}
+  1487→              whileHover={{ scale: 1.02 }}
+  1488→              whileTap={{ scale: 0.95 }}
+  1489→              className="bg-zinc-800/50 border border-white/10 rounded-lg p-3 text-sm text-zinc-300 hover:border-[#8B5CF6]/30 hover:text-zinc-200 transition-all text-center"
+  1490→            >
+  1491→              {template}
+  1492→            </motion.button>
+  1493→          ))}
+  1494→        </div>
+  1495→      </div>
+  1496→
+  1497→      {/* Task Modal */}
+  1498→      <TaskModal
+  1499→        open={taskModalOpen}
+  1500→        onOpenChange={setTaskModalOpen}
+  1501→        studentId={selectedStudentId!}
+  1502→        editTask={editingTask}
+  1503→      />
+  1504→
+  1505→      {/* Exam Modal */}
+  1506→      <ExamModal
+  1507→        open={examModalOpen}
+  1508→        onOpenChange={setExamModalOpen}
+  1509→        studentId={selectedStudentId!}
+  1510→      />
+  1511→    </div>
+  1512→  );
+  1513→}
+  1514→
+  1515→// ===== Advisor Settings =====
+  1516→function AdvisorSettings() {
+  1517→  const { hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders } = useAppStore();
+  1518→
+  1519→  return (
+  1520→    <div className="space-y-6" dir="rtl">
+  1521→      <h2 className="text-lg font-bold text-zinc-200">تنظیمات مشاور</h2>
+  1522→
+  1523→      {/* App Settings */}
+  1524→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-4 space-y-4">
+  1525→        <h3 className="text-sm font-bold text-zinc-300">تنظیمات اپلیکیشن</h3>
+  1526→        <div className="flex items-center justify-between min-h-[44px]">
+  1527→          <div>
+  1528→            <p className="text-zinc-200 text-sm font-medium">بازخورد لرزشی</p>
+  1529→            <p className="text-zinc-400 text-xs mt-0.5">لرزش هنگام تعامل</p>
+  1530→          </div>
+  1531→          <label className="relative inline-flex items-center cursor-pointer">
+  1532→            <input
+  1533→              type="checkbox"
+  1534→              checked={hapticFeedback}
+  1535→              onChange={(e) => setHapticFeedback(e.target.checked)}
+  1536→              className="sr-only peer"
+  1537→            />
+  1538→            <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3EB489]"></div>
+  1539→          </label>
+  1540→        </div>
+  1541→        <div className="flex items-center justify-between min-h-[44px]">
+  1542→          <div>
+  1543→            <p className="text-zinc-200 text-sm font-medium">یادآوری اعلان‌ها</p>
+  1544→            <p className="text-zinc-400 text-xs mt-0.5">اعلان برای برنامه مطالعه</p>
+  1545→          </div>
+  1546→          <label className="relative inline-flex items-center cursor-pointer">
+  1547→            <input
+  1548→              type="checkbox"
+  1549→              checked={notificationReminders}
+  1550→              onChange={(e) => setNotificationReminders(e.target.checked)}
+  1551→              className="sr-only peer"
+  1552→            />
+  1553→            <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3EB489]"></div>
+  1554→          </label>
+  1555→        </div>
+  1556→      </div>
+  1557→
+  1558→      {/* Info */}
+  1559→      <div className="bg-zinc-900 rounded-xl border border-white/10 p-4">
+  1560→        <h3 className="text-sm font-bold text-zinc-300 mb-3">درباره پنل مشاور</h3>
+  1561→        <p className="text-zinc-400 text-sm">این پنل به مشاوران تحصیلی امکان مدیریت و تحلیل وضعیت دانش‌آموزان را می‌دهد. از اینجا می‌توانید پروفایل دانش‌آموزان را مشاهده، ارزیابی روانشناختی انجام و برنامه مداخله‌ای تعریف کنید.</p>
+  1562→      </div>
+  1563→
+  1564→      {/* Version */}
+  1565→      <div className="text-center space-y-1 pb-4">
+  1566→        <p className="text-zinc-400 text-sm font-medium">روال نسخه ۱.۰.۰ — پنل مشاور</p>
+  1567→        <p className="text-zinc-400 text-xs">ساخته شده با ❤️ برای مشاوران تحصیلی</p>
+  1568→      </div>
+  1569→    </div>
+  1570→  );
+  1571→}
+  1572→
+  1573→// ===== Main Advisor Panel (router) =====
+  1574→export default function AdvisorPanel() {
+  1575→  const { currentView } = useAppStore();
+  1576→
+  1577→  return (
+  1578→    <div className="max-w-4xl mx-auto px-4 pt-4 pb-20">
+  1579→      {/* Header */}
+  1580→      <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-white/5 backdrop-blur-xl border-b border-white/10 mb-6">
+  1581→        <div className="max-w-4xl mx-auto flex items-center justify-between">
+  1582→          <div>
+  1583→            <h1 className="text-lg font-bold text-[#3EB489]">پنل مشاور</h1>
+  1584→            <p className="text-xs text-zinc-400">مدیریت و تحلیل دانش‌آموزان</p>
+  1585→          </div>
+  1586→          <div className="flex items-center gap-2">
+  1587→            <Shield className="w-4 h-4 text-[#3EB489]" />
+  1588→            <span className="text-xs text-zinc-400">مشاور تحصیلی</span>
+  1589→          </div>
+  1590→        </div>
+  1591→      </div>
+  1592→
+  1593→      {/* Content */}
+  1594→      <AnimatePresence mode="wait">
+  1595→        <motion.div
+  1596→          key={currentView}
+  1597→          initial={{ opacity: 0, y: 8 }}
+  1598→          animate={{ opacity: 1, y: 0 }}
+  1599→          exit={{ opacity: 0, y: -8 }}
+  1600→          transition={{ duration: 0.2 }}
+  1601→        >
+  1602→          {currentView === 'advisor-dashboard' && <AdvisorDashboardHome />}
+  1603→          {currentView === 'advisor-students' && <AdvisorStudentsList />}
+  1604→          {currentView === 'advisor-student-detail' && <AdvisorStudentDetail />}
+  1605→          {currentView === 'advisor-settings' && <AdvisorSettings />}
+  1606→        </motion.div>
+  1607→      </AnimatePresence>
+  1608→    </div>
+  1609→  );
+  1610→}
+  1611→
