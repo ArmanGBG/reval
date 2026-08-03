@@ -75,7 +75,7 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border)]">
+      <div className={`grid ${topicModeCount > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 pt-3 border-t border-[var(--border)]`}>
         <div className="flex flex-col items-center justify-center text-center">
           <Layers className="w-3.5 h-3.5 text-[var(--foreground-muted)] mb-1" />
           <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(chapterCount)}</span>
@@ -86,11 +86,13 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
           <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(topicCount)}</span>
           <span className="text-[9px] text-[var(--foreground-subtle)]">گفتار</span>
         </div>
-        <div className="flex flex-col items-center justify-center text-center">
-          <Sparkles className="w-3.5 h-3.5 text-[var(--foreground-muted)] mb-1" />
-          <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(topicModeCount)}</span>
-          <span className="text-[9px] text-[var(--foreground-subtle)]">مبحث</span>
-        </div>
+        {topicModeCount > 0 && (
+          <div className="flex flex-col items-center justify-center text-center">
+            <Sparkles className="w-3.5 h-3.5 text-[var(--foreground-muted)] mb-1" />
+            <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(topicModeCount)}</span>
+            <span className="text-[9px] text-[var(--foreground-subtle)]">مبحث</span>
+          </div>
+        )}
       </div>
     </button>
   );

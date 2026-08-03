@@ -40,6 +40,30 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
       toast.error('نام درس الزامی است');
       return;
     }
+    // If switching to chapter-only mode, delete all topic modes first
+    const wasNotChapter = subject.displayStrategy !== 'chapter';
+    const isNowChapter = displayStrategy === 'chapter';
+    if (wasNotChapter && isNowChapter) {
+      const ok = confirm(
+        'با تغییر استراتژی به «فقط فصل‌به‌فصل»، تمام مباحث کنکوری این درس حذف خواهند شد. ادامه می‌دهید؟'
+      );
+      if (!ok) {
+        setSaving(false);
+        return;
+      }
+      try {
+        // Fetch existing topic modes and delete them
+        const modesRes = await fetch(`/api/subjects/${subject.id}/topic-modes`);
+        const modesData = await modesRes.json();
+        for (const mode of modesData.topicModes || []) {
+          await fetch(`/api/subjects/${subject.id}/topic-modes/${mode.id}`, {
+            method: 'DELETE',
+          });
+        }
+      } catch {
+        // non-fatal
+      }
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/subjects/${subject.id}`, {
@@ -178,6 +202,11 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
               </button>
             ))}
           </div>
+          {displayStrategy === 'chapter' && (
+            <p className="text-[10px] text-amber-400/80 mt-2 px-1 leading-relaxed">
+              ⚠️ با انتخاب «فقط فصل‌به‌فصل»، تب «مباحث کنکوری» برای این درس پنهان می‌شود. مباحث قبلی (در صورت وجود) حذف خواهند شد.
+            </p>
+          )}
         </div>
 
         {/* Category */}

@@ -327,3 +327,53 @@ Stage Summary:
 - Each grade-subject pair supports: depth (1/2/3 layers), allowOptionalSubtopic flag (Physics-style free-text field)
 - System is ready for future "نهایی" (final exam) subjects — finalStrategy field already in place
 - All 5 seed subjects (Biology, Physics, Chemistry, Math, Geology) loaded with full tree structure per the proposal
+
+---
+Task ID: 9-new-task-flow
+Agent: Main
+Task: Remove Biology topic modes + implement new unified task selection flow (field type → filtered subjects → subject-specific tree)
+
+Work Log:
+- Database updates (via node script):
+  * Biology: displayStrategy changed from "both" to "chapter"
+  * Biology: deleted all 6 TopicMode records (مباحث کنکوری removed entirely)
+  * Chemistry: GradeSubject.allowOptionalSubtopic → true (so chapter mode has subtopic text field like Physics)
+- Super Admin UI updates:
+  * SubjectDetail.tsx: "مباحث کنکوری" tab now only renders when subject.displayStrategy is "topic" or "both" (hidden for Biology)
+  * SubjectCard.tsx: topic-mode count badge hidden when subject has 0 topic modes (Biology shows 2-col stats grid)
+  * SubjectSettingsPanel.tsx: added warning when switching to "chapter" mode + confirmation dialog that deletes all topic modes
+- Built /api/subjects/for-task endpoint:
+  * fieldType=کنکور → assessmentType IN ("کنکور","هر دو") AND category="اختصاصی"
+  * fieldType=نهایی → assessmentType IN ("نهایی","هر دو") (any category)
+  * Filters by grade + major via GradeSubject pivot
+  * Returns full tree (grades config, chapters, topics, topicModes)
+  * Verified: returns 4 subjects for کنکور/دوازدهم/تجربی (Biology, Physics, Chemistry, Math — Geology excluded since only grade 11)
+- Built shared SubjectTopicPicker component (src/components/shared/SubjectTopicPicker.tsx):
+  * Mode switch: if displayStrategy="both", shows "فصل کتاب" vs "مبحثی" toggle
+  * ChapterPicker: grade selector → chapter grid → (topics if depth=3) → (optional subtopic text if allowOptionalSubtopic)
+  * TopicModePicker: searchable list of thematic konkur modes
+  * Outputs TopicSelection with displayText + structured fields
+- Student ManualEntrySheet.tsx rewritten:
+  * Step 1: حوزه (کنکور/نهایی) with description
+  * Step 2: subjects fetched from /api/subjects/for-task (filtered by field type)
+  * Step 3: SubjectTopicPicker (dynamic based on subject's displayStrategy)
+  * Step 4: activity types (unchanged)
+  * Step 5: duration + test count + summary (unchanged)
+- Advisor TaskModal rewritten in AdvisorDashboard.tsx:
+  * Same flow: field type → subject (filtered) → topic picker → activities → metrics
+  * Uses student's grade + major from MOCK_STUDENTS
+  * SubjectTopicPicker integrated for topic selection
+- Agent Browser verification:
+  * Biology detail page: only 2 tabs (درخت فصل‌ها + تنظیمات درس) — مباحث کنکوری tab gone ✅
+  * Student ManualEntrySheet step 1 shows کنکور/نهایی buttons ✅
+  * API returns 4 subjects for کنکور field type ✅
+
+Stage Summary:
+- Biology: مباحث کنکوری completely removed (Super Admin + student + advisor)
+- New unified task flow: field type → filtered subjects → subject-specific tree
+- SubjectTopicPicker handles all 4 cases:
+  1. Biology (chapter only, depth 3): grade → chapter → topic
+  2. Physics (chapter only, depth 2 + subtopic text): grade → chapter → text field
+  3. Chemistry/Math (both modes): switch between "فصل کتاب" (grade → chapter → subtopic text) or "مبحثی" (topic mode list)
+  4. Geology (depth 1): just chapter selection
+- Same flow used in both student and advisor panels (unified UX)

@@ -129,7 +129,10 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
       <div className="flex gap-1 surface-1 rounded-xl p-1 sticky top-0 z-10">
         {[
           { id: 'tree' as Tab, label: 'درخت فصل‌ها', icon: Layers },
-          { id: 'topicModes' as Tab, label: 'مباحث کنکوری', icon: Sparkles },
+          // Only show "مباحث کنکوری" tab when subject supports topic modes
+          ...(subject.displayStrategy === 'topic' || subject.displayStrategy === 'both'
+            ? [{ id: 'topicModes' as Tab, label: 'مباحث کنکوری', icon: Sparkles }]
+            : []),
           { id: 'settings' as Tab, label: 'تنظیمات درس', icon: Pencil },
         ].map((t) => {
           const Icon = t.icon;
