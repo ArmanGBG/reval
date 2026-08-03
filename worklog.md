@@ -270,3 +270,60 @@ Stage Summary:
 - Super Admin uses gold accent (#F5B544), all other roles use mint accent (#3EB489)
 - All functions preserved: store calls, event handlers, data flow, navigation unchanged
 - Files modified: 20+ component files + globals.css + layout.tsx + page.tsx + 4 new shared components
+
+---
+Task ID: 8-subjects-system
+Agent: Main
+Task: Build dynamic Subject/Chapter/Topic management system in Super Admin panel with multi-strategy display + assessment types
+
+Work Log:
+- Added 4 new Prisma models: Subject, GradeSubject, Chapter, Topic, TopicMode
+  * Subject: top-level (name, color, icon, assessmentType, displayStrategy, category, finalStrategy)
+  * GradeSubject: pivot linking subject to grade+major with depth (1/2/3) and allowOptionalSubtopic flag
+  * Chapter: belongs to subject+grade, has chapterNo, optional weight for final-exam bar% strategy
+  * Topic: belongs to chapter (only used when depth=3, Biology style)
+  * TopicMode: thematic/integrated konkur view (e.g. "زیست سلولی و مولکولی")
+- Ran prisma db push + generate — schema synced
+- Built seed script prisma/seed-subjects.ts with full data for 5 subjects:
+  * زیست‌شناسی (Biology): depth 3, 3 grades (دهم/یازدهم/دوازدهم), 24 chapters, 69 topics, 6 topic modes
+  * فیزیک (Physics): depth 2 + allowOptionalSubtopic=true, 3 grades, 11 chapters, 5 topic modes
+  * شیمی (Chemistry): depth 2, 3 grades, 10 chapters, 5 topic modes
+  * ریاضی (Math): depth 2, 3 grades, 21 chapters, 7 topic modes
+  * زمین‌شناسی (Geology): depth 1, یازدهم only (تجربی+ریاضی), 7 chapters, 5 topic modes
+  * Total: 5 subjects, 14 grade-links, 73 chapters, 69 topics, 28 topic modes
+- Built 8 API routes:
+  * GET/POST /api/subjects (list + create, with ?include=tree for full nested fetch)
+  * GET/PATCH/DELETE /api/subjects/[subjectId]
+  * GET/POST /api/subjects/[subjectId]/chapters
+  * PATCH/DELETE /api/subjects/[subjectId]/chapters/[chapterId]
+  * GET/POST /api/subjects/[subjectId]/chapters/[chapterId]/topics
+  * PATCH/DELETE /api/subjects/[subjectId]/chapters/[chapterId]/topics/[topicId]
+  * GET/POST /api/subjects/[subjectId]/topic-modes
+  * PATCH/DELETE /api/subjects/[subjectId]/topic-modes/[modeId]
+  * GET/POST /api/subjects/[subjectId]/grades
+  * PATCH/DELETE /api/subjects/[subjectId]/grades/[gradeSubjectId]
+- Added 'sa-subjects' to SuperAdminView type, wired into SidebarNav (desktop) + BottomNav (mobile) with BookOpen icon
+- Built 5 modular React components:
+  * SuperAdminSubjects.tsx (container: list + filters + KPI stats)
+  * SubjectCard.tsx (card with subject info, badges, stats)
+  * SubjectFormModal.tsx (add new subject with color/icon/strategy pickers)
+  * SubjectDetail.tsx (3-tab view: درخت فصل‌ها / مباحث کنکوری / تنظیمات درس)
+  * GradeChaptersTree.tsx (accordion per grade, expandable chapters with topics, add/edit/delete modals)
+  * TopicModesPanel.tsx (list of thematic konkur modes with add/edit/delete)
+  * SubjectSettingsPanel.tsx (edit subject properties: assessmentType, displayStrategy, category, finalStrategy)
+- All modals use gold accent (Super Admin theme), surface-2 + edge-highlight styling
+- Persian RTL throughout, toPersianDigits for all numbers
+- Agent Browser verified:
+  * Subjects list page renders 5 subjects with correct stats (24 فصل / 69 گفتار / 6 مبحث for Biology)
+  * Subject detail page shows 3 tabs, chapter tree expands per grade
+  * Topic modes tab shows all 6 Biology konkur modes with descriptions
+  * Filters (category, assessment type) functional
+  * No console errors
+
+Stage Summary:
+- Complete dynamic subject management system in Super Admin panel
+- Super Admin can now: add/edit/delete subjects, grades, chapters, topics, and topic modes WITHOUT code changes
+- Each subject supports: assessmentType (کنکور/نهایی/هر دو), displayStrategy (chapter/topic/both), category (اختصاصی/عمومی), finalStrategy (default/weight_based/high_weight_chapters/book_based)
+- Each grade-subject pair supports: depth (1/2/3 layers), allowOptionalSubtopic flag (Physics-style free-text field)
+- System is ready for future "نهایی" (final exam) subjects — finalStrategy field already in place
+- All 5 seed subjects (Biology, Physics, Chemistry, Math, Geology) loaded with full tree structure per the proposal

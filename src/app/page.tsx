@@ -15,6 +15,7 @@ import InstituteAdvisors from '@/components/institute/InstituteAdvisors';
 import InstituteStudents from '@/components/institute/InstituteStudents';
 import InstituteSettings from '@/components/institute/InstituteSettings';
 import SuperAdminDashboard from '@/components/super-admin/SuperAdminDashboard';
+import SuperAdminSubjects from '@/components/super-admin/SuperAdminSubjects';
 import SuperAdminInstitutes from '@/components/super-admin/SuperAdminInstitutes';
 import SuperAdminUsers from '@/components/super-admin/SuperAdminUsers';
 import SuperAdminSettings from '@/components/super-admin/SuperAdminSettings';
@@ -47,6 +48,7 @@ export default function Home() {
   const renderView = () => {
     // Super Admin
     if (currentView === 'sa-dashboard') return <SuperAdminDashboard />;
+    if (currentView === 'sa-subjects') return <SuperAdminSubjects />;
     if (currentView === 'sa-institutes') return <SuperAdminInstitutes />;
     if (currentView === 'sa-institute-detail') return <InstituteDetail />;
     if (currentView === 'sa-users') return <SuperAdminUsers />;

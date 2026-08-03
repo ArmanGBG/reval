@@ -13,7 +13,7 @@ export type AdvisorView = 'advisor-dashboard' | 'advisor-students' | 'advisor-st
 export type InstituteManagerView = 'institute-dashboard' | 'institute-advisors' | 'institute-students' | 'institute-settings';
 
 // Super Admin views (God Mode command center)
-export type SuperAdminView = 'sa-dashboard' | 'sa-institutes' | 'sa-institute-detail' | 'sa-users' | 'sa-user-detail' | 'sa-settings';
+export type SuperAdminView = 'sa-dashboard' | 'sa-subjects' | 'sa-institutes' | 'sa-institute-detail' | 'sa-users' | 'sa-user-detail' | 'sa-settings';
 
 // Top-level navigation (before auth)
 export type TopView = 'landing' | 'onboarding';

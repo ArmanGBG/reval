@@ -127,3 +127,120 @@ model ExamResult {
 
   @@unique([examId, studentId])
 }
+
+// ===== Subject Management System (Super Admin) =====
+// Top-level subject: زیست‌شناسی، فیزیک، شیمی، ریاضی، زمین‌شناسی ...
+model Subject {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  color           String   @default("#3EB489")
+  icon            String?  // emoji or lucide icon name
+  sortOrder       Int      @default(0)
+  // assessmentType: "کنکور" | "نهایی" | "هر دو" — drives final-exam vs konkur strategy
+  assessmentType  String   @default("کنکور")
+  // displayStrategy: which selection modes students may use
+  //   "chapter"     = only chapter-by-chapter
+  //   "topic"       = only thematic (konkur integrated)
+  //   "both"        = student chooses between chapter and topic modes
+  displayStrategy String   @default("both")
+  // category: "اختصاصی" | "عمومی" — drives konkur vs final grouping
+  category        String   @default("اختصاصی")
+  // For "نهایی" assessment: optional sub-strategy
+  //   "default" | "weight_based" | "high_weight_chapters" | "book_based"
+  finalStrategy   String?  @default("default")
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  grades          GradeSubject[]
+  chapters        Chapter[]
+  topicModes      TopicMode[]
+}
+
+// ===== Grade-Subject Pivot =====
+// Links subjects to grades (and major applicability).
+// e.g. زیست‌شناسی → applies to دهم/یازدهم/دوازدهم for تجربی
+model GradeSubject {
+  id          String @id @default(cuid())
+  subjectId   String
+  grade       String // دهم | یازدهم | دوازدهم | پشت کنکوری
+  major       String // تجربی | ریاضی | انسانی | معارف | همه
+  // depth: how many layers the chapter tree exposes for this subject-grade pair
+  //   1 = فصل only (Geology style)
+  //   2 = پایه ➔ فصل (Physics/Chemistry/Math style)
+  //   3 = پایه ➔ فصل ➔ گفتار (Biology style)
+  depth       Int    @default(2)
+  // allowOptionalSubtopic: show free-text "توضیحات/زیرفصل" field (Physics style)
+  allowOptionalSubtopic Boolean @default(false)
+  sortOrder    Int    @default(0)
+  isActive     Boolean @default(true)
+
+  subject      Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, grade, major])
+}
+
+// ===== Chapter (فصل) =====
+// Belongs to a subject+grade. For depth=1 (Geology), grade is یازدهم
+// and only chapters are shown (no topic layer).
+// For depth=2 (Physics/Chemistry/Math), chapters are the leaf selection.
+// For depth=3 (Biology), chapters contain گفتار (topics) as children.
+model Chapter {
+  id          String   @id @default(cuid())
+  subjectId   String
+  grade       String   // دهم | یازدهم | دوازدهم | پشت کنکوری
+  title       String   // e.g. "دنیای زنده"
+  chapterNo   Int      // sequential within subject+grade
+  // assessmentType override at chapter level (optional)
+  // null = inherit from Subject.assessmentType
+  assessmentType String?
+  // weight: bar% for final exam (used when Subject.finalStrategy = "weight_based")
+  weight      Int?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topics      Topic[]
+
+  @@unique([subjectId, grade, chapterNo])
+}
+
+// ===== Topic (گفتار) =====
+// Only used when GradeSubject.depth = 3 (Biology style).
+// For depth ≤ 2, topics remain empty and selection uses Chapter directly.
+model Topic {
+  id          String   @id @default(cuid())
+  chapterId   String
+  title       String   // e.g. "زیست‌شناسی چیست؟"
+  topicNo     Int      // sequential within chapter
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, topicNo])
+}
+
+// ===== TopicMode (حالت مبحثی) =====
+// The thematic / integrated konkur view for a subject.
+// e.g. زیست‌شناسی → "زیست سلولی و مولکولی", "ژنتیک و تقسیم یاخته", ...
+// When a student selects "مبحثی" mode, they pick from this list instead of chapters.
+model TopicMode {
+  id          String   @id @default(cuid())
+  subjectId   String
+  title       String   // e.g. "زیست سلولی و مولکولی"
+  description String?  // optional long description
+  modeNo      Int      // sequential within subject
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, modeNo])
+}

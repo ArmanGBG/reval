@@ -15,6 +15,7 @@ import {
   Shield,
   ClipboardList,
   Crown,
+  BookOpen,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -43,6 +44,7 @@ const INSTITUTE_NAV: { view: ViewName; label: string; icon: React.ComponentType<
 
 const SUPER_ADMIN_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'sa-dashboard', label: 'داشبورد', icon: LayoutDashboard },
+  { view: 'sa-subjects', label: 'دروس', icon: BookOpen },
   { view: 'sa-institutes', label: 'موسسات', icon: Building2 },
   { view: 'sa-users', label: 'کاربران', icon: Users },
   { view: 'sa-settings', label: 'تنظیمات', icon: Settings },
