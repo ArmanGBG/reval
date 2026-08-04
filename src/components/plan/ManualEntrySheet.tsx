@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { SubjectTopicPicker, TopicSelection } from '@/components/shared/SubjectTopicPicker';
 import { Subject } from '@/lib/subjects-types';
 import { useAppStore } from '@/lib/store';
+import { useCurrentStudentId } from '@/lib/student-utils';
 
 // ===== Persian Helper =====
 function toPersianNum(n: number): string {
@@ -46,6 +47,7 @@ export default function ManualEntrySheet({
   onSubmit,
 }: ManualEntrySheetProps) {
   const { user } = useAppStore();
+  const studentId = useCurrentStudentId();
 
   // Progressive form state
   const [step, setStep] = useState(0);
@@ -110,7 +112,7 @@ export default function ManualEntrySheet({
     }
     const newTask: Task = {
       id: crypto.randomUUID(),
-      studentId: user?.id || 's1',
+      studentId: studentId,
       subject: selectedSubject.name,
       subjectColor: selectedSubject.color,
       topic: topicSelection?.displayText || 'عمومی',

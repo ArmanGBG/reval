@@ -15,6 +15,7 @@ import {
   getDaysInJalaliMonth,
   toPersianDigits,
 } from '@/lib/persian-date';
+import { parseLocalDate } from '@/lib/student-utils';
 
 interface PersianCalendarProps {
   selectedDate: string; // ISO date string
@@ -63,7 +64,7 @@ export function PersianCalendar({
     return days;
   }, [viewYear, viewMonth]);
 
-  const selectedDateObj = new Date(selectedDate);
+  const selectedDateObj = parseLocalDate(selectedDate);
   const isSelectedMonth =
     toJalali(selectedDateObj).jy === viewYear && toJalali(selectedDateObj).jm === viewMonth;
 

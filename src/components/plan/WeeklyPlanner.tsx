@@ -21,6 +21,7 @@ import {
   formatPersianDate,
   getPersianWeekdayName,
 } from '@/lib/persian-date';
+import { useCurrentStudentId } from '@/lib/student-utils';
 
 // ===== Types =====
 interface WeekdayPlan {
@@ -41,6 +42,7 @@ const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آم
 // ============================================================
 export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
   const { user, tasks, addTask, updateTask, deleteTask, resetTask } = useAppStore();
+  const studentId = useCurrentStudentId();
 
   // Field type for adding new subjects
   const [fieldType, setFieldType] = useState<FieldType>('کنکور');
@@ -70,7 +72,7 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
     return weekDays.map((date) => {
       const dateStr = toISODate(date);
       const dayTasks = tasks
-        .filter((t) => t.date === dateStr && t.studentId === (user?.id || 's1'))
+        .filter((t) => t.date === dateStr && t.studentId === (studentId))
         .sort((a, b) => {
           const aPending = a.completed === null ? 0 : 1;
           const bPending = b.completed === null ? 0 : 1;
@@ -106,10 +108,10 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
 
   // ===== Add subject to a day (IMMEDIATE — creates real task) =====
   const addSubjectToDay = (dateStr: string, subject: Subject) => {
-    const existingCount = tasks.filter((t) => t.date === dateStr && t.studentId === (user?.id || 's1')).length;
+    const existingCount = tasks.filter((t) => t.date === dateStr && t.studentId === (studentId)).length;
     const newTask: Task = {
       id: crypto.randomUUID(),
-      studentId: user?.id || 's1',
+      studentId: studentId,
       subject: subject.name,
       subjectColor: subject.color,
       topic: 'عمومی',

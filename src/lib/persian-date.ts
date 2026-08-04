@@ -31,8 +31,14 @@ export function jalaliToDate(jy: number, jm: number, jd: number): Date {
 }
 
 // Get Persian weekday index (Saturday=0, ..., Friday=6)
+// Timezone-independent: converts date → Jalali → back to local midnight → getDay
+// This avoids off-by-one errors when the runtime timezone differs from Iran time
 export function getPersianWeekday(date: Date): number {
-  const jsDay = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const j = toJalaali(date);
+  // Convert back to a Date at local midnight (timezone-independent)
+  const g = toGregorian(j.jy, j.jm, j.jd);
+  const localMidnight = new Date(g.gy, g.gm - 1, g.gd);
+  const jsDay = localMidnight.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
   // Convert: Sat(6)->0, Sun(0)->1, Mon(1)->2, ..., Fri(5)->6
   return jsDay === 6 ? 0 : jsDay + 1;
 }
@@ -59,9 +65,13 @@ export function formatPersianDateShort(date: Date): string {
   return `${toPersianDigits(j.jd)}/${toPersianDigits(j.jm)}`;
 }
 
-// Get ISO date string (YYYY-MM-DD) from Date
+// Get ISO date string (YYYY-MM-DD) from Date — uses LOCAL date components
+// to avoid timezone off-by-one errors
 export function toISODate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Get the Saturday of the week containing the given date

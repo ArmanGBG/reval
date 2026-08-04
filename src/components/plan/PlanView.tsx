@@ -27,8 +27,7 @@ import AiEntryModal from './AiEntryModal';
 import { WeeklyPlanner } from './WeeklyPlanner';
 import { PersianCalendar } from './PersianCalendar';
 import { SortableTaskList } from './SortableTaskList';
-
-const CURRENT_STUDENT_ID = 's1';
+import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -80,6 +79,7 @@ export default function PlanView() {
     selectedDate,
     setSelectedDate,
   } = useAppStore();
+  const studentId = useCurrentStudentId();
 
   // Local state
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
@@ -91,7 +91,7 @@ export default function PlanView() {
   // Sort: pending first (by order), then completed/skipped at the bottom
   const filteredTasks = useMemo(() => {
     return tasks
-      .filter((t) => t.date === selectedDate && t.studentId === CURRENT_STUDENT_ID)
+      .filter((t) => t.date === selectedDate && t.studentId === studentId)
       .sort((a, b) => {
         // Pending tasks first, then completed/skipped
         const aPending = a.completed === null ? 0 : 1;
@@ -103,13 +103,13 @@ export default function PlanView() {
 
   // Dynamic header title
   const headerTitle = useMemo(() => {
-    const date = new Date(selectedDate);
+    const date = parseLocalDate(selectedDate);
     return getRelativeDayLabel(date);
   }, [selectedDate]);
 
   // Day subtitle (weekday + Persian date)
   const daySubtitle = useMemo(() => {
-    const date = new Date(selectedDate);
+    const date = parseLocalDate(selectedDate);
     return `${getPersianWeekdayName(date)} · ${formatPersianDate(date)}`;
   }, [selectedDate]);
 
@@ -127,7 +127,7 @@ export default function PlanView() {
   const taskCountByDate = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of tasks) {
-      if (t.studentId === CURRENT_STUDENT_ID) {
+      if (t.studentId === studentId) {
         map[t.date] = (map[t.date] || 0) + 1;
       }
     }
@@ -137,7 +137,7 @@ export default function PlanView() {
   const completedCountByDate = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of tasks) {
-      if (t.studentId === CURRENT_STUDENT_ID && t.completed === true) {
+      if (t.studentId === studentId && t.completed === true) {
         map[t.date] = (map[t.date] || 0) + 1;
       }
     }
@@ -391,7 +391,7 @@ export default function PlanView() {
         open={addDrawerOpen}
         onOpenChange={setAddDrawerOpen}
         selectedDate={selectedDate}
-        existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === CURRENT_STUDENT_ID).length}
+        existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === studentId).length}
         onSubmit={handleManualSubmit}
       />
 
@@ -399,7 +399,7 @@ export default function PlanView() {
         open={aiModalOpen}
         onClose={() => setAiModalOpen(false)}
         selectedDate={selectedDate}
-        existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === CURRENT_STUDENT_ID).length}
+        existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === studentId).length}
         onConfirm={handleAIConfirm}
       />
 
