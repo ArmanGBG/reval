@@ -36,6 +36,8 @@ interface AppState {
   addTasks: (tasks: Task[]) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
+  resetTask: (id: string) => void; // undo complete/skip
+  reorderTasks: (tasks: Task[]) => void; // update order for multiple tasks
 
   // Selected Date
   selectedDate: string;
@@ -153,6 +155,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   deleteTask: (id) =>
     set((state) => ({ tasks: state.tasks.filter((t) => t.id !== id) })),
+  resetTask: (id) =>
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id
+          ? { ...t, completed: null, actualTimeMinutes: null, actualTestCount: null }
+          : t
+      ),
+    })),
+  reorderTasks: (reorderedTasks) =>
+    set((state) => {
+      // Build a map of id -> new order
+      const orderMap = new Map(reorderedTasks.map((t, i) => [t.id, i]));
+      return {
+        tasks: state.tasks.map((t) =>
+          orderMap.has(t.id) ? { ...t, order: orderMap.get(t.id)! } : t
+        ),
+      };
+    }),
 
   // Selected Date
   selectedDate: new Date().toISOString().split('T')[0],

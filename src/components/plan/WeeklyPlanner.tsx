@@ -2,104 +2,86 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, Loader2, Trash2, Clock, Target } from 'lucide-react';
+import { X, Plus, Check, Calendar, ChevronDown, Loader2, Clock, Target, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
 import { Task, ActivityType, FieldType } from '@/lib/types';
 import { Subject, TopicSelection } from '@/lib/subjects-types';
 import { SubjectTopicPicker } from '@/components/shared/SubjectTopicPicker';
-
-// ===== Persian Helpers =====
-function toPersianNum(n: number): string {
-  const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
-  return String(n).replace(/\d/g, (d) => persianDigits[parseInt(d)]);
-}
-
-// Week starts on Saturday in Iran
-const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'] as const;
-type Weekday = typeof WEEKDAYS[number];
-
-// Calculate the Saturday of the current week and return dates for all 7 days
-function getWeekDates(startFromNext = false): Record<Weekday, string> {
-  const today = new Date();
-  const jsDay = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  // Convert to Iran week: Saturday=0, Sunday=1, ..., Friday=6
-  const iranDay = jsDay === 6 ? 0 : jsDay + 1;
-  // Find Saturday of current week
-  const saturday = new Date(today);
-  saturday.setDate(today.getDate() - iranDay);
-  if (startFromNext) {
-    saturday.setDate(saturday.getDate() + 7);
-  }
-
-  const dates: Record<Weekday, string> = {} as Record<Weekday, string>;
-  WEEKDAYS.forEach((day, i) => {
-    const d = new Date(saturday);
-    d.setDate(saturday.getDate() + i);
-    dates[day] = d.toISOString().split('T')[0];
-  });
-  return dates;
-}
+import {
+  PERSIAN_WEEKDAYS,
+  toPersianDigits,
+  getWeekDays,
+  toISODate,
+  isToday,
+  formatPersianDate,
+  getPersianWeekdayName,
+} from '@/lib/persian-date';
 
 // ===== Types =====
-interface DaySubject {
-  tempId: string;
-  subject: Subject;
-  fieldType: FieldType;
-  topicSelection: TopicSelection | null;
-  activities: ActivityType[];
-  duration: number;
-  testCount: number;
+interface WeekdayPlan {
+  date: Date;
+  dateStr: string;
+  tasks: Task[];
 }
 
-type WeekPlan = Record<Weekday, DaySubject[]>;
-
-// ===== Activity types =====
-const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
-
-// ============================================================
-// Main Component
-// ============================================================
 interface WeeklyPlannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
-  const { user, addTask, addTasks, tasks } = useAppStore();
+const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
 
-  // Field type for the whole week (controls which subjects are available)
+// ============================================================
+// Main Component — reads REAL tasks from store, immediate sync
+// ============================================================
+export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
+  const { user, tasks, addTask, updateTask, deleteTask, resetTask } = useAppStore();
+
+  // Field type for adding new subjects
   const [fieldType, setFieldType] = useState<FieldType>('کنکور');
 
-  // Available subjects (fetched from API)
+  // Available subjects
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
 
-  // Week plan state
-  const [weekPlan, setWeekPlan] = useState<WeekPlan>(() => {
-    const empty: WeekPlan = {} as WeekPlan;
-    WEEKDAYS.forEach((d) => (empty[d] = []));
-    return empty;
-  });
-
   // Which day's "add subject" picker is open
-  const [addingToDay, setAddingToDay] = useState<Weekday | null>(null);
+  const [addingToDay, setAddingToDay] = useState<string | null>(null); // dateStr
 
-  // Which subject is being edited (for details)
-  const [editingSubject, setEditingSubject] = useState<{ day: Weekday; tempId: string } | null>(null);
+  // Which subject is being edited
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
-  // Week dates
-  const [weekDates, setWeekDates] = useState<Record<Weekday, string>>(getWeekDates);
-  const [useNextWeek, setUseNextWeek] = useState(false);
+  // Week offset (0 = current week, 1 = next week)
+  const [weekOffset, setWeekOffset] = useState(0);
 
-  // ===== Fetch subjects when fieldType changes =====
+  // Get the 7 days of the selected week
+  const weekDays = useMemo(() => {
+    const today = new Date();
+    today.setDate(today.getDate() + weekOffset * 7);
+    return getWeekDays(today);
+  }, [weekOffset]);
+
+  // Build plan: tasks grouped by date
+  const weekPlan: WeekdayPlan[] = useMemo(() => {
+    return weekDays.map((date) => {
+      const dateStr = toISODate(date);
+      const dayTasks = tasks
+        .filter((t) => t.date === dateStr && t.studentId === (user?.id || 's1'))
+        .sort((a, b) => {
+          const aPending = a.completed === null ? 0 : 1;
+          const bPending = b.completed === null ? 0 : 1;
+          if (aPending !== bPending) return aPending - bPending;
+          return a.order - b.order;
+        });
+      return { date, dateStr, tasks: dayTasks };
+    });
+  }, [weekDays, tasks, user]);
+
+  // ===== Fetch subjects =====
   const fetchSubjects = useCallback(async (ft: FieldType) => {
     setSubjectsLoading(true);
     try {
@@ -122,108 +104,34 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
     if (open) fetchSubjects(fieldType);
   }, [open, fieldType, fetchSubjects]);
 
-  // Update week dates when toggling next week
-  useEffect(() => {
-    setWeekDates(getWeekDates(useNextWeek));
-  }, [useNextWeek]);
-
-  // ===== Add subject to a day =====
-  const addSubjectToDay = (day: Weekday, subject: Subject) => {
-    const newEntry: DaySubject = {
-      tempId: crypto.randomUUID(),
-      subject,
+  // ===== Add subject to a day (IMMEDIATE — creates real task) =====
+  const addSubjectToDay = (dateStr: string, subject: Subject) => {
+    const existingCount = tasks.filter((t) => t.date === dateStr && t.studentId === (user?.id || 's1')).length;
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      studentId: user?.id || 's1',
+      subject: subject.name,
+      subjectColor: subject.color,
+      topic: 'عمومی',
       fieldType,
-      topicSelection: null,
-      activities: [],
-      duration: 60,
-      testCount: 0,
+      activityTypes: ['مطالعه'],
+      targetTimeMinutes: 60,
+      actualTimeMinutes: null,
+      targetTestCount: 0,
+      actualTestCount: null,
+      completed: null,
+      date: dateStr,
+      order: existingCount,
+      createdBy: 'student',
     };
-    setWeekPlan((prev) => ({
-      ...prev,
-      [day]: [...prev[day], newEntry],
-    }));
+    addTask(newTask);
     setAddingToDay(null);
   };
 
-  // ===== Remove subject from a day =====
-  const removeSubjectFromDay = (day: Weekday, tempId: string) => {
-    setWeekPlan((prev) => ({
-      ...prev,
-      [day]: prev[day].filter((s) => s.tempId !== tempId),
-    }));
-  };
-
-  // ===== Update subject details =====
-  const updateSubjectDetails = (day: Weekday, tempId: string, updates: Partial<DaySubject>) => {
-    setWeekPlan((prev) => ({
-      ...prev,
-      [day]: prev[day].map((s) => (s.tempId === tempId ? { ...s, ...updates } : s)),
-    }));
-  };
-
-  // ===== Toggle activity =====
-  const toggleActivity = (day: Weekday, tempId: string, activity: ActivityType) => {
-    setWeekPlan((prev) => ({
-      ...prev,
-      [day]: prev[day].map((s) => {
-        if (s.tempId !== tempId) return s;
-        const has = s.activities.includes(activity);
-        return {
-          ...s,
-          activities: has ? s.activities.filter((a) => a !== activity) : [...s.activities, activity],
-        };
-      }),
-    }));
-  };
-
-  // ===== Save: create tasks for all days =====
-  const handleSave = useCallback(() => {
-    const newTasks: Task[] = [];
-    let order = tasks.length;
-
-    WEEKDAYS.forEach((day) => {
-      const dateStr = weekDates[day];
-      for (const entry of weekPlan[day]) {
-        const task: Task = {
-          id: crypto.randomUUID(),
-          studentId: user?.id || 's1',
-          subject: entry.subject.name,
-          subjectColor: entry.subject.color,
-          topic: entry.topicSelection?.displayText || 'عمومی',
-          fieldType: entry.fieldType,
-          activityTypes: entry.activities.length > 0 ? entry.activities : ['مطالعه'],
-          targetTimeMinutes: entry.duration,
-          actualTimeMinutes: null,
-          targetTestCount: entry.testCount,
-          actualTestCount: null,
-          completed: null,
-          date: dateStr,
-          order: order++,
-          createdBy: 'student',
-        };
-        newTasks.push(task);
-      }
-    });
-
-    if (newTasks.length === 0) {
-      toast.error('حداقل یک درس اضافه کنید');
-      return;
-    }
-
-    addTasks(newTasks);
-    toast.success(`${toPersianNum(newTasks.length)} تسک برای هفته ایجاد شد`);
-    onOpenChange(false);
-
-    // Reset
-    const empty: WeekPlan = {} as WeekPlan;
-    WEEKDAYS.forEach((d) => (empty[d] = []));
-    setWeekPlan(empty);
-  }, [weekPlan, weekDates, tasks.length, user, addTasks, onOpenChange]);
-
   // ===== Stats =====
-  const totalSubjects = WEEKDAYS.reduce((acc, day) => acc + weekPlan[day].length, 0);
-  const totalDetailed = WEEKDAYS.reduce(
-    (acc, day) => acc + weekPlan[day].filter((s) => s.topicSelection || s.activities.length > 0).length,
+  const totalTasks = weekPlan.reduce((acc, day) => acc + day.tasks.length, 0);
+  const totalDetailed = weekPlan.reduce(
+    (acc, day) => acc + day.tasks.filter((t) => t.topic !== 'عمومی' || t.activityTypes.length > 0).length,
     0
   );
 
@@ -239,21 +147,32 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
             <div>
               <h2 className="text-base font-bold text-[var(--foreground)]">برنامه هفتگی</h2>
               <p className="text-[11px] text-[var(--foreground-muted)]">
-                {toPersianNum(totalSubjects)} درس · {toPersianNum(totalDetailed)} با جزئیات
+                {toPersianDigits(totalTasks)} تسک · {toPersianDigits(totalDetailed)} با جزئیات
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Week toggle */}
             <button
-              onClick={() => setUseNextWeek((v) => !v)}
-              className="btn-hover h-8 px-3 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs font-medium"
+              onClick={() => setWeekOffset((v) => v - 1)}
+              className="icon-btn w-7 h-7 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs"
             >
-              {useNextWeek ? 'هفته بعد' : 'این هفته'}
+              {'<'}
+            </button>
+            <button
+              onClick={() => setWeekOffset(0)}
+              className="btn-hover h-7 px-3 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs font-medium"
+            >
+              {weekOffset === 0 ? 'این هفته' : weekOffset > 0 ? `${toPersianDigits(weekOffset)} هفته بعد` : `${toPersianDigits(Math.abs(weekOffset))} هفته قبل`}
+            </button>
+            <button
+              onClick={() => setWeekOffset((v) => v + 1)}
+              className="icon-btn w-7 h-7 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs"
+            >
+              {'>'}
             </button>
             <button
               onClick={() => onOpenChange(false)}
-              className="icon-btn w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)]"
+              className="icon-btn w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -281,17 +200,24 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
 
         {/* ===== Days grid ===== */}
         <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar">
-          {/* Desktop: 7-col grid. Mobile: vertical stack */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {WEEKDAYS.map((day) => (
+            {weekPlan.map((dayPlan) => (
               <DayColumn
-                key={day}
-                day={day}
-                date={weekDates[day]}
-                subjects={weekPlan[day]}
-                onAdd={() => setAddingToDay(day)}
-                onRemove={(tempId) => removeSubjectFromDay(day, tempId)}
-                onEdit={(tempId) => setEditingSubject({ day, tempId })}
+                key={dayPlan.dateStr}
+                dayPlan={dayPlan}
+                onAdd={() => setAddingToDay(dayPlan.dateStr)}
+                onRemove={(taskId) => deleteTask(taskId)}
+                onEdit={(taskId) => setEditingTaskId(taskId)}
+                onToggleComplete={(taskId) => {
+                  const task = tasks.find((t) => t.id === taskId);
+                  if (task) {
+                    if (task.completed === null) {
+                      updateTask(taskId, { completed: true });
+                    } else {
+                      resetTask(taskId);
+                    }
+                  }
+                }}
               />
             ))}
           </div>
@@ -300,22 +226,21 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
         {/* ===== Footer ===== */}
         <div className="px-5 py-3 border-t border-[var(--border)] flex items-center justify-between gap-3 shrink-0">
           <p className="text-[11px] text-[var(--foreground-muted)]">
-            روی هر درس کلیک کنید تا جزئیاتش را وارد کنید
+            روی هر درس کلیک کنید تا جزئیاتش را ویرایش کنید
           </p>
           <button
-            onClick={handleSave}
-            disabled={totalSubjects === 0}
-            className="btn-hover glow-hover h-10 px-6 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm disabled:opacity-40 flex items-center gap-2"
+            onClick={() => onOpenChange(false)}
+            className="btn-hover glow-hover h-10 px-6 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm"
           >
-            <Check className="w-4 h-4" />
-            اعمال روی هفته
+            بستن
           </button>
         </div>
 
         {/* ===== Add Subject Picker Modal ===== */}
         {addingToDay && (
           <AddSubjectModal
-            day={addingToDay}
+            dayLabel={getPersianWeekdayName(new Date(addingToDay))}
+            dateLabel={formatPersianDate(new Date(addingToDay))}
             subjects={subjects}
             loading={subjectsLoading}
             onClose={() => setAddingToDay(null)}
@@ -323,14 +248,22 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
           />
         )}
 
-        {/* ===== Edit Subject Details Modal ===== */}
-        {editingSubject && (
-          <EditSubjectModal
-            day={editingSubject.day}
-            entry={weekPlan[editingSubject.day].find((s) => s.tempId === editingSubject.tempId)!}
-            onClose={() => setEditingSubject(null)}
-            onUpdate={(updates) => updateSubjectDetails(editingSubject.day, editingSubject.tempId, updates)}
-            onToggleActivity={(act) => toggleActivity(editingSubject.day, editingSubject.tempId, act)}
+        {/* ===== Edit Task Details Modal ===== */}
+        {editingTaskId && (
+          <EditTaskModal
+            task={tasks.find((t) => t.id === editingTaskId)!}
+            onClose={() => setEditingTaskId(null)}
+            onUpdate={(updates) => updateTask(editingTaskId, updates)}
+            onToggleActivity={(act) => {
+              const task = tasks.find((t) => t.id === editingTaskId);
+              if (!task) return;
+              const has = task.activityTypes.includes(act);
+              updateTask(editingTaskId, {
+                activityTypes: has
+                  ? task.activityTypes.filter((a) => a !== act)
+                  : [...task.activityTypes, act],
+              });
+            }}
           />
         )}
       </DialogContent>
@@ -339,60 +272,54 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
 }
 
 // ============================================================
-// Day Column
+// Day Column — shows REAL tasks
 // ============================================================
 function DayColumn({
-  day,
-  date,
-  subjects,
+  dayPlan,
   onAdd,
   onRemove,
   onEdit,
+  onToggleComplete,
 }: {
-  day: Weekday;
-  date: string;
-  subjects: DaySubject[];
+  dayPlan: WeekdayPlan;
   onAdd: () => void;
-  onRemove: (tempId: string) => void;
-  onEdit: (tempId: string) => void;
+  onRemove: (taskId: string) => void;
+  onEdit: (taskId: string) => void;
+  onToggleComplete: (taskId: string) => void;
 }) {
-  // Format date as Persian readable
-  const dateObj = new Date(date);
-  const dayNum = toPersianNum(dateObj.getDate());
-  const monthNum = toPersianNum(dateObj.getMonth() + 1);
-
-  // Check if this is today
-  const today = new Date().toISOString().split('T')[0];
-  const isToday = date === today;
+  const dayName = getPersianWeekdayName(dayPlan.date);
+  const dateLabel = formatPersianDate(dayPlan.date);
+  const isTodayCell = isToday(dayPlan.date);
 
   return (
-    <div className={`surface-1 rounded-xl overflow-hidden ${isToday ? 'ring-1 ring-[var(--accent)]/40' : ''}`}>
+    <div className={`surface-1 rounded-xl overflow-hidden ${isTodayCell ? 'ring-1 ring-[var(--accent)]/40' : ''}`}>
       {/* Day header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-[var(--foreground)]">{day}</span>
-          {isToday && (
+          <span className="text-sm font-bold text-[var(--foreground)]">{dayName}</span>
+          {isTodayCell && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
               امروز
             </span>
           )}
         </div>
-        <span className="text-[10px] text-[var(--foreground-subtle)]">
-          {dayNum}/{monthNum}
-        </span>
+      </div>
+      <div className="px-3 pb-1">
+        <span className="text-[10px] text-[var(--foreground-subtle)]">{dateLabel}</span>
       </div>
 
-      {/* Subjects list */}
+      {/* Tasks list */}
       <div className="p-2 space-y-1.5 min-h-[60px]">
-        {subjects.length === 0 ? (
+        {dayPlan.tasks.length === 0 ? (
           <p className="text-[10px] text-[var(--foreground-subtle)] text-center py-3">خالی</p>
         ) : (
-          subjects.map((entry) => (
-            <SubjectChip
-              key={entry.tempId}
-              entry={entry}
-              onClick={() => onEdit(entry.tempId)}
-              onRemove={() => onRemove(entry.tempId)}
+          dayPlan.tasks.map((task) => (
+            <TaskChip
+              key={task.id}
+              task={task}
+              onClick={() => onEdit(task.id)}
+              onRemove={() => onRemove(task.id)}
+              onToggleComplete={() => onToggleComplete(task.id)}
             />
           ))
         )}
@@ -411,44 +338,66 @@ function DayColumn({
 }
 
 // ============================================================
-// Subject Chip (clickable to edit)
+// Task Chip (clickable to edit)
 // ============================================================
-function SubjectChip({
-  entry,
+function TaskChip({
+  task,
   onClick,
   onRemove,
+  onToggleComplete,
 }: {
-  entry: DaySubject;
+  task: Task;
   onClick: () => void;
   onRemove: () => void;
+  onToggleComplete: () => void;
 }) {
-  const hasDetails = entry.topicSelection || entry.activities.length > 0;
+  const hasDetails = task.topic !== 'عمومی' || task.activityTypes.length > 1 || task.targetTimeMinutes !== 60;
+  const isDone = task.completed === true;
 
   return (
     <div className="group flex items-center gap-1.5">
+      {/* Complete toggle */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleComplete();
+        }}
+        className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+          isDone
+            ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--bg-deep)]'
+            : 'border-[var(--border-strong)] text-transparent hover:border-[var(--accent)]'
+        }`}
+      >
+        <Check className="w-3 h-3" />
+      </button>
+
+      {/* Subject chip — click to edit */}
       <button
         onClick={onClick}
         className={`btn-hover flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg border text-right ${
           hasDetails
             ? 'bg-[var(--accent-soft)] border-[var(--accent)]/20'
             : 'bg-[var(--bg-elevated)] border-[var(--border)]'
-        }`}
+        } ${isDone ? 'opacity-50 line-through' : ''}`}
       >
         <span
           className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: entry.subject.color }}
+          style={{ backgroundColor: task.subjectColor }}
         />
         <span className="text-xs font-medium text-[var(--foreground)] truncate flex-1">
-          {entry.subject.name}
+          {task.subject}
         </span>
-        {hasDetails ? (
+        {hasDetails && !isDone && (
           <Check className="w-3 h-3 text-[var(--accent)] shrink-0" />
-        ) : (
-          <ChevronDown className="w-3 h-3 text-[var(--foreground-subtle)] shrink-0" />
         )}
       </button>
+
+      {/* Remove */}
       <button
-        onClick={onRemove}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
         className="icon-btn w-6 h-6 rounded flex items-center justify-center text-[var(--foreground-subtle)] hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <X className="w-3 h-3" />
@@ -458,16 +407,18 @@ function SubjectChip({
 }
 
 // ============================================================
-// Add Subject Modal (quick picker)
+// Add Subject Modal
 // ============================================================
 function AddSubjectModal({
-  day,
+  dayLabel,
+  dateLabel,
   subjects,
   loading,
   onClose,
   onSelect,
 }: {
-  day: Weekday;
+  dayLabel: string;
+  dateLabel: string;
   subjects: Subject[];
   loading: boolean;
   onClose: () => void;
@@ -476,14 +427,20 @@ function AddSubjectModal({
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-2rem)] sm:max-w-sm rounded-2xl" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-[var(--foreground)] text-right text-sm">
-            افزودن درس به {day}
-          </DialogTitle>
-          <DialogDescription className="text-[var(--foreground-muted)] text-right text-xs">
-            درس مورد نظر را انتخاب کنید
-          </DialogDescription>
-        </DialogHeader>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">
+              افزودن درس به {dayLabel}
+            </h2>
+            <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">{dateLabel}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="icon-btn w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)]"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-8 text-[var(--foreground-muted)]">
@@ -517,51 +474,78 @@ function AddSubjectModal({
 }
 
 // ============================================================
-// Edit Subject Details Modal
+// Edit Task Details Modal
 // ============================================================
-function EditSubjectModal({
-  day,
-  entry,
+function EditTaskModal({
+  task,
   onClose,
   onUpdate,
   onToggleActivity,
 }: {
-  day: Weekday;
-  entry: DaySubject;
+  task: Task;
   onClose: () => void;
-  onUpdate: (updates: Partial<DaySubject>) => void;
+  onUpdate: (updates: Partial<Task>) => void;
   onToggleActivity: (act: ActivityType) => void;
 }) {
+  // Find the subject to use SubjectTopicPicker
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const subject = useMemo(() => subjects.find((s) => s.name === task.subject) || null, [subjects, task.subject]);
+
+  useEffect(() => {
+    // Fetch subjects to get the full Subject object for the picker
+    async function fetchSubjects() {
+      try {
+        const res = await fetch('/api/subjects?include=tree');
+        const data = await res.json();
+        if (res.ok) setSubjects(data.subjects || []);
+      } catch {
+        // ignore
+      }
+    }
+    fetchSubjects();
+  }, []);
+
+  const topicSelection: TopicSelection | null = task.topic && task.topic !== 'عمومی'
+    ? { displayText: task.topic, mode: 'chapter' }
+    : null;
+
+  const dayLabel = getPersianWeekdayName(new Date(task.date));
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-2rem)] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-[var(--foreground)] text-right text-sm flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
             <span
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: entry.subject.color }}
+              style={{ backgroundColor: task.subjectColor }}
             />
-            {entry.subject.name}
-            <span className="text-[var(--foreground-muted)] font-normal">· {day}</span>
-          </DialogTitle>
-          <DialogDescription className="text-[var(--foreground-muted)] text-right text-xs">
-            جزئیات این تسک را مشخص کنید (اختیاری)
-          </DialogDescription>
-        </DialogHeader>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">{task.subject}</h2>
+            <span className="text-[var(--foreground-muted)] text-xs font-normal">· {dayLabel}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="icon-btn w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)]"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         <div className="space-y-4">
           {/* Topic picker */}
-          <div>
-            <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
-              مبحث
-            </label>
-            <SubjectTopicPicker
-              subject={entry.subject}
-              defaultGrade="دوازدهم"
-              value={entry.topicSelection}
-              onChange={(sel) => onUpdate({ topicSelection: sel })}
-            />
-          </div>
+          {subject && (
+            <div>
+              <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
+                مبحث
+              </label>
+              <SubjectTopicPicker
+                subject={subject}
+                defaultGrade="دوازدهم"
+                value={topicSelection}
+                onChange={(sel) => onUpdate({ topic: sel?.displayText || 'عمومی' })}
+              />
+            </div>
+          )}
 
           {/* Activity types */}
           <div>
@@ -574,7 +558,7 @@ function EditSubjectModal({
                   key={act}
                   onClick={() => onToggleActivity(act)}
                   className={`btn-hover px-3 py-2 rounded-lg text-xs font-medium border ${
-                    entry.activities.includes(act)
+                    task.activityTypes.includes(act)
                       ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)]'
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)]'
                   }`}
@@ -594,8 +578,8 @@ function EditSubjectModal({
               </label>
               <input
                 type="number"
-                value={entry.duration}
-                onChange={(e) => onUpdate({ duration: Number(e.target.value) })}
+                value={task.targetTimeMinutes}
+                onChange={(e) => onUpdate({ targetTimeMinutes: Number(e.target.value) })}
                 className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                 dir="ltr"
               />
@@ -603,14 +587,14 @@ function EditSubjectModal({
                 {[30, 60, 90, 120].map((m) => (
                   <button
                     key={m}
-                    onClick={() => onUpdate({ duration: m })}
+                    onClick={() => onUpdate({ targetTimeMinutes: m })}
                     className={`btn-hover flex-1 h-7 rounded text-[10px] font-medium border ${
-                      entry.duration === m
+                      task.targetTimeMinutes === m
                         ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
                         : 'border-[var(--border)] text-[var(--foreground-muted)]'
                     }`}
                   >
-                    {toPersianNum(m)}
+                    {toPersianDigits(m)}
                   </button>
                 ))}
               </div>
@@ -622,8 +606,8 @@ function EditSubjectModal({
               </label>
               <input
                 type="number"
-                value={entry.testCount}
-                onChange={(e) => onUpdate({ testCount: Number(e.target.value) })}
+                value={task.targetTestCount}
+                onChange={(e) => onUpdate({ targetTestCount: Number(e.target.value) })}
                 className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                 dir="ltr"
               />
@@ -631,17 +615,39 @@ function EditSubjectModal({
                 {[0, 10, 20, 30].map((t) => (
                   <button
                     key={t}
-                    onClick={() => onUpdate({ testCount: t })}
+                    onClick={() => onUpdate({ targetTestCount: t })}
                     className={`btn-hover flex-1 h-7 rounded text-[10px] font-medium border ${
-                      entry.testCount === t
+                      task.targetTestCount === t
                         ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
                         : 'border-[var(--border)] text-[var(--foreground-muted)]'
                     }`}
                   >
-                    {toPersianNum(t)}
+                    {toPersianDigits(t)}
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Field type */}
+          <div>
+            <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
+              حوزه
+            </label>
+            <div className="flex gap-2">
+              {(['کنکور', 'نهایی'] as FieldType[]).map((ft) => (
+                <button
+                  key={ft}
+                  onClick={() => onUpdate({ fieldType: ft })}
+                  className={`btn-hover flex-1 h-9 rounded-lg text-xs font-medium border ${
+                    task.fieldType === ft
+                      ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                      : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)]'
+                  }`}
+                >
+                  {ft}
+                </button>
+              ))}
             </div>
           </div>
         </div>

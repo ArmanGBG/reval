@@ -580,3 +580,62 @@ Stage Summary:
 - Minimalist redesign: removed ~50+ decorative emojis across all views
 - All functions preserved: store calls, handlers, navigation, form logic unchanged
 - Design is now cleaner, simpler, more professional
+
+---
+Task ID: 11-plan-overhaul
+Agent: Main
+Task: 8-point plan view overhaul — weekly planner sync, Persian calendar, drag-drop, reversible status, simplified stats
+
+Work Log:
+1. Installed jalaali-js for Persian Shamsi date conversion
+2. Created src/lib/persian-date.ts with full Shamsi utilities:
+   - toJalali, jalaliToDate, getPersianWeekday, getPersianWeekdayName
+   - formatPersianDate (e.g., "۱۳ مرداد"), formatPersianDateShort
+   - getWeekDays, getSaturdayOfWeek, getDaysInJalaliMonth
+   - isToday, isSameDay, getRelativeDayLabel
+   - minutesToHours, minutesToHoursLabel
+3. Created PersianCalendar.tsx component:
+   - Full monthly calendar grid (7 columns × 5-6 rows)
+   - Full weekday names: شنبه, یکشنبه, دوشنبه, سه‌شنبه, چهارشنبه, پنجشنبه, جمعه
+   - Persian month names: فروردین, اردیبهشت, ...
+   - Click any day → selects it and shows its tasks
+   - Task count indicators (dots) on days with tasks
+   - Completed indicator (green dot) when all tasks done
+   - Today highlight + month navigation
+4. Rewrote PlanView.tsx:
+   - Replaced 7-day ribbon with PersianCalendar
+   - Removed "ورود سریع با هوش مصنوعی" bar (AI entry only in sidebar)
+   - Simplified stats: only total hours + test count (no task count, no completed count)
+   - Converted minutes to hours in stats and task cards
+   - Day subtitle: weekday name + Persian date (e.g., "سه‌شنبه · ۱۳ مرداد")
+   - Tasks sorted: pending first, completed/skipped at bottom
+5. Created SortableTaskList.tsx with @dnd-kit:
+   - Drag-and-drop reordering on desktop
+   - GripVertical drag handle on each task card
+   - Reorder updates task.order in store
+6. Rewrote TaskCard.tsx:
+   - Added drag handle (GripVertical icon, desktop only)
+   - Made status REVERSIBLE: RotateCcw (undo) button on completed/skipped tasks
+   - Shows hours instead of minutes
+7. Rewrote WeeklyPlanner.tsx to sync with REAL tasks:
+   - Reads tasks from Zustand store filtered by date
+   - Adding a subject IMMEDIATELY creates a Task (no "apply" needed)
+   - Editing a subject opens modal with SubjectTopicPicker
+   - Removing a subject deletes the Task
+   - Toggle complete checkbox on each subject chip
+   - Week navigation: این هفته / هفته قبل / هفته بعد
+   - Each day column shows: weekday name + Persian date (no year)
+8. Added resetTask + reorderTasks actions to Zustand store
+9. Removed date number display (e.g., "۲/۸") from day columns — only weekday name + Persian date shown
+
+Stage Summary:
+- All 8 issues addressed:
+  1. Weekly planner syncs immediately with real tasks (add/edit/delete)
+  2. Removed "۲/۸" date format from day columns
+  3. Click calendar day → shows that day's tasks
+  4. Removed "ورود سریع با هوش مصنوعی" bar
+  5. Simplified stats: only hours + tests (no task/completed count)
+  6. Full Persian Shamsi calendar with proper weekday names + day/month dates
+  7. Drag-and-drop task reordering with grip handles; completed tasks go to bottom
+  8. Task status reversible via RotateCcw undo button
+- Agent Browser verified: calendar renders, drag handles visible, stats simplified
