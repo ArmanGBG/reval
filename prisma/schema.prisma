@@ -13,7 +13,7 @@ datasource db {
 model User {
   id                String   @id @default(cuid())
   phone             String   @unique
-  password          String   // plaintext for dev only
+  password          String   // bcrypt hashed
   name              String
   avatar            String   @default("🦊")
   role              String   @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN

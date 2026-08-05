@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -8,14 +8,22 @@ import {
 } from 'recharts';
 import {
   Clock, FileText, BarChart3, TrendingUp, TrendingDown, ChevronLeft,
-  Sparkles, Target, Award, AlertTriangle,
+  Sparkles, Target, Award, AlertTriangle, Loader2, BookOpen,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { MOCK_DAILY_DATA, MOCK_SUBJECT_DISTRIBUTION, MOCK_ACTIVITY_DATA } from '@/lib/constants/mockData';
+import { Subject, Chapter } from '@/lib/subjects-types';
+import { toISODate, getWeekDays, getTodayJalali, getFirstDayOfJalaliMonth, getDaysInJalaliMonth } from '@/lib/persian-date';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
 const FIELD_FILTERS = ['همه', 'کنکوری', 'نهایی'] as const;
-const CHART_TABS = ['روند روزانه', 'سهم دروس', 'نوع فعالیت'] as const;
+const CHART_TABS = ['روند روزانه', 'سهم دروس', 'نوع فعالیت', 'تفکیک فصول'] as const;
 
 type TimeFilter = (typeof TIME_FILTERS)[number];
 type FieldFilter = (typeof FIELD_FILTERS)[number];
@@ -272,6 +280,8 @@ export default function AnalyticsView() {
         <div className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-4">
           <ChartContent
             chartTab={chartTab}
+            timeFilter={timeFilter}
+            fieldFilter={fieldFilter}
             ACTIVITY_COLORS={ACTIVITY_COLORS}
             ACTIVITY_LABELS={ACTIVITY_LABELS}
             pieTotal={pieTotal}
@@ -354,6 +364,8 @@ export default function AnalyticsView() {
             <div className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-5">
               <ChartContent
                 chartTab={chartTab}
+                timeFilter={timeFilter}
+                fieldFilter={fieldFilter}
                 ACTIVITY_COLORS={ACTIVITY_COLORS}
                 ACTIVITY_LABELS={ACTIVITY_LABELS}
                 pieTotal={pieTotal}
@@ -367,15 +379,271 @@ export default function AnalyticsView() {
   );
 }
 
+// ===== Subject-Chapter Breakdown =====
+interface ChapterStats {
+  chapter: Chapter;
+  targetMinutes: number;
+  actualMinutes: number;
+  completionRate: number;
+}
+
+interface SubjectStats {
+  subject: Subject;
+  targetMinutes: number;
+  actualMinutes: number;
+  completionRate: number;
+  chapters: ChapterStats[];
+}
+
+function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: TimeFilter; fieldFilter: FieldFilter }) {
+  const { tasks, user } = useAppStore();
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  // Fetch subjects with tree from API
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchSubjects() {
+      setLoading(true);
+      setError(false);
+      const grade = user?.grade || 'دوازدهم';
+      const major = user?.major || 'تجربی';
+      try {
+        const res = await fetch(`/api/subjects?include=tree&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`);
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        if (!cancelled) setSubjects(data.subjects || []);
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchSubjects();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Filter tasks by date and field
+  const filteredTasks = useMemo(() => {
+    const now = new Date();
+    const todayStr = toISODate(now);
+
+    return tasks.filter((task) => {
+      // Date filter
+      if (timeFilter === 'روزانه') {
+        if (task.date !== todayStr) return false;
+      } else if (timeFilter === 'هفته جاری') {
+        const weekDays = getWeekDays(now);
+        const weekDateStrs = weekDays.map((d) => toISODate(d));
+        if (!weekDateStrs.includes(task.date)) return false;
+      } else if (timeFilter === 'ماهانه') {
+        const j = getTodayJalali();
+        const firstDay = getFirstDayOfJalaliMonth(j.jy, j.jm);
+        const daysInMonth = getDaysInJalaliMonth(j.jy, j.jm);
+        const lastDay = new Date(firstDay);
+        lastDay.setDate(lastDay.getDate() + daysInMonth - 1);
+        const lastDayStr = toISODate(lastDay);
+        const firstDayStr = toISODate(firstDay);
+        if (task.date < firstDayStr || task.date > lastDayStr) return false;
+      }
+      // بازه دلخواه = no date restriction
+
+      // Field filter
+      if (fieldFilter === 'کنکوری' && task.fieldType !== 'کنکور') return false;
+      if (fieldFilter === 'نهایی' && task.fieldType !== 'نهایی') return false;
+
+      return true;
+    });
+  }, [tasks, timeFilter, fieldFilter]);
+
+  // Build subject → chapter stats
+  const subjectStats = useMemo((): SubjectStats[] => {
+    return subjects
+      .map((subject) => {
+        // Tasks matching this subject
+        const subjectTasks = filteredTasks.filter((t) => t.subject === subject.name);
+
+        // Per-chapter breakdown
+        const chapters = (subject.chapters || [])
+          .filter((ch) => ch.isActive)
+          .map((chapter) => {
+            // Match tasks whose topic equals chapter title, or matches any topic title within the chapter
+            const chapterTopicTitles = new Set(
+              (chapter.topics || []).filter((tp) => tp.isActive).map((tp) => tp.title)
+            );
+            const chapterTasks = subjectTasks.filter((t) => {
+              if (t.topic === chapter.title) return true;
+              if (chapterTopicTitles.has(t.topic)) return true;
+              return false;
+            });
+
+            const targetMinutes = chapterTasks.reduce((sum, t) => sum + t.targetTimeMinutes, 0);
+            const actualMinutes = chapterTasks.reduce(
+              (sum, t) => sum + (t.actualTimeMinutes ?? 0),
+              0
+            );
+            const completionRate = targetMinutes > 0 ? Math.min(Math.round((actualMinutes / targetMinutes) * 100), 100) : 0;
+
+            return { chapter, targetMinutes, actualMinutes, completionRate };
+          });
+
+        const targetMinutes = subjectTasks.reduce((sum, t) => sum + t.targetTimeMinutes, 0);
+        const actualMinutes = subjectTasks.reduce(
+          (sum, t) => sum + (t.actualTimeMinutes ?? 0),
+          0
+        );
+        const completionRate = targetMinutes > 0 ? Math.min(Math.round((actualMinutes / targetMinutes) * 100), 100) : 0;
+
+        return { subject, targetMinutes, actualMinutes, completionRate, chapters };
+      })
+      .filter((s) => s.targetMinutes > 0 || s.actualMinutes > 0);
+  }, [subjects, filteredTasks]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3" dir="rtl">
+        <Loader2 className="w-8 h-8 text-[var(--accent)] animate-spin" />
+        <p className="text-sm text-[var(--foreground-muted)]">در حال بارگذاری دروس...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3" dir="rtl">
+        <AlertTriangle className="w-8 h-8 text-[var(--accent)]" />
+        <p className="text-sm text-[var(--foreground-muted)]">خطا در بارگذاری اطلاعات دروس</p>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (subjectStats.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3" dir="rtl">
+        <BookOpen className="w-8 h-8 text-[var(--foreground-muted)]" />
+        <p className="text-sm text-[var(--foreground-muted)]">داده‌ای برای نمایش موجود نیست</p>
+        <p className="text-xs text-[var(--foreground-subtle)]">ابتدا برنامه مطالعه تنظیم کنید</p>
+      </div>
+    );
+  }
+
+  return (
+    <div dir="rtl">
+      <h3 className="text-sm font-bold text-[var(--foreground)] mb-4">تفکیک فصول دروس</h3>
+      <Accordion type="multiple" className="w-full space-y-2">
+        {subjectStats.map(({ subject, targetMinutes, actualMinutes, completionRate, chapters }) => {
+          const targetHours = (targetMinutes / 60);
+          const actualHours = (actualMinutes / 60);
+          return (
+            <AccordionItem
+              key={subject.id}
+              value={subject.id}
+              className="surface-2 border border-[var(--border)] rounded-[var(--radius-lg)] overflow-hidden data-[state=open]:border-[var(--border-strong)]"
+            >
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-[rgba(255,255,255,0.02)] transition-colors [&>svg]:text-[var(--foreground-muted)]">
+                <div className="flex items-center gap-3 w-full min-w-0">
+                  {/* Color dot */}
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: subject.color }}
+                  />
+                  {/* Subject name */}
+                  <span className="text-sm font-bold text-[var(--foreground)] truncate">
+                    {subject.name}
+                  </span>
+                  {/* Stats */}
+                  <div className="flex items-center gap-2 mr-auto text-xs text-[var(--foreground-muted)] shrink-0">
+                    <span className="tabular-nums">
+                      {toPersianNum(actualHours.toFixed(1))}/{toPersianNum(targetHours.toFixed(1))} ساعت
+                    </span>
+                    <span
+                      className="font-bold tabular-nums"
+                      style={{ color: completionRate >= 70 ? '#3EB489' : completionRate >= 40 ? '#F59E0B' : '#EF4444' }}
+                    >
+                      {toPersianNum(completionRate)}٪
+                    </span>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-3">
+                {/* Subject-level progress bar */}
+                <div className="mb-3">
+                  <div className="h-2 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${completionRate}%` }}
+                      transition={{ duration: 0.6, ease: 'easeOut' }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: subject.color }}
+                    />
+                  </div>
+                </div>
+                {/* Chapter list */}
+                <div className="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar">
+                  {chapters.map(({ chapter, targetMinutes: chTarget, actualMinutes: chActual, completionRate: chRate }) => {
+                    const chTargetH = (chTarget / 60);
+                    const chActualH = (chActual / 60);
+                    return (
+                      <div key={chapter.id} className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-[var(--foreground)] truncate max-w-[70%]">
+                            {toPersianNum(chapter.chapterNo)}- {chapter.title}
+                          </span>
+                          <div className="flex items-center gap-2 text-[10px] text-[var(--foreground-muted)] shrink-0 tabular-nums">
+                            <span>{toPersianNum(chActualH.toFixed(1))}/{toPersianNum(chTargetH.toFixed(1))}</span>
+                            <span
+                              className="font-bold"
+                              style={{ color: chRate >= 70 ? '#3EB489' : chRate >= 40 ? '#F59E0B' : '#EF4444' }}
+                            >
+                              {toPersianNum(chRate)}٪
+                            </span>
+                          </div>
+                        </div>
+                        {/* Chapter progress bar */}
+                        <div className="h-1.5 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${chRate}%` }}
+                            transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: `${subject.color}AA` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {chapters.length === 0 && (
+                    <p className="text-xs text-[var(--foreground-subtle)] py-2 text-center">
+                      فصولی برای این درس یافت نشد
+                    </p>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+    </div>
+  );
+}
+
 // ===== Chart Content (shared between mobile & desktop) =====
 function ChartContent({
   chartTab,
+  timeFilter,
+  fieldFilter,
   ACTIVITY_COLORS,
   ACTIVITY_LABELS,
   pieTotal,
   renderPieLegend,
 }: {
   chartTab: ChartTab;
+  timeFilter: TimeFilter;
+  fieldFilter: FieldFilter;
   ACTIVITY_COLORS: Record<string, string>;
   ACTIVITY_LABELS: Record<string, string>;
   pieTotal: number;
@@ -486,6 +754,10 @@ function ChartContent({
             ))}
           </div>
         </div>
+      )}
+
+      {chartTab === 'تفکیک فصول' && (
+        <SubjectChapterBreakdown timeFilter={timeFilter} fieldFilter={fieldFilter} />
       )}
     </>
   );

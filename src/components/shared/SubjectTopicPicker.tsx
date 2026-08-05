@@ -244,7 +244,7 @@ function ChapterPicker({
       const base = selectedChapter.title;
       const topicTitle = selectedTopicId
         ? (selectedChapter.topics || []).find((t) => t.id === selectedTopicId)?.title
-        : null;
+        : undefined;
       const parts = [base];
       if (topicTitle) parts.push(topicTitle);
       if (text.trim()) parts.push(text.trim());

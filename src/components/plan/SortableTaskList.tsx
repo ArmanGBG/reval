@@ -30,6 +30,7 @@ interface SortableTaskListProps {
   onSettings: (id: string) => void;
   onReset: (id: string) => void;
   onReorder: (tasks: Task[]) => void;
+  onEdit?: (id: string) => void;
 }
 
 // ===== Sortable wrapper for each task card =====
@@ -41,6 +42,7 @@ function SortableTaskCard({
   onDelete,
   onSettings,
   onReset,
+  onEdit,
 }: {
   task: Task;
   index: number;
@@ -49,6 +51,7 @@ function SortableTaskCard({
   onDelete: (id: string) => void;
   onSettings: (id: string) => void;
   onReset: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const {
     attributes,
@@ -76,6 +79,7 @@ function SortableTaskCard({
         onDelete={onDelete}
         onSettings={onSettings}
         onReset={onReset}
+        onEdit={onEdit}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -91,6 +95,7 @@ export function SortableTaskList({
   onSettings,
   onReset,
   onReorder,
+  onEdit,
 }: SortableTaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -136,6 +141,7 @@ export function SortableTaskList({
                 onDelete={onDelete}
                 onSettings={onSettings}
                 onReset={onReset}
+                onEdit={onEdit}
               />
             ))}
           </AnimatePresence>

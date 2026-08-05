@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
+import { generateToken, SESSION_COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +34,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (user.password !== password) {
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return NextResponse.json(
         { error: 'رمز عبور اشتباه است' },
         { status: 401 }
@@ -46,13 +49,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate session token
+    const token = generateToken(user.id);
+
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       user: userWithoutPassword,
+      token,
       message: 'ورود موفقیت‌آمیز بود',
     });
+
+    // Set httpOnly session cookie
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      path: '/',
+      maxAge: 86400, // 24 hours
+      sameSite: 'strict',
+    });
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

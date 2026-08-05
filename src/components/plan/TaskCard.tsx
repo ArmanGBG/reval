@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, type Variants } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Task } from '@/lib/types';
 import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constants/feedbackMessages';
@@ -27,6 +27,7 @@ interface TaskCardProps {
   onDelete: (id: string) => void;
   onSettings: (id: string) => void;
   onReset: (id: string) => void; // NEW: undo complete/skip
+  onEdit?: (id: string) => void; // edit task details
   dragHandleProps?: Record<string, unknown>; // for dnd-kit drag handle
 }
 
@@ -39,6 +40,7 @@ export default function TaskCard({
   onDelete,
   onSettings,
   onReset,
+  onEdit,
   dragHandleProps,
 }: TaskCardProps) {
   const isCompleted = task.completed === true;
@@ -199,6 +201,15 @@ export default function TaskCard({
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
               </button>
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(task.id)}
+                  className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  aria-label="ویرایش"
+                >
+                  <Pencil className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+              )}
               <button
                 onClick={() => onSettings(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.08)]"

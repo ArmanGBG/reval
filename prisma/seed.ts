@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+// Hash password helper
+function hashPassword(plain: string): string {
+  return bcrypt.hashSync(plain, 10);
+}
 
 async function main() {
   console.log('🌱 Seeding database...\n');
@@ -11,7 +17,7 @@ async function main() {
     update: {},
     create: {
       phone: '09121000000',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'سوپر ادمین',
       avatar: '👑',
       role: 'SUPER_ADMIN',
@@ -26,7 +32,7 @@ async function main() {
     update: {},
     create: {
       phone: '09121111111',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'آقای احمدی',
       avatar: '👨‍💼',
       role: 'INSTITUTE_MANAGER',
@@ -61,7 +67,7 @@ async function main() {
     update: {},
     create: {
       phone: '09121234567',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'دکتر محمدی',
       avatar: '👨‍🏫',
       role: 'ADVISOR',
@@ -75,7 +81,7 @@ async function main() {
     update: {},
     create: {
       phone: '09129876543',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'سرکار خانم احمدی',
       avatar: '👩‍🏫',
       role: 'ADVISOR',
@@ -89,7 +95,7 @@ async function main() {
     update: {},
     create: {
       phone: '09123456789',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'آقای رضایی',
       avatar: '🧑‍🏫',
       role: 'ADVISOR',
@@ -105,7 +111,7 @@ async function main() {
     update: {},
     create: {
       phone: '09131111111',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'سارا محمدی',
       avatar: '🦊',
       role: 'STUDENT',
@@ -123,7 +129,7 @@ async function main() {
     update: {},
     create: {
       phone: '09132222222',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'امیرحسین رضایی',
       avatar: '🐺',
       role: 'STUDENT',
@@ -141,7 +147,7 @@ async function main() {
     update: {},
     create: {
       phone: '09133333333',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'فاطمه احمدی',
       avatar: '🦁',
       role: 'STUDENT',
@@ -159,7 +165,7 @@ async function main() {
     update: {},
     create: {
       phone: '09134444444',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'محمد حسینی',
       avatar: '🐯',
       role: 'STUDENT',
@@ -177,7 +183,7 @@ async function main() {
     update: {},
     create: {
       phone: '09135555555',
-      password: '1234',
+      password: hashPassword('1234'),
       name: 'زهرا کریمی',
       avatar: '🦅',
       role: 'STUDENT',
