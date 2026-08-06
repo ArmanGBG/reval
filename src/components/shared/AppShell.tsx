@@ -11,7 +11,6 @@ import CelebrationOverlay from './CelebrationOverlay';
 import CommandPalette from './CommandPalette';
 import DataExportHelper from './DataExportHelper';
 import FocusMode from './FocusMode';
-import MobileCommandFab from './MobileCommandFab';
 
 /**
  * AppShell — responsive layout wrapper.
@@ -57,7 +56,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const showSidebar = !isDetailPage && !focusMode; // detail pages + focus hide sidebar
   const showMusicPlayer = userRole === 'STUDENT' && !isDetailPage && !focusMode;
   const isStudent = userRole === 'STUDENT';
-  const showMobileFab = !focusMode;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -83,9 +81,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom nav */}
       {showBottomNav && <BottomNav />}
-
-      {/* Mobile floating command palette trigger */}
-      {showMobileFab && <MobileCommandFab />}
 
       {/* Student music player (floating) */}
       {showMusicPlayer && <MusicPlayer />}

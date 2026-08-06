@@ -16,12 +16,10 @@ import {
   ClipboardList,
   Crown,
   BookOpen,
-  Command,
   Send,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { useCommandPaletteStore } from '@/hooks/use-command-palette';
 import NotificationCenter from './NotificationCenter';
 
 // ===== Nav configs per role =====
@@ -65,7 +63,6 @@ const ROLE_LABEL: Record<UserRole, { label: string; sub: string }> = {
 
 export default function SidebarNav() {
   const { currentView, setCurrentView, userRole, user } = useAppStore();
-  const openPalette = useCommandPaletteStore((s) => s.setOpen);
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems =
@@ -181,32 +178,7 @@ export default function SidebarNav() {
           )}
         </div>
 
-        {/* Command palette trigger — shown above the footer */}
-        {!collapsed && (
-          <button
-            onClick={() => openPalette(true)}
-            className="group mt-4 w-full flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/60 px-3 h-10 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] transition-colors"
-            title="باز کردن پنل دستورات (Ctrl+K)"
-          >
-            <Command className="w-4 h-4 shrink-0" />
-            <span className="flex-1 text-right text-xs">جستجو یا دستور...</span>
-            <kbd
-              dir="ltr"
-              className="inline-flex items-center gap-0.5 px-1.5 h-5 rounded border border-[var(--border-strong)] bg-[rgba(255,255,255,0.04)] text-[10px] font-mono text-[var(--foreground-subtle)] group-hover:text-[var(--foreground-muted)]"
-            >
-              Ctrl K
-            </kbd>
-          </button>
-        )}
-        {collapsed && (
-          <button
-            onClick={() => openPalette(true)}
-            className="group mt-4 mx-auto flex items-center justify-center w-10 h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/60 text-[var(--foreground-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
-            title="پنل دستورات (Ctrl+K)"
-          >
-            <Command className="w-4 h-4" />
-          </button>
-        )}
+        {/* Search button removed per user request — Ctrl+K still opens the command palette */}
       </nav>
 
       {/* ===== User footer ===== */}

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Clock, Target, ChevronLeft, Plus, Share2, Heart } from 'lucide-react';
+import { X, Clock, Target, ChevronLeft, Share2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -214,7 +214,7 @@ function MotivationalQuoteCard() {
 
 
 export default function Dashboard() {
-  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, streakFreezes, incrementStreak, setCurrentView } = useAppStore();
+  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, streakFreezes, incrementStreak } = useAppStore();
   const studentId = useCurrentStudentId();
   const { celebrate } = useCelebration();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
@@ -426,58 +426,46 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ===== Task action row: subject chips (left) + add button (right) ===== */}
-      {/* The island strip above already shows "X از Y تسک امروز" — no heading duplication */}
-      <div className="flex items-center justify-between gap-2 mb-3 px-1">
-        {/* Subject legend / quick filter (only when 2+ subjects) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 min-w-0">
-          {subjectChips.length > 1 && (
-            <>
+      {/* ===== Subject legend / quick filter (only when 2+ subjects) ===== */}
+      {/* The island strip above already shows "X از Y تسک امروز" — no heading duplication.
+          The "افزودن" action was removed per user request; students add tasks via the «برنامه من» tab. */}
+      {subjectChips.length > 1 && (
+        <div className="flex items-center gap-1.5 mb-3 px-1 overflow-x-auto no-scrollbar pb-1">
+          <button
+            onClick={() => setSubjectFilter(null)}
+            className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
+              subjectFilter === null
+                ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]'
+                : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
+            }`}
+          >
+            همه
+            <span className="tabular-nums opacity-70">{toPersianDigits(todayTasks.length)}</span>
+          </button>
+          {subjectChips.map((chip) => {
+            const active = subjectFilter === chip.name;
+            return (
               <button
-                onClick={() => setSubjectFilter(null)}
+                key={chip.name}
+                onClick={() => setSubjectFilter(active ? null : chip.name)}
                 className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
-                  subjectFilter === null
-                    ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]'
+                  active
+                    ? 'border-[var(--border-strong)] text-[var(--foreground)]'
                     : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
                 }`}
+                style={active ? { backgroundColor: `${chip.color}1A`, borderColor: `${chip.color}66` } : undefined}
               >
-                همه
-                <span className="tabular-nums opacity-70">{toPersianDigits(todayTasks.length)}</span>
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: chip.color }}
+                />
+                {chip.name}
+                <span className="tabular-nums opacity-70">{toPersianDigits(chip.completed)}/{toPersianDigits(chip.count)}</span>
               </button>
-              {subjectChips.map((chip) => {
-                const active = subjectFilter === chip.name;
-                return (
-                  <button
-                    key={chip.name}
-                    onClick={() => setSubjectFilter(active ? null : chip.name)}
-                    className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
-                      active
-                        ? 'border-[var(--border-strong)] text-[var(--foreground)]'
-                        : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
-                    }`}
-                    style={active ? { backgroundColor: `${chip.color}1A`, borderColor: `${chip.color}66` } : undefined}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: chip.color }}
-                    />
-                    {chip.name}
-                    <span className="tabular-nums opacity-70">{toPersianDigits(chip.completed)}/{toPersianDigits(chip.count)}</span>
-                  </button>
-                );
-              })}
-            </>
-          )}
+            );
+          })}
         </div>
-        {/* Add task button */}
-        <button
-          onClick={() => setCurrentView('plan')}
-          className="shrink-0 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          افزودن
-        </button>
-      </div>
+      )}
 
       {/* ===== Today's Task List ===== */}
       {tasksLoading ? (
@@ -529,24 +517,10 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
-              className="text-xs text-[var(--foreground-muted)] mb-5 max-w-xs mx-auto leading-6"
+              className="text-xs text-[var(--foreground-muted)] max-w-xs mx-auto leading-6"
             >
-              اولین تسک امروزت رو اضافه کن و زنجیره‌ی مطالعه‌ات رو بساز
+              از تب «برنامه من» می‌تونی تسک‌های امروزت رو بسازی
             </motion.p>
-            <motion.button
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.24 }}
-              onClick={() => setCurrentView('plan')}
-              className="btn-hover inline-flex items-center gap-2 h-10 px-5 rounded-xl text-sm font-bold text-[var(--bg-deep)]"
-              style={{
-                background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
-                boxShadow: '0 8px 24px -6px var(--accent-glow)',
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              اضافه کردن تسک
-            </motion.button>
           </div>
         </motion.div>
       ) : (

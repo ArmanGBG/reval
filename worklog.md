@@ -2761,3 +2761,29 @@ Stage Summary:
 - Messaging system fully functional: super-admin can broadcast to all students or message individuals; advisors can message their own students (individual or group broadcast); messages appear in student bell merged with computed notifications, with server-side read persistence.
 - Files modified by Main: `src/components/dashboard/Dashboard.tsx` (points 1, 3, 4)
 - Files created/modified by subagent (point 2): see Task ID 2 entry above.
+
+---
+Task ID: student-home-remove-add-and-search
+Agent: Main
+Task: پنل دانش‌آموز بخش خانه — حذف کامل بخش افزودن و حذف دکمه سرچ
+
+Work Log:
+- Point 1 (remove "افزودن" section): Edited `src/components/dashboard/Dashboard.tsx`:
+  * Removed the "افزودن" button from the task action row (was on the right side next to subject chips). The row now contains only the subject filter chips, rendered only when 2+ subjects exist.
+  * Removed the "اضافه کردن تسک" CTA button from the empty-state card. Updated the empty-state copy from "اولین تسک امروزت رو اضافه کن..." to "از تب «برنامه من» می‌تونی تسک‌های امروزت رو بسازی" so students know where to go.
+  * Removed the now-unused `Plus` import from lucide-react and `setCurrentView` from the useAppStore destructure.
+  * Students can still add tasks via the «برنامه من» (Plan) tab in the nav.
+- Point 2 (remove search button completely): Removed all visible search/command-palette trigger UI:
+  * `src/components/shared/AppShell.tsx`: removed `MobileCommandFab` import and its `{showMobileFab && <MobileCommandFab />}` render. Removed the now-unused `showMobileFab` variable.
+  * `src/components/shared/SidebarNav.tsx`: removed the desktop sidebar search trigger (both expanded "جستجو یا دستور... Ctrl K" button and the collapsed icon-only button). Removed the now-unused `Command` icon import and `useCommandPaletteStore` import + `openPalette` variable.
+  * The `MobileCommandFab.tsx` file still exists but is no longer imported/rendered anywhere.
+  * The `CommandPalette` component (the modal) and the Ctrl+K keyboard shortcut hook are intentionally kept — they're invisible until triggered, so power users retain Ctrl+K access without any visible search button cluttering the UI.
+
+Verification Results (agent-browser end-to-end):
+- Student home (سارا محمدی): ✅ no "افزودن" button, ✅ no "اضافه کردن تسک" CTA, ✅ no "جستجو یا دستور" text anywhere, ✅ no "Ctrl K" kbd, ✅ no floating search FAB (aria-label check), ✅ subject chips still render, ✅ quote card + island strip + task list intact
+- Programmatic eval: `hasAddBtn_home: false, hasSearchBtn: false, hasCtrlK: false, hasFab: false, hasAddTaskCta: false`
+- `bun run lint`: ✅ zero errors
+- Dev server: ✅ stable, all routes 200, no runtime/console errors
+
+Stage Summary:
+- Both user requests completed and verified. The student home is now even cleaner — no add button (students use the «برنامه من» tab), and no search button anywhere in the app shell (mobile FAB + desktop sidebar trigger both removed). Ctrl+K keyboard shortcut preserved as a hidden power-user feature.
