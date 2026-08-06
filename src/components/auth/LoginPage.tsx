@@ -110,10 +110,63 @@ export default function LoginPage() {
     }
   }, [phone, password, setUserRole, setUser, setOnboardingComplete]);
 
-  const handleQuickLogin = useCallback((quickPhone: string) => {
+  const handleQuickLogin = useCallback(async (quickPhone: string) => {
     setPhone(quickPhone);
     setPassword('1234');
-  }, []);
+
+    // Auto-submit the login immediately so the user doesn't have to click again.
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: quickPhone, password: '1234' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'خطا در ورود');
+        toast.error(data.error || 'خطا در ورود', {
+          style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+        });
+        return;
+      }
+      const role = data.user.role as UserRole;
+      setUserRole(role);
+      setUser({
+        id: data.user.id,
+        name: data.user.name,
+        avatar: data.user.avatar,
+        grade: data.user.grade || 'دوازدهم',
+        major: data.user.major || 'تجربی',
+        goal: data.user.goal || 'کنکور',
+        dailyTargetHours: data.user.dailyTargetHours || 6,
+        phone: data.user.phone,
+        assignedAdvisorId: data.user.assignedAdvisorId || null,
+      });
+      setOnboardingComplete(true);
+
+      const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
+      if (role === 'STUDENT') {
+        loadTasksForStudent(data.user.id).catch(() => {});
+        loadExams({ studentId: data.user.id }).catch(() => {});
+      } else if (role === 'ADVISOR') {
+        loadAdvisorStudents(data.user.id).catch(() => {});
+        loadExams({ advisorId: data.user.id }).catch(() => {});
+      }
+
+      toast.success(`خوش آمدی، ${data.user.name}`, {
+        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
+      });
+    } catch {
+      setError('خطا در ارتباط با سرور');
+      toast.error('خطا در ارتباط با سرور', {
+        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [setUserRole, setUser, setOnboardingComplete]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
@@ -128,11 +181,12 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-md mx-auto">
         {/* ============ Logo & Title ============ */}
-        <motion.div
+        <motion.button
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-7"
+          onClick={() => setCurrentView('landing')}
+          className="text-center mb-7 block w-full"
         >
           <div className="relative inline-block">
             <div className="w-20 h-20 rounded-[20px] bg-mint/15 border border-mint/25 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-mint/10">
@@ -141,7 +195,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-black text-foreground tracking-tight">روال</h1>
           <p className="text-sm text-muted-foreground mt-1.5">مسیر مطالعه‌ات رو هموار کن</p>
-        </motion.div>
+        </motion.button>
 
         {/* ============ Login Card ============ */}
         <motion.div
@@ -246,17 +300,18 @@ export default function LoginPage() {
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-[var(--border)]" />
-            <p className="text-[11px] text-muted-foreground">دسترسی سریع (حساب‌های آزمایشی)</p>
+            <p className="text-[11px] text-muted-foreground">دسترسی سریع به پنل‌ها (حساب‌های آزمایشی)</p>
             <div className="flex-1 h-px bg-[var(--border)]" />
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             {QUICK_ACCOUNTS.map((account) => {
               const Icon = account.icon;
+              const isSuperAdmin = account.phone === '09121000000';
               return (
                 <button
                   key={account.phone}
                   onClick={() => handleQuickLogin(account.phone)}
-                  className={`btn-hover flex items-center gap-2.5 p-3 pr-2.5 rounded-[12px] border ${account.tint} hover:border-[var(--border-strong)] text-right relative overflow-hidden`}
+                  className={`btn-hover flex items-center gap-2.5 p-3 pr-2.5 rounded-[12px] border ${account.tint} hover:border-[var(--border-strong)] text-right relative overflow-hidden ${isSuperAdmin ? 'ring-1 ring-gold/20' : ''}`}
                   style={{ borderRightWidth: '3px', borderRightColor: account.accentBorder }}
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${account.tint}`}>
@@ -266,6 +321,9 @@ export default function LoginPage() {
                     <p className="text-xs text-foreground font-medium">{account.label}</p>
                     <p className="text-[10px] text-muted-foreground/70 tabular-nums" dir="ltr">{account.phone}</p>
                   </div>
+                  {isSuperAdmin && (
+                    <span className="absolute top-1 left-1 text-[8px] font-bold text-gold/80 bg-gold/10 px-1 rounded">مدیریت کل</span>
+                  )}
                 </button>
               );
             })}

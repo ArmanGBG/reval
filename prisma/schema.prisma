@@ -18,7 +18,7 @@ model User {
   avatar            String   @default("🦊")
   role              String   @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
   grade             String?  // دهم, یازدهم, دوازدهم, پشت کنکوری
-  major             String?  // تجربی, ریاضی, انسانی, معارف
+  major             String?  // تجربی, ریاضی, انسانی
   goal              String?  // کنکور, نهایی, هر دو
   dailyTargetHours  Int      @default(6)
   instituteId       String?

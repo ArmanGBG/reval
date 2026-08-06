@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/accordion';
 
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
-const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی', 'معارف'];
+const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
 const GOALS: Goal[] = ['کنکور', 'نهایی', 'هر دو'];
 const TICKET_TOPICS = ['مشکل فنی', 'پیشنهاد', 'سوال', 'شکایت'] as const;
 

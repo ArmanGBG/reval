@@ -125,6 +125,23 @@ export default function Home() {
     );
   }
 
+  // Login page (full-bleed, no AppShell). Reachable from the landing page and
+  // from the onboarding wizard ("حساب داری؟ ورود"). Hosts the quick-access
+  // buttons for demo accounts (super-admin, institute-manager, advisor, student).
+  if (currentView === 'login' && !isLoggedIn) {
+    return (
+      <motion.div
+        key="login"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <LoginPage />
+      </motion.div>
+    );
+  }
+
   // Render the active view inside AppShell
   const renderView = () => {
     // Super Admin

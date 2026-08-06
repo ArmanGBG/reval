@@ -31,7 +31,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
-const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی', 'معارف'];
+const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
 
 export default function InstituteStudents() {
   const {

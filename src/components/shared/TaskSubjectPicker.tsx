@@ -169,7 +169,19 @@ export function TaskSubjectPicker({
   const [reloadKey, setReloadKey] = useState(0);
 
   // ===== Fetch subjects whenever fieldType/grade/major/reloadKey changes =====
+  // Guard: if grade or major is empty/missing (e.g. an advisor or institute
+  // manager without a student profile, or a student who hasn't completed their
+  // profile), skip the API call entirely and show a friendly message instead
+  // of hitting a 400 "fieldType, grade, major are required" error.
+  const hasGradeMajor = !!(grade && major && grade.trim() && major.trim());
+
   useEffect(() => {
+    if (!hasGradeMajor) {
+      setSubjects([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -298,6 +310,24 @@ export function TaskSubjectPicker({
             <Skeleton key={i} className="h-14 rounded-xl bg-[var(--bg-overlay)]" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // ===== Missing grade/major guard =====
+  // If the caller didn't supply a grade/major (common for advisors/managers
+  // who don't have a student profile), show a clear, actionable message
+  // instead of silently failing or showing a generic error.
+  if (!hasGradeMajor) {
+    return (
+      <div className="surface-1 rounded-xl p-6 text-center" dir="rtl">
+        <AlertCircle className="w-8 h-8 mx-auto text-[var(--warning)] mb-2" />
+        <p className="text-xs text-[var(--foreground-muted)] mb-1">
+          پایه و رشته تحصیلی مشخص نیست
+        </p>
+        <p className="text-[10px] text-[var(--foreground-subtle)] leading-relaxed">
+          برای انتخاب درس، ابتدا باید پایه و رشته تحصیلی دانش‌آموز در پروفایل ثبت شده باشد.
+        </p>
       </div>
     );
   }

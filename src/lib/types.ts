@@ -16,13 +16,13 @@ export type InstituteManagerView = 'institute-dashboard' | 'institute-advisors' 
 export type SuperAdminView = 'sa-dashboard' | 'sa-subjects' | 'sa-institutes' | 'sa-institute-detail' | 'sa-users' | 'sa-user-detail' | 'sa-settings' | 'sa-messages';
 
 // Top-level navigation (before auth)
-export type TopView = 'landing' | 'onboarding';
+export type TopView = 'landing' | 'onboarding' | 'login';
 
 // Unified view name
 export type ViewName = TopView | StudentView | AdvisorView | InstituteManagerView | SuperAdminView;
 
 export type Grade = 'دهم' | 'یازدهم' | 'دوازدهم' | 'پشت کنکوری';
-export type Major = 'تجربی' | 'ریاضی' | 'انسانی' | 'معارف';
+export type Major = 'تجربی' | 'ریاضی' | 'انسانی';
 export type Goal = 'کنکور' | 'نهایی' | 'هر دو';
 export type FieldType = 'کنکور' | 'نهایی';
 export type ActivityType = 'مطالعه' | 'مرور' | 'تست آموزشی' | 'تست سنجشی';

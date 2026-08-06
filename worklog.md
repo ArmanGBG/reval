@@ -2838,3 +2838,106 @@ Stage Summary:
 - اکنون کاربران جدید می‌توانند ثبت‌نام کنند، سشن واقعی بگیرند، و تسک بسازند بدون خطای 401.
 - فایل‌های ساخته‌شده: `src/app/api/auth/register/route.ts`
 - فایل‌های تغییر یافته: `src/proxy.ts`، `src/components/onboarding/OnboardingWizard.tsx`، `src/app/page.tsx`، `src/components/auth/LoginPage.tsx`
+
+---
+Task ID: multi-role-onboarding-major-cleanup
+Agent: Main
+Task: پنج درخواست کاربر: ۱) حذف رشته معارف ۲) راهنمایی دسترسی به پنل سوپر ادمین ۳) پرسیدن نقش هنگام ثبت‌نام (دانش‌آموز/مشاور/مدیر آموزشگاه) ۴) حذف کامل بخش هدف‌گذاری مطالعه ۵) بررسی اسکرین‌شات بخش افزودن تسک
+
+Work Log:
+
+**درخواست ۱: حذف رشته معارف**
+- `src/lib/types.ts`: `Major` type از `'تجربی' | 'ریاضی' | 'انسانی' | 'معارف'` به `'تجربی' | 'ریاضی' | 'انسانی'` تغییر کرد.
+- `src/components/onboarding/OnboardingWizard.tsx`: MAJORS array (همچنین grid از `grid-cols-2` به `grid-cols-3` تغییر کرد چون حالا ۳ رشته داریم).
+- `src/components/settings/SettingsView.tsx`: MAJORS array.
+- `src/components/institute/InstituteStudents.tsx`: MAJORS array.
+- `prisma/schema.prisma`: comment به‌روزرسانی شد.
+- `src/app/api/auth/register/route.ts`: comment به‌روزرسانی شد.
+- بررسی seed.ts: هیچ داده‌ای با major=معارف وجود نداشت.
+
+**درخواست ۲: دسترسی به پنل سوپر ادمین**
+مشکل اصلی: `LoginPage` هرگز render نمی‌شد! فقط به‌عنوان fallback در page.tsx استفاده می‌شد و هیچ مسیری به آن وجود نداشت. دکمه‌های «شروع کن» در landing مستقیماً به onboarding می‌رفتند.
+راه‌حل:
+- `src/lib/types.ts`: `'login'` به `TopView` اضافه شد.
+- `src/app/page.tsx`: case جدید `currentView === 'login' && !isLoggedIn` → render `<LoginPage />` (full-bleed).
+- `src/components/landing/LandingNav.tsx`: دکمه «ورود» جداگانه در navbar اضافه شد (در کنار «شروع کن»).
+- `src/components/onboarding/OnboardingWizard.tsx`: لینک «حساب داری؟ وارد شو» در footer wizard اضافه شد.
+- `src/components/auth/LoginPage.tsx`: logo به motion.button تبدیل شد (کلیک → بازگشت به landing). badge «مدیریت کل» روی کارت سوپر ادمین اضافه شد. `handleQuickLogin` از فقط-fill کردن فیلدها به auto-submit کامل ارتقا یافت (تا کاربر فقط یک کلیک کند).
+- اعتبار سوپر ادمین: `09121000000` / رمز: `1234` — هم از طریق فرم ورود و هم از طریق دکمه دسترسی سریع (یک‌کلیک).
+
+**درخواست ۳: پرسیدن نقش هنگام ثبت‌نام**
+- `src/app/api/auth/register/route.ts`: بازنویسی کامل — پارامتر `role` اضافه شد (STUDENT/ADVISOR/INSTITUTE_MANAGER). SUPER_ADMIN قابل self-register نیست (seed-only).
+  - STUDENT: grade + major الزامی است.
+  - ADVISOR: بدون grade/major (مستقل — بعداً توسط super-admin/institute-manager به آموزشگاه متصل می‌شود).
+  - INSTITUTE_MANAGER: پارامتر `instituteName` در صورت وجود → transaction: create user → create Institute (با managerId) → link user.instituteId.
+- `src/components/onboarding/OnboardingWizard.tsx`: کاملاً بازنویسی شد.
+  - Step 1: phone + OTP (همه نقش‌ها)
+  - Step 2: انتخاب نقش — NEW (دانش‌آموز / مشاور / مدیر آموزشگاه) با آیکون و توضیح
+  - Step 3: name + avatar (همه نقش‌ها)
+  - Step 4: role-specific — STUDENT: grade + major / INSTITUTE_MANAGER: institute name / ADVISOR: no step 4
+  - `totalSteps` dynamic: 4 برای STUDENT و INSTITUTE_MANAGER، 3 برای ADVISOR.
+  - ProgressIndicator به `totalSteps` parameter مجهز شد.
+  - `handleComplete` به API واقعی وصل شد با role، و `setUserRole` هم صدا زده می‌شود. navigation به نقش مناسب: STUDENT → dashboard، ADVISOR → advisor-dashboard، INSTITUTE_MANAGER → institute-dashboard.
+
+**درخواست ۴: حذف بخش هدف‌گذاری مطالعه**
+- `StepGoals` component کاملاً حذف شد.
+- `GOALS` و `DAILY_HOURS` constants حذف شدند.
+- `goal` و `dailyHours` state از main component حذف شدند.
+- `Target` icon import حذف شد.
+- نکته: فیلدهای `goal` و `dailyTargetHours` در schema/types باقی ماندند چون در SettingsView و advisor panels استفاده می‌شوند. register API مقادیر default می‌گذارد (goal='کنکور', dailyTargetHours=6) وقتی ارسال نمی‌شوند.
+
+**درخواست ۵: اسکرین‌شات بخش افزودن تسک**
+- تحلیل VLM اسکرین‌شات: خطای «امکان دریافت لیست» در TaskSubjectPicker — یعنی `/api/subjects/for-task` با خطا برگشته بود.
+- ریشه‌یابی: اسکرین‌شات مربوط به **قبل از** اصلاح احراز هویت (task: fix-onboarding-auth-401) بود. در آن زمان، OnboardingWizard یک کاربر fake با `id='s1'` می‌ساخت و هیچ session cookie واقعی صادر نمی‌کرد → هر درخواست `/api/*` با 401 رد می‌شد → TaskSubjectPicker خطا نشان می‌داد.
+- تأیید زنده (agent-browser): پس از اصلاح قبلی، دیالوگ «افزودن سریع تسک» در PlanView به درستی ۵ درس (زیست‌شناسی، فیزیک، شیمی، ریاضی، زمین‌شناسی) را نمایش می‌دهد.
+- بهبود دفاعی اضافه شد — `src/components/shared/TaskSubjectPicker.tsx`:
+  - guard `hasGradeMajor`: اگر grade یا major خالی/missing باشد (مثلاً مشاور/مدیر بدون profile دانش‌آموز)، API call انجام نمی‌شود و پیام واضح «پایه و رشته تحصیلی مشخص نیست» نمایش داده می‌شود به‌جای خطای 400 generic.
+  - این guard قبل از error-state render می‌شود.
+
+Verification Results (agent-browser end-to-end):
+
+1. **ثبت‌نام به‌عنوان STUDENT** (phone 09131111222):
+   - step 1: phone + OTP 1234 ✓
+   - step 2: انتخاب «دانش‌آموز» ✓ (سه گزینه نمایش داده شد)
+   - step 3: name «سارا تستی» + avatar 🐉 ✓
+   - step 4: پایه دوازدهم + تجربی ✓ — فقط ۳ رشته (تجربی، ریاضی، انسانی)، معارف حذف شده ✓
+   - POST /api/auth/register 200 → dashboard با greeting «دوباره سلام سارا تستی!» ✓
+
+2. **ثبت‌نام به‌عنوان ADVISOR** (phone 09125556677):
+   - step 1: phone + OTP ✓
+   - step 2: انتخاب «مشاور» ✓
+   - step 3: name «مشاور تستی» + avatar 🦁 ✓ — CTA دکمه «شروع کن» (نه «بعدی») چون ADVISOR فقط ۳ step دارد ✓
+   - POST /api/auth/register 200 → پنل مشاور با sidebar «داشبورد / دانش‌آموزان / پیام‌رسانی / تنظیمات» ✓
+
+3. **ثبت‌نام به‌عنوان INSTITUTE_MANAGER** (phone 09127778899):
+   - step 1: phone + OTP ✓
+   - step 2: انتخاب «مدیر آموزشگاه» ✓
+   - step 3: name «مدیر تستی» + avatar 🐯 ✓
+   - step 4: institute name «آموزشگاه تستی روال» ✓ (step 4 فقط برای INSTITUTE_MANAGER)
+   - POST /api/auth/register 200 → پنل آموزشگاه با sidebar «داشبورد / مشاوران / دانش‌آموزان / تنظیمات» ✓
+
+4. **دسترسی به پنل سوپر ادمین**:
+   - landing → کلیک «ورود» در navbar (دکمه جدید) → LoginPage ✓
+   - کلیک روی کارت «سوپر ادمین» در دسترسی سریع → auto-submit login → «GOD MODE» dashboard ✓
+   - badge «مدیریت کل» روی کارت سوپر ادمین ✓
+
+5. **دیالوگ افزودن تسک** (دانش‌آموز سارا محمدی):
+   - Plan view → «تسک جدید» → دیالوگ «افزودن سریع تسک» باز شد ✓
+   - ۵ درس بارگذاری شد (زیست‌شناسی، فیزیک، شیمی، ریاضی، زمین‌شناسی) ✓
+   - دیگر خطای «امکان دریافت لیست» نیست ✓
+
+6. **API برای-task با هر ۳ رشته**:
+   - تجربی: 5 درس ✓ / ریاضی: 1 درس ✓ / انسانی: 0 درس (انتظار — seed فقط تجربی/ریاضی دارد) ✓
+
+7. `bun run lint`: ✅ zero errors
+8. dev.log: ✅ هیچ runtime error، همه روت‌ها 200/201
+
+Stage Summary:
+- هر ۵ درخواست کاربر تکمیل و end-to-end تأیید شد.
+- رشته معارف از کل کدبیس حذف شد (types، UI، schema comment).
+- ثبت‌نام چندنقشی پیاده‌سازی شد: دانش‌آموز (۴ step)، مشاور (۳ step)، مدیر آموزشگاه (۴ step با institute creation).
+- بخش هدف‌گذاری مطالعه کاملاً حذف شد.
+- پنل سوپر ادمین اکنون قابل دسترسی است: landing → «ورود» → کلیک روی «سوپر ادمین» (یک کلیک، auto-submit). اعتبار: 09121000000 / 1234.
+- اسکرین‌شات بخش افزودن تسک مربوط به قبل از اصلاح احراز هویت بود؛ اکنون کاملاً کار می‌کند. یک guard دفاعی هم اضافه شد تا اگر grade/major موجود نباشد، پیام واضح نمایش داده شود.
+- فایل‌های ساخته‌شده: (هیچ فایل جدیدی — همه تغییر روی فایل‌های موجود)
+- فایل‌های تغییر یافته: `src/lib/types.ts`، `src/prisma/schema.prisma` (comment)، `src/app/api/auth/register/route.ts`، `src/components/onboarding/OnboardingWizard.tsx`، `src/components/settings/SettingsView.tsx`، `src/components/institute/InstituteStudents.tsx`، `src/app/page.tsx`، `src/components/landing/LandingNav.tsx`، `src/components/auth/LoginPage.tsx`، `src/components/shared/TaskSubjectPicker.tsx`

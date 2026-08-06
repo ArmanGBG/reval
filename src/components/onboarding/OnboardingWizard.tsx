@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowRight, Phone, User as UserIcon, GraduationCap, Target, Loader2 } from 'lucide-react';
+import { ArrowRight, Phone, User as UserIcon, GraduationCap, Loader2, Shield, Building2, BookOpen } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAppStore } from '@/lib/store';
 import { AVATARS } from '@/lib/constants/mockData';
-import type { Grade, Major, Goal, User } from '@/lib/types';
+import type { Grade, Major, User, UserRole } from '@/lib/types';
 
 // ===== Constants =====
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
@@ -17,9 +17,16 @@ const GRADE_LABELS: Record<Grade, string> = {
   'دوازدهم': 'پایه دوازدهم',
   'پشت کنکوری': 'پشت کنکوری',
 };
-const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی', 'معارف'];
-const GOALS: Goal[] = ['کنکور', 'نهایی', 'هر دو'];
-const DAILY_HOURS = [4, 6, 8, 10];
+// Only three majors — معارف removed per product decision.
+const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
+
+// Self-registerable roles. SUPER_ADMIN is seed-only and excluded here.
+type RegisterRole = Extract<UserRole, 'STUDENT' | 'ADVISOR' | 'INSTITUTE_MANAGER'>;
+const ROLE_OPTIONS: { value: RegisterRole; label: string; desc: string; icon: typeof GraduationCap }[] = [
+  { value: 'STUDENT', label: 'دانش‌آموز', desc: 'برنامه مطالعه، تسک و تحلیل پیشرفت', icon: GraduationCap },
+  { value: 'ADVISOR', label: 'مشاور', desc: 'مدیریت دانش‌آموزان و ارسال پیام', icon: Shield },
+  { value: 'INSTITUTE_MANAGER', label: 'مدیر آموزشگاه', desc: 'مدیریت مشاوران و دانش‌آموزان آموزشگاه', icon: Building2 },
+];
 
 // ===== Animation Variants =====
 const slideVariants = {
@@ -38,10 +45,14 @@ const slideVariants = {
 };
 
 // ===== Progress Indicator =====
-function ProgressIndicator({ currentStep }: { currentStep: number }) {
+// Renders `totalSteps` dots. The total depends on the selected role:
+//  - STUDENT:           4 steps (phone → role → identity → academic)
+//  - INSTITUTE_MANAGER: 4 steps (phone → role → identity → institute)
+//  - ADVISOR:           3 steps (phone → role → identity)
+function ProgressIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
-      {[1, 2, 3, 4].map((step) => (
+      {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
         <div
           key={step}
           className={`
@@ -170,7 +181,80 @@ function StepPhone({
   );
 }
 
-// ===== Step 2: Personal Identity =====
+// ===== Step 2: Role Selection (NEW) =====
+function StepRole({
+  role,
+  setRole,
+  direction,
+}: {
+  role: RegisterRole | '';
+  setRole: (v: RegisterRole) => void;
+  direction: number;
+}) {
+  return (
+    <motion.div
+      key="step2-role"
+      custom={direction}
+      variants={slideVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      className="flex flex-col items-center w-full"
+    >
+      <div className="w-16 h-16 rounded-2xl bg-mint/15 flex items-center justify-center mb-6">
+        <BookOpen className="w-8 h-8 text-mint" />
+      </div>
+
+      <h1 className="text-2xl font-bold text-foreground mb-2">به چه عنوانی ثبت‌نام می‌کنی؟</h1>
+      <p className="text-muted-foreground mb-8">نقش خودت رو انتخاب کن</p>
+
+      <div className="w-full space-y-3">
+        {ROLE_OPTIONS.map((opt) => {
+          const Icon = opt.icon;
+          const selected = role === opt.value;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setRole(opt.value)}
+              className={`
+                w-full min-h-[68px] rounded-xl px-4 py-3 flex items-center gap-4 text-right transition-all duration-200 active:scale-[0.98] border-2
+                ${selected
+                  ? 'bg-mint/15 border-mint shadow-lg shadow-mint/10'
+                  : 'bg-[var(--bg-overlay)] border-[var(--border-strong)] hover:border-[var(--border-strong)]'
+                }
+              `}
+            >
+              <div className={`
+                w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors
+                ${selected ? 'bg-mint/20 text-mint' : 'bg-[var(--bg-elevated)] text-[var(--foreground-muted)]'}
+              `}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold ${selected ? 'text-mint' : 'text-foreground'}`}>
+                  {opt.label}
+                </p>
+                <p className="text-xs text-[var(--foreground-muted)] mt-0.5 leading-relaxed">
+                  {opt.desc}
+                </p>
+              </div>
+              {selected && (
+                <div className="w-5 h-5 rounded-full bg-mint flex items-center justify-center shrink-0">
+                  <svg className="w-3 h-3 text-[var(--bg-deep)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// ===== Step 3: Personal Identity =====
 function StepIdentity({
   name,
   setName,
@@ -186,7 +270,7 @@ function StepIdentity({
 }) {
   return (
     <motion.div
-      key="step2"
+      key="step3-identity"
       custom={direction}
       variants={slideVariants}
       initial="enter"
@@ -234,7 +318,7 @@ function StepIdentity({
   );
 }
 
-// ===== Step 3: Academic Details =====
+// ===== Step 4a: Academic Details (STUDENT only) =====
 function StepAcademic({
   grade,
   setGrade,
@@ -250,7 +334,7 @@ function StepAcademic({
 }) {
   return (
     <motion.div
-      key="step3"
+      key="step4-academic"
       custom={direction}
       variants={slideVariants}
       initial="enter"
@@ -292,7 +376,7 @@ function StepAcademic({
         {/* Major Selection */}
         <div>
           <p className="text-sm text-muted-foreground mb-3">رشته تحصیلی</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {MAJORS.map((m) => (
               <button
                 key={m}
@@ -315,23 +399,19 @@ function StepAcademic({
   );
 }
 
-// ===== Step 4: Goals & Routine =====
-function StepGoals({
-  goal,
-  setGoal,
-  dailyHours,
-  setDailyHours,
+// ===== Step 4b: Institute Name (INSTITUTE_MANAGER only) =====
+function StepInstitute({
+  instituteName,
+  setInstituteName,
   direction,
 }: {
-  goal: Goal | '';
-  setGoal: (v: Goal) => void;
-  dailyHours: number | null;
-  setDailyHours: (v: number) => void;
+  instituteName: string;
+  setInstituteName: (v: string) => void;
   direction: number;
 }) {
   return (
     <motion.div
-      key="step4"
+      key="step4-institute"
       custom={direction}
       variants={slideVariants}
       initial="enter"
@@ -341,69 +421,36 @@ function StepGoals({
       className="flex flex-col items-center w-full"
     >
       <div className="w-16 h-16 rounded-2xl bg-mint/15 flex items-center justify-center mb-6">
-        <Target className="w-8 h-8 text-mint" />
+        <Building2 className="w-8 h-8 text-mint" />
       </div>
 
-      <h1 className="text-2xl font-bold text-foreground mb-6">هدف‌گذاری مطالعه</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-2">آموزشگاهت رو معرفی کن</h1>
+      <p className="text-muted-foreground mb-8">نام آموزشگاهی که مدیریتش رو بر عهده داری</p>
 
-      <div className="w-full space-y-8">
-        {/* Goal Selection */}
-        <div>
-          <p className="text-lg font-medium text-foreground mb-3">تمرکز اصلیت رو کدوم مسیره؟</p>
-          <div className="flex flex-wrap gap-3">
-            {GOALS.map((g) => (
-              <button
-                key={g}
-                onClick={() => setGoal(g)}
-                className={`
-                  h-12 px-5 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.97]
-                  ${goal === g
-                    ? 'bg-mint/15 border-2 border-mint text-mint'
-                    : 'bg-[var(--bg-overlay)] border-2 border-[var(--border-strong)] text-foreground/90 hover:border-[var(--border-strong)]'
-                  }
-                `}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Daily Hours Selection */}
-        <div>
-          <p className="text-lg font-medium text-foreground mb-3">هدف‌گذاری ساعت مطالعه روزانه؟</p>
-          <div className="flex flex-wrap gap-3">
-            {DAILY_HOURS.map((h) => (
-              <button
-                key={h}
-                onClick={() => setDailyHours(h)}
-                className={`
-                  h-12 min-w-[72px] px-4 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.97]
-                  ${dailyHours === h
-                    ? 'bg-mint/15 border-2 border-mint text-mint'
-                    : 'bg-[var(--bg-overlay)] border-2 border-[var(--border-strong)] text-foreground/90 hover:border-[var(--border-strong)]'
-                  }
-                `}
-              >
-                {h === 10 ? '۱۰+' : toPersianNum(h)} ساعت
-              </button>
-            ))}
-          </div>
+      <div className="w-full space-y-6">
+        <input
+          type="text"
+          value={instituteName}
+          onChange={(e) => setInstituteName(e.target.value)}
+          placeholder="مثلاً: آموزشگاه месроб، موسسه گاج، ..."
+          className="w-full h-12 bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-4 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-mint/50 focus:border-mint/50 transition-all"
+          maxLength={60}
+        />
+        <div className="surface-1 rounded-xl p-4 flex items-start gap-3 border border-[var(--border)]">
+          <Shield className="w-4 h-4 text-mint shrink-0 mt-0.5" />
+          <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">
+            بعد از ثبت‌نام می‌تونی مشاوران و دانش‌آموزان آموزشگاهت رو اضافه کنی و
+            پیشرفتشون رو دنبال کنی.
+          </p>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ===== Helper: Number to Persian =====
-function toPersianNum(n: number): string {
-  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-  return n.toString().replace(/\d/g, (d) => persianDigits[parseInt(d)]);
-}
-
 // ===== Main Wizard Component =====
 export default function OnboardingWizard() {
-  const { setUser, setOnboardingComplete, setCurrentView } = useAppStore();
+  const { setUser, setOnboardingComplete, setCurrentView, setUserRole } = useAppStore();
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
@@ -414,21 +461,32 @@ export default function OnboardingWizard() {
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
 
-  // Step 2 state
+  // Step 2 state — role selection (NEW)
+  const [role, setRole] = useState<RegisterRole | ''>('');
+
+  // Step 3 state
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
 
-  // Step 3 state
+  // Step 4 state (STUDENT only)
   const [grade, setGrade] = useState<Grade | ''>('');
   const [major, setMajor] = useState<Major | ''>('');
 
-  // Step 4 state
-  const [goal, setGoal] = useState<Goal | ''>('');
-  const [dailyHours, setDailyHours] = useState<number | null>(null);
+  // Step 4 state (INSTITUTE_MANAGER only)
+  const [instituteName, setInstituteName] = useState('');
 
-  // Submission state — while we're creating the account on the server we lock
-  // the CTA button so the user can't double-submit.
+  // Submission state
   const [submitting, setSubmitting] = useState(false);
+
+  // The wizard has a variable number of steps depending on the selected role:
+  //  - STUDENT:           4 (phone → role → identity → academic)
+  //  - INSTITUTE_MANAGER: 4 (phone → role → identity → institute)
+  //  - ADVISOR:           3 (phone → role → identity) — no step 4
+  //
+  // We compute `totalSteps` lazily — before a role is selected (step 2) we
+  // assume 4 to avoid the dots jumping; once selected, it locks to the real
+  // total.
+  const totalSteps: number = role === 'ADVISOR' ? 3 : 4;
 
   // Use functional updater to avoid stale closure issues
   const goToStep = useCallback((step: number) => {
@@ -463,22 +521,26 @@ export default function OnboardingWizard() {
       case 1:
         return showOtp && otp === '1234';
       case 2:
-        return name.trim().length > 0 && selectedAvatar !== '';
+        return role !== '';
       case 3:
-        return grade !== '' && major !== '';
+        return name.trim().length > 0 && selectedAvatar !== '';
       case 4:
-        return goal !== '' && dailyHours !== null;
+        if (role === 'STUDENT') return grade !== '' && major !== '';
+        if (role === 'INSTITUTE_MANAGER') return instituteName.trim().length > 0;
+        return false; // ADVISOR never reaches step 4
       default:
         return false;
     }
-  }, [currentStep, showOtp, otp, name, selectedAvatar, grade, major, goal, dailyHours]);
+  }, [currentStep, showOtp, otp, role, name, selectedAvatar, grade, major, instituteName]);
 
   const handleNext = useCallback(() => {
     if (!canProceed()) return;
+    // ADVISOR has no step 4 — step 3 is their final step.
+    if (role === 'ADVISOR' && currentStep === 3) return;
     if (currentStep < 4) {
       goToStep(currentStep + 1);
     }
-  }, [canProceed, currentStep, goToStep]);
+  }, [canProceed, currentStep, role, goToStep]);
 
   const handlePrev = useCallback(() => {
     if (currentStep > 1) {
@@ -486,20 +548,19 @@ export default function OnboardingWizard() {
     }
   }, [currentStep, goToStep]);
 
+  // Whether the current step is the final step (i.e. the CTA should say "شروع کن"
+  // instead of "بعدی").
+  const isFinalStep = (() => {
+    if (role === 'ADVISOR') return currentStep === 3;
+    return currentStep === 4;
+  })();
+
   const handleComplete = useCallback(async () => {
     if (!canProceed() || submitting) return;
 
     setSubmitting(true);
     try {
       // Persist the account server-side and obtain a signed session cookie.
-      // Without this step, the client would *think* the user is logged in
-      // (localStorage flag) but every subsequent /api/* call would 401 with
-      // "احراز هویت لازم است" — which was the root cause of the task-creation bug.
-      //
-      // The onboarding OTP is '1234'; we reuse it as the account password so
-      // the same credential also works against /api/auth/login later.
-      // `phone` is captured without the leading 0 (the wizard validates /^9\d{9}$/),
-      // so we re-add the 0 to match the seeded format.
       const normalizedPhone = phone.startsWith('0') ? phone : `0${phone}`;
       const res = await fetch('/api/auth/register', {
         method: 'POST',
@@ -508,10 +569,9 @@ export default function OnboardingWizard() {
           phone: normalizedPhone,
           name: name.trim(),
           avatar: selectedAvatar,
-          grade,
-          major,
-          goal,
-          dailyTargetHours: dailyHours,
+          role,
+          ...(role === 'STUDENT' ? { grade, major } : {}),
+          ...(role === 'INSTITUTE_MANAGER' ? { instituteName: instituteName.trim() } : {}),
           password: '1234',
         }),
       });
@@ -527,29 +587,39 @@ export default function OnboardingWizard() {
         return;
       }
 
-      // Use the REAL user record (with DB id + assignedAdvisorId) returned by the server.
+      // Use the REAL user record (with DB id + assignedAdvisorId/instituteId) returned by the server.
       const u = data.user;
       const realUser: User = {
         id: u.id,
         name: u.name,
         avatar: u.avatar,
-        grade: (u.grade as Grade) || (grade as Grade),
-        major: (u.major as Major) || (major as Major),
-        goal: (u.goal as Goal) || (goal as Goal),
-        dailyTargetHours: typeof u.dailyTargetHours === 'number' ? u.dailyTargetHours : (dailyHours as number),
+        grade: (u.grade as Grade) || (role === 'STUDENT' ? (grade as Grade) : 'دوازدهم'),
+        major: (u.major as Major) || (role === 'STUDENT' ? (major as Major) : 'تجربی'),
+        goal: (u.goal as 'کنکور' | 'نهایی' | 'هر دو') || 'کنکور',
+        dailyTargetHours: typeof u.dailyTargetHours === 'number' ? u.dailyTargetHours : 6,
         phone: u.phone,
         assignedAdvisorId: u.assignedAdvisorId || null,
       };
 
       setUser(realUser);
+      setUserRole(u.role as UserRole);
       setOnboardingComplete(true);
-      setCurrentView('dashboard');
 
-      // Kick off background data loads for the new student (mirrors LoginPage
-      // behaviour) so the dashboard isn't empty on first render.
-      const { loadTasksForStudent, loadExams } = useAppStore.getState();
-      loadTasksForStudent(realUser.id).catch(() => {});
-      loadExams({ studentId: realUser.id }).catch(() => {});
+      // Kick off background data loads based on role (mirrors LoginPage behaviour).
+      const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
+      if (u.role === 'STUDENT') {
+        setCurrentView('dashboard');
+        loadTasksForStudent(realUser.id).catch(() => {});
+        loadExams({ studentId: realUser.id }).catch(() => {});
+      } else if (u.role === 'ADVISOR') {
+        setCurrentView('advisor-dashboard');
+        loadAdvisorStudents(realUser.id).catch(() => {});
+        loadExams({ advisorId: realUser.id }).catch(() => {});
+      } else if (u.role === 'INSTITUTE_MANAGER') {
+        setCurrentView('institute-dashboard');
+      } else {
+        setCurrentView('dashboard');
+      }
 
       toast.success(`خوش امدی، ${realUser.name}`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
@@ -560,9 +630,7 @@ export default function OnboardingWizard() {
       });
       setSubmitting(false);
     }
-  }, [canProceed, submitting, name, selectedAvatar, grade, major, goal, dailyHours, phone, setUser, setOnboardingComplete, setCurrentView]);
-
-  const isFinalStep = currentStep === 4;
+  }, [canProceed, submitting, name, selectedAvatar, role, grade, major, instituteName, phone, setUser, setUserRole, setOnboardingComplete, setCurrentView]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
@@ -575,7 +643,7 @@ export default function OnboardingWizard() {
       />
       <div className="w-full max-w-md flex flex-col items-center">
         {/* Progress Indicator */}
-        <ProgressIndicator currentStep={currentStep} />
+        <ProgressIndicator currentStep={currentStep} totalSteps={totalSteps} />
 
         {/* Step Content */}
         <div className="w-full flex-1 min-h-[420px] relative overflow-hidden">
@@ -593,6 +661,13 @@ export default function OnboardingWizard() {
               />
             )}
             {currentStep === 2 && (
+              <StepRole
+                role={role}
+                setRole={setRole}
+                direction={direction}
+              />
+            )}
+            {currentStep === 3 && (
               <StepIdentity
                 name={name}
                 setName={setName}
@@ -601,7 +676,7 @@ export default function OnboardingWizard() {
                 direction={direction}
               />
             )}
-            {currentStep === 3 && (
+            {currentStep === 4 && role === 'STUDENT' && (
               <StepAcademic
                 grade={grade}
                 setGrade={setGrade}
@@ -610,12 +685,10 @@ export default function OnboardingWizard() {
                 direction={direction}
               />
             )}
-            {currentStep === 4 && (
-              <StepGoals
-                goal={goal}
-                setGoal={setGoal}
-                dailyHours={dailyHours}
-                setDailyHours={setDailyHours}
+            {currentStep === 4 && role === 'INSTITUTE_MANAGER' && (
+              <StepInstitute
+                instituteName={instituteName}
+                setInstituteName={setInstituteName}
                 direction={direction}
               />
             )}
@@ -663,6 +736,20 @@ export default function OnboardingWizard() {
               {submitting ? 'در حال ساخت حساب...' : 'شروع کن'}
             </motion.button>
           )}
+        </div>
+
+        {/* Login link — for returning users who already have an account */}
+        <div className="w-full text-center mt-6">
+          <p className="text-sm text-muted-foreground">
+            حساب داری؟{' '}
+            <button
+              type="button"
+              onClick={() => setCurrentView('login')}
+              className="text-mint hover:text-[var(--accent-hover)] font-semibold transition-colors underline-offset-4 hover:underline"
+            >
+              وارد شو
+            </button>
+          </p>
         </div>
       </div>
     </div>

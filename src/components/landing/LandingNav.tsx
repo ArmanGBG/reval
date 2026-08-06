@@ -55,15 +55,25 @@ export function LandingNav() {
           </a>
         </div>
 
-        {/* CTA */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setCurrentView('onboarding')}
-          className="btn-hover glow-hover px-5 py-2.5 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm min-h-[44px] flex items-center"
-        >
-          شروع کن
-        </motion.button>
+        {/* CTA — both sign-up and login entry points */}
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setCurrentView('login')}
+            className="btn-hover px-4 py-2.5 rounded-[var(--radius)] border border-[var(--border-strong)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] font-medium text-sm min-h-[44px] flex items-center transition-colors"
+          >
+            ورود
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setCurrentView('onboarding')}
+            className="btn-hover glow-hover px-5 py-2.5 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm min-h-[44px] flex items-center"
+          >
+            شروع کن
+          </motion.button>
+        </div>
       </div>
     </motion.nav>
   );
