@@ -2131,3 +2131,206 @@ Project was stable at end of round 24 (all 4 roles working, zero lint/tsc errors
 
 ## Stage Summary
 Round 25 delivered 4 substantial features (SM-2 spaced repetition being the largest, ~600 lines of new code), fixed a hidden bug (streak state lost on page refresh — was present since the streak system was first introduced), and added styling polish across the dashboard and tools. All features verified end-to-end with real DB writes and localStorage persistence. Zero lint/tsc errors. Dev server stable. The flashcards tool went from a simple 3-button mastery system to a full SM-2 spaced repetition algorithm with due dates, ease factors, retention strength, and per-card progress tracking — a major upgrade to the learning experience.
+
+---
+
+## Task ID: 4-a
+Agent: Main
+Task: Implement a Notification Center feature
+
+Work Log:
+- Added `NotificationType` and `Notification` types to `src/lib/types.ts`
+- Added notification read-state persistence to `src/lib/store.ts` (localStorage key `reval:notifications:v1`)
+- Implemented `computeNotifications()` function that dynamically builds notifications from store data:
+  - Upcoming Exam (≤3 days): red/amber urgency, "آزمون [subject] تا [X] روز دیگر"
+  - Task Reminder: incomplete tasks for today, accent color
+  - Streak Warning: streak > 2 and no tasks completed today, danger color
+  - Streak Milestone: streak is a multiple of 7, gold color
+  - Weekly Goal: < 50% of weekly goal completed, warning color
+  - Flashcard Review: due cards > 0, accent color
+- Added `notifications`, `unreadNotificationCount`, `markNotificationRead`, `markAllNotificationsRead`, `refreshNotifications` to AppState and store implementation
+- Auto-initializes notifications on first client render via `queueMicrotask`
+- Periodic refresh every 60s via `setInterval`
+- Created `src/components/shared/NotificationCenter.tsx`:
+  - Bell icon button with `.icon-btn` class and badge count
+  - Badge color: red if any danger notifications, amber otherwise
+  - Dropdown with framer-motion animation (opacity, y, scale)
+  - surface-2 background (`bg-overlay` + `border-strong`), rounded-xl
+  - max-h-96 overflow-y-auto with custom-scrollbar
+  - Each notification item: left color stripe, icon, title, description, relative time
+  - Unread dot indicator on each item
+  - "Mark all as read" button at bottom
+  - Empty state: "اعلانی جدید نیست 🎉" with Sparkles icon
+  - Click outside and Escape key to close
+  - All text in Persian, all numbers via `toPersianDigits()`
+- Integrated NotificationCenter into `src/components/shared/SidebarNav.tsx` (desktop sidebar, near command palette)
+- Integrated NotificationCenter into `src/components/dashboard/Dashboard.tsx` (mobile header, next to Focus button, `md:hidden`)
+- TypeScript compilation passes with zero errors
+
+Files Changed:
+- `src/lib/types.ts` — Added NotificationType, Notification types
+- `src/lib/store.ts` — Added notification persistence, computeNotifications(), and store fields/actions
+- `src/components/shared/NotificationCenter.tsx` — New component (complete)
+- `src/components/shared/SidebarNav.tsx` — Added NotificationCenter import + placement
+- `src/components/dashboard/Dashboard.tsx` — Added NotificationCenter import + mobile header placement
+
+---
+Task ID: 4-b
+Agent: Auth Persistence
+Task: Implement Auth Persistence via localStorage
+
+Work Log:
+- Added AUTH_STORAGE_KEY = 'reval:auth:v1' to src/lib/store.ts
+- Created PersistedAuth interface with userRole, user (Pick of safe fields), onboardingComplete
+- Created loadAuthFromStorage() — reads from localStorage with shape validation
+- Created saveAuthToStorage() — writes { userRole, user, onboardingComplete } to localStorage
+- Created clearAuthStorage() — removes the localStorage key
+- Exported loadAuthFromStorage, clearAuthStorage, AUTH_STORAGE_KEY from store
+- Wired saveAuthToStorage into setUserRole, setUser, setOnboardingComplete, and updateUser
+- Added logout() action to store — clears localStorage + resets auth state (userRole, user, onboardingComplete, currentView, selections, tasks, advisorStudents)
+- Added hydrateAuth() action to store — reads from localStorage and sets userRole, user, onboardingComplete, currentView
+- Hydrated store initial values (userRole, currentView, user, onboardingComplete) from localStorage on store creation
+- Created /api/auth/me route — validates session cookie via verifyToken(), returns user data or 401
+- Modified src/app/page.tsx:
+  - On mount, hydrates auth from localStorage via hydrateAuth()
+  - Validates session with /api/auth/me — if 401, clears localStorage and calls logout()
+  - If valid, refreshes user data from server response and loads role-specific data (tasks, students, exams)
+  - On network error, trusts localStorage + cookie combo (offline tolerance)
+- Updated SettingsView handleLogout to use store logout() instead of hard reload
+- Updated CommandPalette logout to use store logout() instead of hard reload
+- Verified: zero TypeScript errors in modified files, lint passes cleanly, dev server stable
+
+Files Modified:
+- src/lib/store.ts (auth persistence helpers + logout/hydrateAuth actions + localStorage hydration)
+- src/app/page.tsx (mount-time hydration + session validation)
+- src/app/api/auth/me/route.ts (NEW — session validation endpoint)
+- src/components/settings/SettingsView.tsx (logout uses store action)
+- src/components/shared/CommandPalette.tsx (logout uses store action)
+
+---
+Task ID: 5-a
+Agent: Main
+Task: Add Study Heatmap + Styling Polish (animated gradient borders, shimmer, pulse-glow, float-subtle)
+
+Work Log:
+- Created src/components/analytics/StudyHeatmap.tsx — a GitHub-style contribution graph for Persian RTL
+  * Shows 7 rows (Sat–Fri) × ~13 columns (weeks) of small colored squares
+  * Color levels: none → var(--bg-elevated), low (1-30min) → var(--accent-soft), medium (31-60min) → rgba(62,180,137,0.3), high (61-120min) → rgba(62,180,137,0.55), very high (120+min) → var(--accent)
+  * Data computed from store's tasks array (sum of actualTimeMinutes for completed tasks per day)
+  * Persian month labels at top, day labels (ش ی د س چ پ ج) on the right
+  * Tooltip on hover showing date + study time
+  * Responsive: 2 months on mobile, 3 on desktop
+  * Section header "نقشه مطالعه" with Calendar icon using float-subtle animation
+  * Wrapped in card with card-hover + edge-highlight
+- Integrated StudyHeatmap into AnalyticsView.tsx — placed above the WeeklyGoalCard in both "نمای کلی" and "نمای فصل‌محور" views
+- Added new CSS classes to globals.css:
+  * .gradient-border — animated gradient border using pseudo-element (accent→gold→accent), opacity transition on hover
+  * .shimmer — updated to pseudo-element overlay approach (::after with translateX animation)
+  * .pulse-glow — subtle pulse glow using var(--accent-glow), 2.5s infinite
+  * .float-subtle — gentle floating animation (translateY -4px), 3s infinite
+  * Updated @keyframes pulse-glow to use CSS vars instead of hardcoded rgba
+- Applied .gradient-border to WeeklyReviewCard outer container
+- Applied .pulse-glow to streak indicator in Dashboard when streakDays > 0 (conditional className)
+- Applied .float-subtle to StudyHeatmap header Calendar icon
+- Applied .shimmer to AnalyticsView loading skeleton wrapper
+- Verified: TypeScript compilation passes (no errors in project source), ESLint clean, dev server compiles
+
+Files Modified:
+- src/components/analytics/StudyHeatmap.tsx (NEW)
+- src/components/analytics/AnalyticsView.tsx (import + render StudyHeatmap above WeeklyGoalCard ×2)
+- src/app/globals.css (gradient-border, shimmer, pulse-glow, float-subtle classes + keyframes)
+- src/components/dashboard/WeeklyReviewCard.tsx (added gradient-border class)
+- src/components/dashboard/Dashboard.tsx (conditional pulse-glow on streak card)
+
+---
+Task ID: 5-b
+Agent: Main
+Task: Add Circular Progress Ring + Enhanced Daily Quote Card
+
+Work Log:
+- Created `src/components/shared/CircularProgress.tsx` — reusable SVG circular progress indicator
+  * Props: value (0-100), size (default 80), strokeWidth (default 6), color, label, showValue, centerContent, delay
+  * SVG circle with framer-motion animated stroke-dashoffset (spring physics, 800ms)
+  * Background track in var(--border), progress arc in specified color with rounded line caps
+  * Center text: value% (using toPersianDigits) + optional label below
+  * Center content override via `centerContent` prop for custom rendering
+  * RTL-compatible (SVG direction-agnostic, dir="ltr" on wrapper)
+  * Glow drop-shadow filter on progress arc
+- Integrated CircularProgress into `Dashboard.tsx`:
+  * Replaced the "خلاصه امروز" text-based summary + progress bar with a circular progress ring
+  * Ring shows today's completion rate (todayProgress), 100px size, strokeWidth 7
+  * Stats (study time + task count) displayed alongside ring in a column layout
+  * Removed old progress bar and percentage badge
+- Integrated CircularProgress into `WeeklyGoalCard.tsx`:
+  * Replaced inline SVG ring with CircularProgress component (size 140, strokeWidth 10)
+  * Used centerContent prop to render custom center content (hours, "ساعت", goal target)
+  * Retained progress percent chip below the ring
+  * Removed old geometry constants (RING_SIZE, STROKE_WIDTH, RADIUS, CIRCUMFERENCE, ringOffset)
+- Enhanced Daily Quote Card in `Dashboard.tsx`:
+  * Wrapped in surface-1 + card-hover + edge-highlight classes (rich card design)
+  * Added decorative quote marks: ❝ (top-left) and ❞ (bottom-right) in var(--accent-soft), text-6xl
+  * Quote text now text-lg font-medium in var(--foreground) (was text-sm muted italic)
+  * Author name below with "—" prefix in var(--foreground-muted) text-sm font-medium
+  * Subtle background radial gradient from accent-soft to transparent
+  * AnimatePresence with mode="wait" for smooth quote transitions (fade+slide out/in)
+  * "اشتراک‌گذاری" (Share) button — copies quote+author to clipboard, shows toast "نقل قول کپی شد!"
+  * "ذخیره" (Bookmark) button — Heart icon that toggles filled/outlined, saves to localStorage key `reval:bookmarked-quotes:v1`
+  * "نقل قول بعدی" button — styled with accent-soft background + accent border + btn-hover
+- Added Share2 and Heart icons to lucide-react import in Dashboard.tsx
+- All text remains Persian, uses toPersianDigits for numbers
+- No framer-motion whileHover on cards — using CSS card-hover class instead
+- Verified: TypeScript compilation passes (no errors in project source), ESLint clean, dev server compiles, page returns 200
+
+Files Created:
+- src/components/shared/CircularProgress.tsx (NEW)
+
+Files Modified:
+- src/components/dashboard/Dashboard.tsx (CircularProgress import + integration, enhanced MotivationalQuoteCard, Share2/Heart imports)
+- src/components/analytics/WeeklyGoalCard.tsx (CircularProgress import + integration, replaced inline SVG ring)
+
+---
+Task ID: 26-dashboard-cleanup
+Agent: Main
+Task: Clean up the overcrowded home/dashboard panel + fix "احراز هویت" auth bug that blocked task creation (direct user feedback in Persian)
+
+User Feedback (Persian):
+- "پنل خانه رو خیلی خیلی خیلی شلوغ کردی کلا خلوت کن" — home panel WAY too crowded, make it clean
+- "امروز این هفته این ماه چه کسشریه؟" — the today/this-week/this-month pills are pointless
+- "نیاز نیست آزمون های پیش رو نمایش داده بشن در پنل خانه" — don't show upcoming exams on home
+- "اون بخش جمله انگیزشی بمونه" — keep the motivational quote
+- "این احراز هویت چیه؟" — what is this "authentication" thing? (confusing element)
+- "چرا هیچ تسکی رو نمیتونم اضافه کنم؟" — why can't I add any task?
+
+Work Log:
+- Diagnosed the "احراز هویت" confusion: the proxy.ts returned a BROKEN half-Persian/half-English error string `'احراز هویت_REQUIRED'` on missing session cookie. This is what the user saw when the session cookie wasn't sent (cross-origin preview iframe + `sameSite: 'strict'` blocked it).
+- Fixed `src/proxy.ts`: changed broken `'احراز هویت_REQUIRED'` → proper Persian `'احراز هویت لازم است'` (consistent with api-auth.ts).
+- Fixed `src/app/api/auth/login/route.ts`: relaxed session cookie `sameSite: 'strict'` → `'lax'` so the cookie is sent in the preview-panel iframe context (top-level navigations + same-site iframes). This was the root cause of the user being unable to add tasks — the cookie wasn't reaching the API from the preview iframe.
+- Improved `src/components/plan/ManualEntrySheet.tsx` error handling: now surfaces the REAL server error message (e.g. "احراز هویت لازم است") instead of a generic "ثبت تسک ناموفق بود" toast, and auto-reloads the page on auth errors so the user returns to login cleanly.
+- Simplified `src/components/dashboard/Dashboard.tsx` (the home panel) from ~6 summary cards down to 4 clean sections:
+  * Header (greeting + date)
+  * Motivational quote card (KEPT per user request)
+  * ONE compact today/streak strip (mini circular ring + "X از Y تسک امروز" + "۳.۰ ساعت مطالعه" + streak 🔥N + ❄️ freeze) — replaces the two large Daily-Progress + Streak cards
+  * Today's task list (today only, no date-range pills)
+- REMOVED from home panel: WeeklyReviewCard, UpcomingExamsCard, SubjectMasteryCard, the 4 date-range pills (امروز/این هفته/این ماه/بازه دلخواه), custom date pickers, and the 4-stat stats bar (تسک/ساعت/تست/انجاد).
+- Removed all now-dead code: DateRangeMode type, DATE_RANGE_OPTIONS, FilterPill, generateDateRange, DateGroupHeader, dateRange/customStart/customEnd state, rangeTasks, groupedTasks, totalHours/totalTests/completionRate/totalTaskCount/isMultiDay, rangeLabel, and unused imports (WeeklyReviewCard, UpcomingExamsCard, SubjectMasteryCard, CircularProgress, Calendar, TrendingUp, Check, Settings, Trash2, RotateCcw, parseLocalDate, getWeekDays, getTodayJalali, getDaysInJalaliMonth, getFirstDayOfJalaliMonth, PERSIAN_MONTHS, minutesToHours, getRelativeDayLabel, getPersianDate, streakBest, exams).
+- Added a small "افزودن" (add) button next to the "تسک‌های امروز" heading that navigates to the Plan view for quick task entry.
+- The full date-range / weekly-review / subject-mastery / upcoming-exams features are NOT deleted — they live in their own components and the AnalyticsView; they're just no longer cluttering the home panel.
+
+Verification Results:
+- `bun run lint`: ✅ zero errors
+- `bunx tsc --noEmit` (project source, excluding skills/): ✅ zero errors
+- Dev server: ✅ stable, GET / 200, GET /api/tasks 200, GET /api/auth/me 200
+- agent-browser end-to-end:
+  * Clean dashboard renders: header → quote → compact strip ("۶۷٪ | ۴ از ۶ تسک امروز | ۳.۰ ساعت مطالعه | 🔥۱ روز زنجیر ❄️۱") → today's tasks
+  * Task creation from Plan view "تسک جدید" → selected ریاضی → submit → POST /api/tasks 201 ✅
+  * Advisor login (09121234567): panel renders correctly, no console errors
+  * No runtime/console errors during navigation
+
+Files Modified:
+- `src/proxy.ts` — fixed broken error string
+- `src/app/api/auth/login/route.ts` — sameSite strict → lax
+- `src/components/plan/ManualEntrySheet.tsx` — real error message + auto-reload on auth failure
+- `src/components/dashboard/Dashboard.tsx` — major simplification (removed ~450 lines of date-range/stats code + 3 summary cards)
+
+Stage Summary:
+The home panel went from "very very very crowded" (user's words) to a clean 4-section layout focused on today. The auth bug that blocked task creation was a combination of (1) a broken error string and (2) `sameSite: strict` blocking the session cookie in the cross-origin preview iframe. Both fixed. Task creation now works end-to-end (verified 201). All other roles unaffected. Zero lint/tsc errors.

@@ -190,7 +190,7 @@ function WeeklyReviewContent({
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="relative rounded-[var(--radius-xl)] overflow-hidden mb-5 border border-[var(--gold)]/30"
+      className="relative rounded-[var(--radius-xl)] overflow-hidden mb-5 border border-[var(--gold)]/30 gradient-border"
       style={{
         background:
           'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-elevated) 60%, rgba(245,181,68,0.06) 100%)',

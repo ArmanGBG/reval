@@ -291,3 +291,24 @@ export interface GlobalUser {
   joinDate: string;
   lastActiveDate: string;
 }
+
+// ===== Notification Types =====
+
+export type NotificationType =
+  | 'upcoming-exam'
+  | 'task-reminder'
+  | 'streak-warning'
+  | 'streak-milestone'
+  | 'weekly-goal'
+  | 'flashcard-review';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  description: string;
+  icon: string; // Lucide icon name
+  color: string; // CSS color value (e.g., 'var(--danger)')
+  read: boolean;
+  createdAt: number; // timestamp
+}

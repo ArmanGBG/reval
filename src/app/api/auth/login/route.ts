@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       path: '/',
       maxAge: 86400, // 24 hours
-      sameSite: 'strict',
+      sameSite: 'lax', // 'lax' allows the cookie in top-level navigations and same-site iframes (preview panel)
     });
 
     return response;

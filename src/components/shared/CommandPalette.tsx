@@ -462,10 +462,9 @@ export default function CommandPalette() {
   const closePalette = React.useCallback(() => setOpen(false), [setOpen]);
 
   const logout = React.useCallback(() => {
-    // Delegate to a custom event so SettingsView or any listener can handle it.
-    // For now, call the API + reload.
+    // Call the API to clear the httpOnly cookie, then reset Zustand store.
     fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
-      window.location.href = '/';
+      useAppStore.getState().logout();
     });
   }, []);
 

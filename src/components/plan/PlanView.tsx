@@ -29,6 +29,7 @@ import { PersianCalendar } from './PersianCalendar';
 import { SortableTaskList } from './SortableTaskList';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
+import TaskStatsWidget from './TaskStatsWidget';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -123,6 +124,16 @@ export default function PlanView() {
       totalHours: minutesToHours(totalMinutes),
       totalTests,
     };
+  }, [filteredTasks]);
+
+  // Task stats for the widget
+  const taskStats = useMemo(() => {
+    const totalTasks = filteredTasks.length;
+    const completedCount = filteredTasks.filter((t) => t.completed === true).length;
+    const totalActualMinutes = filteredTasks.reduce((sum, t) => sum + (t.actualTimeMinutes ?? 0), 0);
+    const totalStudyHours = minutesToHours(totalActualMinutes);
+    const totalTestsTaken = filteredTasks.reduce((sum, t) => sum + (t.actualTestCount ?? 0), 0);
+    return { totalTasks, completedCount, totalStudyHours, totalTests: totalTestsTaken };
   }, [filteredTasks]);
 
   // Task counts per date (for calendar indicators)
@@ -236,7 +247,8 @@ export default function PlanView() {
         </div>
         <p className="text-xs text-[var(--foreground-muted)] mb-3">{daySubtitle}</p>
 
-        <MiniStatsBar totalHours={dateStats.totalHours} totalTests={dateStats.totalTests} />
+        {/* Task Stats Widget */}
+        <TaskStatsWidget stats={taskStats} />
 
         {/* Persian Calendar */}
         <div className="mt-4 mb-5">
@@ -341,31 +353,8 @@ export default function PlanView() {
               </button>
             </div>
 
-            {/* Mini stats */}
-            <div className="surface-1 rounded-[var(--radius-lg)] p-4">
-              <h3 className="text-[10px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold mb-3">
-                خلاصه روز
-              </h3>
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold text-[var(--foreground)]">
-                    {toPersianDigits(dateStats.totalHours)}
-                  </span>
-                  <span className="text-[10px] text-[var(--foreground-subtle)]">ساعت</span>
-                </div>
-                {dateStats.totalTests > 0 && (
-                  <div className="w-px h-8 bg-[var(--border)]" />
-                )}
-                {dateStats.totalTests > 0 && (
-                  <div className="flex flex-col">
-                    <span className="text-xl font-bold text-[var(--foreground)]">
-                      {toPersianDigits(dateStats.totalTests)}
-                    </span>
-                    <span className="text-[10px] text-[var(--foreground-subtle)]">تست</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Task Stats Widget (desktop sidebar) */}
+            <TaskStatsWidget stats={taskStats} />
           </aside>
 
           {/* ===== Right: Task List ===== */}

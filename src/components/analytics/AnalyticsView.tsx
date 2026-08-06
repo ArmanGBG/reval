@@ -22,6 +22,7 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import WeeklyGoalCard from '@/components/analytics/WeeklyGoalCard';
+import StudyHeatmap from '@/components/analytics/StudyHeatmap';
 import { toast } from 'sonner';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
@@ -302,11 +303,21 @@ export default function AnalyticsView() {
 
         {view === 'نمای کلی' && (
           <>
-            {/* Weekly Study Goal */}
+            {/* Study Heatmap */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="mb-6"
+            >
+              <StudyHeatmap />
+            </motion.div>
+
+            {/* Weekly Study Goal */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 0.05 }}
               className="mb-6"
             >
               <WeeklyGoalCard />
@@ -423,11 +434,21 @@ export default function AnalyticsView() {
 
         {view === 'نمای کلی' && (
           <>
-            {/* Weekly Study Goal */}
+            {/* Study Heatmap */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="mb-8"
+            >
+              <StudyHeatmap />
+            </motion.div>
+
+            {/* Weekly Study Goal */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 0.05 }}
               className="mb-8"
             >
               <WeeklyGoalCard />
@@ -1171,7 +1192,7 @@ function ChapterCentricReport() {
   // ===== Loading state =====
   if (loading) {
     return (
-      <div className="space-y-4" dir="rtl">
+      <div className="space-y-4 shimmer" dir="rtl">
         <div className="flex gap-2 overflow-hidden">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-9 w-24 rounded-full" />

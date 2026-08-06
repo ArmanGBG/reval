@@ -20,7 +20,7 @@ export async function proxy(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json(
-        { error: 'احراز هویت_REQUIRED' },
+        { error: 'احراز هویت لازم است' },
         { status: 401 }
       );
     }

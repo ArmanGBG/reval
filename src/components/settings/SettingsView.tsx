@@ -542,9 +542,9 @@ export default function SettingsView() {
     toast.loading('در حال خروج...', { id: 'logout' });
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      // Clear Zustand auth state + localStorage
+      useAppStore.getState().logout();
       toast.success('خروج موفقیت‌آمیز بود', { id: 'logout' });
-      // Hard reload to clear all client state
-      window.location.href = '/';
     } catch {
       toast.error('خطا در خروج', { id: 'logout' });
     }

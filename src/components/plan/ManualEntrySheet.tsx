@@ -29,7 +29,16 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
         order: existingTaskCount + 1, createdBy: 'student', chapterId: selection.chapterId ?? null, topicId: selection.topicId ?? null,
         topicModeId: selection.topicModeId ?? null, pageStart: null, pageEnd: null, detailsCompleted: false });
       toast.success('تسک اولیه ثبت شد'); reset(); onOpenChange(false);
-    } catch { toast.error('ثبت تسک ناموفق بود'); } finally { setSaving(false); }
+    } catch (err) {
+      // Show the real server error so the user knows why it failed
+      // (e.g. "احراز هویت لازم است" if the session expired)
+      const msg = err instanceof Error && err.message ? err.message : 'ثبت تسک ناموفق بود';
+      toast.error(msg);
+      // If the session expired, reload so the user returns to the login screen
+      if (msg.includes('احراز هویت') || msg.includes('نشست')) {
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } finally { setSaving(false); }
   };
   return <Drawer open={open} onOpenChange={v => { if (!v) reset(); onOpenChange(v); }} direction="bottom">
     <DrawerContent className="surface-2 border-t border-[var(--border-strong)] text-[var(--foreground)] max-h-[85vh]">

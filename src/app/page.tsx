@@ -1,6 +1,7 @@
 'use client';
 
-import { useAppStore } from '@/lib/store';
+import { useEffect, useState } from 'react';
+import { useAppStore, loadAuthFromStorage, clearAuthStorage } from '@/lib/store';
 import { AnimatePresence, motion } from 'framer-motion';
 import AppShell from '@/components/shared/AppShell';
 import LoginPage from '@/components/auth/LoginPage';
@@ -22,9 +23,70 @@ import SuperAdminSettings from '@/components/super-admin/SuperAdminSettings';
 import InstituteDetail from '@/components/super-admin/InstituteDetail';
 import UserDetail from '@/components/super-admin/UserDetail';
 import LandingPage from '@/components/landing/LandingPage';
+import { UserRole } from '@/lib/types';
 
 export default function Home() {
-  const { currentView, onboardingComplete, userRole } = useAppStore();
+  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setUserRole, setUser, setOnboardingComplete } = useAppStore();
+  // Track whether we've validated the persisted session with the server
+  const [authValidated, setAuthValidated] = useState(false);
+
+  useEffect(() => {
+    // On mount, hydrate from localStorage if available
+    const persisted = loadAuthFromStorage();
+    if (persisted && persisted.onboardingComplete) {
+      hydrateAuth();
+
+      // Validate the session cookie with the server.
+      // If the cookie is expired/invalid, clear localStorage and reset.
+      fetch('/api/auth/me')
+        .then((res) => {
+          if (!res.ok) {
+            // Session is invalid — clear persisted auth and reset store
+            clearAuthStorage();
+            logout();
+          } else {
+            // Session is valid — optionally refresh user data from server
+            return res.json().then((data) => {
+              if (data.user) {
+                const role = data.user.role as UserRole;
+                setUserRole(role);
+                setUser({
+                  id: data.user.id,
+                  name: data.user.name,
+                  avatar: data.user.avatar,
+                  grade: data.user.grade || 'دوازدهم',
+                  major: data.user.major || 'تجربی',
+                  goal: data.user.goal || 'کنکور',
+                  dailyTargetHours: data.user.dailyTargetHours || 6,
+                  phone: data.user.phone,
+                  assignedAdvisorId: data.user.assignedAdvisorId || null,
+                });
+                setOnboardingComplete(true);
+
+                // Load role-specific data in the background
+                const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
+                if (role === 'STUDENT') {
+                  loadTasksForStudent(data.user.id).catch(() => {});
+                  loadExams({ studentId: data.user.id }).catch(() => {});
+                } else if (role === 'ADVISOR') {
+                  loadAdvisorStudents(data.user.id).catch(() => {});
+                  loadExams({ advisorId: data.user.id }).catch(() => {});
+                }
+              }
+            });
+          }
+        })
+        .catch(() => {
+          // Network error — trust the localStorage + cookie combo
+          // (could be offline; don't log the user out)
+        })
+        .finally(() => {
+          setAuthValidated(true);
+        });
+    } else {
+      setAuthValidated(true);
+    }
+  }, []);
 
   // Not logged in yet → show login / landing / onboarding (no chrome)
   const isLoggedIn = onboardingComplete && userRole !== undefined;

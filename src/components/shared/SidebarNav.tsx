@@ -21,6 +21,7 @@ import {
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useCommandPaletteStore } from '@/hooks/use-command-palette';
+import NotificationCenter from './NotificationCenter';
 
 // ===== Nav configs per role =====
 const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -165,6 +166,17 @@ export default function SidebarNav() {
             );
           })}
         </ul>
+
+        {/* Notification bell — shown above the command palette */}
+        <div className="mt-4 px-0 flex items-center gap-2">
+          {!collapsed ? (
+            <div className="flex-1">
+              <NotificationCenter />
+            </div>
+          ) : (
+            <NotificationCenter />
+          )}
+        </div>
 
         {/* Command palette trigger — shown above the footer */}
         {!collapsed && (

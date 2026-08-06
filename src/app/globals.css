@@ -402,12 +402,13 @@
 .eq-bar:nth-child(4) { animation-delay: 0.1s; }
 .eq-bar:nth-child(5) { animation-delay: 0.3s; }
 
-/* Pulse glow */
+/* Pulse glow — updated to use CSS vars for theme consistency */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(62, 180, 137, 0.4); }
-  50% { box-shadow: 0 0 20px 4px rgba(62, 180, 137, 0.2); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 20px -4px var(--accent-glow); }
 }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
 
 /* Slow ping (for mobile FAB pulse ring) — calmer than Tailwind's ping */
 @keyframes ping-slow {
@@ -416,20 +417,66 @@
 }
 .animate-ping-slow { animation: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
 
-/* Shimmer (for skeletons / loading) */
+/* Shimmer (for skeletons / loading) — pseudo-element overlay */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 .shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.02) 0%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.02) 100%
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 100%
   );
-  background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  animation: shimmer 2s infinite;
+}
+
+/* ============================================================
+   ANIMATED GRADIENT BORDER — premium hover effect
+   ============================================================ */
+.gradient-border {
+  position: relative;
+  border: none;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    var(--gradient-angle, 0deg),
+    var(--accent),
+    var(--gold),
+    var(--accent)
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* Float subtle — very gentle floating animation */
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.float-subtle {
+  animation: float-subtle 3s ease-in-out infinite;
 }
 
 /* Fade in up — for staggered reveals */

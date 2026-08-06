@@ -30,6 +30,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
+import CircularProgress from '@/components/shared/CircularProgress';
 
 // ===== Geometry constants for the progress ring =====
 const RING_SIZE = 160;
@@ -202,59 +203,27 @@ export default function WeeklyGoalCard() {
 
         {/* ===== Ring + Bar chart row ===== */}
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
-          {/* Progress ring */}
+          {/* Progress ring — using CircularProgress component */}
           <div className="flex flex-col items-center shrink-0">
-            <div
-              className="relative"
-              style={{ width: RING_SIZE, height: RING_SIZE }}
-              dir="ltr"
-            >
-              <svg
-                width={RING_SIZE}
-                height={RING_SIZE}
-                viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-                className="-rotate-90"
-                role="img"
-                aria-label={`پیشرفت ${toPersianDigits(Math.round(goalProgressPct))} درصد از هدف هفتگی`}
-              >
-                {/* Track */}
-                <circle
-                  cx={RING_SIZE / 2}
-                  cy={RING_SIZE / 2}
-                  r={RADIUS}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.06)"
-                  strokeWidth={STROKE_WIDTH}
-                />
-                {/* Progress arc */}
-                <motion.circle
-                  cx={RING_SIZE / 2}
-                  cy={RING_SIZE / 2}
-                  r={RADIUS}
-                  fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth={STROKE_WIDTH}
-                  strokeLinecap="round"
-                  strokeDasharray={CIRCUMFERENCE}
-                  initial={{ strokeDashoffset: CIRCUMFERENCE }}
-                  animate={{ strokeDashoffset: ringOffset }}
-                  transition={{ duration: 0.9, ease: 'easeOut' }}
-                  style={{ filter: 'drop-shadow(0 0 6px var(--accent-glow))' }}
-                />
-              </svg>
-              {/* Center label */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-bold text-[var(--foreground)] tabular-nums leading-none">
-                  {formatHoursLabel(totalHours)}
-                </span>
-                <span className="text-[11px] text-[var(--foreground-muted)] mt-1">
-                  ساعت
-                </span>
-                <span className="text-[10px] text-[var(--foreground-subtle)] mt-2">
-                  از {toPersianDigits(weeklyGoalHours)} ساعت هدف
-                </span>
-              </div>
-            </div>
+            <CircularProgress
+              value={goalProgressPct}
+              size={140}
+              strokeWidth={10}
+              showValue={false}
+              centerContent={
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-[var(--foreground)] tabular-nums leading-none">
+                    {formatHoursLabel(totalHours)}
+                  </span>
+                  <span className="text-[11px] text-[var(--foreground-muted)] mt-1">
+                    ساعت
+                  </span>
+                  <span className="text-[10px] text-[var(--foreground-subtle)] mt-2">
+                    از {toPersianDigits(weeklyGoalHours)} ساعت هدف
+                  </span>
+                </div>
+              }
+            />
             {/* Progress percent chip */}
             <div
               className="mt-3 px-3 py-1 rounded-full text-[11px] font-bold tabular-nums"

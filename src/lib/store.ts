@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, Exam, StudentProfile } from '@/lib/types';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
 import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_PLATFORM_INSTITUTES, MOCK_GLOBAL_USERS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
@@ -88,6 +88,263 @@ function saveStreakToStorage(s: PersistedStreak) {
   }
 }
 
+// ====================================================================
+// Notification read-state persistence (localStorage)
+// -----------------------------------------------
+// We persist only the set of read notification IDs so that the
+// "unread" badge survives page refreshes. The notifications
+// themselves are recomputed dynamically from current data.
+// ====================================================================
+
+const NOTIFICATIONS_STORAGE_KEY = 'reval:notifications:v1';
+
+function loadReadNotificationIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = window.localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    if (Array.isArray(parsed)) return new Set(parsed);
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveReadNotificationIds(ids: Set<string>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Quota exceeded — fail silently.
+  }
+}
+
+// ====================================================================
+// Notification computation
+// -----------------------------------------------
+// Builds the notification list from current store data (tasks, exams,
+// streak, flashcards, weekly goal). Called by refreshNotifications().
+// ====================================================================
+
+function computeNotifications(data: {
+  tasks: Task[];
+  exams: Exam[];
+  streakDays: number;
+  streakLastDate: string | null;
+  flashcards: Flashcard[];
+  weeklyGoalHours: number;
+  readIds: Set<string>;
+}): Notification[] {
+  const now = Date.now();
+  const todayISO = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  const notifications: Notification[] = [];
+
+  // 1. Upcoming Exam (3 days or less)
+  const threeDaysFromNow = new Date();
+  threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+  const threeDaysISO = (() => {
+    const d = threeDaysFromNow;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  for (const exam of data.exams) {
+    if (exam.status !== 'upcoming') continue;
+    if (exam.date < todayISO || exam.date > threeDaysISO) continue;
+    const examDate = new Date(exam.date);
+    const todayDate = new Date(todayISO);
+    const diffDays = Math.round((examDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) continue;
+    notifications.push({
+      id: `exam-${exam.id}`,
+      type: 'upcoming-exam' as NotificationType,
+      title: `آزمون ${exam.subject}`,
+      description: diffDays === 0 ? 'امروز!' : `تا ${diffDays} روز دیگر`,
+      icon: 'ClipboardCheck',
+      color: diffDays <= 1 ? 'var(--danger)' : 'var(--warning)',
+      read: data.readIds.has(`exam-${exam.id}`),
+      createdAt: now - diffDays * 86400000,
+    });
+  }
+
+  // 2. Task Reminder — incomplete tasks for today
+  const todayIncompleteTasks = data.tasks.filter(
+    (t) => t.date === todayISO && t.completed === null,
+  );
+  if (todayIncompleteTasks.length > 0) {
+    notifications.push({
+      id: 'task-reminder-today',
+      type: 'task-reminder' as NotificationType,
+      title: `${todayIncompleteTasks.length} تسک انجام‌نشده برای امروز`,
+      description: 'به خودت فرصت بده و شروع کن!',
+      icon: 'ListTodo',
+      color: 'var(--accent)',
+      read: data.readIds.has('task-reminder-today'),
+      createdAt: now - 3600000, // 1 hour ago
+    });
+  }
+
+  // 3. Streak Warning — streak > 2 and no tasks completed today
+  const todayCompletedTasks = data.tasks.filter(
+    (t) => t.date === todayISO && t.completed === true,
+  );
+  if (data.streakDays > 2 && todayCompletedTasks.length === 0 && data.streakLastDate !== todayISO) {
+    notifications.push({
+      id: 'streak-warning',
+      type: 'streak-warning' as NotificationType,
+      title: 'اگر امروز مطالعه نکنی، رکوردت از دست می‌ره!',
+      description: `${data.streakDays} روز متوالی مطالعه`,
+      icon: 'Flame',
+      color: 'var(--danger)',
+      read: data.readIds.has('streak-warning'),
+      createdAt: now - 7200000, // 2 hours ago
+    });
+  }
+
+  // 4. Streak Milestone — streak is a multiple of 7 and > 0
+  if (data.streakDays > 0 && data.streakDays % 7 === 0) {
+    notifications.push({
+      id: `streak-milestone-${data.streakDays}`,
+      type: 'streak-milestone' as NotificationType,
+      title: `عالی! ${data.streakDays} روز متوالی مطالعه 🎉`,
+      description: 'ادامه بده، بی‌نظیری!',
+      icon: 'Trophy',
+      color: 'var(--gold)',
+      read: data.readIds.has(`streak-milestone-${data.streakDays}`),
+      createdAt: now - 1800000, // 30 min ago
+    });
+  }
+
+  // 5. Weekly Goal — compute hours studied this week
+  // Persian week: Sat–Fri. Compute study hours for current week.
+  const today = new Date();
+  const persianWeekday = (() => {
+    // Saturday=0, Sunday=1, ..., Friday=6
+    const jsDay = today.getDay();
+    return jsDay === 6 ? 0 : jsDay + 1;
+  })();
+  const saturdayOffset = persianWeekday;
+  const saturday = new Date(today);
+  saturday.setDate(today.getDate() - saturdayOffset);
+
+  let weeklyMinutes = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(saturday);
+    d.setDate(saturday.getDate() + i);
+    if (d > today) break;
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dayCompletedMinutes = data.tasks
+      .filter((t) => t.date === iso && t.completed === true && t.actualTimeMinutes)
+      .reduce((sum, t) => sum + (t.actualTimeMinutes || 0), 0);
+    weeklyMinutes += dayCompletedMinutes;
+  }
+  const weeklyHours = weeklyMinutes / 60;
+  const weeklyProgressPct = data.weeklyGoalHours > 0 ? (weeklyHours / data.weeklyGoalHours) * 100 : 100;
+
+  if (weeklyProgressPct < 50 && data.weeklyGoalHours > 0) {
+    const remaining = Math.max(0, data.weeklyGoalHours - weeklyHours);
+    const remainingRounded = Math.round(remaining * 10) / 10;
+    if (remainingRounded > 0) {
+      notifications.push({
+        id: 'weekly-goal-reminder',
+        type: 'weekly-goal' as NotificationType,
+        title: `هنوز ${remainingRounded} ساعت تا هدف هفتگیت فاصله داری`,
+        description: `${Math.round(weeklyProgressPct)}٪ از هدف هفتگی`,
+        icon: 'Target',
+        color: 'var(--warning)',
+        read: data.readIds.has('weekly-goal-reminder'),
+        createdAt: now - 5400000, // 1.5 hours ago
+      });
+    }
+  }
+
+  // 6. Flashcard Review — due cards
+  const dueCards = data.flashcards.filter((c) => {
+    if (!c.dueDate) return true; // never reviewed = due
+    return c.dueDate <= todayISO;
+  });
+  if (dueCards.length > 0) {
+    notifications.push({
+      id: 'flashcard-review',
+      type: 'flashcard-review' as NotificationType,
+      title: `${dueCards.length} فلش‌کارت برای مرور امروز آماده‌ان`,
+      description: 'مرور منظم، یادگیری رو تثبیت می‌کنه',
+      icon: 'Brain',
+      color: 'var(--accent)',
+      read: data.readIds.has('flashcard-review'),
+      createdAt: now - 900000, // 15 min ago
+    });
+  }
+
+  // Sort: unread first, then by createdAt (newest first)
+  notifications.sort((a, b) => {
+    if (a.read !== b.read) return a.read ? 1 : -1;
+    return b.createdAt - a.createdAt;
+  });
+
+  return notifications;
+}
+
+// ====================================================================
+// Auth persistence (localStorage)
+// -------------------------------
+// On page refresh the Zustand store resets to its initial values, so the
+// user sees the login page even though their session cookie is still valid.
+// We persist the minimal auth state (userRole, user, onboardingComplete) to
+// localStorage and hydrate on store creation. The session cookie remains the
+// source of truth for API calls — localStorage is only for UI hydration.
+// ====================================================================
+
+const AUTH_STORAGE_KEY = 'reval:auth:v1';
+
+interface PersistedAuth {
+  userRole: UserRole;
+  user: Pick<User, 'id' | 'name' | 'avatar' | 'grade' | 'major' | 'goal' | 'dailyTargetHours' | 'phone' | 'assignedAdvisorId'> | null;
+  onboardingComplete: boolean;
+}
+
+function loadAuthFromStorage(): PersistedAuth | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedAuth;
+    // Basic shape validation
+    if (!parsed || typeof parsed.userRole !== 'string' || typeof parsed.onboardingComplete !== 'boolean') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveAuthToStorage(state: PersistedAuth) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Quota exceeded — fail silently.
+  }
+}
+
+function clearAuthStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // fail silently
+  }
+}
+
+/**
+ * Exported helper: read persisted auth from localStorage.
+ * Used by page.tsx to hydrate the store before first render.
+ */
+export { loadAuthFromStorage, clearAuthStorage, AUTH_STORAGE_KEY };
+
 interface AppState {
   // ===== Role-Based Access Control =====
   userRole: UserRole;
@@ -115,6 +372,12 @@ interface AppState {
   // Onboarding
   onboardingComplete: boolean;
   setOnboardingComplete: (complete: boolean) => void;
+
+  // Logout — clears auth localStorage + resets store to unauthenticated state
+  logout: () => void;
+
+  // Hydrate auth from localStorage (called on page mount)
+  hydrateAuth: () => void;
 
   // ===== Tasks (API-backed cache) =====
   // tasks is a cache of the currently-loaded student's tasks.
@@ -262,6 +525,13 @@ interface AppState {
   // `tasks` (no need to persist a separate history map).
   weeklyGoalHours: number;
   setWeeklyGoalHours: (hours: number) => void;
+
+  // ===== Notifications =====
+  notifications: Notification[];
+  unreadNotificationCount: number;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  refreshNotifications: () => void;
 }
 
 // Build a StudentProfile from a real DB student row (from /api/students).
@@ -309,7 +579,14 @@ function buildStudentProfile(row: {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // ===== Role-Based Access Control =====
-  userRole: 'STUDENT',
+  // Hydrate userRole from localStorage if available, otherwise default
+  userRole: (() => {
+    if (typeof window !== 'undefined') {
+      const auth = loadAuthFromStorage();
+      if (auth) return auth.userRole;
+    }
+    return 'STUDENT' as UserRole;
+  })(),
   setUserRole: (role) => {
     let defaultView: ViewName;
     if (role === 'STUDENT') defaultView = 'dashboard';
@@ -317,10 +594,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     else if (role === 'INSTITUTE_MANAGER') defaultView = 'institute-dashboard';
     else defaultView = 'sa-dashboard';
     set({ userRole: role, currentView: defaultView, selectedStudentId: null, selectedInstituteId: null, selectedGlobalUserId: null });
+    // Persist auth after role change
+    const { user, onboardingComplete } = get();
+    saveAuthToStorage({ userRole: role, user, onboardingComplete });
   },
 
   // Navigation
-  currentView: 'landing',
+  // Hydrate currentView from localStorage auth if available
+  currentView: (() => {
+    if (typeof window !== 'undefined') {
+      const auth = loadAuthFromStorage();
+      if (auth && auth.onboardingComplete) {
+        if (auth.userRole === 'STUDENT') return 'dashboard' as ViewName;
+        if (auth.userRole === 'ADVISOR') return 'advisor-dashboard' as ViewName;
+        if (auth.userRole === 'INSTITUTE_MANAGER') return 'institute-dashboard' as ViewName;
+        if (auth.userRole === 'SUPER_ADMIN') return 'sa-dashboard' as ViewName;
+      }
+    }
+    return 'landing' as ViewName;
+  })(),
   setCurrentView: (view) => set({ currentView: view }),
 
   // Advisor: selected student
@@ -333,17 +625,79 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedGlobalUserId: null,
   setSelectedGlobalUserId: (id) => set({ selectedGlobalUserId: id }),
 
-  // User
-  user: null,
-  setUser: (user) => set({ user }),
+  // User — hydrate from localStorage if available
+  user: (() => {
+    if (typeof window !== 'undefined') {
+      const auth = loadAuthFromStorage();
+      if (auth && auth.user) return auth.user as User;
+    }
+    return null;
+  })(),
+  setUser: (user) => {
+    set({ user });
+    // Persist auth after user change
+    const { userRole, onboardingComplete } = get();
+    saveAuthToStorage({ userRole, user, onboardingComplete });
+  },
   updateUser: (updates) =>
-    set((state) => ({
-      user: state.user ? { ...state.user, ...updates } : null,
-    })),
+    set((state) => {
+      const user = state.user ? { ...state.user, ...updates } : null;
+      // Persist after update
+      if (user) {
+        saveAuthToStorage({ userRole: state.userRole, user, onboardingComplete: state.onboardingComplete });
+      }
+      return { user };
+    }),
 
-  // Onboarding
-  onboardingComplete: false,
-  setOnboardingComplete: (complete) => set({ onboardingComplete: complete }),
+  // Onboarding — hydrate from localStorage if available
+  onboardingComplete: (() => {
+    if (typeof window !== 'undefined') {
+      const auth = loadAuthFromStorage();
+      if (auth) return auth.onboardingComplete;
+    }
+    return false;
+  })(),
+  setOnboardingComplete: (complete) => {
+    set({ onboardingComplete: complete });
+    // Persist auth after onboarding change
+    const { userRole, user } = get();
+    saveAuthToStorage({ userRole, user, onboardingComplete: complete });
+  },
+
+  // Logout — clear localStorage auth and reset store to unauthenticated state
+  logout: () => {
+    clearAuthStorage();
+    set({
+      userRole: 'STUDENT',
+      user: null,
+      onboardingComplete: false,
+      currentView: 'landing',
+      selectedStudentId: null,
+      selectedInstituteId: null,
+      selectedGlobalUserId: null,
+      tasks: [],
+      loadedStudentId: null,
+      advisorStudents: [],
+    });
+  },
+
+  // Hydrate auth from localStorage — called on page mount
+  hydrateAuth: () => {
+    const auth = loadAuthFromStorage();
+    if (!auth) return;
+    // Compute the default view for the persisted role
+    let defaultView: ViewName;
+    if (auth.userRole === 'STUDENT') defaultView = 'dashboard';
+    else if (auth.userRole === 'ADVISOR') defaultView = 'advisor-dashboard';
+    else if (auth.userRole === 'INSTITUTE_MANAGER') defaultView = 'institute-dashboard';
+    else defaultView = 'sa-dashboard';
+    set({
+      userRole: auth.userRole,
+      user: auth.user as User | null,
+      onboardingComplete: auth.onboardingComplete,
+      currentView: auth.onboardingComplete ? defaultView : 'landing',
+    });
+  },
 
   // ===== Tasks (API-backed) =====
   tasks: [],
@@ -891,4 +1245,60 @@ export const useAppStore = create<AppState>((set, get) => ({
     const clamped = Math.min(40, Math.max(10, Math.round(hours)));
     set({ weeklyGoalHours: clamped });
   },
+
+  // ===== Notifications =====
+  notifications: [],
+  unreadNotificationCount: 0,
+  markNotificationRead: (id) => {
+    set((state) => {
+      const updated = state.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n,
+      );
+      const readIds = new Set(
+        updated.filter((n) => n.read).map((n) => n.id),
+      );
+      saveReadNotificationIds(readIds);
+      return {
+        notifications: updated,
+        unreadNotificationCount: updated.filter((n) => !n.read).length,
+      };
+    });
+  },
+  markAllNotificationsRead: () => {
+    set((state) => {
+      const updated = state.notifications.map((n) => ({ ...n, read: true }));
+      const readIds = new Set(updated.map((n) => n.id));
+      saveReadNotificationIds(readIds);
+      return {
+        notifications: updated,
+        unreadNotificationCount: 0,
+      };
+    });
+  },
+  refreshNotifications: () => {
+    const state = get();
+    const readIds = loadReadNotificationIds();
+    const notifications = computeNotifications({
+      tasks: state.tasks,
+      exams: state.exams,
+      streakDays: state.streakDays,
+      streakLastDate: state.streakLastDate,
+      flashcards: state.flashcards,
+      weeklyGoalHours: state.weeklyGoalHours,
+      readIds,
+    });
+    const unreadNotificationCount = notifications.filter((n) => !n.read).length;
+    set({ notifications, unreadNotificationCount });
+  },
 }));
+
+// ===== Initialize notifications on first client render =====
+// We call refreshNotifications once on the client so that
+// notifications are computed from the current store data.
+if (typeof window !== 'undefined') {
+  // Use queueMicrotask to defer until after the store is fully created,
+  // so all state fields are accessible.
+  queueMicrotask(() => {
+    useAppStore.getState().refreshNotifications();
+  });
+}
