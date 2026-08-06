@@ -34,6 +34,7 @@ import { SortableTaskList } from '@/components/plan/SortableTaskList';
 import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
 import { useCelebration } from '@/hooks/use-celebration';
+import UpcomingExamsCard from './UpcomingExamsCard';
 
 // ===== Motivational Quotes =====
 const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
@@ -222,7 +223,7 @@ function MotivationalQuoteCard() {
 }
 
 export default function Dashboard() {
-  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak, setCurrentView } = useAppStore();
+  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak, setCurrentView, exams } = useAppStore();
   const studentId = useCurrentStudentId();
   const { celebrate } = useCelebration();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
@@ -529,6 +530,9 @@ export default function Dashboard() {
           </motion.div>
         </div>
       )}
+
+      {/* ===== Upcoming Exams Card (student-only) ===== */}
+      <UpcomingExamsCard exams={exams} />
 
       {/* ===== Date Range Pills ===== */}
       <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar mb-4">

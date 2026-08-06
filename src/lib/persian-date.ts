@@ -65,6 +65,27 @@ export function formatPersianDateShort(date: Date): string {
   return `${toPersianDigits(j.jd)}/${toPersianDigits(j.jm)}`;
 }
 
+// Format an ISO date string (YYYY-MM-DD) or full ISO datetime string as a
+// Persian (Jalali) date. Returns "—" for invalid input.
+// Use this anywhere a stored date needs to be displayed to the user.
+export function formatPersianDateFromISO(iso: string | undefined | null): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '—';
+  return formatPersianDate(date);
+}
+
+// Format an ISO datetime string as Persian date + time (HH:MM)
+export function formatPersianDateTimeFromISO(iso: string | undefined | null): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '—';
+  const j = toJalali(date);
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]} · ${toPersianDigits(hh)}:${toPersianDigits(mm)}`;
+}
+
 // Get ISO date string (YYYY-MM-DD) from Date — uses LOCAL date components
 // to avoid timezone off-by-one errors
 export function toISODate(date: Date): string {

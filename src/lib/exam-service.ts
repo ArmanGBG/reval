@@ -1,7 +1,7 @@
 // Client-side exam service — wraps fetch calls to /api/exams.
 // Used by the Zustand store so components don't deal with fetch directly.
 
-import type { Exam } from '@/lib/types';
+import type { Exam, ExamResult } from '@/lib/types';
 
 export interface CreateExamInput {
   title: string;
@@ -73,4 +73,29 @@ export async function updateExam(
 export async function deleteExam(id: string): Promise<void> {
   const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(await parseError(res));
+}
+
+// Save exam results (bulk upsert: replaces all results for this exam).
+// Each entry must have a studentId; score and rank are optional.
+// Entries with neither score nor rank are dropped.
+export async function saveExamResults(
+  examId: string,
+  results: Array<{ studentId: string; score?: number | null; rank?: number | null }>,
+): Promise<ExamResult[]> {
+  const res = await fetch(`/api/exams/${examId}/results`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ results }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = await res.json();
+  return data.results as ExamResult[];
+}
+
+// Load exam results (advisor/manager see all; student sees only their own).
+export async function loadExamResults(examId: string): Promise<ExamResult[]> {
+  const res = await fetch(`/api/exams/${examId}/results`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = await res.json();
+  return data.results as ExamResult[];
 }

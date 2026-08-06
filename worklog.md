@@ -1532,3 +1532,193 @@ The app was stable across all 4 roles (verified in rounds 19-21). This round foc
 4. Add a "Focus Mode" that hides nav for distraction-free study (keyboard shortcut 'F')
 5. Add notification reminders for upcoming exams (countdown in dashboard)
 6. Consider adding a study session timer that tracks actual study time per task
+
+---
+Task ID: 23-qa-round-4-exam-results-focus-mode-mobile-fab
+Agent: Main (webDevReview cron)
+Task: Deep QA round 4, fix Escape bug, exam results UI, Focus Mode, mobile FAB, styling polish, upcoming exams card on student dashboard
+
+## Current Project Status Assessment
+The app was stable across all 4 roles (verified in rounds 19-22). This round focused on: (1) fixing 3 bugs found via deep QA (Escape not closing palette, Gregorian exam dates, mock institute phone mismatch), (2) implementing 3 new features from the round 22 priority list (exam results recording, focus mode, mobile FAB), (3) adding an upcoming exams card to the student dashboard, (4) styling polish on task cards (hover lift + accent glow).
+
+## QA Performed (agent-browser)
+- **Landing page**: ✅ all sections render, hero with greeting card mockup
+- **Login page**: ✅ 4 role quick-access buttons, password field
+- **Student dashboard**: ✅ greeting + emoji, daily summary, streak counter, NEW upcoming exams card showing 2-3 next exams with Persian dates + countdown
+- **Student plan view**: ✅ Persian calendar (مرداد ۱۴۰۵), 4 tasks visible, drag handles, action buttons
+- **Student analytics**: ✅ weekly goal card (۳ ساعت از ۲۰), KPI cards, insights panel, daily chart
+- **Student settings**: ✅ profile fields, grade/major selectors
+- **Command palette**: ✅ opens via Ctrl+K, full sections visible (مسیریابی/ابزارها/اقدامات/حساب)
+- **Advisor dashboard**: ✅ 4 KPI cards, status distribution, weekly hours chart, red flags with pulse glow
+- **Advisor students list**: ✅ 2 real DB students with avatars + risk indicators
+- **Advisor student detail**: ✅ profile, mood, strengths/weaknesses, exam list with NEW "ثبت نتایج" button on each exam
+- **Exam Results Modal** (NEW): ✅ opens, shows exam summary (title/subject/Persian date/total score), student list with score+rank inputs, live stats (avg/max/min/count), auto-rank button works, save persists to DB and marks exam as "برگزار شده"
+- **Institute manager dashboard**: ✅ 4 KPIs, performance table with 10 students, advisor filter dropdown
+- **Super admin dashboard**: ✅ platform stats, monthly growth chart, subscription distribution
+- **Super admin institutes**: ✅ 5 institutes listed, FIXED phone for "آموزشگاه هدف" (now 09121111111 instead of wrong 09121234567)
+- **Super admin subjects**: ✅ 6 subjects with chapter counts, colored status badges
+- **Super admin users**: ✅ 17 users with role/institute/status filters
+- **Keyboard shortcuts**: ✅ `?` opens help (now includes F shortcut), `Ctrl+K` opens palette, `F` toggles Focus Mode, `Esc` properly closes palette/help/focus mode
+
+## Bugs Found & Fixed
+
+**Bug H: Escape Key Doesn't Close Command Palette (CRITICAL)**
+- Symptom: Pressing Escape while the Command Palette was open did nothing. User had to click outside the dialog to close it.
+- Root cause: The `useKeyboardShortcuts` hook has `if (isTypingTarget(e.target)) return;` at the top of its handler. Since the palette's search input auto-focuses on open, every keypress (including Escape) was being ignored by the hook. The Radix Dialog's built-in Escape handler also wasn't wired because the palette uses a custom motion.div overlay, not a Radix Dialog.
+- Fix: Moved the Escape check BEFORE the typing-target guard. The Escape handler now checks 3 stores in order: command palette open → close it; help dialog open → close it; focus mode active → exit it. Returns early after closing so the rest of the handler doesn't fire.
+- Also removed the duplicate Escape handler that was at the bottom of the hook (now redundant).
+- Verified: Opened palette with Ctrl+K, pressed Escape → palette closed (overlay div count went from 1 to 0).
+
+**Bug I: Exam Date Displays Gregorian Instead of Persian (CRITICAL)**
+- Symptom: On the advisor student detail page, exam dates displayed as `۲۰۲۶-۰۸-۰۶` (Gregorian with Persian digits) instead of a proper Persian Jalali date like `۱۵ مرداد`.
+- Root cause: `toPersianDigits(exam.date)` only converts ASCII digits to Persian digits — it does NOT convert the calendar system. So `2026-08-06` became `۲۰۲۶-۰۸-۰۶`.
+- Fix: Added `formatPersianDateFromISO(iso)` and `formatPersianDateTimeFromISO(iso)` helpers to `persian-date.ts` that parse an ISO date string and return a properly formatted Persian Jalali date (e.g., "۱۵ مرداد" or "۱۵ مرداد · ۰۸:۰۰"). Replaced `toPersianDigits(exam.date)` with `formatPersianDateFromISO(exam.date)` in `AdvisorStudentDetail.tsx`.
+- Verified: Exam list now shows "۱۵ مرداد", "۲۲ مرداد", "۱۸ مرداد" instead of Gregorian dates.
+
+**Bug J: Mock Institute "آموزشگاه هدف" Has Wrong Manager Phone**
+- Symptom: On the super-admin institutes list, "آموزشگاه هدف" showed manager "آقای احمدی" with phone "09121234567" — but the actual INSTITUTE_MANAGER account in the seed has phone "09121111111". The displayed phone belonged to the advisor (دکتر محمدی).
+- Root cause: `MOCK_PLATFORM_INSTITUTES` in `mockData.ts` had the wrong `managerPhone` for inst1.
+- Fix: Changed `managerPhone` from `'09121234567'` to `'09121111111'` for inst1.
+- Verified: Super admin institutes view now correctly shows "آقای احمدی · 09121111111" for آموزشگاه هدف.
+
+## New Features Added
+
+### 1. Exam Results Recording UI (advisor + institute manager + super admin)
+**Files:** `src/app/api/exams/[id]/results/route.ts` (new ~180 lines), `src/lib/exam-service.ts` (modified), `src/lib/store.ts` (modified), `src/components/advisor/ExamResultsModal.tsx` (new ~340 lines), `src/components/advisor/AdvisorStudentDetail.tsx` (modified)
+
+**API Routes:**
+- `PUT /api/exams/[id]/results` — bulk upsert results (replaces all results for the exam)
+  - Authorization: creator, super admin, or institute manager
+  - Validates: each studentId must be a participant; score 0..totalScore; rank ≥ 1
+  - Replaces results in a transaction (delete + insert)
+  - Auto-marks exam status as 'completed' if any score is set
+  - Returns the saved results array
+- `GET /api/exams/[id]/results` — returns results
+  - Authorization: creator/manager see all; participating student sees only their own
+
+**Store:**
+- New `saveExamResults(examId, results)` action: optimistic update + API call + revert on error
+- Updates the cached exam with new results + status='completed' immediately, then persists
+
+**UI:**
+- Modal opens via "ثبت نتایج" button on each exam card (shown when status ≠ completed)
+- "ویرایش نتایج" button replaces it when exam is already completed
+- Modal header: trophy icon + "ثبت نتایج آزمون" + subtitle
+- 4-column exam summary card: title, subject, Persian date, total score
+- Live stats bar (animated): میانگین، بالاترین، پایین‌ترین، ثبت شده X/Y — only shows once ≥1 score entered
+- "رتبه‌بندی خودکار" button: sorts students by score descending, assigns ranks with tie handling (tied students share the same rank)
+- Per-student row: avatar, name, grade/major, score input (LTR), rank input (LTR), live percentage badge with color coding (red < 50%, amber 50-70%, accent > 70%)
+- Row border color matches score performance (subtle visual feedback)
+- Staggered entrance animation (delay = idx × 0.03s)
+- Save button shows loading state ("در حال ذخیره...")
+- Success toast: "نتیجه‌های آزمون ذخیره شد · X نمره ثبت شد"
+- Error toast with API error message on failure
+- Verified end-to-end: entered 85 + 72 for two students → clicked auto-rank → rank 1 assigned to score 85 → clicked save → toast appeared → modal closed → exam card now shows "برگزار شده" status + "نتیجه: ۸۵ از ۱۰۰ | رتبه: ۱"
+
+### 2. Focus Mode (F key — student only)
+**Files:** `src/lib/store.ts` (modified), `src/hooks/use-keyboard-shortcuts.ts` (modified), `src/components/shared/FocusMode.tsx` (new ~110 lines), `src/components/shared/AppShell.tsx` (modified), `src/components/shared/KeyboardShortcutsHelp.tsx` (modified)
+
+**Store:**
+- New `focusMode: boolean` state, `setFocusMode(on)`, `toggleFocusMode()` actions
+
+**Keyboard shortcut:**
+- `F` key (case-insensitive) toggles Focus Mode — only for students, only on dashboard/plan/tools views
+- `Escape` exits Focus Mode (handled before the typing-target guard)
+
+**FocusMode component:**
+- Full-screen overlay (z-90) with `bg-[var(--bg-deep)]`
+- Ambient radial gradient backdrop (mint at top, gold at bottom — subtle)
+- Top center pill: "تمرکز · برنامه" or "تمرکز · پومودورو" (view-aware)
+- Exit button (top center, next to pill): X icon + "خروج" text + `F` kbd hint
+- Body scroll locked while active
+- Re-renders the current page children inside the overlay (so student still sees their plan/Pomodoro)
+- Spring entrance animation (y + opacity)
+- Welcome toast on enter: "حالت تمرکز فعال شد · برای خروج، Esc یا F را بزنید"
+
+**AppShell integration:**
+- When `focusMode` is true: hides sidebar, bottom nav, music player, mobile FAB
+- Renders `<FocusMode>{children}</FocusMode>` overlay
+- Only active for students (other roles don't have a focus-mode shortcut)
+
+**Help dialog:**
+- Added "F — حالت تمرکز (پنهان کردن منو)" entry between Space and Escape
+- Verified: pressing `?` shows the new entry
+
+### 3. Mobile Floating Action Button for Command Palette
+**Files:** `src/components/shared/MobileCommandFab.tsx` (new ~70 lines), `src/components/shared/AppShell.tsx` (modified), `src/app/globals.css` (modified)
+
+**Component:**
+- Renders only on mobile (`md:hidden` class)
+- Fixed positioning: `bottom-20 left-4 z-40` (above the bottom nav, left side for RTL)
+- 48px circular button (44px+ touch target)
+- Accent background + dark icon (high contrast)
+- Pulse ring animation (`animate-ping-slow` — 2.4s cubic-bezier)
+- Active scale: 0.95 (tactile feedback)
+- Shadow: accent glow + dark drop shadow
+- Hidden when: palette already open, focus mode active, detail page
+- Spring entrance/exit animation (scale + opacity)
+
+**CSS:**
+- New `@keyframes ping-slow` keyframe (calmer than Tailwind's default ping)
+- `.animate-ping-slow` utility class
+
+**Verified:** FAB element is present in DOM with correct aria-label "باز کردن پنل دستورات"
+
+### 4. Upcoming Exams Card (student dashboard)
+**Files:** `src/components/dashboard/UpcomingExamsCard.tsx` (new ~170 lines), `src/components/dashboard/Dashboard.tsx` (modified)
+
+- Shows the student's next 1-3 upcoming/in-progress exams
+- Filters out completed exams, sorts by date ascending
+- Computes days-until-exam from today
+- Color-coded urgency:
+  - **Today (days=0)**: red border + red glow + "امروز!" badge + pulse animation
+  - **1-3 days**: red border + "X روز دیگر" badge + pulse on soonest
+  - **4-7 days**: amber border + "X روز دیگر" badge
+  - **> 7 days**: accent border + "X روز دیگر" badge
+- Per-exam card: subject stripe (left edge color), subject name (bold), exam title, urgency badge, Persian date + start time
+- Countdown message on soonest exam (≤ 7 days): "یادت نره - امروز!" / "فرداست - آماده‌ای؟ / "X روز فرصت داری"
+- 3-column grid on desktop, 1-column on mobile
+- Staggered entrance animation
+- Hidden entirely if no upcoming exams (returns null)
+- Verified: shows "ریاضی - آزمون جامع ریاضی - اسفند - ۳ روز دیگر - ۱۸ مرداد - ۰۸:۰۰ - ۳ روز فرصت داری" and "فیزیک - آزمون تستی فیزیک - بهمن - ۷ روز دیگر - ۲۲ مرداد - ۱۴:۰۰"
+
+## Styling Polish
+
+### Task Card Micro-Interactions (`src/components/plan/TaskCard.tsx`)
+- Added `whileHover={{ y: -2 }}` lift animation (spring physics: stiffness 400, damping 25)
+- Upgraded hover shadow: `0 8px 32px -12px var(--accent-glow), 0 0 0 1px var(--accent-glow)` (deeper glow + ring)
+- Brightened hover border: `hover:border-[var(--accent)]/30` (was /20)
+- Added group identifier (`group` class) for nested hover effects
+- Added radial accent gradient overlay on hover (top-left corner, 32×32 circle, opacity 0→100%)
+- Changed completed/skipped opacity behavior: 60% normally, 90% on hover (so the lift effect is visible even on completed tasks)
+- Added `relative` positioning to inner content to layer above the gradient overlay
+
+### Keyboard Shortcuts Help Dialog (`KeyboardShortcutsHelp.tsx`)
+- Added new entry for F key shortcut (between Space and Escape)
+- Help dialog now lists 6 shortcuts instead of 5
+
+## Verification Results
+- `bun run lint`: ✅ zero errors
+- `bunx tsc --noEmit`: ✅ zero errors in project source
+- Dev server: ✅ stable, all API routes 200 (including new PUT /api/exams/[id]/results)
+- Command Palette Escape fix verified: Ctrl+K opens, Escape closes (overlay count 1→0)
+- Focus Mode verified: F toggles on, F toggles off, Escape also exits
+- Exam Results Modal verified: entered 2 scores, auto-ranked, saved, exam card updated to "برگزار شده" with score 85/100 rank 1
+- Upcoming Exams Card verified: shows 2 next exams with Persian dates + countdown
+- Institute phone fix verified: "آقای احمدی · 09121111111" displayed correctly
+- All previous features (rounds 19-22) still working
+
+## Unresolved Issues / Risks
+1. **Vaul Drawer overlay stuck**: Still occasionally occurs after Escape on the vaul Drawer (PartialCompletionSheet). Root cause is vaul's internal state management. Could be improved by adding a custom Escape handler in the sheet wrapper, but low priority since clicking outside still works.
+2. **Focus Mode on mobile**: The F keyboard shortcut requires a physical keyboard, so mobile users can't trigger Focus Mode. Could add a small "تمرکز" button in the dashboard header for touch users.
+3. **Exam Results rank ties**: The auto-rank algorithm assigns the same rank to tied students, but skips subsequent ranks (e.g., two students tied at rank 1 → next student gets rank 3, not 2). This is standard competition ranking ("1224" style) but could be changed to dense ranking ("1223" style) if desired.
+4. **Upcoming Exams Card date filtering**: Uses `days >= -1` to include today + future (and just-past), but doesn't filter out exams from previous days that haven't been completed yet. Could add a stricter filter.
+5. **Mobile FAB visibility test**: Couldn't visually verify the FAB because agent-browser's viewport can't be resized at runtime. The element is present in DOM with correct aria-label and `md:hidden` class, so it should display correctly on mobile breakpoints.
+
+## Priority Recommendations for Next Phase
+1. Add a touch-friendly "Focus Mode" button in the dashboard header for mobile users (since F key requires a keyboard)
+2. Add a "Study Session Tracker" that records actual study time per task (separate from the target time, with start/stop timer)
+3. Implement "Spaced Repetition" algorithm for flashcards (currently just manual mastery levels — could use SM-2 or Anki-style scheduling)
+4. Add email/SMS notification stubs for upcoming exam reminders (cron-style checks)
+5. Improve the vaul Drawer Escape handling with a custom onKeyDown override
+6. Add a "weekly review" summary card on Sundays (last day of Persian week) showing the past week's achievements

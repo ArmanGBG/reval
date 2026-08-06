@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
-import { Task } from '@/lib/types';
+import { Task, Exam } from '@/lib/types';
 import {
   Heart,
   Brain,
@@ -25,13 +25,16 @@ import {
   GraduationCap,
   Calendar,
   Users,
+  Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { TaskModal } from './TaskModal';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
 import { ExamModal } from './ExamModal';
+import { ExamResultsModal } from './ExamResultsModal';
 import { Card, SectionHeader, MetricBar, MiniRadar } from './advisor-ui';
 import { toPersianDigits, computeStudentStatus, computeRisks, computeAnalyses, STATUS_CONFIG, MOOD_CONFIG, EXAM_STATUS_CONFIG } from './advisor-helpers';
+import { formatPersianDateFromISO } from '@/lib/persian-date';
 
 // ===== ADVISOR VIEW 3: Student Detail =====
 export function AdvisorStudentDetail() {
@@ -59,6 +62,8 @@ export function AdvisorStudentDetail() {
 
   // Exam modal state
   const [examModalOpen, setExamModalOpen] = useState(false);
+  const [resultsExam, setResultsExam] = useState<Exam | null>(null);
+  const [resultsModalOpen, setResultsModalOpen] = useState(false);
 
   // Filter tasks and exams for this student
   const studentTasks = useMemo(() =>
@@ -434,14 +439,42 @@ export function AdvisorStudentDetail() {
                             <p className="text-[10px] text-[var(--foreground-muted)]">{exam.subject}</p>
                           </div>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${statusConfig.bg} ${statusConfig.color}`}>
-                          {statusConfig.label}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {exam.status !== 'completed' && (
+                            <button
+                              onClick={() => {
+                                setResultsExam(exam);
+                                setResultsModalOpen(true);
+                              }}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--gold)]/40 bg-[var(--gold-soft)] text-[10px] font-medium text-[var(--gold)] hover:bg-[rgba(245,181,68,0.18)] hover:border-[var(--gold)]/70 transition-colors"
+                              title="ثبت نمرات دانش‌آموزان"
+                            >
+                              <Trophy className="w-3 h-3" />
+                              ثبت نتایج
+                            </button>
+                          )}
+                          {exam.status === 'completed' && (
+                            <button
+                              onClick={() => {
+                                setResultsExam(exam);
+                                setResultsModalOpen(true);
+                              }}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--border-strong)] bg-[var(--bg-overlay)] text-[10px] font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors"
+                              title="ویرایش نمرات"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              ویرایش نتایج
+                            </button>
+                          )}
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${statusConfig.bg} ${statusConfig.color}`}>
+                            {statusConfig.label}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3 text-[10px] text-[var(--foreground-muted)] flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {toPersianDigits(exam.date)}
+                          {formatPersianDateFromISO(exam.date)}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -503,6 +536,13 @@ export function AdvisorStudentDetail() {
         open={examModalOpen}
         onOpenChange={setExamModalOpen}
         studentId={selectedStudentId!}
+      />
+
+      {/* Exam Results Modal — record scores + ranks */}
+      <ExamResultsModal
+        exam={resultsExam}
+        open={resultsModalOpen}
+        onOpenChange={setResultsModalOpen}
       />
     </div>
   );

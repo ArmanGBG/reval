@@ -10,21 +10,27 @@ import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
 import CelebrationOverlay from './CelebrationOverlay';
 import CommandPalette from './CommandPalette';
 import DataExportHelper from './DataExportHelper';
+import FocusMode from './FocusMode';
+import MobileCommandFab from './MobileCommandFab';
 
 /**
  * AppShell — responsive layout wrapper.
  *
  * Mobile (< md): full-width canvas, content centered in max-w-md,
- *   bottom nav fixed, padding-bottom to clear nav.
+ *   bottom nav fixed, padding-bottom to clear nav, floating command FAB.
  *
  * Desktop (>= md): sidebar nav on the right (RTL), main content
  *   offset by sidebar width (mr-64), max-w-7xl centered.
  *
  * Detail pages (student/institute/user detail) hide the bottom nav
  *   on mobile so the back-button header is the primary navigation.
+ *
+ * Focus Mode (F key): overlays the entire screen with a distraction-free
+ *   view of the current page content. The page tree is re-rendered inside
+ *   the FocusMode portal so student keeps their plan / Pomodoro visible.
  */
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { userRole, currentView, onboardingComplete } = useAppStore();
+  const { userRole, currentView, onboardingComplete, focusMode } = useAppStore();
 
   // Register global keyboard shortcuts.
   // Must be called unconditionally (Rules of Hooks); the hook itself
@@ -47,10 +53,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     currentView === 'sa-user-detail' ||
     currentView === 'advisor-student-detail';
 
-  const showBottomNav = !isDetailPage;
-  const showSidebar = !isDetailPage; // detail pages also hide sidebar for focus
-  const showMusicPlayer = userRole === 'STUDENT' && !isDetailPage;
+  const showBottomNav = !isDetailPage && !focusMode;
+  const showSidebar = !isDetailPage && !focusMode; // detail pages + focus hide sidebar
+  const showMusicPlayer = userRole === 'STUDENT' && !isDetailPage && !focusMode;
   const isStudent = userRole === 'STUDENT';
+  const showMobileFab = !focusMode;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -77,8 +84,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* Mobile bottom nav */}
       {showBottomNav && <BottomNav />}
 
+      {/* Mobile floating command palette trigger */}
+      {showMobileFab && <MobileCommandFab />}
+
       {/* Student music player (floating) */}
       {showMusicPlayer && <MusicPlayer />}
+
+      {/* Focus mode overlay — when active, the page chrome above is hidden
+          and the student sees a distraction-free view of the current page. */}
+      {isStudent && focusMode && <FocusMode>{children}</FocusMode>}
 
       {/* Global keyboard shortcuts help dialog (managed by useKeyboardShortcuts) */}
       <KeyboardShortcutsHelp />

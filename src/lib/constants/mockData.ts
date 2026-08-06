@@ -820,7 +820,7 @@ export const MOCK_PLATFORM_INSTITUTES: PlatformInstitute[] = [
     name: 'آموزشگاه هدف',
     logoUrl: null,
     managerName: 'آقای احمدی',
-    managerPhone: '09121234567',
+    managerPhone: '09121111111',
     subscriptionPlan: 'pro',
     status: 'active',
     studentCount: 10,

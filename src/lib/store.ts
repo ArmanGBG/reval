@@ -96,6 +96,11 @@ interface AppState {
   currentTool: string | null;
   setCurrentTool: (tool: string | null) => void;
 
+  // Focus Mode — distraction-free study mode (hides nav + chrome)
+  focusMode: boolean;
+  setFocusMode: (on: boolean) => void;
+  toggleFocusMode: () => void;
+
   // Pomodoro
   pomodoroTime: number;
   pomodoroRunning: boolean;
@@ -146,6 +151,8 @@ interface AppState {
   updateExam: (id: string, updates: Partial<examService.CreateExamInput & { status: Exam['status'] }>) => Promise<void>;
   /** Deletes an exam via the API. Removes from cache on success. */
   deleteExam: (id: string) => Promise<void>;
+  /** Saves exam results (bulk upsert). Updates cache + marks exam completed. */
+  saveExamResults: (examId: string, results: Array<{ studentId: string; score?: number | null; rank?: number | null }>) => Promise<void>;
 
   // ===== Daily Streak =====
   streakDays: number;
@@ -494,6 +501,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentTool: null,
   setCurrentTool: (tool) => set({ currentTool: tool }),
 
+  // Focus Mode
+  focusMode: false,
+  setFocusMode: (on) => set({ focusMode: on }),
+  toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
+
   // Pomodoro
   pomodoroTime: 25 * 60,
   pomodoroRunning: false,
@@ -612,6 +624,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ exams: state.exams.filter((e) => e.id !== id) }));
     try {
       await examService.deleteExam(id);
+    } catch (e) {
+      // Revert on error
+      set({ exams: prev });
+      throw e;
+    }
+  },
+  saveExamResults: async (examId, results) => {
+    // Optimistic update: immediately update the cached exam with the new
+    // results + mark as completed so the UI feels instant.
+    const prev = get().exams;
+    set((state) => ({
+      exams: state.exams.map((e) =>
+        e.id === examId
+          ? {
+              ...e,
+              results: results
+                .filter((r) => r.score != null || r.rank != null)
+                .map((r) => ({
+                  studentId: r.studentId,
+                  score: r.score ?? null,
+                  rank: r.rank ?? null,
+                })),
+              status: 'completed' as const,
+            }
+          : e,
+      ),
+    }));
+    try {
+      const saved = await examService.saveExamResults(examId, results);
+      set((state) => ({
+        exams: state.exams.map((e) =>
+          e.id === examId ? { ...e, results: saved, status: 'completed' as const } : e,
+        ),
+      }));
     } catch (e) {
       // Revert on error
       set({ exams: prev });

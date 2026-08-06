@@ -41,6 +41,10 @@ const SHORTCUTS: ShortcutItem[] = [
     description: 'پخش/توقف تایمر پومودورو',
   },
   {
+    keys: ['F'],
+    description: 'حالت تمرکز (پنهان کردن منو)',
+  },
+  {
     keys: ['Esc'],
     description: 'بستن پنجره‌ها',
   },

@@ -18,7 +18,6 @@ const cardVariants: Variants = {
   exit: { opacity: 0, x: -30, transition: { duration: 0.2 } },
 };
 
-// ===== Props =====
 interface TaskCardProps {
   task: Task;
   index: number;
@@ -69,14 +68,28 @@ export default function TaskCard({
       animate="visible"
       exit="exit"
       layout
-      className={`surface-1 edge-highlight card-hover relative overflow-hidden rounded-[var(--radius-lg)] p-4 md:p-5
+      whileHover={{ y: -2 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`surface-1 edge-highlight card-hover group relative overflow-hidden rounded-[var(--radius-lg)] p-4 md:p-5
         before:absolute before:right-0 before:top-0 before:bottom-0 before:transition-all before:duration-300
-        border border-[var(--border)] hover:border-[var(--accent)]/20 hover:shadow-[0_0_20px_-8px_var(--accent-glow)]
+        border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-[0_8px_32px_-12px_var(--accent-glow),0_0_0_1px_var(--accent-glow)]
         ${accentBorder}
-        ${isCompleted || isSkipped ? 'opacity-60' : ''}
+        ${isCompleted || isSkipped ? 'opacity-60 hover:opacity-90' : ''}
       `}
     >
-      <div className="flex items-start justify-between gap-2 md:gap-3">
+      {/* Subtle accent gradient overlay on hover (top-right) */}
+      {!isCompleted && !isSkipped && (
+        <div
+          aria-hidden
+          className="absolute -top-12 -left-12 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)',
+          }}
+        />
+      )}
+
+      <div className="flex items-start justify-between gap-2 md:gap-3 relative">
         {/* ===== Drag Handle + Task Info (right side in RTL) ===== */}
         <div className="flex items-start gap-1.5 flex-1 min-w-0">
           {/* Drag handle (desktop only) */}

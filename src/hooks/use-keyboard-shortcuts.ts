@@ -62,6 +62,7 @@ export function useKeyboardShortcuts(): void {
   const currentView = useAppStore((s) => s.currentView);
   const currentTool = useAppStore((s) => s.currentTool);
   const setCurrentView = useAppStore((s) => s.setCurrentView);
+  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
 
   useEffect(() => {
     // Don't register any shortcuts until the user is actually in the app.
@@ -70,7 +71,31 @@ export function useKeyboardShortcuts(): void {
     const isStudent = userRole === 'STUDENT';
 
     const handler = (e: KeyboardEvent) => {
-      // Never fire when typing in an input/textarea/contenteditable
+      // ----- Escape → close any open overlay (palette, help dialog, focus mode) -----
+      // IMPORTANT: this runs BEFORE the typing-target guard so that Escape
+      // works even when the Command Palette search input is focused.
+      if (e.key === 'Escape') {
+        const { open: paletteOpen } = useCommandPaletteStore.getState();
+        const { helpOpen } = useKeyboardHelpStore.getState();
+        const { focusMode } = useAppStore.getState();
+        if (paletteOpen) {
+          e.preventDefault();
+          useCommandPaletteStore.getState().setOpen(false);
+          return;
+        }
+        if (helpOpen) {
+          e.preventDefault();
+          useKeyboardHelpStore.getState().setHelpOpen(false);
+          return;
+        }
+        if (focusMode) {
+          e.preventDefault();
+          useAppStore.getState().setFocusMode(false);
+          return;
+        }
+      }
+
+      // Never fire other shortcuts when typing in an input/textarea/contenteditable
       if (isTypingTarget(e.target)) return;
 
       // ----- ? (Shift + /) → toggle help dialog -----
@@ -86,6 +111,16 @@ export function useKeyboardShortcuts(): void {
         e.preventDefault();
         useCommandPaletteStore.getState().toggle();
         return;
+      }
+
+      // ----- F → toggle Focus Mode (student-only, distraction-free) -----
+      // Activates on Plan view (current task focus) or Tools view (Pomodoro focus)
+      if (e.key === 'f' || e.key === 'F') {
+        if (isStudent && (currentView === 'plan' || currentView === 'tools' || currentView === 'dashboard')) {
+          e.preventDefault();
+          toggleFocusMode();
+          return;
+        }
       }
 
       // ----- Space → toggle Pomodoro (only on Tools page with Pomodoro open) -----
@@ -109,18 +144,9 @@ export function useKeyboardShortcuts(): void {
           return;
         }
       }
-
-      // ----- Escape → close help dialog if open -----
-      // (Browser/Radix already handle closing other modals natively.)
-      if (e.key === 'Escape') {
-        const { helpOpen } = useKeyboardHelpStore.getState();
-        if (helpOpen) {
-          useKeyboardHelpStore.getState().setHelpOpen(false);
-        }
-      }
     };
 
     window.addEventListener('keydown', handler, { passive: false });
     return () => window.removeEventListener('keydown', handler);
-  }, [userRole, onboardingComplete, currentView, currentTool, setCurrentView]);
+  }, [userRole, onboardingComplete, currentView, currentTool, setCurrentView, toggleFocusMode]);
 }
