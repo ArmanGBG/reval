@@ -46,7 +46,7 @@ const SHORTCUTS: ShortcutItem[] = [
   },
   {
     keys: ['Ctrl', 'K'],
-    description: 'پنل دستورات',
+    description: 'باز کردن پنل دستورات',
   },
   {
     keys: ['?'],

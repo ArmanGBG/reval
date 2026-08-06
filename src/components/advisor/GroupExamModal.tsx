@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { MOCK_STUDENTS, SUBJECTS } from '@/lib/constants/mockData';
-import { Exam } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -26,8 +25,11 @@ export function GroupExamModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { addExam } = useAppStore();
-  const students = MOCK_STUDENTS;
+  const { addExam, advisorStudents } = useAppStore();
+  // Use real DB students when available; fall back to MOCK_STUDENTS only
+  // if the advisor students list hasn't loaded yet (so the modal isn't empty
+  // during the initial load).
+  const students = advisorStudents.length > 0 ? advisorStudents : MOCK_STUDENTS;
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -61,7 +63,7 @@ export function GroupExamModal({
     setSelectedStudentIds([]);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (selectedStudentIds.length === 0) {
       toast.error('لطفاً حداقل یک دانش‌آموز انتخاب کنید');
       return;
@@ -78,25 +80,25 @@ export function GroupExamModal({
     const subjectObj = SUBJECTS.find(s => s.name === subject);
     const subjectColor = subjectObj?.color ?? '#8B5CF6';
 
-    const newExam: Exam = {
-      id: crypto.randomUUID(),
-      title,
-      subject,
-      subjectColor,
-      date,
-      startTime,
-      duration,
-      totalScore,
-      studentIds: selectedStudentIds,
-      status: 'upcoming',
-      results: [],
-      createdBy: 'adv1',
-      createdAt: new Date().toISOString(),
-    };
-    addExam(newExam);
-    toast.success(`آزمون با موفقیت برای ${toPersianDigits(selectedStudentIds.length)} دانش‌آموز ثبت شد`);
-    resetForm();
-    onOpenChange(false);
+    toast.loading('در حال ثبت آزمون...', { id: 'exam-create' });
+    try {
+      await addExam({
+        title,
+        subject,
+        subjectColor,
+        date,
+        startTime,
+        duration,
+        totalScore,
+        studentIds: selectedStudentIds,
+        status: 'upcoming',
+      });
+      toast.success(`آزمون با موفقیت برای ${toPersianDigits(selectedStudentIds.length)} دانش‌آموز ثبت شد`, { id: 'exam-create' });
+      resetForm();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'خطا در ثبت آزمون', { id: 'exam-create' });
+    }
   };
 
   return (

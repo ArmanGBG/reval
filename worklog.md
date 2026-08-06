@@ -1359,3 +1359,176 @@ The app is stable across all 4 roles with all 5 Tools Hub features functional (r
 3. Add a "study session tracker" that records actual study time per task (beyond just marking complete)
 4. Add dark/light theme toggle in settings (currently dark-only)
 5. Add data export (CSV/JSON) for analytics data
+
+---
+Task ID: 22-command-palette-exam-api-export
+Agent: Main (webDevReview cron)
+Task: Build Ctrl+K command palette, add data export, exam API persistence, fix logout bug, styling polish
+
+## Current Project Status Assessment
+The app was stable across all 4 roles (verified in rounds 19-21). This round focused on: (1) implementing the Ctrl+K command palette that was previously a "coming soon" toast, (2) adding data export (CSV/JSON) for analytics, (3) persisting exams to the DB via new API routes, (4) fixing the broken logout button, (5) styling polish on KPI/Insight cards and sidebar.
+
+## QA Performed (agent-browser)
+- Student dashboard: ✅ greeting, tasks, navigation, streak counter
+- Tools hub: ✅ all 5 tools visible (پومودورو, موزیک, فلشکارت, محاسبه‌گر, اورژانس)
+- Analytics: ✅ weekly goal card, KPI cards, chart tabs, export button
+- Profile/Settings: ✅ profile fields, grade/major selectors, logout button present
+- Keyboard shortcuts: ✅ `Shift+/` opens help, `Ctrl+K` opens command palette
+- Command palette: ✅ fuzzy search, 4 sections (مسیریابی/ابزارها/اقدامات/حساب), keyboard nav
+- Advisor exam creation: ✅ POST /api/exams → 201, real DB students shown in modal
+- Data export: ✅ clicked "خروجی داده‌ها" → toast "۴ تسک در دو فایل CSV و JSON"
+
+## Bugs Found & Fixed
+
+**Bug F: Logout Button Shows "به زودی!" (Coming Soon) Toast**
+- Symptom: Clicking "خروج از حساب" in Settings → Support section showed a "به زودی!" toast instead of logging out.
+- Root cause: `handleLogout` in SettingsView.tsx was a placeholder that just called `toast('به زودی!')`.
+- Fix: Created `/api/auth/logout` POST route that clears the `reval-session` cookie (maxAge=0). Updated `handleLogout` to call the API, show a loading toast, then redirect to `/` with `window.location.href` (hard reload clears all Zustand state).
+- Verified: API route returns 200, cookie is cleared.
+
+**Bug G: GroupExamModal Used MOCK_STUDENTS Instead of Real DB Students**
+- Symptom: The "آزمون جدید" modal showed mock student names (سارا محمدی, امیرحسین رضایی, etc. from constants) instead of the real students assigned to the advisor in the DB.
+- Root cause: `GroupExamModal.tsx` line 30 used `const students = MOCK_STUDENTS;` — never read from the store's `advisorStudents`.
+- Fix: Changed to `const students = advisorStudents.length > 0 ? advisorStudents : MOCK_STUDENTS;` so real DB students are shown when available, with mock fallback during initial load.
+- Verified: Modal now shows امیرحسین رضایی and محمد حسینی (real DB students assigned to the test advisor).
+
+## New Features Added
+
+### 1. Command Palette (Ctrl/Cmd+K)
+**Files:** `src/hooks/use-command-palette.ts` (new), `src/components/shared/CommandPalette.tsx` (new ~450 lines), `src/hooks/use-keyboard-shortcuts.ts` (modified), `src/components/shared/AppShell.tsx` (modified), `src/components/shared/KeyboardShortcutsHelp.tsx` (modified), `src/components/shared/SidebarNav.tsx` (modified)
+
+- **Spotlight-style overlay** with backdrop blur + accent glow shadow
+- **Role-aware commands**: different navigation/tools for STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
+- **4 sections**: مسیریابی (Navigate), ابزارها (Tools), اقدامات (Actions), حساب کاربری (Account)
+- **Student commands**: 5 nav views (with ۱-۵ shortcuts), 5 tools (پومودورو/موزیک/فلشکارت/محاسبه‌گر/اورژانس), help, export, logout
+- **Advisor commands**: 3 nav views, help, logout
+- **Institute Manager commands**: 4 nav views, help, logout
+- **Super Admin commands**: 5 nav views, help, logout
+- **Fuzzy search** via cmdk's built-in filter (searches label + hint + keywords)
+- **Recent commands** section: tracks last 5 used commands (persisted in Zustand, shown when no search query)
+- **Keyboard navigation**: ArrowUp/Down to move, Enter to select, Escape to close
+- **Per-command accent colors**: accent (green), gold, pink, cyan, violet — each with matching icon background
+- **Shortcut hints**: digit keys shown as `<kbd>` chips on nav commands
+- **Footer hints**: "↑↓ انتخاب · ↵ اجرا" with Sparkles icon
+- **Empty state**: "🔍 نتیجه‌ای پیدا نشد" with helpful subtext
+- **Framer Motion entrance**: opacity + scale + y spring animation
+- **Search reset**: query clears 150ms after close (prevents flash of old results)
+- **Sidebar trigger button**: "جستجو یا دستور... `Ctrl K`" button added below nav items (both expanded + collapsed states)
+- **Verified**: Typed "پومو" → filtered to just "پومودورو" → pressed Enter → navigated to Tools view with Pomodoro open
+
+### 2. Data Export (CSV + JSON)
+**Files:** `src/components/shared/DataExportHelper.tsx` (new ~160 lines), `src/components/shared/AppShell.tsx` (modified), `src/components/analytics/AnalyticsView.tsx` (modified)
+
+- **Event-driven**: listens for `reval-export-data` custom window event (fired by command palette + analytics button)
+- **CSV export**: `reval-tasks-{YYYYMMDD}.csv` with BOM (UTF-8) for Excel Persian text compatibility
+  - Columns: تاریخ, درس, مبحث, نوع رشته, انواع فعالیت, زمان هدف, زمان واقعی, تعداد تست هدف, تعداد تست واقعی, وضعیت, ایجاد کننده
+  - Proper CSV escaping (quotes, commas, newlines)
+- **JSON export**: `reval-tasks-{YYYYMMDD}.json` with full task data + metadata
+  - Includes: exportedAt, student profile, aggregate stats (total/completed/skipped/pending/minutes/tests), full tasks array
+- **Toast feedback**: success toast with task count, warning toast if no data
+- **Visible buttons**: 
+  - Mobile analytics header: "خروجی" button with Download icon
+  - Desktop analytics header: "خروجی داده‌ها" button with Download icon + hover glow
+- **Invisible listener**: DataExportHelper component renders null, just registers the event listener
+- **Student-only**: rendered only when `userRole === 'STUDENT'`
+- **Verified**: Clicked export → toast "خروجی داده‌ها آماده شد · ۴ تسک در دو فایل CSV و JSON"
+
+### 3. Exam API + DB Persistence
+**Files:** `src/app/api/exams/route.ts` (new ~190 lines), `src/app/api/exams/[id]/route.ts` (new ~170 lines), `src/lib/exam-service.ts` (new ~75 lines), `src/lib/store.ts` (modified), `src/components/advisor/GroupExamModal.tsx` (modified), `src/components/advisor/ExamModal.tsx` (modified), `src/components/auth/LoginPage.tsx` (modified)
+
+**API Routes:**
+- `GET /api/exams` — returns exams visible to the user
+  - ADVISOR: exams they created (`createdById = ctx.userId`)
+  - INSTITUTE_MANAGER: exams in their institute
+  - SUPER_ADMIN: all exams (optional advisorId filter)
+  - STUDENT: exams they're participating in
+  - Optional `?studentId=` filter for cross-role queries
+  - Includes participants + results relations
+- `POST /api/exams` — creates a new exam
+  - Authorization: ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN (not STUDENT)
+  - Validates: title, subject, date, duration > 0, totalScore > 0, studentIds non-empty
+  - ADVISOR: verifies all studentIds are assigned to them
+  - INSTITUTE_MANAGER: verifies all studentIds are in their institute
+  - Creates exam + participants in a transaction
+  - Returns 201 with the created exam
+- `PATCH /api/exams/[id]` — updates an exam
+  - Authorization: creator, super admin, or institute manager of the exam's institute
+  - Supports partial updates (title, subject, date, duration, etc.)
+  - If `studentIds` provided, replaces the entire participant list
+- `DELETE /api/exams/[id]` — deletes an exam
+  - Same authorization as PATCH
+  - Cascade deletes participants + results (Prisma schema config)
+
+**Store Changes:**
+- Added `examsLoading`, `examsError` state
+- `loadExams(opts)` — async, fetches from API, replaces cache
+- `addExam(input)` — async, calls API, prepends to cache, returns created exam
+- `updateExam(id, updates)` — async, optimistic update + API call + revert on error
+- `deleteExam(id)` — async, optimistic remove + API call + revert on error
+- Initialized with `MOCK_EXAMS` as fallback before first API load
+
+**Login Flow:**
+- Student login: `loadExams({ studentId })` called in background
+- Advisor login: `loadExams({ advisorId })` called in background
+
+**Modal Changes:**
+- Both GroupExamModal and ExamModal now call `await addExam(input)` instead of `addExam(exam)`
+- Loading toast "در حال ثبت آزمون..." shown during API call
+- Success toast with student count
+- Error toast with API error message on failure
+- Removed unused `Exam` type imports (no longer constructing Exam objects client-side)
+
+**Verified:**
+- Advisor login → `GET /api/exams?advisorId=...` → 200
+- Created exam with 2 real DB students → `POST /api/exams` → 201
+- Toast: "آزمون با موفقیت برای ۲ دانش‌آموز ثبت شد"
+
+## Styling Polish
+
+### Sidebar Command Palette Trigger
+- Added a "جستجو یا دستور... `Ctrl K`" button below the nav items
+- Uses `Command` icon from lucide-react
+- Hover: border brightens, text brightens
+- Collapsed state: compact icon-only button with accent hover
+- Opens the command palette on click
+
+### Analytics KPI Card Hover Effects
+- Added `whileHover={{ y: -3 }}` lift animation
+- Added radial gradient accent that fades in on hover (top-right corner, matches card color)
+- Icon container scales up on hover (`group-hover:scale-110`)
+- Content positioned `relative` above the gradient layer
+
+### Analytics Insight Card Hover Effects
+- Added `whileHover={{ y: -2 }}` lift animation
+- Added linear gradient accent that fades in on hover (135deg, matches card color)
+- Icon scales up on hover (`group-hover:scale-110`)
+- `overflow-hidden` + `relative` for proper layering
+
+### Analytics Export Button
+- Desktop: full "خروجی داده‌ها" button with Download icon + `glow-hover` class
+- Mobile: compact "خروجی" button with smaller icon
+- Hover: border turns accent, text turns accent-hover, icon translates down slightly
+
+## Verification Results
+- `bun run lint`: ✅ zero errors
+- `bunx tsc --noEmit`: ✅ zero errors in project source
+- Dev server: ✅ stable, all compiles successful
+- Command palette: ✅ opens via Ctrl+K, sidebar button, fuzzy search works, navigation works
+- Data export: ✅ CSV + JSON files generated, toast confirms
+- Exam API: ✅ GET 200, POST 201, real DB students shown in modal
+- Logout: ✅ API route created, button wired (not clicked to preserve session)
+- All previous features (rounds 19-21) still working
+
+## Unresolved Issues / Risks
+1. **ExamModal (single student)**: Uses `studentId` prop passed from AdvisorStudentDetail. If the advisor views a student detail page and creates an exam, the API will verify the student is assigned to them. This should work but wasn't end-to-end tested this round.
+2. **Command palette mobile trigger**: On mobile (no sidebar), the only way to open the palette is Ctrl+K (which requires a physical keyboard) or the keyboard shortcut. A mobile-friendly floating button could be added.
+3. **Exam results**: The API supports creating exams with participants, but there's no UI yet for recording exam results (scores/ranks). The `results` array is always empty on creation.
+4. **Exam status transitions**: No UI to transition an exam from "upcoming" → "in-progress" → "completed". The PATCH route supports it but no button triggers it.
+
+## Priority Recommendations for Next Phase
+1. Add exam results recording UI (advisor enters scores after exam)
+2. Add exam status transition buttons (mark as in-progress / completed)
+3. Add a mobile-friendly command palette trigger (floating action button)
+4. Add a "Focus Mode" that hides nav for distraction-free study (keyboard shortcut 'F')
+5. Add notification reminders for upcoming exams (countdown in dashboard)
+6. Consider adding a study session timer that tracks actual study time per task

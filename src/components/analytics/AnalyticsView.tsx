@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   Clock, FileText, BarChart3, TrendingUp, TrendingDown, ChevronLeft,
-  Sparkles, Award, AlertTriangle, Loader2, BookOpen, Layers,
+  Sparkles, Award, AlertTriangle, Loader2, BookOpen, Layers, Download,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { MOCK_DAILY_DATA, MOCK_SUBJECT_DISTRIBUTION, MOCK_ACTIVITY_DATA } from '@/lib/constants/mockData';
@@ -22,6 +22,7 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import WeeklyGoalCard from '@/components/analytics/WeeklyGoalCard';
+import { toast } from 'sonner';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
 const FIELD_FILTERS = ['همه', 'کنکوری', 'نهایی'] as const;
@@ -103,15 +104,24 @@ function KpiCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.35 }}
-      className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 flex flex-col gap-2"
+      whileHover={{ y: -3 }}
+      className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 flex flex-col gap-2 relative overflow-hidden group"
     >
+      {/* Subtle gradient accent on hover */}
       <div
-        className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center"
+        aria-hidden
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at top right, ${color}14 0%, transparent 60%)`,
+        }}
+      />
+      <div
+        className="relative w-10 h-10 rounded-[var(--radius)] flex items-center justify-center transition-transform group-hover:scale-110"
         style={{ backgroundColor: `${color}1A` }}
       >
         <span style={{ color }}>{icon}</span>
       </div>
-      <div>
+      <div className="relative">
         <p className="text-xl font-bold text-[var(--foreground)] tabular-nums leading-none">{value}</p>
         <p className="text-xs text-[var(--foreground-muted)] mt-1">{label}</p>
       </div>
@@ -134,14 +144,28 @@ function InsightCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.35 }}
-      className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 border-r-[3px]"
+      whileHover={{ y: -2 }}
+      className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 border-r-[3px] relative overflow-hidden group"
       style={{ borderRightColor: color }}
     >
-      <div className="flex items-center gap-2 mb-1.5">
-        <span style={{ color }}>{icon}</span>
+      {/* Hover gradient accent */}
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{
+          background: `linear-gradient(135deg, ${color}10 0%, transparent 50%)`,
+        }}
+      />
+      <div className="flex items-center gap-2 mb-1.5 relative">
+        <span
+          style={{ color }}
+          className="transition-transform group-hover:scale-110 inline-flex"
+        >
+          {icon}
+        </span>
         <span className="text-xs text-[var(--foreground-muted)] font-medium">{title}</span>
       </div>
-      <span className="text-sm font-bold text-[var(--foreground)]">{value}</span>
+      <span className="text-sm font-bold text-[var(--foreground)] relative">{value}</span>
     </motion.div>
   );
 }
@@ -254,9 +278,21 @@ export default function AnalyticsView() {
           =================================================== */}
       <div className="md:hidden max-w-md mx-auto px-4 pt-6 pb-24">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="w-6 h-6 text-[var(--accent)]" />
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">گزارش‌ها</h1>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-[var(--accent)]" />
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">گزارش‌ها</h1>
+          </div>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('reval-export-data'));
+            }}
+            className="glow-hover group flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] text-xs font-medium text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+            title="خروجی CSV و JSON"
+          >
+            <Download className="w-3.5 h-3.5 transition-transform group-hover:translate-y-0.5" />
+            خروجی
+          </button>
         </div>
 
         {/* View Tab Toggle */}
@@ -370,7 +406,19 @@ export default function AnalyticsView() {
               تحلیل کامل عملکرد، روند و بینش‌های هوشمند
             </p>
           </div>
-          <ViewTabToggle view={view} onChange={setView} />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('reval-export-data'));
+              }}
+              className="glow-hover group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] text-sm font-medium text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+              title="خروجی CSV و JSON"
+            >
+              <Download className="w-4 h-4 transition-transform group-hover:translate-y-0.5" />
+              خروجی داده‌ها
+            </button>
+            <ViewTabToggle view={view} onChange={setView} />
+          </div>
         </div>
 
         {view === 'نمای کلی' && (

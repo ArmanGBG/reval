@@ -83,15 +83,18 @@ export default function LoginPage() {
       // Load the user's tasks from the API (replaces the old MOCK_TASKS init).
       // For students, this loads their own tasks. For advisors, we load their
       // assigned students list (so they can pick a student and view their tasks).
-      const { loadTasksForStudent, loadAdvisorStudents } = useAppStore.getState();
+      // We also load exams for advisors and students in the background.
+      const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
       if (role === 'STUDENT') {
         loadTasksForStudent(data.user.id).catch(() => {
           // Non-blocking — error is already stored in tasksError
         });
+        loadExams({ studentId: data.user.id }).catch(() => {});
       } else if (role === 'ADVISOR') {
         loadAdvisorStudents(data.user.id).catch(() => {
           // Non-blocking — advisor panel shows empty state
         });
+        loadExams({ advisorId: data.user.id }).catch(() => {});
       }
 
       toast.success(`خوش آمدی، ${data.user.name}`, {

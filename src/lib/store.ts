@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, Exam, StudentProfile } from '@/lib/types';
 import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_PLATFORM_INSTITUTES, MOCK_GLOBAL_USERS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
+import * as examService from '@/lib/exam-service';
 
 interface AppState {
   // ===== Role-Based Access Control =====
@@ -132,10 +133,19 @@ interface AppState {
   updateGlobalUser: (id: string, updates: Partial<GlobalUser>) => void;
 
   // ===== Exams State =====
+  // exams is a cache of exams visible to the current user.
+  // For advisors: exams they created. For students: exams they're in.
   exams: Exam[];
-  addExam: (exam: Exam) => void;
-  updateExam: (id: string, updates: Partial<Exam>) => void;
-  deleteExam: (id: string) => void;
+  examsLoading: boolean;
+  examsError: string | null;
+  /** Loads exams from the API. Replaces the cache. */
+  loadExams: (opts?: { advisorId?: string; studentId?: string }) => Promise<void>;
+  /** Creates a new exam via the API. Adds to cache on success. */
+  addExam: (input: examService.CreateExamInput) => Promise<Exam>;
+  /** Updates an exam via the API. Updates cache on success. */
+  updateExam: (id: string, updates: Partial<examService.CreateExamInput & { status: Exam['status'] }>) => Promise<void>;
+  /** Deletes an exam via the API. Removes from cache on success. */
+  deleteExam: (id: string) => Promise<void>;
 
   // ===== Daily Streak =====
   streakDays: number;
@@ -555,17 +565,59 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   // ===== Exams State =====
+  // Initialize with MOCK_EXAMS so the UI has something to show before the
+  // first API load completes. loadExams() replaces these with real DB rows.
   exams: MOCK_EXAMS,
-  addExam: (exam) =>
-    set((state) => ({ exams: [...state.exams, exam] })),
-  updateExam: (id, updates) =>
+  examsLoading: false,
+  examsError: null,
+  loadExams: async (opts) => {
+    set({ examsLoading: true, examsError: null });
+    try {
+      const exams = await examService.loadExams(opts);
+      set({ exams, examsLoading: false });
+    } catch (e) {
+      set({
+        examsLoading: false,
+        examsError: e instanceof Error ? e.message : 'خطا در بارگذاری آزمون‌ها',
+      });
+    }
+  },
+  addExam: async (input) => {
+    const created = await examService.createExam(input);
+    set((state) => ({ exams: [created, ...state.exams] }));
+    return created;
+  },
+  updateExam: async (id, updates) => {
+    // Optimistic update
     set((state) => ({
       exams: state.exams.map((e) =>
         e.id === id ? { ...e, ...updates } : e
       ),
-    })),
-  deleteExam: (id) =>
-    set((state) => ({ exams: state.exams.filter((e) => e.id !== id) })),
+    }));
+    try {
+      const updated = await examService.updateExam(id, updates);
+      set((state) => ({
+        exams: state.exams.map((e) => (e.id === id ? updated : e)),
+      }));
+    } catch (e) {
+      // Revert by reloading
+      const exams = await examService.loadExams();
+      set({ exams });
+      throw e;
+    }
+  },
+  deleteExam: async (id) => {
+    // Optimistic remove
+    const prev = get().exams;
+    set((state) => ({ exams: state.exams.filter((e) => e.id !== id) }));
+    try {
+      await examService.deleteExam(id);
+    } catch (e) {
+      // Revert on error
+      set({ exams: prev });
+      throw e;
+    }
+  },
 
   // ===== Daily Streak =====
   streakDays: 0,

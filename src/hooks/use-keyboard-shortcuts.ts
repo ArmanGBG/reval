@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { create } from 'zustand';
-import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
+import { useCommandPaletteStore } from '@/hooks/use-command-palette';
 import type { ViewName } from '@/lib/types';
 
 // =================================================================
@@ -81,12 +81,10 @@ export function useKeyboardShortcuts(): void {
         return;
       }
 
-      // ----- Ctrl/Cmd + K → command palette (placeholder toast) -----
+      // ----- Ctrl/Cmd + K → open command palette -----
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
-        toast.info('پنل دستورات به‌زودی در دسترس خواهد بود', {
-          description: 'Command palette coming soon',
-        });
+        useCommandPaletteStore.getState().toggle();
         return;
       }
 

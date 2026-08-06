@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { SUBJECTS } from '@/lib/constants/mockData';
-import { Exam } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +43,7 @@ export function ExamModal({
     setTotalScore(100);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title) {
       toast.error('لطفاً عنوان آزمون را وارد کنید');
       return;
@@ -57,25 +56,25 @@ export function ExamModal({
     const subjectObj = SUBJECTS.find(s => s.name === subject);
     const subjectColor = subjectObj?.color ?? '#8B5CF6';
 
-    const newExam: Exam = {
-      id: crypto.randomUUID(),
-      title,
-      subject,
-      subjectColor,
-      date,
-      startTime,
-      duration,
-      totalScore,
-      studentIds: [studentId],
-      status: 'upcoming',
-      results: [],
-      createdBy: 'adv1',
-      createdAt: new Date().toISOString(),
-    };
-    addExam(newExam);
-    toast.success('آزمون با موفقیت ثبت شد');
-    resetForm();
-    onOpenChange(false);
+    toast.loading('در حال ثبت آزمون...', { id: 'exam-create' });
+    try {
+      await addExam({
+        title,
+        subject,
+        subjectColor,
+        date,
+        startTime,
+        duration,
+        totalScore,
+        studentIds: [studentId],
+        status: 'upcoming',
+      });
+      toast.success('آزمون با موفقیت ثبت شد', { id: 'exam-create' });
+      resetForm();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'خطا در ثبت آزمون', { id: 'exam-create' });
+    }
   };
 
   return (

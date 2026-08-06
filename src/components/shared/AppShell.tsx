@@ -8,6 +8,8 @@ import SidebarNav from './SidebarNav';
 import MusicPlayer from './MusicPlayer';
 import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
 import CelebrationOverlay from './CelebrationOverlay';
+import CommandPalette from './CommandPalette';
+import DataExportHelper from './DataExportHelper';
 
 /**
  * AppShell — responsive layout wrapper.
@@ -48,6 +50,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const showBottomNav = !isDetailPage;
   const showSidebar = !isDetailPage; // detail pages also hide sidebar for focus
   const showMusicPlayer = userRole === 'STUDENT' && !isDetailPage;
+  const isStudent = userRole === 'STUDENT';
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -79,6 +82,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Global keyboard shortcuts help dialog (managed by useKeyboardShortcuts) */}
       <KeyboardShortcutsHelp />
+
+      {/* Command palette (Ctrl/Cmd+K) — role-aware fuzzy search over views,
+          tools, and actions. Rendered at root so it floats above everything. */}
+      <CommandPalette />
+
+      {/* Data export helper — listens for `reval-export-data` events from
+          the command palette and downloads CSV + JSON files. Invisible. */}
+      {isStudent && <DataExportHelper />}
 
       {/* Celebration overlay — confetti bursts on task completion.
           Rendered once at the app root so it's always available.
