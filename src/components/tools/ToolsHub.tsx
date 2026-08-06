@@ -8,11 +8,13 @@ import {
   Music, Brain, Timer, Calculator, Heart, X,
   Plus, ImagePlus, ChevronLeft, ChevronRight,
   ChevronDown, Sparkles, RotateCcw, Calendar, Zap, Flame,
+  PenLine,
 } from 'lucide-react';
 import PomodoroTimer from './PomodoroTimer';
 import StudyMusicPlayer from './StudyMusicPlayer';
 import GradeCalculator from './GradeCalculator';
 import BreathingExercise from './BreathingExercise';
+import ActiveSummary from './ActiveSummary';
 import { toast } from 'sonner';
 import {
   scheduleNextReview,
@@ -68,6 +70,15 @@ const TOOLS = [
     color: '#F43F5E',
     gradientFrom: '#F43F5E',
     gradientTo: '#FB7185',
+  },
+  {
+    id: 'summary',
+    title: 'خلاصه‌نویس فعال',
+    description: 'یادت پایدارتر می‌شه',
+    icon: PenLine,
+    color: '#10B981',
+    gradientFrom: '#10B981',
+    gradientTo: '#34D399',
   },
 ];
 
@@ -127,6 +138,7 @@ export default function ToolsHub() {
           {TOOLS.map((tool, index) => {
             const IconComp = tool.icon;
             const isLast = index === TOOLS.length - 1;
+            const isOddTotal = TOOLS.length % 2 === 1;
             return (
               <motion.button
                 key={tool.id}
@@ -135,7 +147,7 @@ export default function ToolsHub() {
                 transition={{ delay: index * 0.06, duration: 0.3 }}
                 onClick={() => handleToolSelect(tool.id)}
                 className={`group surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 text-right min-h-[150px] flex flex-col justify-between overflow-hidden ${
-                  isLast ? 'col-span-2 max-w-[calc(50%-6px)] mx-auto' : ''
+                  isLast && isOddTotal ? 'col-span-2 max-w-[calc(50%-6px)] mx-auto' : ''
                 }`}
               >
                 {/* Gradient glow overlay */}
@@ -185,6 +197,7 @@ export default function ToolsHub() {
             const IconComp = tool.icon;
             const isActive = activeTool === tool.id;
             const isLast = index === TOOLS.length - 1;
+            const isOddTotal = TOOLS.length % 2 === 1;
             return (
               <motion.button
                 key={tool.id}
@@ -195,7 +208,7 @@ export default function ToolsHub() {
                 className={`group surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-5 text-right min-h-[190px] flex flex-col justify-between transition-all overflow-hidden ${
                   isActive ? 'border-[var(--accent)] ring-1 ring-[var(--accent-glow)]' : ''
                 } ${
-                  isLast ? 'col-span-2 max-w-[calc(50%-8px)] mx-auto' : ''
+                  isLast && isOddTotal ? 'col-span-2 max-w-[calc(50%-8px)] mx-auto' : ''
                 }`}
               >
                 {/* Gradient glow overlay */}
@@ -286,6 +299,7 @@ export default function ToolsHub() {
                 {activeTool === 'pomodoro' && <PomodoroTimer />}
                 {activeTool === 'calculator' && <GradeCalculator />}
                 {activeTool === 'breathing' && <BreathingExercise />}
+                {activeTool === 'summary' && <ActiveSummary />}
               </div>
             </motion.div>
           </motion.div>

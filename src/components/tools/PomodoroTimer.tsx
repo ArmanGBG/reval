@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, SkipForward, Settings } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Settings, Link2, Unlink, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { toPersianDigits, toISODate } from '@/lib/persian-date';
+import { useAppStore } from '@/lib/store';
+import { useCurrentStudentId } from '@/lib/student-utils';
+import type { Task } from '@/lib/types';
 
 // ===== Mode configuration =====
 type TimerMode = 'focus' | 'short' | 'long';
@@ -147,11 +150,18 @@ function playBeep() {
 
 // ===== Component =====
 export default function PomodoroTimer() {
+  const { tasks, updateTask } = useAppStore();
+  const studentId = useCurrentStudentId();
   const [durations, setDurations] = useState<Record<TimerMode, number>>(() => loadDurations());
   const [mode, setMode] = useState<TimerMode>('focus');
   const [timeLeft, setTimeLeft] = useState<number>(() => loadDurations().focus);
   const [isRunning, setIsRunning] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Linked task for focus sessions — its actualTimeMinutes accumulates as the
+  // student completes focus sessions. Cleared when the linked task is unlinked
+  // or no longer exists in the store.
+  const [linkedTaskId, setLinkedTaskId] = useState<string | null>(null);
+  const [showTaskPicker, setShowTaskPicker] = useState(false);
 
   // Sessions completed in the current 4-session cycle (0..4)
   const [completedInCycle, setCompletedInCycle] = useState(0);
@@ -178,6 +188,35 @@ export default function PomodoroTimer() {
   const currentMode = useMemo(() => MODES.find((m) => m.id === mode)!, [MODES, mode]);
   const totalDuration = durations[mode];
 
+  // ===== Today's tasks available for linking =====
+  // Includes both pending AND completed tasks (so the student can log
+  // additional focus time on a completed task — over-achievement is fine).
+  // Drafts (detailsCompleted === false) and skipped tasks are excluded.
+  const todayISO = toISODate(new Date());
+  const todaysTasks = useMemo(
+    () => tasks.filter((t) =>
+      t.studentId === studentId &&
+      t.date === todayISO &&
+      t.detailsCompleted !== false &&
+      t.completed !== false,
+    ).sort((a, b) => {
+      // Pending first, then by order
+      const aPending = a.completed === null ? 0 : 1;
+      const bPending = b.completed === null ? 0 : 1;
+      if (aPending !== bPending) return aPending - bPending;
+      return a.order - b.order;
+    }),
+    [tasks, studentId, todayISO],
+  );
+  const linkedTask: Task | null = useMemo(
+    () => linkedTaskId ? tasks.find((t) => t.id === linkedTaskId) ?? null : null,
+    [linkedTaskId, tasks],
+  );
+  // Auto-clear linked task if it was deleted or completed elsewhere
+  useEffect(() => {
+    if (linkedTaskId && !linkedTask) setLinkedTaskId(null);
+  }, [linkedTaskId, linkedTask]);
+
   // ----- Completion handler -----
   const handleComplete = useCallback(() => {
     playBeep();
@@ -193,6 +232,33 @@ export default function PomodoroTimer() {
         saveTodayStats(next);
         return next;
       });
+
+      // ===== Linked-task integration =====
+      // If the student linked a task to this focus session, add the focus
+      // minutes to its actualTimeMinutes. This works for both pending and
+      // completed tasks — over-achievement (more time than planned) is fine
+      // and shows up in analytics.
+      if (linkedTask) {
+        const newActual = (linkedTask.actualTimeMinutes ?? 0) + focusMin;
+        void updateTask(linkedTask.id, { actualTimeMinutes: newActual }).then(() => {
+          const subjectLabel = linkedTask.subject;
+          const topicLabel = linkedTask.topic ? ` · ${linkedTask.topic}` : '';
+          const targetMin = linkedTask.targetTimeMinutes ?? 0;
+          if (targetMin > 0 && newActual >= targetMin && (linkedTask.actualTimeMinutes ?? 0) < targetMin) {
+            toast.success(
+              `${toPersianDigits(focusMin)} دقیقه به «${subjectLabel}${topicLabel}» اضافه شد — به هدف رسیدی! 🎯`,
+              { duration: 4500 }
+            );
+          } else {
+            toast.success(
+              `${toPersianDigits(focusMin)} دقیقه به «${subjectLabel}${topicLabel}» اضافه شد`,
+              { duration: 3500 }
+            );
+          }
+        }).catch(() => {
+          // Silently ignore — the focus session still counts toward today's stats
+        });
+      }
 
       if (nextCompleted >= SESSIONS_BEFORE_LONG_BREAK) {
         setCompletedInCycle(SESSIONS_BEFORE_LONG_BREAK);
@@ -219,7 +285,7 @@ export default function PomodoroTimer() {
     }
 
     setIsRunning(false);
-  }, [mode, completedInCycle, durations]);
+  }, [mode, completedInCycle, durations, linkedTask, updateTask]);
 
   // ----- Tick effect (setInterval, cleaned up on unmount / pause) -----
   useEffect(() => {
@@ -400,7 +466,7 @@ export default function PomodoroTimer() {
       </AnimatePresence>
 
       {/* ===== Mode Tabs ===== */}
-      <div className="inline-flex items-center gap-1 p-1 surface-1 rounded-full border border-[var(--border)] mb-7">
+      <div className="inline-flex items-center gap-1 p-1 surface-1 rounded-full border border-[var(--border)] mb-5">
         {MODES.map((m) => {
           const active = m.id === mode;
           return (
@@ -425,6 +491,118 @@ export default function PomodoroTimer() {
             </button>
           );
         })}
+      </div>
+
+      {/* ===== Linked task chip + picker ===== */}
+      {/* Shows the currently-linked task (or a "link task" CTA) above the timer. */}
+      {/* Focus time accumulates onto the linked task's actualTimeMinutes. */}
+      <div className="mb-5 w-full max-w-[280px] relative">
+        {linkedTask ? (
+          <div
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl border bg-[var(--bg-elevated)] transition-shadow ${
+              isRunning && isFocus ? 'animate-pulse-subtle' : ''
+            }`}
+            style={{
+              borderColor: `${linkedTask.subjectColor}55`,
+              boxShadow: isRunning && isFocus ? `0 0 0 1px ${linkedTask.subjectColor}33, 0 0 16px -4px ${linkedTask.subjectColor}55` : 'none',
+            }}
+          >
+            <span
+              className="w-2 h-2 rounded-full shrink-0 relative"
+              style={{ backgroundColor: linkedTask.subjectColor }}
+            >
+              {isRunning && isFocus && (
+                <motion.span
+                  className="absolute inset-0 rounded-full"
+                  style={{ backgroundColor: linkedTask.subjectColor }}
+                  animate={{ scale: [1, 2.2, 1], opacity: [0.6, 0, 0.6] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-[var(--foreground)] truncate leading-tight">
+                {linkedTask.subject}
+                {linkedTask.topic && (
+                  <span className="text-[var(--foreground-muted)] font-normal"> · {linkedTask.topic}</span>
+                )}
+              </p>
+              <p className="text-[10px] text-[var(--foreground-muted)] tabular-nums leading-tight mt-0.5">
+                {toPersianDigits(linkedTask.actualTimeMinutes ?? 0)}/{toPersianDigits(linkedTask.targetTimeMinutes ?? 0)} دقیقه
+                {isFocus && ' · زمان این جلسه اضافه می‌شه'}
+              </p>
+            </div>
+            <button
+              onClick={() => setLinkedTaskId(null)}
+              aria-label="قطع ارتباط تسک"
+              className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:bg-[rgba(239,68,68,0.08)] transition-colors"
+            >
+              <Unlink className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowTaskPicker((s) => !s)}
+            className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-[11px] font-medium transition-colors ${
+              showTaskPicker
+                ? 'border-[var(--accent)]/50 text-[var(--accent)] bg-[var(--accent-soft)]'
+                : 'border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)] bg-[var(--bg-elevated)]'
+            }`}
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            {todaysTasks.length > 0 ? 'اتصال به تسک امروز' : 'تسکی برای امروز نیست'}
+          </button>
+        )}
+
+        {/* ===== Task picker dropdown ===== */}
+        <AnimatePresence>
+          {showTaskPicker && !linkedTask && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -6, height: 0 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden"
+            >
+              <div className="surface-2 rounded-xl border border-[var(--border-strong)] shadow-2xl max-h-72 overflow-y-auto custom-scrollbar p-1">
+                {todaysTasks.length === 0 ? (
+                  <p className="text-[11px] text-[var(--foreground-muted)] text-center py-4 px-2">
+                    همه تسک‌های امروز تکمیل شدن 🎉
+                  </p>
+                ) : (
+                  todaysTasks.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setLinkedTaskId(t.id);
+                        setShowTaskPicker(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-right hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: t.subjectColor }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-bold text-[var(--foreground)] truncate">
+                          {t.subject}
+                          {t.topic && (
+                            <span className="text-[var(--foreground-muted)] font-normal"> · {t.topic}</span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-[var(--foreground-muted)] tabular-nums">
+                          {toPersianDigits(t.actualTimeMinutes ?? 0)}/{toPersianDigits(t.targetTimeMinutes ?? 0)} دقیقه
+                          {t.targetTestCount ? ` · ${toPersianDigits(t.targetTestCount)} تست` : ''}
+                        </p>
+                      </div>
+                      <Check className="w-3.5 h-3.5 text-[var(--foreground-subtle)] shrink-0 opacity-0 group-hover:opacity-100" />
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ===== Circular Timer ===== */}

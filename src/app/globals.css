@@ -479,6 +479,15 @@
   animation: float-subtle 3s ease-in-out infinite;
 }
 
+/* Pulse subtle — gentle opacity pulse for "live" indicators */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.78; }
+}
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.6s ease-in-out infinite;
+}
+
 /* Fade in up — for staggered reveals */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(8px); }

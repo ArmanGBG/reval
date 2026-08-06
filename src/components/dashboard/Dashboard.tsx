@@ -236,6 +236,8 @@ export default function Dashboard() {
   const [partialTask, setPartialTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  // Subject filter for today's task list (click a subject chip to focus on it)
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (studentId !== 's1') void loadTasksForStudent(studentId);
@@ -315,6 +317,7 @@ export default function Dashboard() {
   const todayTaskList = useMemo(
     () =>
       todayTasks
+        .filter((t) => subjectFilter === null || t.subject === subjectFilter)
         .slice()
         .sort((a, b) => {
           // Pending first, then by order
@@ -323,8 +326,20 @@ export default function Dashboard() {
           if (aPending !== bPending) return aPending - bPending;
           return a.order - b.order;
         }),
-    [todayTasks],
+    [todayTasks, subjectFilter],
   );
+
+  // ===== Subject chips for legend/filter (only subjects that have tasks today) =====
+  const subjectChips = useMemo(() => {
+    const map = new Map<string, { name: string; color: string; count: number; completed: number }>();
+    for (const t of todayTasks) {
+      const entry = map.get(t.subject) ?? { name: t.subject, color: t.subjectColor || 'var(--accent)', count: 0, completed: 0 };
+      entry.count += 1;
+      if (t.completed === true) entry.completed += 1;
+      map.set(t.subject, entry);
+    }
+    return [...map.entries()].map(([name, v]) => ({ name, color: v.color, count: v.count, completed: v.completed }));
+  }, [todayTasks]);
 
   // ===== Render =====
   return (
@@ -448,6 +463,45 @@ export default function Dashboard() {
           افزودن
         </button>
       </div>
+
+      {/* ===== Subject legend / quick filter (only when tasks exist) ===== */}
+      {subjectChips.length > 1 && (
+        <div className="flex items-center gap-1.5 mb-3 px-1 overflow-x-auto no-scrollbar pb-1">
+          <button
+            onClick={() => setSubjectFilter(null)}
+            className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
+              subjectFilter === null
+                ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]'
+                : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
+            }`}
+          >
+            همه
+            <span className="tabular-nums opacity-70">{toPersianDigits(todayTasks.length)}</span>
+          </button>
+          {subjectChips.map((chip) => {
+            const active = subjectFilter === chip.name;
+            return (
+              <button
+                key={chip.name}
+                onClick={() => setSubjectFilter(active ? null : chip.name)}
+                className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
+                  active
+                    ? 'border-[var(--border-strong)] text-[var(--foreground)]'
+                    : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
+                }`}
+                style={active ? { backgroundColor: `${chip.color}1A`, borderColor: `${chip.color}66` } : undefined}
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: chip.color }}
+                />
+                {chip.name}
+                <span className="tabular-nums opacity-70">{toPersianDigits(chip.completed)}/{toPersianDigits(chip.count)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ===== Today's Task List ===== */}
       {tasksLoading ? (

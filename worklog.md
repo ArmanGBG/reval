@@ -2402,3 +2402,144 @@ Task: webDevReview cycle — QA all 4 roles via agent-browser, fix bugs, add fea
 3. **Subject-color legend on dashboard**: With the new subject-color accent stripes, add a small color legend or filter-by-subject on the dashboard task list.
 4. **Analytics: replace MOCK data with real task data**: The charts (روند روزانه، سهم دروس، نوع فعالیت) currently use MOCK_DAILY_DATA/MOCK_SUBJECT_DISTRIBUTION/MOCK_ACTIVITY_DATA. Wiring them to the student's actual completed tasks would make analytics genuinely useful.
 5. **Weekly review card restoration**: The WeeklyReviewCard was removed from the home panel (Task 26) but is still a valuable feature. Consider surfacing it on the Analytics page or as a Sunday-only notification instead.
+
+---
+Task ID: 28-real-analytics-pomodoro-link-summary-tool
+Agent: Main
+Task: webDevReview cycle — replace MOCK analytics with real task data, add Pomodoro→Task integration, add Active Summary study tool, dashboard subject-filter chips, styling polish
+
+## Current Project Status Assessment
+- Dev server: ✅ stable (all routes 200, no runtime errors)
+- Previous round (Task 27): QA'd all 4 roles, fixed recharts width(0) warnings, enhanced Pomodoro with custom durations + daily stats, added subject-color accent stripes on TaskCard
+- All 4 roles functional: student, advisor, institute-manager, super-admin
+- Lint: ✅ zero errors | tsc (src): ✅ zero errors
+
+## QA Results (agent-browser)
+1. **Student (09131111111)**: Dashboard renders cleanly with new subject-filter chips (ریاضی ۱/۳, فیزیک ۱/۱, شیمی ۱/۱, ادبیات ۱/۱). Clicking a chip filters the task list correctly. Analytics panel shows REAL data (was mock). Pomodoro linked-task picker shows all 4 actionable tasks. Active Summary tool opens and renders form correctly.
+2. **Advisor (09121234567)**: Panel renders with all stats (۲ دانش‌آموز، ۲ نیاز به مداخله، ۰ میانگین نمره). No console errors.
+3. **Super-admin (09121000000)**: Panel renders with all stats (۳ موسسات فعال، ۶۷ دانش‌آموز، ۲۲ مشاور، ۶۰٪ تکمیل). No console errors.
+4. **Dev server**: all routes return 200, no errors in dev.log
+
+## Completed Modifications
+
+### Feature 1: Real Analytics Data (replaces all MOCK_*_DATA)
+- **NEW FILE**: `src/lib/analytics.ts` — pure aggregation functions
+  * `filterTasksForReport(tasks, timeFilter, fieldFilter)` — applies date-range + field filters
+  * `resolveDateRange(timeFilter, now)` — maps روزانه/هفته جاری/ماهانه/بازه دلخواه to ISO date ranges
+  * `computeKpiTotals(tasks)` — totalHours (from actualTimeMinutes), totalTests (from actualTestCount), adherenceRate (completed/total), dailyAvgHours (per active day)
+  * `buildDailyTrend(tasks, timeFilter)` — 7-bar weekday chart for روزانه/هفته جاری, 6-bucket monthly chart for ماهانه, 14-day rolling for بازه دلخواه
+  * `buildSubjectDistribution(tasks)` — pie chart with one slice per subject, value=hours, fill=subjectColor
+  * `buildActivityBreakdown(tasks, timeFilter)` — stacked bar chart, distributes actualTimeMinutes evenly across each task's activityTypes
+  * `computeInsights(tasks)` — 4 smart-insight cards from real data:
+    - بیشترین مطالعه (subject with max hours, with `fmtDuration` that shows minutes for <30min)
+    - کمترین مطالعه (subject with min non-zero hours)
+    - منظم‌ترین درس (highest completion rate, min 3 tasks)
+    - بیشترین کنسلی (most skipped tasks, "نداریم 🎉" if none)
+  * `hasAnyCompletedData(tasks)` — empty-state guard
+- **Modified**: `src/components/analytics/AnalyticsView.tsx`
+  * Removed `MOCK_DAILY_DATA`, `MOCK_SUBJECT_DISTRIBUTION`, `MOCK_ACTIVITY_DATA` imports
+  * KPIs now compute from real filtered tasks via useMemo
+  * Insights now compute from real filtered tasks
+  * All 3 charts (روند روزانه، سهم دروس، نوع فعالیت) now consume real data via new ChartContent props
+  * Added empty-state guard: when no completed tasks in the selected range, shows a friendly "داده‌ای برای این دوره ثبت نشده" message instead of empty charts
+  * Added snapshot Jalali date to the desktop header breadcrumb
+  * ChartContent interface extended with `dailyTrendData`, `subjectDistData`, `activityData`, `hasData` props
+
+### Feature 2: Pomodoro → Task Integration
+- **Modified**: `src/components/tools/PomodoroTimer.tsx`
+  * Added `useAppStore` for tasks + updateTask, `useCurrentStudentId` for student scoping
+  * Added `linkedTaskId` state + `showTaskPicker` state
+  * Added `todaysTasks` memo — filters today's actionable tasks (detailsCompleted !== false, completed !== false), sorts pending-first then by order
+  * Added `linkedTask` memo with auto-clear if the task is deleted/completed out-of-band
+  * Added linked-task chip UI between mode tabs and the timer circle:
+    - When linked: shows subject color dot + subject name + topic + actual/target minutes + unlink button
+    - When not linked: shows "اتصال به تسک امروز" CTA button
+    - Task picker dropdown: animated open/close, lists all today's actionable tasks with subject color, name, topic, progress (actual/target minutes + test count)
+    - Live pulse animation on the linked chip when timer is running (subject-color glow + animated ring on the color dot)
+  * Modified `handleComplete`: when a focus session completes AND a task is linked, adds `focusMin` to the task's `actualTimeMinutes` via `updateTask`. Shows success toast with task name; shows "به هدف رسیدی! 🎯" variant when crossing the target threshold
+  * Updated useCallback deps to include `linkedTask` and `updateTask`
+
+### Feature 3: Active Summary Study Tool (NEW)
+- **NEW FILE**: `src/components/tools/ActiveSummary.tsx` — evidence-based study technique
+  * Students write free-form summaries of what they learned, from memory, after completing a task
+  * Task selector: horizontal chips for today's completed + partial-progress tasks (auto-selects first)
+  * Summary textarea with live word count (Persian-aware splitting on whitespace + ZWNJ)
+  * 3 key-point inputs (optional, scaffolded for users who don't know where to start)
+  * Save button: validates at least one field is non-empty, persists to localStorage
+  * Past summaries list: shows all summaries for the selected task, newest first, with delete-on-hover
+  * Each summary entry: id, taskId, subject, subjectColor, topic, content, keyPoints[], createdAt
+  * Storage: `reval:summaries:v1` — Record<taskId, Summary[]> for fast per-task lookup
+  * Empty states: "هنوز چیزی برای خلاصه‌نویسی نیست" when no summarizable tasks, "هنوز خلاصه‌ای برای این تسک ننوشتی" when no past summaries
+  * Smart display: shows "تسک تکمیل شد" for completed tasks without logged time (instead of misleading "۰ دقیقه مطالعه")
+- **Modified**: `src/components/tools/ToolsHub.tsx`
+  * Registered new "خلاصه‌نویس فعال" tool (id: 'summary', icon: PenLine, color: #10B981 emerald)
+  * Added to TOOLS array as 6th tool
+  * Added `<ActiveSummary />` render case in the modal body
+  * Fixed `isLast` col-span-2 logic: now only applies when `TOOLS.length % 2 === 1` (so 6 tools render as a clean 3×2 grid instead of the 6th tool spanning 2 cols)
+
+### Feature 4: Dashboard Subject-Filter Chips
+- **Modified**: `src/components/dashboard/Dashboard.tsx`
+  * Added `subjectFilter` state (string | null)
+  * Added `subjectChips` memo — unique subjects from today's tasks with count + completed count
+  * Filtered `todayTaskList` to respect `subjectFilter`
+  * Added subject-legend/filter chip row below the "تسک‌های امروز" heading:
+    - "همه" chip with total count
+    - One chip per subject: subject color dot + name + "completed/total" (e.g. "ریاضی ۱/۳")
+    - Active chip gets subject-color tinted background + border
+    - Only renders when there are 2+ distinct subjects (avoids clutter for single-subject days)
+    - Horizontal scroll on mobile with `no-scrollbar`
+
+### Feature 5: Styling Polish
+- **Modified**: `src/app/globals.css`
+  * Added `.animate-pulse-subtle` utility class — gentle 1.6s opacity pulse (1 → 0.78 → 1) for "live" indicators
+- **Modified**: `src/components/tools/PomodoroTimer.tsx`
+  * Linked-task chip gets `animate-pulse-subtle` + subject-color glow boxShadow when timer is running in focus mode
+  * Color dot gets an expanding ring animation (scale 1→2.2, opacity 0.6→0) when live
+- **Modified**: `src/components/analytics/AnalyticsView.tsx`
+  * Desktop header breadcrumb now shows today's Jalali date (formatPersianDate) after the view name
+  * Empty-state for charts: centered icon + 2-line message with helpful CTA
+  * Subject distribution pie: shows "داده‌ای برای نمایش موجود نیست" inline when no completed tasks (instead of empty pie)
+- **Modified**: `src/components/tools/ActiveSummary.tsx`
+  * Intro card with Sparkles icon + accent-soft background
+  * Total summaries count badge in the intro card
+  * Subject-color tinted task-context card
+  * Word count turns green when > 200 words (encourages longer summaries)
+  * Numbered key-point inputs with accent-soft circular badges
+  * Dashed-border empty state for "no past summaries"
+  * Hover-reveal delete button on past summaries
+
+## Verification Results
+- `bun run lint`: ✅ zero errors
+- `bunx tsc --noEmit` (project source, excluding skills/): ✅ zero errors
+- Dev server: ✅ stable, all routes 200, no runtime errors
+- agent-browser end-to-end:
+  * **Student dashboard**: 4 subject chips render (همه ۶ / ریاضی ۱/۳ / فیزیک ۱/۱ / شیمی ۱/۱ / ادبیات ۱/۱). Clicking "ریاضی" filters task list to 3 ریاضی tasks. Filter toggles correctly.
+  * **Student analytics**: KPIs show real values (۰.۸ ساعت زمان کل, ۱۵ تست, ۱۰۰٪ نرخ پایبندی, ۰.۸ ساعت میانگین). Insights show real subjects: "بیشترین مطالعه: فیزیک - 0.8 ساعت", "کمترین مطالعه: ادبیات - 1 دقیقه" (properly shows minutes for <30min), "منظم‌ترین درس: داده‌ای نیست" (no subject has ≥3 tasks), "بیشترین کنسلی: نداریم 🎉"
+  * **Student Pomodoro**: "اتصال به تسک امروز" button opens picker with 4 tasks (ریاضی ۰/۹۰, فیزیک ۴۵/۶۰, شیمی ۰/۴۵, ادبیات ۱/۴۰). Selecting فیزیک shows chip "فیزیک · ۴۵/۶۰ دقیقه · زمان این جلسه اضافه می‌شه". Live pulse animation activates when timer starts.
+  * **Student Active Summary tool**: Opens as 6th tool in grid. Shows 4 today's tasks as chips. Selecting ریاضی shows context card "ریاضی · تسک تکمیل شد از ۹۰". Form has textarea + 3 key-point inputs + disabled save button (enables on input). Empty "خلاصه‌های قبلی" state shows correctly.
+  * **Advisor (09121234567)**: Login → panel renders with all stats. No console errors.
+  * **Super-admin (09121000000)**: Login → panel renders with all stats. No console errors.
+
+## Files Modified
+- `src/lib/analytics.ts` (NEW — pure aggregation functions, ~370 lines)
+- `src/components/analytics/AnalyticsView.tsx` (replaced MOCK imports, real data wiring, ChartContent props, empty-state, snapshot date)
+- `src/components/dashboard/Dashboard.tsx` (subjectFilter state, subjectChips memo, filtered todayTaskList, legend UI)
+- `src/components/tools/PomodoroTimer.tsx` (linked-task state, picker UI, chip UI, completion-handler integration, live pulse)
+- `src/components/tools/ActiveSummary.tsx` (NEW — full study tool, ~330 lines)
+- `src/components/tools/ToolsHub.tsx` (registered summary tool, PenLine icon import, isLast grid fix)
+- `src/app/globals.css` (animate-pulse-subtle keyframes + class)
+
+## Unresolved Issues / Risks
+1. **Active Summary is localStorage-only**: Summaries don't sync across devices. If a student uses multiple devices, their summaries are isolated. Could be fixed with a `summaries` table in the DB + API. Low priority — the tool is still useful per-device.
+2. **Pomodoro linked-task time is additive only**: There's no way to subtract time if the student accidentally links the wrong task. They'd need to manually edit the task's actualTimeMinutes via the partial-completion sheet. Acceptable for now.
+3. **Analytics "بازه دلخواه" shows last 14 days**: This isn't truly "custom range" — it's a fixed 14-day lookback. A real date-picker would be more flexible but adds UI complexity. The current behavior is a reasonable default.
+4. **Analytics monthly view buckets into 6 groups of ~5 days**: This loses day-level granularity for the monthly view. Could be improved with a "zoom" interaction, but the current buckets are readable.
+5. **Insights "منظم‌ترین درس" requires ≥3 tasks per subject**: For new students with few tasks, this shows "داده‌ای نیست". The threshold prevents single-task flukes from dominating. Could be lowered to 2 if needed.
+
+## Priority Recommendations for Next Phase
+1. **DB-backed summaries**: Add a `summaries` table (id, studentId, taskId, subject, topic, content, keyPoints JSON, createdAt) + API routes. Wire ActiveSummary to fetch/save via API. This enables cross-device sync and advisor visibility into student summaries.
+2. **Pomodoro session history in DB**: Persist each focus session (startTime, endTime, durationMin, linkedTaskId) so analytics can show "تمرکز هفتگی" trends alongside task completion. Currently Pomodoro stats are localStorage-only.
+3. **Analytics: weekly review card restoration**: The WeeklyReviewCard was removed from the home panel (Task 26) but is still valuable. Consider surfacing it on the Analytics page as a "مرور هفته" section above the charts.
+4. **Active Summary: prompt suggestions**: Add rotating study-technique prompts (e.g. "نقشه ذهنی بکش", "با حرف خودت توضیح بده", "مثال جدید بزن") to scaffold the writing for students who don't know where to start.
+5. **Dashboard: "تمرکز امروز" mini-stat**: Read Pomodoro today's focus minutes from localStorage and show a small "XX دقیقه تمرکز" badge in the compact today/streak strip. Cross-tool connection without adding clutter.
+6. **Subject distribution: drill-down**: Make each pie slice clickable to filter the task list below by that subject. Currently the pie is view-only.

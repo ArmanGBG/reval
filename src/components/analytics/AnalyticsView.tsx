@@ -11,9 +11,17 @@ import {
   Sparkles, Award, AlertTriangle, Loader2, BookOpen, Layers, Download,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { MOCK_DAILY_DATA, MOCK_SUBJECT_DISTRIBUTION, MOCK_ACTIVITY_DATA } from '@/lib/constants/mockData';
+import {
+  filterTasksForReport,
+  computeKpiTotals,
+  buildDailyTrend,
+  buildSubjectDistribution,
+  buildActivityBreakdown,
+  computeInsights,
+  hasAnyCompletedData,
+} from '@/lib/analytics';
 import { Subject, Chapter } from '@/lib/subjects-types';
-import { toISODate, getWeekDays, getTodayJalali, getFirstDayOfJalaliMonth, getDaysInJalaliMonth } from '@/lib/persian-date';
+import { toISODate, getWeekDays, getTodayJalali, getFirstDayOfJalaliMonth, getDaysInJalaliMonth, formatPersianDate } from '@/lib/persian-date';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Accordion,
@@ -215,31 +223,52 @@ export default function AnalyticsView() {
   const [chartTab, setChartTab] = useState<ChartTab>('روند روزانه');
   const [view, setView] = useState<AnalyticsViewName>('نمای کلی');
 
-  // Calculate KPIs from tasks
-  const reportTasks = tasks.filter((t) => t.detailsCompleted !== false);
-  const totalTasks = reportTasks.length;
-  const completedTasks = reportTasks.filter((t) => t.completed === true).length;
-  const adherenceRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  // ===== Filter tasks once for the selected time + field =====
+  const reportTasks = useMemo(
+    () => filterTasksForReport(tasks, timeFilter, fieldFilter),
+    [tasks, timeFilter, fieldFilter],
+  );
 
-  // Calculate totals from mock data
-  const totalHours = MOCK_DAILY_DATA.reduce((sum, d) => sum + d.hours, 0);
-  const totalTests = MOCK_DAILY_DATA.reduce((sum, d) => sum + d.tests, 0);
-  const dailyAvg = totalHours / MOCK_DAILY_DATA.length;
+  // ===== KPIs from real filtered tasks =====
+  const { totalHours, totalTests, adherenceRate, dailyAvgHours } = useMemo(
+    () => computeKpiTotals(reportTasks),
+    [reportTasks],
+  );
 
-  // KPI cards data
+  // ===== Insights from real filtered tasks =====
+  const insights = useMemo(() => computeInsights(reportTasks), [reportTasks]);
+
+  // ===== Chart datasets from real filtered tasks =====
+  const dailyTrendData = useMemo(
+    () => buildDailyTrend(reportTasks, timeFilter),
+    [reportTasks, timeFilter],
+  );
+  const subjectDistData = useMemo(
+    () => buildSubjectDistribution(reportTasks),
+    [reportTasks],
+  );
+  const activityData = useMemo(
+    () => buildActivityBreakdown(reportTasks, timeFilter),
+    [reportTasks, timeFilter],
+  );
+
+  const pieTotal = subjectDistData.reduce((sum, d) => sum + d.value, 0);
+  const hasData = hasAnyCompletedData(reportTasks);
+
+  // KPI cards data (real values)
   const kpiCards = [
-    { icon: <Clock className="w-5 h-5" />, label: 'زمان کل', value: `${toPersianNum(totalHours.toFixed(0))} ساعت`, color: '#3EB489' },
+    { icon: <Clock className="w-5 h-5" />, label: 'زمان کل', value: `${toPersianNum(totalHours.toFixed(1))} ساعت`, color: '#3EB489' },
     { icon: <FileText className="w-5 h-5" />, label: 'تست‌های حل شده', value: toPersianNum(totalTests), color: '#F59E0B' },
     { icon: <BarChart3 className="w-5 h-5" />, label: 'نرخ پایبندی', value: `${toPersianNum(adherenceRate)}٪`, color: '#8B5CF6' },
-    { icon: <TrendingUp className="w-5 h-5" />, label: 'میانگین روزانه', value: `${toPersianNum(dailyAvg.toFixed(1))} ساعت`, color: '#06B6D4' },
+    { icon: <TrendingUp className="w-5 h-5" />, label: 'میانگین روزانه', value: `${toPersianNum(dailyAvgHours.toFixed(1))} ساعت`, color: '#06B6D4' },
   ];
 
-  // Insight cards data
+  // Insight cards data (real values)
   const insightCards = [
-    { icon: <TrendingUp className="w-4 h-4" />, title: 'بیشترین مطالعه', value: 'ریاضی - ۱۲ ساعت', color: '#3EB489' },
-    { icon: <TrendingDown className="w-4 h-4" />, title: 'کمترین مطالعه', value: 'ادبیات - ۲ ساعت', color: '#F59E0B' },
-    { icon: <Award className="w-4 h-4" />, title: 'منظم‌ترین درس', value: 'فیزیک', color: '#3EB489' },
-    { icon: <AlertTriangle className="w-4 h-4" />, title: 'بیشترین کنسلی', value: 'شیمی', color: '#EF4444' },
+    { icon: <TrendingUp className="w-4 h-4" />, title: insights.mostStudied.title, value: insights.mostStudied.value, color: insights.mostStudied.color },
+    { icon: <TrendingDown className="w-4 h-4" />, title: insights.leastStudied.title, value: insights.leastStudied.value, color: insights.leastStudied.color },
+    { icon: <Award className="w-4 h-4" />, title: insights.mostConsistent.title, value: insights.mostConsistent.value, color: insights.mostConsistent.color },
+    { icon: <AlertTriangle className="w-4 h-4" />, title: insights.mostSkipped.title, value: insights.mostSkipped.value, color: insights.mostSkipped.color },
   ];
 
   // Activity chart colors
@@ -256,8 +285,6 @@ export default function AnalyticsView() {
     'تست_آموزشی': 'تست آموزشی',
     'تست_سنجشی': 'تست سنجشی',
   };
-
-  const pieTotal = MOCK_SUBJECT_DISTRIBUTION.reduce((sum, d) => sum + d.value, 0);
 
   function renderPieLegend(payload: Array<{ value: string; color: string }>) {
     return (
@@ -392,6 +419,10 @@ export default function AnalyticsView() {
                 ACTIVITY_LABELS={ACTIVITY_LABELS}
                 pieTotal={pieTotal}
                 renderPieLegend={renderPieLegend}
+                dailyTrendData={dailyTrendData}
+                subjectDistData={subjectDistData}
+                activityData={activityData}
+                hasData={hasData}
               />
             </div>
           </>
@@ -411,6 +442,8 @@ export default function AnalyticsView() {
               <span>گزارش‌ها</span>
               <ChevronLeft className="w-3 h-3 flip-rtl" />
               <span className="text-[var(--accent)]">{view}</span>
+              <span className="text-[var(--foreground-subtle)]">·</span>
+              <span className="text-[var(--foreground-muted)] normal-case tracking-normal">{formatPersianDate(new Date())}</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)]">گزارش‌های مطالعه</h1>
             <p className="text-sm text-[var(--foreground-muted)]">
@@ -517,6 +550,10 @@ export default function AnalyticsView() {
                     ACTIVITY_LABELS={ACTIVITY_LABELS}
                     pieTotal={pieTotal}
                     renderPieLegend={renderPieLegend}
+                    dailyTrendData={dailyTrendData}
+                    subjectDistData={subjectDistData}
+                    activityData={activityData}
+                    hasData={hasData}
                   />
                 </div>
               </div>
@@ -784,6 +821,20 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
 }
 
 // ===== Chart Content (shared between mobile & desktop) =====
+interface ChartContentProps {
+  chartTab: ChartTab;
+  timeFilter: TimeFilter;
+  fieldFilter: FieldFilter;
+  ACTIVITY_COLORS: Record<string, string>;
+  ACTIVITY_LABELS: Record<string, string>;
+  pieTotal: number;
+  renderPieLegend: (payload: Array<{ value: string; color: string }>) => React.ReactNode;
+  dailyTrendData: Array<{ day: string; hours: number; tests: number }>;
+  subjectDistData: Array<{ name: string; value: number; fill: string }>;
+  activityData: Array<{ name: string; 'مطالعه': number; 'مرور': number; 'تست_آموزشی': number; 'تست_سنجشی': number }>;
+  hasData: boolean;
+}
+
 function ChartContent({
   chartTab,
   timeFilter,
@@ -792,15 +843,11 @@ function ChartContent({
   ACTIVITY_LABELS,
   pieTotal,
   renderPieLegend,
-}: {
-  chartTab: ChartTab;
-  timeFilter: TimeFilter;
-  fieldFilter: FieldFilter;
-  ACTIVITY_COLORS: Record<string, string>;
-  ACTIVITY_LABELS: Record<string, string>;
-  pieTotal: number;
-  renderPieLegend: (payload: Array<{ value: string; color: string }>) => React.ReactNode;
-}) {
+  dailyTrendData,
+  subjectDistData,
+  activityData,
+  hasData,
+}: ChartContentProps) {
   // Defer chart rendering until the container actually has non-zero width.
   // During AnimatePresence slide-in transitions the parent has width=0, which
   // triggers recharts' "width(0) and height(0)" console warnings. We use a
@@ -831,6 +878,22 @@ function ChartContent({
     });
     return () => { ro.disconnect(); cancelAnimationFrame(id); };
   }, []);
+  // Empty-state guard — when the filtered set has no completed tasks,
+  // show a single friendly message instead of empty charts.
+  if (!hasData && chartTab !== 'تفکیک فصول') {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center" dir="rtl">
+        <div className="w-14 h-14 rounded-full bg-[var(--accent-soft)] flex items-center justify-center mb-3">
+          <BarChart3 className="w-6 h-6 text-[var(--accent)]" />
+        </div>
+        <p className="text-sm font-bold text-[var(--foreground)] mb-1">داده‌ای برای این دوره ثبت نشده</p>
+        <p className="text-xs text-[var(--foreground-muted)] leading-6 max-w-xs">
+          برای دیدن نمودارها، تسک‌های امروز رو تکمیل کن یا بازه زمانی دیگه‌ای انتخاب کن
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef}>
       {chartTab === 'روند روزانه' && (
@@ -839,7 +902,7 @@ function ChartContent({
           <div className="h-64" dir="ltr">
             {ready ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MOCK_DAILY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+              <BarChart data={dailyTrendData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis
                   dataKey="day"
@@ -866,12 +929,17 @@ function ChartContent({
       {chartTab === 'سهم دروس' && (
         <div>
           <h3 className="text-sm font-bold text-[var(--foreground)] mb-4">سهم دروس</h3>
+          {subjectDistData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center" dir="rtl">
+              <p className="text-sm text-[var(--foreground-muted)]">داده‌ای برای نمایش موجود نیست</p>
+            </div>
+          ) : (
           <div className="h-64 relative" dir="ltr">
             {ready ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={MOCK_SUBJECT_DISTRIBUTION}
+                  data={subjectDistData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -880,7 +948,7 @@ function ChartContent({
                   stroke="none"
                   paddingAngle={2}
                 >
-                  {MOCK_SUBJECT_DISTRIBUTION.map((entry, index) => (
+                  {subjectDistData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
@@ -903,6 +971,7 @@ function ChartContent({
             )}
             <PieCenterLabel total={pieTotal} />
           </div>
+          )}
         </div>
       )}
 
@@ -912,7 +981,7 @@ function ChartContent({
           <div className="h-64" dir="ltr">
             {ready ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MOCK_ACTIVITY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+              <BarChart data={activityData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis
                   dataKey="name"
