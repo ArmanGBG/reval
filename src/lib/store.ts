@@ -3,6 +3,7 @@ import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, Institut
 import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_PLATFORM_INSTITUTES, MOCK_GLOBAL_USERS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
+import * as messageService from '@/lib/message-service';
 import { initSRSFields } from '@/lib/spaced-repetition';
 
 // ====================================================================
@@ -1263,6 +1264,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         unreadNotificationCount: updated.filter((n) => !n.read).length,
       };
     });
+    // ===== DB-backed message persistence =====
+    // If this notification links to a DB message (advisor/super-admin → student),
+    // fire-and-forget a PATCH to persist the read state server-side.
+    const target = get().notifications.find((n) => n.id === id);
+    if (target?.messageId) {
+      void messageService.markMessageRead(target.messageId);
+    }
   },
   markAllNotificationsRead: () => {
     set((state) => {
@@ -1274,11 +1282,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         unreadNotificationCount: 0,
       };
     });
+    // ===== DB-backed message persistence (mark all message notifications read) =====
+    for (const n of get().notifications) {
+      if (n.messageId) {
+        void messageService.markMessageRead(n.messageId);
+      }
+    }
   },
   refreshNotifications: () => {
     const state = get();
     const readIds = loadReadNotificationIds();
-    const notifications = computeNotifications({
+    const computed = computeNotifications({
       tasks: state.tasks,
       exams: state.exams,
       streakDays: state.streakDays,
@@ -1287,8 +1301,66 @@ export const useAppStore = create<AppState>((set, get) => ({
       weeklyGoalHours: state.weeklyGoalHours,
       readIds,
     });
-    const unreadNotificationCount = notifications.filter((n) => !n.read).length;
-    set({ notifications, unreadNotificationCount });
+
+    // ===== Merge DB-backed messages for STUDENT role =====
+    // For students, asynchronously fetch inbox messages (recipientId = me OR
+    // broadcast) and merge them into the notifications array. Computed
+    // notifications are shown immediately; DB messages are merged in once
+    // the fetch resolves. This keeps the bell responsive while still showing
+    // advisor/super-admin messages.
+    if (state.userRole === 'STUDENT') {
+      // Show computed notifications immediately
+      const unreadNow = computed.filter((n) => !n.read).length;
+      set({ notifications: computed, unreadNotificationCount: unreadNow });
+
+      // Asynchronously merge DB messages
+      void messageService.loadInboxMessages().then((messages) => {
+        const messageNotifications: Notification[] = messages.map((m) => {
+          const senderLabel =
+            m.senderName ||
+            (m.senderRole === 'SUPER_ADMIN' ? 'سوپر ادمین' : 'مشاور');
+          // Truncate body to ~120 chars for the bell preview
+          const bodyPreview =
+            m.body.length > 120 ? `${m.body.slice(0, 120)}…` : m.body;
+          return {
+            id: `message-${m.id}`,
+            type: 'message' as NotificationType,
+            title: m.title,
+            description: bodyPreview,
+            icon: 'Mail',
+            color: 'var(--accent)',
+            read: m.read,
+            createdAt: new Date(m.createdAt).getTime(),
+            messageId: m.id,
+            senderName: senderLabel,
+          };
+        });
+
+        // Merge: keep computed notifications that aren't message-*,
+        // then add DB message notifications.
+        const merged = [
+          ...computed.filter((n) => !n.id.startsWith('message-')),
+          ...messageNotifications,
+        ];
+        // Sort: unread first, then by createdAt DESC
+        merged.sort((a, b) => {
+          if (a.read !== b.read) return a.read ? 1 : -1;
+          return b.createdAt - a.createdAt;
+        });
+        const mergedUnread = merged.filter((n) => !n.read).length;
+        set({
+          notifications: merged,
+          unreadNotificationCount: mergedUnread,
+        });
+      }).catch(() => {
+        // Network/API error — keep showing the computed notifications.
+        // No-op; the bell still works for computed notifications.
+      });
+    } else {
+      // Non-student roles — just show computed notifications
+      const unreadNotificationCount = computed.filter((n) => !n.read).length;
+      set({ notifications: computed, unreadNotificationCount });
+    }
   },
 }));
 

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Clock, Target, ChevronLeft, Plus, Focus, Share2, Heart } from 'lucide-react';
+import { X, Clock, Target, ChevronLeft, Plus, Share2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -211,23 +211,7 @@ function MotivationalQuoteCard() {
   );
 }
 
-// ===== Mobile Focus Mode Button =====
-// Touch-friendly button that toggles Focus Mode on mobile (where the F
-// keyboard shortcut isn't available). Renders only on small screens.
-function MobileFocusButton() {
-  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
-  return (
-    <button
-      onClick={toggleFocusMode}
-      className="md:hidden shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-bold border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)] active:scale-95 transition-all"
-      aria-label="حالت تمرکز"
-      title="حالت تمرکز (پنهان کردن منو)"
-    >
-      <Focus className="w-3.5 h-3.5" />
-      تمرکز
-    </button>
-  );
-}
+
 
 export default function Dashboard() {
   const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, streakFreezes, incrementStreak, setCurrentView } = useAppStore();
@@ -360,8 +344,6 @@ export default function Dashboard() {
           <div className="md:hidden">
             <NotificationCenter />
           </div>
-          {/* Mobile Focus Mode button — touch-friendly, only on mobile */}
-          <MobileFocusButton />
         </div>
       </div>
 
@@ -444,64 +426,58 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ===== Today's Tasks heading ===== */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
-          <span className="w-1 h-4 rounded-full bg-[var(--accent)]" />
-          تسک‌های امروز
-          {todayTasks.length > 0 && (
-            <span className="text-[11px] font-medium text-[var(--foreground-muted)] tabular-nums">
-              ({toPersianDigits(todayTasks.length)})
-            </span>
+      {/* ===== Task action row: subject chips (left) + add button (right) ===== */}
+      {/* The island strip above already shows "X از Y تسک امروز" — no heading duplication */}
+      <div className="flex items-center justify-between gap-2 mb-3 px-1">
+        {/* Subject legend / quick filter (only when 2+ subjects) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 min-w-0">
+          {subjectChips.length > 1 && (
+            <>
+              <button
+                onClick={() => setSubjectFilter(null)}
+                className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
+                  subjectFilter === null
+                    ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]'
+                    : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
+                }`}
+              >
+                همه
+                <span className="tabular-nums opacity-70">{toPersianDigits(todayTasks.length)}</span>
+              </button>
+              {subjectChips.map((chip) => {
+                const active = subjectFilter === chip.name;
+                return (
+                  <button
+                    key={chip.name}
+                    onClick={() => setSubjectFilter(active ? null : chip.name)}
+                    className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
+                      active
+                        ? 'border-[var(--border-strong)] text-[var(--foreground)]'
+                        : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
+                    }`}
+                    style={active ? { backgroundColor: `${chip.color}1A`, borderColor: `${chip.color}66` } : undefined}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: chip.color }}
+                    />
+                    {chip.name}
+                    <span className="tabular-nums opacity-70">{toPersianDigits(chip.completed)}/{toPersianDigits(chip.count)}</span>
+                  </button>
+                );
+              })}
+            </>
           )}
-        </h2>
+        </div>
+        {/* Add task button */}
         <button
           onClick={() => setCurrentView('plan')}
-          className="text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
+          className="shrink-0 text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
         >
           <Plus className="w-3.5 h-3.5" />
           افزودن
         </button>
       </div>
-
-      {/* ===== Subject legend / quick filter (only when tasks exist) ===== */}
-      {subjectChips.length > 1 && (
-        <div className="flex items-center gap-1.5 mb-3 px-1 overflow-x-auto no-scrollbar pb-1">
-          <button
-            onClick={() => setSubjectFilter(null)}
-            className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
-              subjectFilter === null
-                ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]'
-                : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
-            }`}
-          >
-            همه
-            <span className="tabular-nums opacity-70">{toPersianDigits(todayTasks.length)}</span>
-          </button>
-          {subjectChips.map((chip) => {
-            const active = subjectFilter === chip.name;
-            return (
-              <button
-                key={chip.name}
-                onClick={() => setSubjectFilter(active ? null : chip.name)}
-                className={`shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-[11px] font-medium border transition-all ${
-                  active
-                    ? 'border-[var(--border-strong)] text-[var(--foreground)]'
-                    : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--border-strong)]'
-                }`}
-                style={active ? { backgroundColor: `${chip.color}1A`, borderColor: `${chip.color}66` } : undefined}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: chip.color }}
-                />
-                {chip.name}
-                <span className="tabular-nums opacity-70">{toPersianDigits(chip.completed)}/{toPersianDigits(chip.count)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* ===== Today's Task List ===== */}
       {tasksLoading ? (

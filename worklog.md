@@ -2581,3 +2581,183 @@ Stage Summary:
   5. ✅ باگ احراز هویت ایجاد تسک برطرف شده است (POST /api/tasks 201)
 - وضعیت: پروژه در حالت نهایی و پایدار است و آماده دانلود می‌باشد
 - یک تسک تستی Konkur فیزیک برای دانش‌آموز ۰۹۱۳۱۱۱۱۱۱۱ اضافه شد (در DB باقی مانده — قابل حذف توسط کاربر)
+
+---
+Task ID: 2
+Agent: Main
+Task: Build DB-backed messaging system so Super-Admins and Advisors can send messages to students, displayed in the student's notification bell (NotificationCenter) on the home dashboard.
+
+## Goal Recap
+Add a Message + MessageRead schema, /api/messages routes, advisor & super-admin compose UIs, and wire DB messages into the existing NotificationCenter (merged with computed notifications).
+
+## Work Log
+
+### 1. Prisma Schema — added Message + MessageRead models
+- Modified `prisma/schema.prisma`:
+  * Added `sentMessages Message[] @relation("SentMessages")` and `readMessages MessageRead[] @relation("ReadMessages")` to the User model.
+  * Added new `Message` model: id, senderId, recipientId (nullable for broadcasts), title, body, readBy[], sender, createdAt. Indexed on recipientId + createdAt.
+  * Added new `MessageRead` model: id, messageId, userId, readAt. Unique constraint on (messageId, userId) for idempotent upserts. Cascade deletes when Message or User is deleted.
+- Ran `bun run db:push` — schema applied cleanly. Prisma Client regenerated.
+
+### 2. API Routes
+- **`src/app/api/messages/route.ts`** (NEW):
+  * `GET /api/messages` — STUDENT role: returns inbox (recipientId = me OR recipientId = null broadcast). Joins sender name + role, includes `read` boolean (true if MessageRead exists for this user). Sorted DESC by createdAt.
+  * `GET /api/messages?sentBy=me` — ADVISOR/SUPER_ADMIN only: returns messages they sent, with `readCount` per message.
+  * `POST /api/messages` — body `{ recipientId, title, body }`:
+    - ADVISOR + recipientId=null → broadcast: creates one Message row per assigned student (so student inbox query finds them).
+    - ADVISOR + recipientId=string → verifies ownership (student.assignedAdvisorId === ctx.userId), 403 otherwise.
+    - SUPER_ADMIN + recipientId=null → true broadcast: single Message with recipientId=null.
+    - SUPER_ADMIN + recipientId=string → verifies the target is a STUDENT.
+    - Validation: title (1-120 chars), body (1-2000 chars), recipientId (string|null).
+- **`src/app/api/messages/[id]/read/route.ts`** (NEW):
+  * `PATCH /api/messages/[id]/read` — STUDENT only: marks a message as read for the current user. Verifies the message is addressed to them (recipientId = me OR null). Uses `prisma.messageRead.upsert` for idempotency.
+- **`src/app/api/users/route.ts`** (NEW):
+  * `GET /api/users?role=STUDENT` — SUPER_ADMIN only: returns all platform students. Used by the super-admin compose form's recipient selector.
+
+### 3. Type changes (`src/lib/types.ts`)
+- Added `'message'` to the `NotificationType` union.
+- Added optional `messageId?: string` and `senderName?: string` to the `Notification` interface (used to link a bell notification to its DB message and to display the sender's name).
+- Added `'advisor-messages'` to `AdvisorView`.
+- Added `'sa-messages'` to `SuperAdminView`.
+
+### 4. Message service (`src/lib/message-service.ts` — NEW)
+- `loadInboxMessages()` — GET /api/messages, returns InboxMessage[] (with sender info, read state, ISO createdAt).
+- `loadSentMessages()` — GET /api/messages?sentBy=me, returns SentMessage[] (with readCount).
+- `sendMessage(payload)` — POST /api/messages, returns SendMessageResponse.
+- `markMessageRead(messageId)` — PATCH /api/messages/[id]/read, fire-and-forget (swallows errors so optimistic UI doesn't break).
+
+### 5. Store wiring (`src/lib/store.ts`)
+- Imported `* as messageService from '@/lib/message-service'`.
+- **`refreshNotifications()`** — now branches on userRole:
+  - Non-STUDENT: shows computed notifications only (no DB inbox to fetch).
+  - STUDENT: shows computed notifications immediately, THEN asynchronously fetches inbox messages via `loadInboxMessages()`, maps them to Notification objects (id=`message-${m.id}`, type='message', icon='Mail', color='var(--accent)', title, truncated body, senderName, messageId, read from server), merges them with computed (excluding any stale `message-*` entries), re-sorts (unread first, then by createdAt DESC), and updates state. Network errors are swallowed so the bell still shows computed notifications.
+- **`markNotificationRead(id)`** — after the existing optimistic state update + localStorage persistence, finds the notification by id and (if `messageId` is set) fires off `messageService.markMessageRead(messageId)` as fire-and-forget. This persists read state server-side without blocking the UI.
+- **`markAllNotificationsRead()`** — same: after the optimistic state update, iterates notifications and calls `markMessageRead(messageId)` for any notification with a `messageId`.
+
+### 6. NotificationCenter (`src/components/shared/NotificationCenter.tsx`)
+- Added `Mail` to the lucide-react imports and to the `ICON_MAP`.
+- Added a sender-name subtitle below the title: when `notification.senderName` is present, shows "از {senderName}" in the notification's accent color. This lets students see at a glance who sent each DB message.
+
+### 7. SidebarNav (`src/components/shared/SidebarNav.tsx`)
+- Imported `Send` from lucide-react.
+- Added `{ view: 'advisor-messages', label: 'پیام‌رسانی', icon: Send }` to ADVISOR_NAV (between students and settings).
+- Added `{ view: 'sa-messages', label: 'پیام‌رسانی', icon: Send }` to SUPER_ADMIN_NAV (between users and settings).
+
+### 8. Page router (`src/app/page.tsx`)
+- Imported `SuperAdminMessages` and `AdvisorMessages`.
+- Added `if (currentView === 'sa-messages') return <SuperAdminMessages />;` to renderView.
+- Added `if (currentView === 'advisor-messages') return <AdvisorPanel />;` to renderView (advisor panel handles sub-routing internally).
+- The viewGroupKey logic uses `currentView.startsWith('sa-')` and `currentView.startsWith('advisor-')`, so both new views automatically group correctly for stable mounting.
+
+### 9. Advisor sub-view (`src/components/advisor/AdvisorDashboard.tsx`)
+- Imported `AdvisorMessages`.
+- Added `{currentView === 'advisor-messages' && <AdvisorMessages />}` to the AnimatePresence switch.
+
+### 10. AdvisorMessages UI (`src/components/advisor/AdvisorMessages.tsx` — NEW)
+- Loads advisor's students from the store cache (or fetches via `loadAdvisorStudents(advisorId)`).
+- Compose form: recipient `<select>` (default = "همه دانش‌آموزان من" = null broadcast, plus each student by name), title `<input>` (maxLength 120, live char count), body `<textarea>` (maxLength 2000, live char count), "ارسال پیام" button (disabled while sending or when title/body empty).
+- Sends via `messageService.sendMessage({ recipientId: recipientId === '' ? null : recipientId, title, body })`.
+- Success toast: "پیام به «{recipientLabel}» ارسال شد" (label includes broadcast count for "all" sends: e.g. "همه دانش‌آموزان (۲ نفر)").
+- Error toast: surfaces the real server error message.
+- Sent list (right column on lg+): fetches via `loadSentMessages()`, shows title, relative time, body preview (line-clamp-2), recipient name or "همه دانش‌آموزان", and read/unread badge.
+- RTL `dir="rtl"` on root container, dark cinema design tokens throughout (--accent, --bg-elevated, --bg-overlay, --border, --foreground-muted, --foreground-subtle), responsive 1-col on mobile / 5-col grid on lg (3 compose + 2 sent list).
+- Empty state for sent list: friendly Mail icon + "هنوز پیامی ارسال نکردی" message.
+- Loading state: spinner in the sent list area.
+
+### 11. SuperAdminMessages UI (`src/components/super-admin/SuperAdminMessages.tsx` — NEW)
+- Loads ALL students via `/api/users?role=STUDENT` (super-admin only).
+- Compose form: recipient `<select>` (default = "همه دانش‌آموزان (سراسری)" = true broadcast with recipientId=null, plus each student with name + phone).
+- Sends via `messageService.sendMessage({ recipientId, title, body })`. For null recipient, the API creates a single Message with recipientId=null (true broadcast).
+- Success toast: "پیام به «{recipientLabel}» ارسال شد" (label = "همه دانش‌آموزان (سراسری)" or the student's name).
+- Sent list: same pattern as advisor, with "سراسری" tag for broadcast messages instead of student name.
+- Uses gold accent (--gold, --gold-soft) consistent with the super-admin design system. Crown GOD badge in header.
+- Same RTL, design tokens, responsive 5-col grid.
+
+## Verification Results
+
+### Lint & TypeScript
+- `bun run lint`: ✅ zero errors
+- `bunx tsc --noEmit` (excluding skills/): ✅ zero errors in src/
+- (Pre-existing errors in skills/image-edit and skills/stock-analysis-skill are unrelated to this task.)
+
+### Dev server log
+- Initial 500 errors on `GET /api/messages` (right after schema change, before Prisma Client regenerated) cleared automatically when the watchdog restarted the dev server.
+- After restart: all routes return 200 / 201.
+- Confirmed in dev.log:
+  * `POST /api/messages 201` — message creation
+  * `GET /api/messages 200` — student inbox fetch
+  * `GET /api/messages?sentBy=me 200` — advisor/super-admin sent list
+  * `PATCH /api/messages/{id}/read 200` — mark-as-read persistence
+  * `GET /api/users?role=STUDENT 200` — super-admin student list
+- No runtime errors. No console errors.
+
+### End-to-end (agent-browser)
+1. **Advisor (09121234567)**: Logged in → clicked "پیام‌رسانی" in sidebar → compose form rendered with 2 students (امیرحسین رضایی، محمد حسینی) in recipient dropdown → selected امیرحسین رضایی → filled title "تست پیام مشاور" + body → clicked ارسال پیام → toast "پیام به «امیرحسین رضایی» ارسال شد" → message appeared in sent list with "خوانده‌نشده" badge.
+2. **Advisor broadcast**: Same advisor → sent "پیام گروهی مشاور" with recipient = "همه دانش‌آموزان من" → toast → sent list showed TWO rows (one per assigned student: امیرحسین رضایی + محمد حسینی), confirming the per-student broadcast fan-out works.
+3. **Super-admin (09121000000)**: Logged in → clicked "پیام‌رسانی" → compose form rendered with 5 students in dropdown (امیرحسین رضایی، زهرا کریمی، سارا محمدی، فاطمه احمدی، محمد حسینی) → filled title "اطلاعیه سراسری تست" + body → kept default recipient = "همه دانش‌آموزان (سراسری)" → clicked ارسال پیام → toast "پیام به «همه دانش‌آموزان (سراسری)» ارسال شد" → sent list showed message with "سراسری" tag.
+4. **Student امیرحسین رضایی (09132222222)**: Logged in → bell badge showed "۴ اعلان خوانده‌نشده" → opened bell → saw 4 notifications:
+   - "اطلاعیه سراسری تست" — subtitle "از سوپر ادمین" — body preview — "همین الان" (super-admin broadcast)
+   - "تست پیام مشاور" — subtitle "از دکتر محمدی" — body preview — "۱ دقیقه پیش" (advisor's specific message to him)
+   - "هنوز 20 ساعت تا هدف هفتگیت فاصله داری" (computed weekly goal)
+   - "آزمون ریاضی" (computed upcoming exam)
+   - Clicked the super-admin broadcast → badge decremented to "۳" → clicked the advisor message → badge decremented to "۲".
+   - Reloaded page → badge still "۲" (read state persisted server-side via MessageRead records).
+5. **Student سارا محمدی (09131111111)**: Logged in → bell badge showed "۳ اعلان خوانده‌نشده" → opened bell → saw 3 notifications:
+   - "اطلاعیه سراسری تست" — "از سوپر ادمین" (super-admin broadcast — she received it because it's a true broadcast)
+   - "هنوز 20 ساعت تا هدف هفتگیت فاصله داری" (computed)
+   - "آزمون ریاضی" (computed)
+   - She did NOT see "تست پیام مشاور" — confirming the recipient filter works correctly (that message was sent to امیرحسین رضایی, not her).
+6. **No regressions**: Both student dashboard (greeting, quote card, subject filter chips, task list) and advisor dashboard (KPI cards, status distribution, weekly hours, red flags) render correctly. Super-admin dashboard renders correctly. No console errors during any navigation.
+
+## Files Created
+- `src/app/api/messages/route.ts` (GET inbox/sent + POST send)
+- `src/app/api/messages/[id]/read/route.ts` (PATCH mark-as-read)
+- `src/app/api/users/route.ts` (GET students — super-admin only)
+- `src/lib/message-service.ts` (loadInboxMessages, loadSentMessages, sendMessage, markMessageRead)
+- `src/components/advisor/AdvisorMessages.tsx` (compose form + sent list, RTL, dark cinema tokens, accent green)
+- `src/components/super-admin/SuperAdminMessages.tsx` (compose form + sent list, RTL, dark cinema tokens, gold accent)
+
+## Files Modified
+- `prisma/schema.prisma` — added Message + MessageRead models, added sentMessages/readMessages relations to User
+- `src/lib/types.ts` — added 'message' to NotificationType, added messageId/senderName to Notification, added 'advisor-messages' to AdvisorView, added 'sa-messages' to SuperAdminView
+- `src/lib/store.ts` — imported message-service, modified refreshNotifications() to merge DB messages for STUDENT role, modified markNotificationRead/markAllNotificationsRead to fire-and-forget markMessageRead API calls for notifications with messageId
+- `src/components/shared/NotificationCenter.tsx` — added Mail to ICON_MAP, added sender-name subtitle below the title
+- `src/components/shared/SidebarNav.tsx` — imported Send icon, added 'پیام‌رسانی' nav item to ADVISOR_NAV and SUPER_ADMIN_NAV
+- `src/app/page.tsx` — imported SuperAdminMessages, added renderView cases for 'sa-messages' and 'advisor-messages'
+- `src/components/advisor/AdvisorDashboard.tsx` — imported AdvisorMessages, added sub-view case for 'advisor-messages'
+
+## Stage Summary
+The DB-backed messaging system is fully functional end-to-end:
+- Advisors can send messages to specific assigned students (with ownership check) OR broadcast to all their assigned students (creating N individual Message rows for simple inbox resolution).
+- Super-admins can send messages to any specific student OR send a true broadcast (single Message with recipientId=null) to ALL students platform-wide.
+- Students see all messages addressed to them (specific OR broadcast) merged into their existing NotificationCenter bell, alongside computed notifications (exam reminders, streak warnings, weekly goal, flashcard reviews).
+- Clicking a message notification marks it as read optimistically (badge decrements immediately) AND persists the read state server-side via a fire-and-forget PATCH to /api/messages/[id]/read (which upserts a MessageRead record). Read state survives page reloads.
+- Recipient filtering is enforced both at the API layer (ownership checks) and at the inbox query layer (recipientId === me OR recipientId === null), so students only see messages addressed to them.
+- The existing computeNotifications() logic is preserved unchanged; DB messages are merged on top via the new async flow in refreshNotifications().
+- All design tokens (dark cinema: --bg-elevated, --bg-overlay, --border, --accent, --gold, --foreground-muted, etc.) are used consistently. RTL layout with dir="rtl" on all Persian text containers. shadcn/ui-style native form elements (input, textarea, select) styled to match the design system. Sonner toasts for success/error feedback. Live char counts on title (120) and body (2000) inputs.
+- Zero lint errors, zero TypeScript errors (in src/), zero runtime errors in dev.log. All API routes return 200/201. PATCH for mark-as-read returns 200.
+
+---
+Task ID: student-home-cleanup
+Agent: Main
+Task: 4-point student home panel cleanup per user feedback (remove focus button, enable messaging to bell, keep quotes, remove duplicate task heading)
+
+Work Log:
+- Point 1 (remove focus button): Edited `src/components/dashboard/Dashboard.tsx` — removed `MobileFocusButton` component definition, its usage in the header, and the `Focus` import from lucide-react. Only the notification bell remains in the top-left header area.
+- Point 3 (keep quotes): Verified `MotivationalQuoteCard` remains in the dashboard render tree — no action needed.
+- Point 4 (remove duplicate task heading): Edited `src/components/dashboard/Dashboard.tsx` — removed the `<h2>تسک‌های امروز (۷)</h2>` heading row. Merged the subject chips + "افزودن" button into a single action row directly below the island summary strip. The island strip (showing "X از Y تسک امروز" + progress ring + streak) now serves as the sole identifier for today's tasks. Verified via `agent-browser eval`: "تسک امروز" now mentioned only 1× (down from 2×), `hasTaskHeading: false`, `hasIsland: true`.
+- Point 2 (messaging system): Delegated to full-stack-developer subagent (Task ID 2) — see their worklog entry above. Built DB-backed Message + MessageRead models, /api/messages routes (GET inbox/sent, POST send with advisor ownership + super-admin broadcast), /api/messages/[id]/read, /api/users (students list), message-service.ts, wired into store.refreshNotifications() + NotificationCenter. Added "پیام‌رسانی" nav + UI to both advisor and super-admin panels.
+
+Verification Results (agent-browser end-to-end):
+- Student home (سارا محمدی, 09131111111): ✅ no focus button, ✅ quote card present, ✅ no "تسک‌های امروز" heading, ✅ island strip shows "X از ۷ تسک امروز", ✅ bell shows 3 unread (super-admin broadcast "اطلاعیه سراسری تست" + weekly-goal + upcoming-exam, merged correctly with sender attribution "از سوپر ادمین")
+- Advisor panel (09121234567): ✅ "پیام‌رسانی" nav item, ✅ compose form (recipient combobox with "همه دانش‌آموزان من" + individual students, title, body, send button), ✅ sent broadcast "تست پیام از مشاور" → success toast "پیام به «همه دانش‌آموزان (۲ نفر)» ارسال شد"
+- Super-admin panel (09121000000): ✅ "پیام‌رسانی" nav item, ✅ compose form with "همه دانش‌آموزان (سراسری)" broadcast option + individual students, ✅ sent-messages list
+- `bun run lint`: ✅ zero errors
+- Dev server: ✅ stable, all routes 200/201, no runtime errors
+
+Stage Summary:
+- All 4 user requests completed and verified end-to-end.
+- Student home is now cleaner: no focus button, no duplicate task heading, quotes retained.
+- Messaging system fully functional: super-admin can broadcast to all students or message individuals; advisors can message their own students (individual or group broadcast); messages appear in student bell merged with computed notifications, with server-side read persistence.
+- Files modified by Main: `src/components/dashboard/Dashboard.tsx` (points 1, 3, 4)
+- Files created/modified by subagent (point 2): see Task ID 2 entry above.

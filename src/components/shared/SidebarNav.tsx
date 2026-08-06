@@ -17,6 +17,7 @@ import {
   Crown,
   BookOpen,
   Command,
+  Send,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -35,6 +36,7 @@ const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ 
 const ADVISOR_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'advisor-dashboard', label: 'داشبورد', icon: LayoutDashboard },
   { view: 'advisor-students', label: 'دانش‌آموزان', icon: Users },
+  { view: 'advisor-messages', label: 'پیام‌رسانی', icon: Send },
   { view: 'advisor-settings', label: 'تنظیمات', icon: Settings },
 ];
 
@@ -50,6 +52,7 @@ const SUPER_ADMIN_NAV: { view: ViewName; label: string; icon: React.ComponentTyp
   { view: 'sa-subjects', label: 'دروس', icon: BookOpen },
   { view: 'sa-institutes', label: 'موسسات', icon: Building2 },
   { view: 'sa-users', label: 'کاربران', icon: Users },
+  { view: 'sa-messages', label: 'پیام‌رسانی', icon: Send },
   { view: 'sa-settings', label: 'تنظیمات', icon: Settings },
 ];
 

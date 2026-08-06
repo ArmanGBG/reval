@@ -11,6 +11,7 @@ import {
   Trophy,
   Target,
   Brain,
+  Mail,
   CheckCheck,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
@@ -25,6 +26,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Trophy,
   Target,
   Brain,
+  Mail,
 };
 
 // ===== Relative time label (Persian) =====
@@ -95,6 +97,11 @@ function NotificationItem({
             />
           )}
         </div>
+        {notification.senderName && (
+          <p className="text-[10px] font-medium mt-0.5" style={{ color: colorValue }}>
+            از {notification.senderName}
+          </p>
+        )}
         <p className="text-xs text-[var(--foreground-muted)] mt-1 leading-snug">
           {notification.description}
         </p>

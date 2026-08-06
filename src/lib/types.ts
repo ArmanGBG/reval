@@ -7,13 +7,13 @@ export type UserRole = 'STUDENT' | 'ADVISOR' | 'INSTITUTE_MANAGER' | 'SUPER_ADMI
 export type StudentView = 'dashboard' | 'plan' | 'tools' | 'analytics' | 'settings';
 
 // Advisor views (CRM/management panel)
-export type AdvisorView = 'advisor-dashboard' | 'advisor-students' | 'advisor-student-detail' | 'advisor-settings';
+export type AdvisorView = 'advisor-dashboard' | 'advisor-students' | 'advisor-student-detail' | 'advisor-settings' | 'advisor-messages';
 
 // Institute Manager views (B2B SaaS panel)
 export type InstituteManagerView = 'institute-dashboard' | 'institute-advisors' | 'institute-students' | 'institute-settings';
 
 // Super Admin views (God Mode command center)
-export type SuperAdminView = 'sa-dashboard' | 'sa-subjects' | 'sa-institutes' | 'sa-institute-detail' | 'sa-users' | 'sa-user-detail' | 'sa-settings';
+export type SuperAdminView = 'sa-dashboard' | 'sa-subjects' | 'sa-institutes' | 'sa-institute-detail' | 'sa-users' | 'sa-user-detail' | 'sa-settings' | 'sa-messages';
 
 // Top-level navigation (before auth)
 export type TopView = 'landing' | 'onboarding';
@@ -300,7 +300,8 @@ export type NotificationType =
   | 'streak-warning'
   | 'streak-milestone'
   | 'weekly-goal'
-  | 'flashcard-review';
+  | 'flashcard-review'
+  | 'message';
 
 export interface Notification {
   id: string;
@@ -311,4 +312,10 @@ export interface Notification {
   color: string; // CSS color value (e.g., 'var(--danger)')
   read: boolean;
   createdAt: number; // timestamp
+  // ===== DB-backed message fields =====
+  // Present when this notification is a DB message (advisor/super-admin → student).
+  // Used by markNotificationRead() to call the mark-as-read API.
+  messageId?: string;
+  // The display name of the sender (e.g. "مشاور" or "سوپر ادمین").
+  senderName?: string;
 }

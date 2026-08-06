@@ -37,6 +37,36 @@ model User {
   examResults       ExamResult[]
   createdTasks      Task[]      @relation("TaskCreator")
   createdExams      Exam[]      @relation("ExamCreator")
+  sentMessages      Message[]    @relation("SentMessages")
+  readMessages      MessageRead[] @relation("ReadMessages")
+}
+
+// ===== Message (advisor/super-admin → student) =====
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String   // the User who sent it
+  recipientId String?  // null = broadcast to all students; non-null = specific student
+  title       String
+  body        String
+  // readReceipts stored as a separate table so each student has independent read state
+  readBy      MessageRead[]
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([createdAt])
+}
+
+model MessageRead {
+  id         String   @id @default(cuid())
+  messageId  String
+  userId     String   // the student who read it
+  readAt     DateTime @default(now())
+
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user       User     @relation("ReadMessages", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
 }
 
 // ===== Institute =====

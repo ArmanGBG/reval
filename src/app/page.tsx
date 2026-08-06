@@ -20,6 +20,7 @@ import SuperAdminSubjects from '@/components/super-admin/SuperAdminSubjects';
 import SuperAdminInstitutes from '@/components/super-admin/SuperAdminInstitutes';
 import SuperAdminUsers from '@/components/super-admin/SuperAdminUsers';
 import SuperAdminSettings from '@/components/super-admin/SuperAdminSettings';
+import SuperAdminMessages from '@/components/super-admin/SuperAdminMessages';
 import InstituteDetail from '@/components/super-admin/InstituteDetail';
 import UserDetail from '@/components/super-admin/UserDetail';
 import LandingPage from '@/components/landing/LandingPage';
@@ -115,6 +116,7 @@ export default function Home() {
     if (currentView === 'sa-institute-detail') return <InstituteDetail />;
     if (currentView === 'sa-users') return <SuperAdminUsers />;
     if (currentView === 'sa-user-detail') return <UserDetail />;
+    if (currentView === 'sa-messages') return <SuperAdminMessages />;
     if (currentView === 'sa-settings') return <SuperAdminSettings />;
 
     // Institute Manager
@@ -127,6 +129,7 @@ export default function Home() {
     if (currentView === 'advisor-dashboard') return <AdvisorPanel />;
     if (currentView === 'advisor-students') return <AdvisorPanel />;
     if (currentView === 'advisor-student-detail') return <AdvisorPanel />;
+    if (currentView === 'advisor-messages') return <AdvisorPanel />;
     if (currentView === 'advisor-settings') return <AdvisorPanel />;
 
     // Student

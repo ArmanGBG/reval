@@ -7,6 +7,7 @@ import { AdvisorDashboardHome } from './AdvisorDashboardHome';
 import { AdvisorStudentsList } from './AdvisorStudentsList';
 import { AdvisorStudentDetail } from './AdvisorStudentDetail';
 import { AdvisorSettings } from './AdvisorSettings';
+import AdvisorMessages from './AdvisorMessages';
 
 // ===== Main Advisor Panel (router) =====
 export default function AdvisorPanel() {
@@ -52,6 +53,7 @@ export default function AdvisorPanel() {
           {currentView === 'advisor-dashboard' && <AdvisorDashboardHome />}
           {currentView === 'advisor-students' && <AdvisorStudentsList />}
           {currentView === 'advisor-student-detail' && <AdvisorStudentDetail />}
+          {currentView === 'advisor-messages' && <AdvisorMessages />}
           {currentView === 'advisor-settings' && <AdvisorSettings />}
         </motion.div>
       </AnimatePresence>
