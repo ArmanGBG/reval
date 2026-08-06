@@ -2543,3 +2543,41 @@ Task: webDevReview cycle — replace MOCK analytics with real task data, add Pom
 4. **Active Summary: prompt suggestions**: Add rotating study-technique prompts (e.g. "نقشه ذهنی بکش", "با حرف خودت توضیح بده", "مثال جدید بزن") to scaffold the writing for students who don't know where to start.
 5. **Dashboard: "تمرکز امروز" mini-stat**: Read Pomodoro today's focus minutes from localStorage and show a small "XX دقیقه تمرکز" badge in the compact today/streak strip. Cross-tool connection without adding clutter.
 6. **Subject distribution: drill-down**: Make each pie slice clickable to filter the task list below by that subject. Currently the pie is view-only.
+
+---
+Task ID: verify-final-state
+Agent: Main
+Task: کاربر پرسید که آیا اگر الان دانلود کند، همه چیز به صورت نهایی خواهد بود. وضعیت فعلی پروژه را قبل از پاسخ به کاربر تأیید کردم.
+
+Work Log:
+- سرور توسعه را بررسی کردم: ✅ در حال اجرا (HTTP 200 در /)
+- آخرین ۱۰۰ خط worklog.md را خواندم تا وضعیت فعلی را درک کنم
+- Dashboard.tsx (کامپوننت صفحه اصلی) را خواندم — تأیید شد که صفحه اصلی از قبل ساده شده است:
+  * هدر خوشامد + تاریخ شمسی
+  * کارت نقل قول انگیزشی (حفظ شده)
+  * نوار جمع‌بندی امروز + زنجیره (استریک)
+  * عنوان "تسک‌های امروز" + دکمه افزودن
+  * چیپ‌های فیلتر درس (فقط وقتی ۲+ درس)
+  * لیست تسک‌های امروز
+  * بدون تب فیلتر زمان (امروز/هفته/ماه) ✅
+  * بدون بخش امتحانات پیش‌رو ✅
+- proxy.ts و api-auth.ts را خواندم تا جریان احراز هویت را درک کنم
+- task-service.ts و store.ts (addTask) را بررسی کردم
+- agent-browser: به عنوان دانش‌آموز (۰۹۱۳۱۱۱۱۱۱۱ / ۱۲۳۴) وارد شدم
+- agent-browser: روی داشبورد اسکرین‌شات گرفتم — تأیید ساختار ساده‌شده
+- agent-browser: روی "افزودن" کلیک کردم → به PlanView رفت
+- agent-browser: "تسک جدید" → کنکور → فیزیک → دوازدهم → "ثبت تسک اولیه"
+- نتیجه: POST /api/tasks 201 ✅ — تسک با موفقیت ایجاد شد
+- تقویم از "۱۵ ۶" به "۱۵ ۷" به‌روز شد (تسک جدید اضافه شد)
+- سرور توسعه لاگ: POST /api/tasks 201 در ۴۸ms، بدون خطا
+- bun run lint: ✅ بدون خطا
+
+Stage Summary:
+- همه ۵ مورد از بازخورد کاربر تأیید شد که انجام شده‌اند:
+  1. ✅ صفحه اصلی ساده شده است (طراحی مینیمال)
+  2. ✅ تب‌های فیلتر زمان (امروز/هفته/ماه) حذف شده‌اند
+  3. ✅ بخش امتحانات پیش‌رو حذف شده است
+  4. ✅ بخش نقل قول انگیزشی حفظ شده است
+  5. ✅ باگ احراز هویت ایجاد تسک برطرف شده است (POST /api/tasks 201)
+- وضعیت: پروژه در حالت نهایی و پایدار است و آماده دانلود می‌باشد
+- یک تسک تستی Konkur فیزیک برای دانش‌آموز ۰۹۱۳۱۱۱۱۱۱۱ اضافه شد (در DB باقی مانده — قابل حذف توسط کاربر)
