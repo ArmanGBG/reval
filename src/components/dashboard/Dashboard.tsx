@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, Target, RotateCcw, Calendar, TrendingUp, ChevronLeft } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, Target, RotateCcw, Calendar, TrendingUp, ChevronLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -221,7 +221,7 @@ function MotivationalQuoteCard() {
 }
 
 export default function Dashboard() {
-  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak } = useAppStore();
+  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak, setCurrentView } = useAppStore();
   const studentId = useCurrentStudentId();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -394,7 +394,7 @@ export default function Dashboard() {
       setPartialTask(task);
       setSheetOpen(true);
     }
-  }, []);
+  }, [rangeTasks]);
 
   const handlePartialSave = useCallback((id: string, actualTime: number, actualTests: number) => {
     updateTask(id, { actualTimeMinutes: actualTime, actualTestCount: actualTests, completed: true });
@@ -660,19 +660,60 @@ export default function Dashboard() {
           </button>
         </div>
       ) : rangeTasks.length === 0 ? (
-        <div className="surface-1 rounded-2xl p-10 text-center">
-          {dateRangeMode === 'today' ? (
-            <>
-              <p className="text-sm text-[var(--foreground-muted)]">برنامه‌ای برای امروز ثبت نشده</p>
-              <p className="text-xs text-[var(--foreground-subtle)] mt-1">از بخش «برنامه» تسک اضافه کنید</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-[var(--foreground-muted)]">تسکی در این بازه زمانی ثبت نشده</p>
-              <p className="text-xs text-[var(--foreground-subtle)] mt-1">بازه دیگری را انتخاب کنید</p>
-            </>
-          )}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="surface-1 card-hover rounded-2xl p-8 sm:p-10 text-center border border-[var(--border)] overflow-hidden relative"
+        >
+          {/* Soft accent glow backdrop */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 60% 70% at 50% 30%, var(--accent-soft), transparent)',
+            }}
+          />
+          <div className="relative z-10 flex flex-col items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+              className="w-20 h-20 mx-auto rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-4xl mb-4 ring-1 ring-[rgba(62,180,137,0.2)]"
+            >
+              🎯
+            </motion.div>
+            <motion.h3
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+              className="text-base font-bold text-[var(--foreground)] mb-2"
+            >
+              هنوز تسکی برای این بازه ثبت نشده
+            </motion.h3>
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
+              className="text-xs text-[var(--foreground-muted)] mb-5 max-w-xs mx-auto leading-6"
+            >
+              با کلیک روی «برنامه من» می‌تونی اولین تسک امروزت رو اضافه کنی
+            </motion.p>
+            <motion.button
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.24 }}
+              onClick={() => setCurrentView('plan')}
+              className="btn-hover inline-flex items-center gap-2 h-10 px-5 rounded-xl text-sm font-bold text-[var(--bg-deep)]"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+                boxShadow: '0 8px 24px -6px var(--accent-glow)',
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              اضافه کردن تسک
+            </motion.button>
+          </div>
+        </motion.div>
       ) : isMultiDay ? (
         /* ===== Multi-day: grouped by date ===== */
         <motion.div

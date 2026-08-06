@@ -8,6 +8,44 @@ import { Subject } from '@/lib/subjects-types';
 import { SubjectDetail } from './SubjectDetail';
 import { SubjectCard } from './SubjectCard';
 import { SubjectFormModal } from './SubjectFormModal';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// ===== Skeleton: Subject card (matches SubjectCard layout) =====
+function SkeletonSubjectCard() {
+  return (
+    <div
+      className="surface-1 edge-highlight rounded-2xl p-5"
+      style={{ borderRight: '3px solid var(--border-strong)' }}
+    >
+      {/* Header: icon + name + chevron */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Skeleton className="w-11 h-11 rounded-xl shrink-0 bg-[var(--bg-overlay)]" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-28 bg-[var(--bg-overlay)]" />
+            <Skeleton className="h-3 w-16 bg-[var(--bg-overlay)]" />
+          </div>
+        </div>
+        <Skeleton className="w-4 h-4 bg-[var(--bg-overlay)]" />
+      </div>
+      {/* Badges row */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <Skeleton className="h-5 w-16 rounded-full bg-[var(--bg-overlay)]" />
+        <Skeleton className="h-5 w-24 rounded-full bg-[var(--bg-overlay)]" />
+      </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3 pt-3.5 mt-1 border-t border-[var(--border)]">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex flex-col items-center justify-center text-center gap-1.5">
+            <Skeleton className="w-4 h-4 bg-[var(--bg-overlay)]" />
+            <Skeleton className="h-4 w-6 bg-[var(--bg-overlay)]" />
+            <Skeleton className="h-2.5 w-8 bg-[var(--bg-overlay)]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ===== Helper: Persian digits =====
 function toPersianDigits(num: number | string): string {
@@ -200,9 +238,17 @@ export default function SuperAdminSubjects() {
 
       {/* ===== Subjects Grid ===== */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-[var(--foreground-muted)]">
-          <Loader2 className="w-8 h-8 animate-spin mb-3" />
-          <p className="text-sm">در حال بارگذاری دروس...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <SkeletonSubjectCard />
+            </motion.div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="surface-1 rounded-2xl p-12 text-center">

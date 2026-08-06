@@ -28,52 +28,53 @@ export function PartialCompletionSheet({
   onOpenChange,
   onSave,
 }: PartialCompletionSheetProps) {
-  if (!task) return null;
-
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
+    <Drawer open={open && !!task} onOpenChange={onOpenChange} direction="bottom">
       <DrawerContent className="surface-2 border-t border-[var(--border-strong)] text-[var(--foreground)] max-h-[70vh]">
         <DrawerHeader className="text-right">
           <DrawerTitle className="text-[var(--foreground)] text-sm">
             ثبت بخشی از تسک
           </DrawerTitle>
           <DrawerDescription className="text-[var(--foreground-muted)] text-xs">
-            {task.subject} — {task.topic}
+            {task ? `${task.subject} — ${task.topic}` : ''}
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 pb-4 space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-[var(--foreground-muted)] flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              زمان واقعی (دقیقه)
-            </Label>
-            <Input
-              type="number"
-              defaultValue={task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0}
-              id="partial-time"
-              className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] text-right"
-              dir="ltr"
-            />
+        {task && (
+          <div className="px-4 pb-4 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-[var(--foreground-muted)] flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                زمان واقعی (دقیقه)
+              </Label>
+              <Input
+                type="number"
+                defaultValue={task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0}
+                id="partial-time"
+                className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] text-right"
+                dir="ltr"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-[var(--foreground-muted)] flex items-center gap-1">
+                <Target className="w-3 h-3" />
+                تعداد تست واقعی
+              </Label>
+              <Input
+                type="number"
+                defaultValue={task.actualTestCount ?? task.targetTestCount ?? 0}
+                id="partial-tests"
+                className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] text-right"
+                dir="ltr"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-[var(--foreground-muted)] flex items-center gap-1">
-              <Target className="w-3 h-3" />
-              تعداد تست واقعی
-            </Label>
-            <Input
-              type="number"
-              defaultValue={task.actualTestCount ?? task.targetTestCount ?? 0}
-              id="partial-tests"
-              className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] text-right"
-              dir="ltr"
-            />
-          </div>
-        </div>
+        )}
 
         <DrawerFooter className="flex-row gap-2">
           <Button
             onClick={() => {
+              if (!task) return;
               const timeInput = document.getElementById('partial-time') as HTMLInputElement;
               const testInput = document.getElementById('partial-tests') as HTMLInputElement;
               onSave(task.id, Number(timeInput.value) || 0, Number(testInput.value) || 0);

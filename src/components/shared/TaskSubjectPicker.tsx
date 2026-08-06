@@ -229,9 +229,9 @@ export function TaskSubjectPicker({
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<ApiChapter | null>(null);
 
-  const gradeSubject = selectedSubject!.grades?.find((g) => g.grade === selectedGrade) || null;
+  const gradeSubject = selectedSubject?.grades?.find((g) => g.grade === selectedGrade) || null;
 
-  const availableGrades = selectedSubject!.grades || [];
+  const availableGrades = selectedSubject?.grades || [];
 
   const chapters = useMemo(() => {
     if (!gradeSubject) return [];
