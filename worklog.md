@@ -2787,3 +2787,54 @@ Verification Results (agent-browser end-to-end):
 
 Stage Summary:
 - Both user requests completed and verified. The student home is now even cleaner — no add button (students use the «برنامه من» tab), and no search button anywhere in the app shell (mobile FAB + desktop sidebar trigger both removed). Ctrl+K keyboard shortcut preserved as a hidden power-user feature.
+
+---
+Task ID: fix-onboarding-auth-401
+Agent: Main
+Task: رفع خطای «احراز هویت لازم است» هنگام افزودن تسک — علت اصلی: جریان ثبت‌نام (onboarding) کاملاً mock بود و هیچ سشن واقعی صادر نمی‌کرد.
+
+Work Log:
+- ریشه‌یابی: خطای 401 «احراز هویت لازم است» از `src/proxy.ts` زمانی برمی‌گرداد که کوکی سشن (`reval-session`) وجود نداشت. بررسی کد نشان داد:
+  * مسیر `/api/auth/register` اصلاً وجود نداشت (فقط login/me/logout بودند).
+  * `OnboardingWizard.handleComplete` (src/components/onboarding/OnboardingWizard.tsx خط 485) کاملاً client-side بود: یک آبجکت fake user با `id: 's1'` می‌ساخت، `setOnboardingComplete(true)` می‌زد و بدون هیچ درخواست بک‌اند، ویو را به dashboard می‌برد. نتیجه: localStorage می‌گفت «لاگین شده» اما هیچ کوکی سشن set نمی‌شد → هر POST/GET به /api/* با 401 رد می‌شد.
+  * بدتر: `OnboardingWizard` اصلاً در هیچ‌جا import/render نمی‌شد (dead code) → هیچ مسیر ثبت‌نامی در UI وجود نداشت.
+- راه‌حل (بک‌اند): ساخت `src/app/api/auth/register/route.ts`:
+  * body: phone, name, avatar, grade, major, goal, dailyTargetHours, password (default '1234' مطابق OTP onboarding)
+  * اگر phone تکراری بود → verify password → update profile fields → issue session (رفتار idempotent برای حساب‌های seed شده)
+  * اگر phone جدید بود → create STUDENT user (bcrypt hash) → issue session
+  * ست کردن کوکی httpOnly `reval-session` با maxAge 24h و sameSite=lax (مطابق login)
+- راه‌حل (gateway): `src/proxy.ts` → اضافه کردن `/api/auth/register` به allowlist (در کنار `/api/auth/login`) تا بدون نیاز به سشن قبلی در دسترس باشد.
+- راه‌حل (فرانت‌اند onboarding): `OnboardingWizard.handleComplete` را به async تبدیل کردم:
+  * POST به `/api/auth/register` با داده‌های collected
+  * در صورت خطا → toast error + بازگشتی کردن submitting state
+  * در صورت موفقیت → استفاده از user واقعی برگشتی از سرور (با DB id و assignedAdvisorId واقعی) به‌جای fake `'s1'`
+  * اضافه کردن `loadTasksForStudent` + `loadExams` پس از ثبت‌نام (مطابق LoginPage) تا dashboard اولیه خالی نباشد
+  * اضافه کردن state `submitting` + Loader2 spinner روی دکمه «شروع کن» برای جلوگیری از double-submit
+- راه‌حل (rendering dead code): `src/app/page.tsx`:
+  * import OnboardingWizard
+  * اضافه کردن case برای `currentView === 'onboarding' && !isLoggedIn` → render `<OnboardingWizard />` (full-bleed، بدون AppShell)
+- راه‌حل (entry point ثبت‌نام): `src/components/auth/LoginPage.tsx`:
+  * اضافه کردن `setCurrentView` به destructure از useAppStore
+  * اضافه کردن لینک «ثبت‌نام کن» زیر بخش دسترسی سریع → `setCurrentView('onboarding')`
+
+Verification Results (agent-browser end-to-end):
+1. کاربر کاملاً جدید با phone 09130000000:
+   - landing → «شروع کن» → OnboardingWizard (دیگر dead code نیست) ✅
+   - step 1: phone 9130000000 + OTP 1234 → auto-advance ✅
+   - step 2: name «کاربر تستی جدید» + avatar 🐉 ✅
+   - step 3: پایه دوازدهم + تجربی ✅
+   - step 4: هدف کنکور + ۶ ساعت ✅
+   - کلیک «شروع کن» → POST /api/auth/register 200 → کوکی سشن set شد → dashboard بارگذاری شد با greeting «خوش اومدی کاربر تستی جدید!» ✅
+2. تست بحرانی — ایجاد تسک به‌عنوان کاربر تازه ثبت‌نام‌شده:
+   - GET /api/auth/me 200 → سشن معتبر ✅
+   - GET /api/subjects/for-task 200 → درس‌های مجاز (زیست‌شناسی) ✅
+   - **POST /api/tasks 201** → تسک ساخته شد، **بدون خطای 401 «احراز هویت لازم است»** ✅
+3. dev.log: هیچ 401 و هیچ runtime error در کل flow. تمام روت‌ها 200/201.
+4. `bun run lint`: ✅ zero errors
+
+Stage Summary:
+- علت اصلی خطای «احراز هویت لازم است» هنگام افزودن تسک = نبود مسیر ثبت‌نام واقعی. OnboardingWizard کاملاً mock بود و کوکی سشن صادر نمی‌کرد.
+- راه‌حل کامل: بک‌اند register route + gateway allowlist + wire کردن wizard به API واقعی + render کردن wizard (که dead code بود) + اضافه کردن entry point ثبت‌نام در LoginPage.
+- اکنون کاربران جدید می‌توانند ثبت‌نام کنند، سشن واقعی بگیرند، و تسک بسازند بدون خطای 401.
+- فایل‌های ساخته‌شده: `src/app/api/auth/register/route.ts`
+- فایل‌های تغییر یافته: `src/proxy.ts`، `src/components/onboarding/OnboardingWizard.tsx`، `src/app/page.tsx`، `src/components/auth/LoginPage.tsx`

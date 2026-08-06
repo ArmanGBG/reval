@@ -24,6 +24,7 @@ import SuperAdminMessages from '@/components/super-admin/SuperAdminMessages';
 import InstituteDetail from '@/components/super-admin/InstituteDetail';
 import UserDetail from '@/components/super-admin/UserDetail';
 import LandingPage from '@/components/landing/LandingPage';
+import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { UserRole } from '@/lib/types';
 
 export default function Home() {
@@ -103,6 +104,23 @@ export default function Home() {
         transition={{ duration: 0.3 }}
       >
         <LandingPage />
+      </motion.div>
+    );
+  }
+
+  // Sign-up wizard is also full-bleed (no AppShell) and only reachable pre-auth.
+  // It creates a real STUDENT account via /api/auth/register and issues a session
+  // cookie, so the user is fully authenticated by the time they land on the dashboard.
+  if (currentView === 'onboarding' && !isLoggedIn) {
+    return (
+      <motion.div
+        key="onboarding"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <OnboardingWizard />
       </motion.div>
     );
   }

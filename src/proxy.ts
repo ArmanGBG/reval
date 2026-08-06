@@ -9,8 +9,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow login route without authentication
-  if (pathname === '/api/auth/login') {
+  // Allow auth routes that issue sessions without requiring a session first.
+  if (pathname === '/api/auth/login' || pathname === '/api/auth/register') {
     return NextResponse.next();
   }
 

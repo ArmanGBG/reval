@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowRight, Phone, User as UserIcon, GraduationCap, Target } from 'lucide-react';
+import { ArrowRight, Phone, User as UserIcon, GraduationCap, Target, Loader2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAppStore } from '@/lib/store';
 import { AVATARS } from '@/lib/constants/mockData';
@@ -426,6 +426,10 @@ export default function OnboardingWizard() {
   const [goal, setGoal] = useState<Goal | ''>('');
   const [dailyHours, setDailyHours] = useState<number | null>(null);
 
+  // Submission state — while we're creating the account on the server we lock
+  // the CTA button so the user can't double-submit.
+  const [submitting, setSubmitting] = useState(false);
+
   // Use functional updater to avoid stale closure issues
   const goToStep = useCallback((step: number) => {
     setCurrentStep((prev) => {
@@ -482,25 +486,81 @@ export default function OnboardingWizard() {
     }
   }, [currentStep, goToStep]);
 
-  const handleComplete = useCallback(() => {
-    if (!canProceed()) return;
+  const handleComplete = useCallback(async () => {
+    if (!canProceed() || submitting) return;
 
-    const newUser: User = {
-      id: 's1',
-      name: name.trim(),
-      avatar: selectedAvatar,
-      grade: grade as Grade,
-      major: major as Major,
-      goal: goal as Goal,
-      dailyTargetHours: dailyHours as number,
-      phone: `+98${phone}`,
-      assignedAdvisorId: null,
-    };
+    setSubmitting(true);
+    try {
+      // Persist the account server-side and obtain a signed session cookie.
+      // Without this step, the client would *think* the user is logged in
+      // (localStorage flag) but every subsequent /api/* call would 401 with
+      // "احراز هویت لازم است" — which was the root cause of the task-creation bug.
+      //
+      // The onboarding OTP is '1234'; we reuse it as the account password so
+      // the same credential also works against /api/auth/login later.
+      // `phone` is captured without the leading 0 (the wizard validates /^9\d{9}$/),
+      // so we re-add the 0 to match the seeded format.
+      const normalizedPhone = phone.startsWith('0') ? phone : `0${phone}`;
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          name: name.trim(),
+          avatar: selectedAvatar,
+          grade,
+          major,
+          goal,
+          dailyTargetHours: dailyHours,
+          password: '1234',
+        }),
+      });
 
-    setUser(newUser);
-    setOnboardingComplete(true);
-    setCurrentView('dashboard');
-  }, [canProceed, name, selectedAvatar, grade, major, goal, dailyHours, phone, setUser, setOnboardingComplete, setCurrentView]);
+      const data = await res.json();
+
+      if (!res.ok) {
+        const message = data.error || 'خطا در ساخت حساب کاربری';
+        toast.error(message, {
+          style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      // Use the REAL user record (with DB id + assignedAdvisorId) returned by the server.
+      const u = data.user;
+      const realUser: User = {
+        id: u.id,
+        name: u.name,
+        avatar: u.avatar,
+        grade: (u.grade as Grade) || (grade as Grade),
+        major: (u.major as Major) || (major as Major),
+        goal: (u.goal as Goal) || (goal as Goal),
+        dailyTargetHours: typeof u.dailyTargetHours === 'number' ? u.dailyTargetHours : (dailyHours as number),
+        phone: u.phone,
+        assignedAdvisorId: u.assignedAdvisorId || null,
+      };
+
+      setUser(realUser);
+      setOnboardingComplete(true);
+      setCurrentView('dashboard');
+
+      // Kick off background data loads for the new student (mirrors LoginPage
+      // behaviour) so the dashboard isn't empty on first render.
+      const { loadTasksForStudent, loadExams } = useAppStore.getState();
+      loadTasksForStudent(realUser.id).catch(() => {});
+      loadExams({ studentId: realUser.id }).catch(() => {});
+
+      toast.success(`خوش امدی، ${realUser.name}`, {
+        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
+      });
+    } catch {
+      toast.error('خطا در ارتباط با سرور', {
+        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+      });
+      setSubmitting(false);
+    }
+  }, [canProceed, submitting, name, selectedAvatar, grade, major, goal, dailyHours, phone, setUser, setOnboardingComplete, setCurrentView]);
 
   const isFinalStep = currentStep === 4;
 
@@ -594,12 +654,13 @@ export default function OnboardingWizard() {
           ) : (
             <motion.button
               onClick={handleComplete}
-              disabled={!canProceed()}
+              disabled={!canProceed() || submitting}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
-              className="h-12 px-6 bg-mint hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--bg-deep)] font-bold rounded-xl transition-all duration-200"
+              className="h-12 px-6 bg-mint hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--bg-deep)] font-bold rounded-xl transition-all duration-200 inline-flex items-center justify-center gap-2"
             >
-              شروع کن
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitting ? 'در حال ساخت حساب...' : 'شروع کن'}
             </motion.button>
           )}
         </div>

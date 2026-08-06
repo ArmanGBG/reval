@@ -18,7 +18,7 @@ const QUICK_ACCOUNTS = [
 ];
 
 export default function LoginPage() {
-  const { setUserRole, setUser, setOnboardingComplete } = useAppStore();
+  const { setUserRole, setUser, setOnboardingComplete, setCurrentView } = useAppStore();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -272,6 +272,25 @@ export default function LoginPage() {
           </div>
           <p className="text-[10px] text-muted-foreground/60 text-center mt-3">
             رمز عبور همه حساب‌ها: <span dir="ltr" className="text-muted-foreground font-mono">1234</span>
+          </p>
+        </motion.div>
+
+        {/* ============ Sign-up entry ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.28 }}
+          className="mt-5 text-center"
+        >
+          <p className="text-sm text-muted-foreground">
+            حساب نداری؟{' '}
+            <button
+              type="button"
+              onClick={() => setCurrentView('onboarding')}
+              className="text-mint hover:text-[var(--accent-hover)] font-semibold transition-colors underline-offset-4 hover:underline"
+            >
+              ثبت‌نام کن
+            </button>
           </p>
         </motion.div>
       </div>
