@@ -92,8 +92,9 @@ export default function BottomNav() {
               {isActive && (
                 <motion.span
                   layoutId="bottomnav-active"
-                  className={`absolute inset-x-2 top-1 bottom-1 rounded-2xl ${accentSoftBg}`}
+                  className={`absolute inset-x-1.5 top-0.5 bottom-0.5 rounded-2xl ${accentSoftBg}`}
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  style={{ boxShadow: isActive ? '0 0 12px -2px var(--accent-glow)' : 'none' }}
                 />
               )}
               {/* Active top dot */}

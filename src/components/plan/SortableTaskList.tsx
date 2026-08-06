@@ -129,7 +129,7 @@ export function SortableTaskList({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-3">
+        <div className="space-y-3 md:space-y-4">
           <AnimatePresence>
             {tasks.map((task, index) => (
               <SortableTaskCard

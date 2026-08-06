@@ -443,6 +443,18 @@
   animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Tool icon pulse on card hover (CSS-based) */
+.tool-icon-pulse {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.group:hover .tool-icon-pulse {
+  animation: tool-icon-pulse-keyframes 1.5s ease-in-out infinite;
+}
+@keyframes tool-icon-pulse-keyframes {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
 /* Safe area bottom for mobile */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);

@@ -1,7 +1,7 @@
 'use client';
 
 import { Subject } from '@/lib/subjects-types';
-import { ChevronLeft, BookOpen, Layers, MessageSquare, Sparkles, Award, AlertTriangle, CheckCircle2, CircleDashed } from 'lucide-react';
+import { ChevronLeft, BookOpen, Layers, MessageSquare, Sparkles, Award } from 'lucide-react';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -41,31 +41,31 @@ export function computeSubjectStatus(subject: Subject): SubjectStatus {
   return 'ready';
 }
 
-const STATUS_CONFIG: Record<SubjectStatus, { label: string; icon: typeof AlertTriangle; bg: string; text: string; border: string }> = {
+const STATUS_CONFIG: Record<SubjectStatus, { label: string; dotColor: string; bg: string; text: string; border: string }> = {
   incomplete_no_grades: {
     label: 'ناقص: بدون پایه/رشته',
-    icon: AlertTriangle,
+    dotColor: 'bg-[var(--warning)]',
     bg: 'bg-[var(--warning)]/10',
     text: 'text-[var(--warning)]',
     border: 'border-[var(--warning)]/30',
   },
   incomplete_no_chapters: {
     label: 'ناقص: بدون فصل',
-    icon: AlertTriangle,
+    dotColor: 'bg-[var(--warning)]',
     bg: 'bg-[var(--warning)]/10',
     text: 'text-[var(--warning)]',
     border: 'border-[var(--warning)]/30',
   },
   incomplete_no_pages: {
     label: 'ناقص: بازه صفحه نامعتبر',
-    icon: AlertTriangle,
+    dotColor: 'bg-[var(--warning)]',
     bg: 'bg-[var(--warning)]/10',
     text: 'text-[var(--warning)]',
     border: 'border-[var(--warning)]/30',
   },
   ready: {
     label: 'آمادهٔ انتشار',
-    icon: CheckCircle2,
+    dotColor: 'bg-[var(--accent)]',
     bg: 'bg-[var(--accent-soft)]',
     text: 'text-[var(--accent)]',
     border: 'border-[var(--accent)]/30',
@@ -92,12 +92,23 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
   const isKonkur = !!subject.isKonkur;
   const status = computeSubjectStatus(subject);
   const statusConfig = STATUS_CONFIG[status];
-  const StatusIcon = statusConfig.icon;
 
   return (
     <button
       onClick={onClick}
-      className="surface-1 edge-highlight rounded-2xl p-5 card-hover text-right w-full group"
+      className="surface-1 edge-highlight rounded-2xl p-5 text-right w-full group"
+      style={{
+        borderRight: `3px solid ${subject.color}`,
+        transition: 'box-shadow 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `0 12px 32px -10px rgba(0, 0, 0, 0.5), 0 0 20px -4px ${subject.color}25`;
+        e.currentTarget.style.transform = 'translateY(-2px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
     >
       {/* Header: icon + name + chevron */}
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -134,32 +145,32 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
             غیرکنکوری
           </span>
         )}
-        {/* Completeness status badge */}
+        {/* Completeness status badge: dot + text */}
         <span
-          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
+          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}
         >
-          <StatusIcon className="w-2.5 h-2.5" />
+          <span className={`w-2 h-2 rounded-full ${statusConfig.dotColor}`} />
           {statusConfig.label}
         </span>
       </div>
 
       {/* Stats row */}
-      <div className={`grid ${topicModeCount > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 pt-3 border-t border-[var(--border)]`}>
+      <div className={`grid ${topicModeCount > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-3 pt-3.5 mt-1 border-t border-[var(--border)]`}>
         <div className="flex flex-col items-center justify-center text-center">
-          <Layers className="w-3.5 h-3.5 text-[var(--foreground-muted)] mb-1" />
-          <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(chapterCount)}</span>
-          <span className="text-[9px] text-[var(--foreground-subtle)]">فصل</span>
+          <Layers className="w-4 h-4 text-[var(--foreground-muted)] mb-1.5" />
+          <span className="text-base font-bold text-[var(--foreground)]">{toPersianDigits(chapterCount)}</span>
+          <span className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">فصل</span>
         </div>
         <div className="flex flex-col items-center justify-center text-center">
-          <MessageSquare className="w-3.5 h-3.5 text-[var(--foreground-muted)] mb-1" />
-          <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(topicCount)}</span>
-          <span className="text-[9px] text-[var(--foreground-subtle)]">گفتار</span>
+          <MessageSquare className="w-4 h-4 text-[var(--foreground-muted)] mb-1.5" />
+          <span className="text-base font-bold text-[var(--foreground)]">{toPersianDigits(topicCount)}</span>
+          <span className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">گفتار</span>
         </div>
         {topicModeCount > 0 && (
           <div className="flex flex-col items-center justify-center text-center">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--foreground-muted)] mb-1" />
-            <span className="text-sm font-bold text-[var(--foreground)]">{toPersianDigits(topicModeCount)}</span>
-            <span className="text-[9px] text-[var(--foreground-subtle)]">مبحث</span>
+            <Sparkles className="w-4 h-4 text-[var(--foreground-muted)] mb-1.5" />
+            <span className="text-base font-bold text-[var(--foreground)]">{toPersianDigits(topicModeCount)}</span>
+            <span className="text-[10px] text-[var(--foreground-subtle)] mt-0.5">مبحث</span>
           </div>
         )}
       </div>

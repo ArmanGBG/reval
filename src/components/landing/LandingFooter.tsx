@@ -1,9 +1,21 @@
 'use client';
 
+import { toPersianDigits } from './landing-helpers';
+
 // ===== Footer =====
 export function LandingFooter() {
+  const currentYear = toPersianDigits(new Date().getFullYear());
+
   return (
-    <footer className="border-t border-[var(--border)] py-10 md:py-12 px-4 md:px-6">
+    <footer className="py-10 md:py-12 px-4 md:px-6 relative">
+      {/* Gradient top border */}
+      <div
+        aria-hidden
+        className="absolute top-0 inset-x-0 h-px"
+        style={{
+          background: 'linear-gradient(to right, transparent, var(--accent-soft), var(--accent), var(--accent-soft), transparent)',
+        }}
+      />
       <div className="max-w-7xl mx-auto">
         {/* Mobile: simplified footer */}
         <div className="md:hidden max-w-md mx-auto">
@@ -29,7 +41,7 @@ export function LandingFooter() {
           </div>
           <div className="mt-6 pt-6 border-t border-[var(--border)] text-center">
             <p className="text-xs text-[var(--foreground-subtle)]">
-              © ۱۴۰۴ روال. تمامی حقوق محفوظ است.
+              © {currentYear} روال. تمامی حقوق محفوظ است.
             </p>
           </div>
         </div>
@@ -98,7 +110,7 @@ export function LandingFooter() {
 
         <div className="hidden md:flex border-t border-[var(--border)] pt-8 items-center justify-between">
           <p className="text-xs text-[var(--foreground-subtle)]">
-            © ۱۴۰۴ روال. تمامی حقوق محفوظ است.
+            © {currentYear} روال. تمامی حقوق محفوظ است.
           </p>
           <span className="text-xs text-[var(--foreground-subtle)]">
             ساخته شده برای دانش‌آموزان ایران

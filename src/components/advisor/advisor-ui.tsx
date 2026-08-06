@@ -107,7 +107,14 @@ export function SectionHeader({ icon, title, accent = 'var(--accent)', action }:
   return (
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-2.5">
-        <span className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
+        <span
+          className="w-9 h-9 rounded-xl flex items-center justify-center ring-1 ring-inset ring-white/5"
+          style={{
+            backgroundColor: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            color: accent,
+            boxShadow: `0 0 16px -4px color-mix(in srgb, ${accent} 25%, transparent)`,
+          }}
+        >
           {icon}
         </span>
         <h3 className="text-sm font-bold text-[var(--foreground)]">{title}</h3>
@@ -120,7 +127,7 @@ export function SectionHeader({ icon, title, accent = 'var(--accent)', action }:
 // ===== Card wrapper (reusable) =====
 export function Card({ className = '', children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={`surface-1 rounded-xl md:rounded-2xl p-4 md:p-5 ${className}`} {...rest}>
+    <div className={`surface-1 rounded-xl md:rounded-2xl p-4 md:p-5 edge-highlight ${className}`} {...rest}>
       {children}
     </div>
   );

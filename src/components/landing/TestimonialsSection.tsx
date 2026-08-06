@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Users, Star } from 'lucide-react';
+import { Users, Star, Quote } from 'lucide-react';
 import { fadeInUp, staggerContainer, TESTIMONIALS, SectionHeading } from './landing-helpers';
 
 // ===== Testimonials Section =====
@@ -19,11 +19,13 @@ export function TestimonialsSection() {
 
         {/* Mobile: horizontal snap-scroll carousel */}
         <div className="md:hidden -mx-4 px-4 overflow-x-auto snap-x snap-mandatory flex gap-4 pb-4 custom-scrollbar">
-          {TESTIMONIALS.map((testimonial) => (
+          {TESTIMONIALS.map((testimonial, idx) => (
             <div
               key={testimonial.name}
-              className="flex-shrink-0 w-[85%] snap-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-5 card-hover edge-highlight"
+              className={`flex-shrink-0 w-[85%] snap-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl p-5 card-hover edge-highlight relative overflow-hidden ${idx % 2 === 0 ? 'rotate-[0.5deg]' : 'rotate-[-0.5deg]'}`}
             >
+              {/* Quote watermark */}
+              <Quote className="absolute -top-1 -left-1 w-16 h-16 text-[var(--accent)]/[0.06] pointer-events-none" />
               <div className="flex items-center gap-1 mb-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
@@ -53,12 +55,14 @@ export function TestimonialsSection() {
           variants={staggerContainer}
           className="hidden md:grid grid-cols-3 gap-6"
         >
-          {TESTIMONIALS.map((testimonial) => (
+          {TESTIMONIALS.map((testimonial, idx) => (
             <motion.div
               key={testimonial.name}
               variants={fadeInUp}
-              className="card-hover edge-highlight bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6"
+              className={`card-hover edge-highlight bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6 relative overflow-hidden ${idx % 2 === 0 ? 'rotate-[0.5deg]' : 'rotate-[-0.5deg]'}`}
             >
+              {/* Quote watermark */}
+              <Quote className="absolute -top-1 -left-1 w-20 h-20 text-[var(--accent)]/[0.06] pointer-events-none" />
               <div className="flex items-center gap-1 mb-4">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />

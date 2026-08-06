@@ -1048,3 +1048,108 @@ Stage Summary:
 - Screenshots saved: preview-landing.png, preview-student-dashboard.png, preview-superadmin-subjects.png, preview-superadmin-subjects-full.png.
 - Test accounts (all password 1234): سوپر ادمین 09121000000 / مدیر 09121111111 / مشاور 09121234567 / دانش‌آموز 09131111111 (+4 more in seed.ts).
 - Ready for the user to start debugging. Suggested next debug targets: (1) rename middleware→proxy to clear deprecation, (2) the ادبیات subject is "ناقص" because seed.ts creates it without GradeSubject rows — either seed grades for it or exclude it from the demo, (3) continue the redesign worklog's open UI/UX polish items.
+
+---
+Task ID: 19-qa-round-1
+Agent: Main (webDevReview cron)
+Task: Full QA testing across all roles, fix bugs found, improve styling, add new features
+
+Work Log:
+
+### QA Testing (all roles, all views)
+- **Landing page** (/): ✅ Hero, features, how-it-works, testimonials, CTA, footer. Zero errors.
+- **Login dialog**: ✅ Quick-login buttons for all 4 roles, password toggle, phone input.
+- **Student Dashboard** (سارا 09131111111): ✅ Welcome toast, bottom nav, time filters, task cards with actions.
+- **Student Plan** (برنامه من): ✅ Persian calendar (مرداد ۱۴۰۵), day navigation, weekly plan button.
+- **Student Tools** (ابزارها): ✅ 5 tool cards (music, flashcard, pomodoro, grade calc, stress).
+- **Student Analytics** (گزارش): ✅ Tabs (نمای کلی/نمای فصل‌محور), time filters, chart sections.
+- **Student Settings** (پروفایل): ✅ Profile form, grade/major selection, goals, app settings.
+- **Advisor Dashboard** (دکتر محمدی 09121234567): ✅ Charts (status distribution, study hours, red flags).
+- **Advisor Students List**: ✅ 2 students with search, exam button.
+- **Advisor Student Detail** (امیرحسین): ✅ Psychological status, strengths/weaknesses, tasks, exams.
+- **Advisor Settings** (تنظیمات): 🐛 BUG FOUND — clicking Settings stays on students list (see below).
+- **Super-Admin Dashboard** (09121000000): ✅ 4 charts, sidebar nav.
+- **Super-Admin Subjects** (دروس): ✅ 6 subject cards with status badges. ادبیات was "ناقص: بدون پایه/رشته".
+- **Super-Admin CurriculumWizard** (ریاضی): ✅ Multi-step wizard with grade/major/chapters/topics tabs.
+- **Super-Admin Users**: ✅ Search, role/institute/status filters, view/suspend actions.
+- **Super-Admin Institutes**: ✅ Search, status/plan filters, God View/suspend actions.
+- **Super-Admin Settings**: ✅ Platform controls, subscription limits, system info, theme.
+- **Institute Manager Dashboard** (09121111111): ✅ Student performance table, advisor/performance filters.
+
+### Bugs Found & Fixed
+
+**Bug A: Advisor Settings Navigation Broken**
+- Root cause: Nested `AnimatePresence mode="wait"` conflict. Both `page.tsx` and `AdvisorDashboard.tsx` used `key={currentView}` on their motion.div wrappers. When `currentView` changed from `advisor-students` → `advisor-settings`, the outer AnimatePresence in page.tsx remounted the entire `<AdvisorPanel />`, interrupting the inner AnimatePresence's transition cycle. The settings view either never appeared or appeared with `opacity: 0`.
+- Fix: Changed page.tsx's AnimatePresence key from `currentView` to a `viewGroupKey` computed per role-group (`'advisor'` for all `advisor-*` views, `'sa'` for all `sa-*` views, `'institute'` for all `institute-*` views, otherwise the view name itself). This prevents remounting the panel on sub-view switches while still animating cross-role transitions.
+- Verified: Clicking تنظیمات now correctly shows AdvisorSettings with "تنظیمات مشاور" heading.
+
+**Bug B: middleware.ts Deprecation Warning**
+- Next.js 16 deprecated the `middleware` file convention in favor of `proxy`.
+- Fix: Created `src/proxy.ts` with `export async function proxy()` (same logic), deleted `src/middleware.ts`.
+- Verified: No more deprecation warning in dev.log. `proxy.ts: Xms` appears in API timing logs.
+
+**Bug C: ادبیات Subject "ناقص: بدون پایه/رشته"**
+- Root cause: `prisma/seed.ts` created the ادبیات subject without GradeSubject rows.
+- Fix: Added upsert logic in seed.ts to create 6 GradeSubject rows for ادبیات (دهم/یازدهم/دوازدهم × تجربی/ریاضی). Also applied directly to live DB.
+- Verified: ادبیات now shows "۶ پایه" in subjects view (still "ناقص: بدون فصل" which is correct — no curriculum chapters defined yet).
+
+### Styling Improvements
+
+**Student Dashboard** (`Dashboard.tsx`, `TaskCard.tsx`, `SortableTaskList.tsx`):
+- Daily progress summary card with study time, completed/total tasks, progress bar
+- Streak counter card (🔥 N روز متوالی) with gold glow, special "هفته‌ای کامل!" at 7+
+- Time-of-day greeting (🌅 صبح بخیر, ☀️ ظهر بخیر, 🌆 عصر بخیر, 🌙 شب بخیر)
+- Stagger entrance animations for task cards
+- Filter pill buttons with smooth transitions and scale feedback
+- Task cards: colored status dot indicators (green=done, red=skipped, yellow=pending)
+- Task cards: glass-like borders with accent glow on hover
+
+**Login Page** (`LoginPage.tsx`):
+- Colored right border accent per role on quick-login buttons (gold/violet/mint)
+- Role icons in styled colored containers
+- Shake animation + red border on login error
+- Password show/hide toggle (was already present)
+
+**Landing Page** (`LandingPage.tsx`, `TestimonialsSection.tsx`, `LandingFooter.tsx`):
+- Quote mark (") watermark on testimonial cards
+- Alternating subtle rotation on testimonial cards (±0.5deg)
+- Footer gradient top border (transparent → accent-soft → accent → accent-soft → transparent)
+- Dynamic copyright year using toPersianDigits
+
+**Advisor Panel** (`AdvisorDashboard.tsx`, `SidebarNav.tsx`, `BottomNav.tsx`, `AdvisorDashboardHome.tsx`):
+- Sliding pill indicator on sidebar nav (framer-motion layoutId)
+- Chart sections wrapped in cards with edge-highlight and colored right-border accents
+- Red flags section: red glow box-shadow + pulsing dot when active risks exist
+
+**Super-Admin Subjects** (`SuperAdminSubjects.tsx`, `SubjectCard.tsx`):
+- Subject cards: right border accent matching subject color
+- Subject cards: hover glow using subject's own color (not just accent)
+- Status badge: colored dot + text instead of lucide icons
+- Search input: clear button when text present
+- Konkur filter: sliding pill animation (layoutId)
+- "افزودن درس جدید": gradient background with persistent glow
+
+**Tools Hub** (`ToolsHub.tsx`, `globals.css`):
+- Per-tool gradient backgrounds (violet/mint/gold/blue/rose)
+- CSS icon pulse animation on hover (.tool-icon-pulse)
+- 2-column grid on desktop with centered last item
+
+### New Features
+
+**Daily Streak** (store.ts, Dashboard.tsx):
+- `streakDays` and `streakLastDate` in Zustand store
+- `incrementStreak()` action called when task completed or partial saved
+- Streak card on dashboard with visual states (💤 شروع کن!, 🔥 N روز متوالی, 🔥🔥 هفته‌ای کامل!)
+
+**Motivational Quotes** (Dashboard.tsx):
+- 12 Persian motivational quotes about studying/learning
+- Daily rotation (dayOfYear % quotes.length)
+- "نقل قول بعدی" button to cycle manually
+- ❝ watermark, italic text, author attribution
+
+Stage Summary:
+- 3 bugs fixed: (A) AnimatePresence key conflict causing advisor settings nav failure, (B) middleware→proxy deprecation, (C) ادبیات missing GradeSubject rows
+- Extensive styling improvements across all major views: dashboard, login, landing, advisor, super-admin, tools
+- 2 new features: daily streak counter, motivational quote card
+- Final QA pass: all 4 roles tested across all views, zero console errors, zero lint errors, all API routes 200
+- Dev server stable on :3000 via watchdog, proxy.ts timing visible in logs

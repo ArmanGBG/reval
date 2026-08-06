@@ -18,35 +18,45 @@ const TOOLS = [
     title: 'موزیک تمرکز',
     description: 'تمرکزتو با موسیقی بالا ببر',
     icon: Music,
-    color: '#3EB489',
+    color: '#8B5CF6',
+    gradientFrom: '#8B5CF6',
+    gradientTo: '#C084FC',
   },
   {
     id: 'flashcards',
     title: 'فلش‌کارت هوشمند',
     description: 'یادگیری فعال با فلش‌کارت',
     icon: Brain,
-    color: '#F59E0B',
+    color: '#3EB489',
+    gradientFrom: '#3EB489',
+    gradientTo: '#4FD9A8',
   },
   {
     id: 'pomodoro',
     title: 'پومودورو',
     description: 'مدیریت زمان مطالعه',
     icon: Timer,
-    color: '#8B5CF6',
+    color: '#F5B544',
+    gradientFrom: '#F5B544',
+    gradientTo: '#F59E0B',
   },
   {
     id: 'calculator',
     title: 'محاسبه‌گر درصد',
     description: 'درصد کنکور رو حساب کن',
     icon: Calculator,
-    color: '#EF4444',
+    color: '#3B82F6',
+    gradientFrom: '#3B82F6',
+    gradientTo: '#60A5FA',
   },
   {
     id: 'breathing',
     title: 'اورژانس استرس',
     description: 'تنفس عمیق و آرامش',
     icon: Heart,
-    color: '#06B6D4',
+    color: '#F43F5E',
+    gradientFrom: '#F43F5E',
+    gradientTo: '#FB7185',
   },
 ];
 
@@ -98,23 +108,30 @@ export default function ToolsHub() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.06, duration: 0.3 }}
                 onClick={() => handleToolSelect(tool.id)}
-                className={`surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 text-right min-h-[140px] flex flex-col justify-between ${
+                className={`group surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4 text-right min-h-[150px] flex flex-col justify-between overflow-hidden ${
                   isLast ? 'col-span-2 max-w-[calc(50%-6px)] mx-auto' : ''
                 }`}
               >
-                <div>
+                {/* Gradient glow overlay */}
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{
+                    background: `radial-gradient(ellipse 50% 60% at 30% 30%, ${tool.gradientFrom}15, transparent)`,
+                  }}
+                />
+                <div className="relative z-10">
                   <div
-                    className="w-12 h-12 rounded-[var(--radius)] flex items-center justify-center mb-3"
-                    style={{ background: `linear-gradient(135deg, ${tool.color}22, ${tool.color}08)` }}
+                    className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center mb-3 tool-icon-container"
+                    style={{ background: `linear-gradient(135deg, ${tool.gradientFrom}30, ${tool.gradientTo}15)` }}
                   >
-                    <IconComp className="w-6 h-6" style={{ color: tool.color }} />
+                    <IconComp className="w-7 h-7 tool-icon-pulse" style={{ color: tool.gradientFrom }} />
                   </div>
                   <h3 className="text-sm font-bold text-[var(--foreground)] mb-1">{tool.title}</h3>
-                  <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">{tool.description}</p>
+                  <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">{tool.description}</p>
                 </div>
                 <div
-                  className="w-8 h-1 rounded-full mt-3"
-                  style={{ backgroundColor: tool.color }}
+                  className="relative z-10 w-8 h-1 rounded-full mt-3"
+                  style={{ background: `linear-gradient(90deg, ${tool.gradientFrom}, ${tool.gradientTo})` }}
                 />
               </motion.button>
             );
@@ -137,10 +154,11 @@ export default function ToolsHub() {
           <Sparkles className="w-8 h-8 text-[var(--accent)] opacity-50" />
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           {TOOLS.map((tool, index) => {
             const IconComp = tool.icon;
             const isActive = activeTool === tool.id;
+            const isLast = index === TOOLS.length - 1;
             return (
               <motion.button
                 key={tool.id}
@@ -148,26 +166,35 @@ export default function ToolsHub() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05, duration: 0.3 }}
                 onClick={() => handleToolSelect(tool.id)}
-                className={`surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-5 text-right min-h-[180px] flex flex-col justify-between transition-all ${
+                className={`group surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-5 text-right min-h-[190px] flex flex-col justify-between transition-all overflow-hidden ${
                   isActive ? 'border-[var(--accent)] ring-1 ring-[var(--accent-glow)]' : ''
+                } ${
+                  isLast ? 'col-span-2 max-w-[calc(50%-8px)] mx-auto' : ''
                 }`}
               >
-                <div>
+                {/* Gradient glow overlay */}
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{
+                    background: `radial-gradient(ellipse 50% 60% at 25% 25%, ${tool.gradientFrom}18, transparent)`,
+                  }}
+                />
+                <div className="relative z-10">
                   <div
-                    className="w-14 h-14 rounded-[var(--radius)] flex items-center justify-center mb-4"
-                    style={{ background: `linear-gradient(135deg, ${tool.color}22, ${tool.color}08)` }}
+                    className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center mb-4 tool-icon-container"
+                    style={{ background: `linear-gradient(135deg, ${tool.gradientFrom}35, ${tool.gradientTo}18)` }}
                   >
-                    <IconComp className="w-7 h-7" style={{ color: tool.color }} />
+                    <IconComp className="w-8 h-8 tool-icon-pulse" style={{ color: tool.gradientFrom }} />
                   </div>
                   <h3 className="text-base font-bold text-[var(--foreground)] mb-1.5">{tool.title}</h3>
                   <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">{tool.description}</p>
                 </div>
-                <div className="flex items-center justify-between mt-4">
+                <div className="relative z-10 flex items-center justify-between mt-4">
                   <div
                     className="w-10 h-1 rounded-full"
-                    style={{ backgroundColor: tool.color }}
+                    style={{ background: `linear-gradient(90deg, ${tool.gradientFrom}, ${tool.gradientTo})` }}
                   />
-                  <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl" />
+                  <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl group-hover:text-[var(--foreground-muted)] transition-colors" />
                 </div>
               </motion.button>
             );
@@ -207,10 +234,10 @@ export default function ToolsHub() {
                       <div
                         className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center"
                         style={{
-                          background: `linear-gradient(135deg, ${activeToolObj.color}22, ${activeToolObj.color}08)`,
+                          background: `linear-gradient(135deg, ${activeToolObj.gradientFrom}30, ${activeToolObj.gradientTo}15)`,
                         }}
                       >
-                        <HeaderIcon className="w-5 h-5" style={{ color: activeToolObj.color }} />
+                        <HeaderIcon className="w-5 h-5" style={{ color: activeToolObj.gradientFrom }} />
                       </div>
                     );
                   })()}

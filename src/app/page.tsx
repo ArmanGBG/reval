@@ -78,11 +78,20 @@ export default function Home() {
     return <LoginPage />;
   };
 
+  // Compute a stable key per role-group so sub-view switches
+  // (e.g., advisor-students → advisor-settings) don't unmount the entire panel.
+  // This lets the panel's own AnimatePresence handle sub-view transitions cleanly.
+  const viewGroupKey =
+    currentView.startsWith('advisor-')   ? 'advisor'   :
+    currentView.startsWith('sa-')        ? 'sa'        :
+    currentView.startsWith('institute-') ? 'institute' :
+    currentView;
+
   return (
     <AppShell>
       <AnimatePresence mode="wait">
         <motion.div
-          key={currentView}
+          key={viewGroupKey}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}

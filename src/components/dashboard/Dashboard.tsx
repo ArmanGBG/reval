@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, Target, RotateCcw, Calendar, TrendingUp } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, Target, RotateCcw, Calendar, TrendingUp, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { getRandomSuccessMessage, getRandomFailureMessage, getGreeting, getPersi
 import {
   toPersianDigits,
   minutesToHours,
+  minutesToHoursLabel,
   getRelativeDayLabel,
   getPersianWeekdayName,
   formatPersianDate,
@@ -32,6 +33,22 @@ import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import { SortableTaskList } from '@/components/plan/SortableTaskList';
 import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
+
+// ===== Motivational Quotes =====
+const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
+  { text: 'موفقیت، مجموع تلاش‌های کوچک است که هر روز تکرار می‌شوند.', author: 'رابرت کولیر' },
+  { text: 'دانش، قدرتی است که هیچ‌کس نمی‌تواند از تو بگیرد.' },
+  { text: 'هر لحظه که صرف یادگیری می‌شود، لحظه‌ای ارزشمند است.' },
+  { text: 'تنها راه انجام کار بزرگ، عاشق بودن به آن است.', author: 'استیو جابز' },
+  { text: 'اگر فکر می‌کنی می‌توانی یا نمی‌توانی، در هر دو حال حق با توست.', author: 'هنری فورد' },
+  { text: 'موفقیت نتیجه‌ی آمادگی، کار سخت و یادگیری از شکست است.', author: 'کالین پاول' },
+  { text: 'هر متخصصی روزی مبتدی بوده است.', author: 'هلن هیز' },
+  { text: 'سخت‌ترین قدم، همان قدم اول است. بعد از آن، بقیه‌ی راه راحت‌تر می‌شود.' },
+  { text: 'قدرت تمرکز مانند عضله است: هرچه بیشتر تمرین کنی، قوی‌تر می‌شود.' },
+  { text: 'شکست، پایان راه نیست؛ بلکه فرصتی برای شروع دوباره است.', author: 'رابرت کیوساکی' },
+  { text: 'آینده‌ی تو با تصمیم‌های امروزت ساخته می‌شود، نه با رویاهای فردات.' },
+  { text: 'دانش‌آموزی که از اشتباهاتش درس می‌گیرد، از دانش‌آموزی که هرگز اشتباه نمی‌کند جلوتر است.' },
+];
 
 // ===== Date Range Types & Constants =====
 type DateRangeMode = 'today' | 'week' | 'month' | 'custom';
@@ -48,15 +65,24 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
   return (
     <button
       onClick={onClick}
-      className={`btn-hover shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[44px] border ${
+      className={`shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ease-out min-h-[44px] border ${
         active
-          ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)] shadow-[0_4px_12px_-2px_var(--accent-glow)]'
-          : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]'
+          ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)] shadow-[0_4px_16px_-2px_var(--accent-glow)] scale-[1.02]'
+          : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)] hover:scale-[1.01] active:scale-[0.98]'
       }`}
     >
       {children}
     </button>
   );
+}
+
+// ===== Time-of-day greeting icon =====
+function getTimeOfDayGreeting(): { emoji: string; text: string } {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return { emoji: '🌅', text: 'صبح بخیر' };
+  if (hour >= 12 && hour < 17) return { emoji: '☀️', text: 'ظهر بخیر' };
+  if (hour >= 17 && hour < 21) return { emoji: '🌆', text: 'عصر بخیر' };
+  return { emoji: '🌙', text: 'شب بخیر' };
 }
 
 // ===== Helper: Generate all ISO dates in a range (inclusive) =====
@@ -118,9 +144,84 @@ function DateGroupHeader({ dateStr, taskCount, completedCount }: { dateStr: stri
   );
 }
 
-// ===== Main Component =====
+// ===== Motivational Quote Card =====
+function MotivationalQuoteCard() {
+  const [quoteIndex, setQuoteIndex] = useState<number>(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now.getTime() - start.getTime();
+    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return dayOfYear % MOTIVATIONAL_QUOTES.length;
+  });
+
+  const handleNext = useCallback(() => {
+    setQuoteIndex((prev) => (prev + 1) % MOTIVATIONAL_QUOTES.length);
+  }, []);
+
+  const quote = MOTIVATIONAL_QUOTES[quoteIndex];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+      className="relative rounded-[var(--radius-lg)] p-4 overflow-hidden border border-[var(--border)] card-hover mb-5"
+      style={{
+        backgroundColor: 'var(--bg-elevated)',
+      }}
+    >
+      {/* Accent-soft radial gradient overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse 60% 70% at 80% 40%, var(--accent-soft), transparent)',
+        }}
+      />
+
+      {/* Quote mark watermark */}
+      <span
+        className="absolute top-2 left-3 pointer-events-none select-none"
+        style={{
+          fontSize: '4.5rem',
+          lineHeight: 1,
+          color: 'var(--accent)',
+          opacity: 0.06,
+        }}
+        aria-hidden="true"
+      >
+        ❝
+      </span>
+
+      <div className="relative z-10">
+        <p
+          className="text-sm leading-7 text-[var(--foreground-muted)] italic mb-2"
+          style={{ fontFamily: 'inherit' }}
+        >
+          {quote.text}
+        </p>
+        <div className="flex items-center justify-between">
+          {quote.author ? (
+            <span className="text-xs text-[var(--foreground-subtle)] font-medium">
+              — {quote.author}
+            </span>
+          ) : (
+            <span />
+          )}
+          <button
+            onClick={handleNext}
+            className="flex items-center gap-1 text-[11px] text-[var(--foreground-subtle)] hover:text-[var(--accent)] transition-colors rounded-md px-2 py-1 hover:bg-[var(--accent-soft)]"
+          >
+            <span>نقل قول بعدی</span>
+            <ChevronLeft className="w-3 h-3 flip-rtl" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
-  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks } = useAppStore();
+  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak } = useAppStore();
   const studentId = useCurrentStudentId();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -214,9 +315,30 @@ export default function Dashboard() {
   const totalTaskCount = rangeTasks.length;
   const isMultiDay = dateRange.length > 1;
 
+  // ===== Today's progress stats =====
+  const todayISO = toISODate(new Date());
+  const todayTasks = useMemo(
+    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId),
+    [tasks, todayISO, studentId]
+  );
+  const todayCompletedCount = useMemo(
+    () => todayTasks.filter((t) => t.completed === true).length,
+    [todayTasks]
+  );
+  const todayTotalMinutes = useMemo(
+    () => todayTasks.reduce((sum, t) => sum + (t.completed === true ? (t.actualTimeMinutes ?? t.targetTimeMinutes ?? 0) : 0), 0),
+    [todayTasks]
+  );
+  const todayProgress = useMemo(() => {
+    const total = todayTasks.length;
+    if (total === 0) return 0;
+    return Math.round((todayCompletedCount / total) * 100);
+  }, [todayTasks, todayCompletedCount]);
+
   // ===== Labels =====
   const userName = user?.name ?? 'رفیق';
   const greeting = getGreeting(userName);
+  const timeOfDay = getTimeOfDayGreeting();
 
   const rangeLabel = useMemo(() => {
     const now = new Date();
@@ -247,8 +369,9 @@ export default function Dashboard() {
   // ===== Handlers =====
   const handleComplete = useCallback((taskId: string) => {
     updateTask(taskId, { completed: true });
+    incrementStreak();
     toast.success(getRandomSuccessMessage());
-  }, [updateTask]);
+  }, [updateTask, incrementStreak]);
 
   const handleSkip = useCallback((taskId: string) => {
     updateTask(taskId, { completed: false });
@@ -275,9 +398,10 @@ export default function Dashboard() {
 
   const handlePartialSave = useCallback((id: string, actualTime: number, actualTests: number) => {
     updateTask(id, { actualTimeMinutes: actualTime, actualTestCount: actualTests, completed: true });
+    incrementStreak();
     setSheetOpen(false);
     toast.success(getRandomSuccessMessage());
-  }, [updateTask]);
+  }, [updateTask, incrementStreak]);
 
   const handleEdit = useCallback((taskId: string) => {
     setEditingTaskId(taskId);
@@ -290,9 +414,117 @@ export default function Dashboard() {
     <div dir="rtl" className="max-w-2xl mx-auto px-4 md:px-0 py-6">
       {/* ===== Header ===== */}
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--foreground)]">{greeting}</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
+          <span className="text-2xl">{timeOfDay.emoji}</span>
+          <span>{greeting}</span>
+        </h1>
         <p className="text-xs text-[var(--foreground-muted)] mt-1">{rangeLabel}</p>
       </div>
+
+      {/* ===== Daily Progress Summary + Streak Cards ===== */}
+      {todayTasks.length > 0 && (
+        <div className="flex gap-3 mb-5">
+          {/* Daily Progress Summary Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="relative rounded-[var(--radius-lg)] p-4 overflow-hidden border border-[var(--border)] flex-1 min-w-0"
+            style={{
+              backgroundColor: 'var(--bg-elevated)',
+              boxShadow: '0 0 40px -12px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+            {/* Accent glow background accent */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'radial-gradient(ellipse 50% 80% at 20% 50%, var(--accent-soft), transparent)',
+              }}
+            />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[var(--accent)]" />
+                  <span className="text-sm font-bold text-[var(--foreground)]">خلاصه امروز</span>
+                </div>
+                <span className="text-xs font-medium text-[var(--accent)] bg-[var(--accent-soft)] px-2 py-0.5 rounded-md border border-[rgba(62,180,137,0.2)]">
+                  {toPersianDigits(todayProgress)}٪
+                </span>
+              </div>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Clock className="w-4 h-4 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)] font-bold tabular-nums">
+                    {todayTotalMinutes > 0 ? minutesToHoursLabel(todayTotalMinutes) : toPersianDigits(0) + ' دقیقه'}
+                  </span>
+                  <span className="text-[var(--foreground-muted)] text-xs">مطالعه</span>
+                </div>
+                <span className="w-px h-4 bg-[var(--border)]" />
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Target className="w-4 h-4 text-[var(--foreground-muted)]" />
+                  <span className="text-[var(--foreground)] font-bold tabular-nums">
+                    {toPersianDigits(todayCompletedCount)}
+                  </span>
+                  <span className="text-[var(--foreground-muted)] text-xs">از</span>
+                  <span className="text-[var(--foreground)] font-bold tabular-nums">
+                    {toPersianDigits(todayTasks.length)}
+                  </span>
+                  <span className="text-[var(--foreground-muted)] text-xs">تسک</span>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div className="h-1.5 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: 'var(--accent)' }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${todayProgress}%` }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ===== Streak Card ===== */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+            className="relative rounded-[var(--radius-lg)] p-4 overflow-hidden border border-[var(--border)] flex-shrink-0"
+            style={{
+              backgroundColor: streakDays > 0 ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
+              boxShadow: streakDays > 0
+                ? '0 0 32px -8px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.04)'
+                : '0 0 40px -12px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+            {streakDays > 0 && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(ellipse 60% 80% at 30% 50%, var(--gold-soft), transparent)',
+                }}
+              />
+            )}
+            <div className="relative z-10 flex flex-col items-center justify-center h-full min-w-[5.5rem] gap-1.5">
+              <span className="text-2xl leading-none">
+                {streakDays >= 7 ? '🔥🔥' : streakDays > 0 ? '🔥' : '💤'}
+              </span>
+              <span className="text-lg font-bold tabular-nums" style={{ color: streakDays > 0 ? 'var(--gold)' : 'var(--foreground-muted)' }}>
+                {toPersianDigits(streakDays)}
+              </span>
+              <span className="text-[10px] font-medium text-center leading-tight" style={{ color: streakDays > 0 ? 'var(--gold)' : 'var(--foreground-muted)' }}>
+                {streakDays >= 7
+                  ? 'هفته‌ای کامل!'
+                  : streakDays > 0
+                    ? 'روز متوالی'
+                    : 'شروع کن!'}
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* ===== Date Range Pills ===== */}
       <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar mb-4">
@@ -409,6 +641,9 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {/* ===== Motivational Quote Card ===== */}
+      <MotivationalQuoteCard />
+
       {/* ===== Task List (grouped by date or flat) ===== */}
       {tasksLoading ? (
         <div className="surface-1 rounded-2xl p-10 text-center text-sm text-[var(--foreground-muted)]">
@@ -440,11 +675,25 @@ export default function Dashboard() {
         </div>
       ) : isMultiDay ? (
         /* ===== Multi-day: grouped by date ===== */
-        <div className="space-y-2">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.06 } },
+          }}
+          className="space-y-2"
+        >
           {groupedTasks.map((group) => {
             const completedInGroup = group.tasks.filter((t) => t.completed === true).length;
             return (
-              <div key={group.date}>
+              <motion.div
+                key={group.date}
+                variants={{
+                  hidden: { opacity: 0, y: 12 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+                }}
+              >
                 <DateGroupHeader
                   dateStr={group.date}
                   taskCount={group.tasks.length}
@@ -460,22 +709,31 @@ export default function Dashboard() {
                   onReorder={reorderTasks}
                   onEdit={handleEdit}
                 />
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       ) : (
-        /* ===== Single day: same as before ===== */
-        <SortableTaskList
-          tasks={rangeTasks}
-          onComplete={handleComplete}
-          onSkip={handleSkip}
-          onDelete={handleDelete}
-          onSettings={handlePartialOpen}
-          onReset={handleReset}
-          onReorder={reorderTasks}
-          onEdit={handleEdit}
-        />
+        /* ===== Single day: stagger wrapper ===== */
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.05 } },
+          }}
+        >
+          <SortableTaskList
+            tasks={rangeTasks}
+            onComplete={handleComplete}
+            onSkip={handleSkip}
+            onDelete={handleDelete}
+            onSettings={handlePartialOpen}
+            onReset={handleReset}
+            onReorder={reorderTasks}
+            onEdit={handleEdit}
+          />
+        </motion.div>
       )}
 
       {/* ===== Partial completion sheet ===== */}

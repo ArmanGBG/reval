@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, Lock, Eye, EyeOff, LogIn, Loader2, Shield, GraduationCap, Building2, Crown, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button';
 
 // ===== Quick Access Buttons =====
 const QUICK_ACCOUNTS = [
-  { phone: '09121000000', label: 'سوپر ادمین', icon: Crown, color: 'text-gold', tint: 'bg-gold/10 border-gold/20' },
-  { phone: '09121111111', label: 'مدیر آموزشگاه', icon: Building2, color: 'text-mint', tint: 'bg-mint/10 border-mint/20' },
-  { phone: '09121234567', label: 'مشاور', icon: Shield, color: 'text-sky-400', tint: 'bg-sky-500/10 border-sky-500/20' },
-  { phone: '09131111111', label: 'دانش‌آموز', icon: GraduationCap, color: 'text-mint', tint: 'bg-mint/10 border-mint/20' },
+  { phone: '09121000000', label: 'سوپر ادمین', icon: Crown, color: 'text-gold', tint: 'bg-gold/10 border-gold/20', accentBorder: 'var(--gold)' },
+  { phone: '09121111111', label: 'مدیر آموزشگاه', icon: Building2, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
+  { phone: '09121234567', label: 'مشاور', icon: Shield, color: 'text-violet-400', tint: 'bg-violet-500/10 border-violet-500/20', accentBorder: '#8B5CF6' },
+  { phone: '09131111111', label: 'دانش‌آموز', icon: GraduationCap, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
 ];
 
 export default function LoginPage() {
@@ -24,6 +24,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [shaking, setShaking] = useState(false);
+
+  // Trigger shake animation when error changes
+  useEffect(() => {
+    if (error) {
+      setShaking(true);
+      const timer = setTimeout(() => setShaking(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const handleLogin = useCallback(async () => {
     if (!phone || !password) {
@@ -133,9 +143,17 @@ export default function LoginPage() {
         {/* ============ Login Card ============ */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="surface-1 edge-highlight rounded-[20px] p-6 md:p-7 shadow-xl shadow-black/40"
+          animate={{
+            opacity: 1,
+            y: 0,
+            x: shaking ? [0, -8, 8, -6, 6, -3, 3, 0] : 0,
+          }}
+          transition={{
+            opacity: { duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] },
+            y: { duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] },
+            x: { duration: 0.5, ease: 'easeInOut' },
+          }}
+          className={`surface-1 edge-highlight rounded-[20px] p-6 md:p-7 shadow-xl shadow-black/40 transition-colors duration-300 ${error ? 'border-red-500/40' : ''}`}
         >
           <div className="flex items-center gap-2 mb-6">
             <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
@@ -235,9 +253,12 @@ export default function LoginPage() {
                 <button
                   key={account.phone}
                   onClick={() => handleQuickLogin(account.phone)}
-                  className={`btn-hover flex items-center gap-2.5 p-3 rounded-[12px] border ${account.tint} hover:border-[var(--border-strong)] text-right`}
+                  className={`btn-hover flex items-center gap-2.5 p-3 pr-2.5 rounded-[12px] border ${account.tint} hover:border-[var(--border-strong)] text-right relative overflow-hidden`}
+                  style={{ borderRightWidth: '3px', borderRightColor: account.accentBorder }}
                 >
-                  <Icon className={`w-4 h-4 ${account.color} shrink-0`} />
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${account.tint}`}>
+                    <Icon className={`w-3.5 h-3.5 ${account.color}`} />
+                  </div>
                   <div className="min-w-0">
                     <p className="text-xs text-foreground font-medium">{account.label}</p>
                     <p className="text-[10px] text-muted-foreground/70 tabular-nums" dir="ltr">{account.phone}</p>

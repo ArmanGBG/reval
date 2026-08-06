@@ -136,6 +136,11 @@ interface AppState {
   addExam: (exam: Exam) => void;
   updateExam: (id: string, updates: Partial<Exam>) => void;
   deleteExam: (id: string) => void;
+
+  // ===== Daily Streak =====
+  streakDays: number;
+  streakLastDate: string | null;
+  incrementStreak: () => void;
 }
 
 // Build a StudentProfile from a real DB student row (from /api/students).
@@ -554,4 +559,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   deleteExam: (id) =>
     set((state) => ({ exams: state.exams.filter((e) => e.id !== id) })),
+
+  // ===== Daily Streak =====
+  streakDays: 0,
+  streakLastDate: null,
+  incrementStreak: () => {
+    const today = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const { streakLastDate, streakDays } = get();
+
+    // Same day — already counted
+    if (streakLastDate === today) return;
+
+    // Check if today is the next consecutive day
+    if (streakLastDate) {
+      const lastDate = new Date(streakLastDate);
+      const todayDate = new Date(today);
+      const diffMs = todayDate.getTime() - lastDate.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        // Next consecutive day — increment streak
+        set({ streakDays: streakDays + 1, streakLastDate: today });
+      } else {
+        // Gap in days — reset to 1
+        set({ streakDays: 1, streakLastDate: today });
+      }
+    } else {
+      // First ever completion — start at 1
+      set({ streakDays: 1, streakLastDate: today });
+    }
+  },
 }));

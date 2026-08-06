@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Plus, Search, Loader2, Crown, Layers, Sparkles, Award } from 'lucide-react';
+import { BookOpen, Plus, Search, X, Loader2, Crown, Layers, Sparkles, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { Subject } from '@/lib/subjects-types';
 import { SubjectDetail } from './SubjectDetail';
@@ -110,7 +110,11 @@ export default function SuperAdminSubjects() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn-hover glow-hover-gold inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[var(--gold)] text-zinc-950 font-bold text-sm"
+          className="btn-hover inline-flex items-center gap-2 h-11 px-5 rounded-xl font-bold text-sm text-zinc-950"
+          style={{
+            background: 'linear-gradient(135deg, var(--gold) 0%, #F5D544 100%)',
+            boxShadow: '0 8px 24px -6px var(--gold-glow)',
+          }}
         >
           <Plus className="w-4 h-4" />
           افزودن درس جدید
@@ -153,12 +157,20 @@ export default function SuperAdminSubjects() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="جستجوی درس..."
-            className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-xl pr-10 pl-3 h-10 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--gold)]/40"
+            className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-xl pr-10 pl-9 h-10 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--gold)]/40 transition-colors"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center bg-[var(--bg-overlay)] text-[var(--foreground-subtle)] hover:text-[var(--foreground)] hover:bg-[var(--border-strong)] transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
         {/* Konkur filter */}
-        <div className="flex gap-1 bg-[var(--bg-overlay)] rounded-xl p-1">
+        <div className="relative flex gap-1 bg-[var(--bg-overlay)] rounded-xl p-1">
           {([
             { id: 'all', label: 'همه' },
             { id: 'konkur', label: 'کنکوری' },
@@ -167,13 +179,20 @@ export default function SuperAdminSubjects() {
             <button
               key={opt.id}
               onClick={() => setFilterKonkur(opt.id)}
-              className={`btn-hover px-3 h-8 rounded-lg text-xs font-medium ${
+              className={`relative px-3 h-8 rounded-lg text-xs font-medium transition-colors duration-150 ${
                 filterKonkur === opt.id
-                  ? 'bg-[var(--gold)] text-zinc-950'
+                  ? 'text-zinc-950'
                   : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
               }`}
             >
-              {opt.label}
+              {filterKonkur === opt.id && (
+                <motion.span
+                  layoutId="konkur-filter-pill"
+                  className="absolute inset-0 rounded-lg bg-[var(--gold)]"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative">{opt.label}</span>
             </button>
           ))}
         </div>

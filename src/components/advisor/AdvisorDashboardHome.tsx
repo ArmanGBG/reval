@@ -93,8 +93,8 @@ export function AdvisorDashboardHome() {
       {/* Middle row: status distribution (col-span-4) + study hours chart (col-span-8) — desktop only split; mobile stacks */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
         {/* Status distribution — mobile: horizontal bars, desktop: stacked bars */}
-        <Card className="md:col-span-4">
-          <SectionHeader icon={<Activity className="w-4 h-4" />} title="توزیع وضعیت دانش‌آموزان" />
+        <Card className="md:col-span-4" style={{ borderRight: '3px solid var(--accent)' }}>
+          <SectionHeader icon={<Activity className="w-4.5 h-4.5" />} title="توزیع وضعیت دانش‌آموزان" />
           <div className="space-y-2.5">
             {statusBars.map(({ status, count, config, pct }) => (
               <div key={status}>
@@ -122,9 +122,9 @@ export function AdvisorDashboardHome() {
         </Card>
 
         {/* Study hours chart — full width on mobile, col-span-8 on desktop */}
-        <Card className="md:col-span-8">
+        <Card className="md:col-span-8" style={{ borderRight: '3px solid var(--warning)' }}>
           <SectionHeader
-            icon={<Clock className="w-4 h-4" />}
+            icon={<Clock className="w-4.5 h-4.5" />}
             title="ساعت مطالعه هفتگی"
             action={<span className="text-[11px] text-[var(--foreground-muted)]">هدف: <span className="text-[var(--foreground)] font-medium">۵۰ ساعت</span></span>}
           />
@@ -149,13 +149,24 @@ export function AdvisorDashboardHome() {
       </div>
 
       {/* Bottom row: red flags — full width, inner 3-col grid on desktop */}
-      <Card className="border-[var(--danger)]/20">
+      <Card
+        className="border-[var(--danger)]/25"
+        style={{
+          borderRight: '3px solid var(--danger)',
+          boxShadow: activeRisks.length > 0
+            ? '0 0 32px -8px rgba(239, 68, 68, 0.2), inset 0 0 32px -16px rgba(239, 68, 68, 0.04)'
+            : 'none',
+        }}
+      >
         <SectionHeader
-          icon={<Flame className="w-4 h-4" />}
+          icon={<Flame className="w-4.5 h-4.5" />}
           title="پرچم‌های قرمز"
           accent="var(--danger)"
           action={
-            <span className="text-[11px] text-[var(--danger)] font-medium px-2.5 py-1 rounded-full bg-[var(--danger)]/10">
+            <span className="flex items-center gap-1.5 text-[11px] text-[var(--danger)] font-medium px-2.5 py-1 rounded-full bg-[var(--danger)]/10">
+              {activeRisks.length > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)] animate-pulse" />
+              )}
               {toPersianDigits(activeRisks.length)} مورد
             </span>
           }

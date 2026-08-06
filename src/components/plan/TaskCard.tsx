@@ -52,7 +52,14 @@ export default function TaskCard({
     ? 'before:bg-[var(--accent)] before:w-[3px]'
     : isSkipped
       ? 'before:bg-[var(--danger)] before:w-[3px]'
-      : 'before:bg-transparent before:w-0';
+      : 'before:bg-[var(--foreground-subtle)] before:w-[3px] before:opacity-30';
+
+  // Status dot color
+  const statusDotColor = isCompleted
+    ? 'bg-[var(--accent)] shadow-[0_0_6px_var(--accent-glow)]'
+    : isSkipped
+      ? 'bg-[var(--danger)] shadow-[0_0_6px_rgba(239,68,68,0.3)]'
+      : 'bg-[var(--warning)] shadow-[0_0_6px_var(--gold-glow)]';
 
   return (
     <motion.div
@@ -64,6 +71,7 @@ export default function TaskCard({
       layout
       className={`surface-1 edge-highlight card-hover relative overflow-hidden rounded-[var(--radius-lg)] p-4 md:p-5
         before:absolute before:right-0 before:top-0 before:bottom-0 before:transition-all before:duration-300
+        border border-[var(--border)] hover:border-[var(--accent)]/20 hover:shadow-[0_0_20px_-8px_var(--accent-glow)]
         ${accentBorder}
         ${isCompleted || isSkipped ? 'opacity-60' : ''}
       `}
@@ -86,6 +94,10 @@ export default function TaskCard({
           <div className="flex-1 min-w-0">
             {/* Subject Row */}
             <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {/* Status dot indicator */}
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 transition-all duration-300 ${statusDotColor}`}
+              />
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white/5"
                 style={{ backgroundColor: task.subjectColor }}

@@ -217,6 +217,28 @@ async function main() {
     ),
   );
   const subjectByName = new Map(taskSubjects.map((subject) => [subject.name, subject]));
+
+  // ===== 6b. Ensure ادبیات has GradeSubject rows (it's created without them) =====
+  const adabiyat = subjectByName.get('ادبیات');
+  if (adabiyat) {
+    const adabiyatGrades = [
+      { grade: 'دهم', major: 'تجربی', sortOrder: 1 },
+      { grade: 'یازدهم', major: 'تجربی', sortOrder: 2 },
+      { grade: 'دوازدهم', major: 'تجربی', sortOrder: 3 },
+      { grade: 'دهم', major: 'ریاضی', sortOrder: 4 },
+      { grade: 'یازدهم', major: 'ریاضی', sortOrder: 5 },
+      { grade: 'دوازدهم', major: 'ریاضی', sortOrder: 6 },
+    ];
+    for (const g of adabiyatGrades) {
+      await prisma.gradeSubject.upsert({
+        where: { subjectId_grade_major: { subjectId: adabiyat.id, grade: g.grade, major: g.major } },
+        update: {},
+        create: { subjectId: adabiyat.id, grade: g.grade, major: g.major, sortOrder: g.sortOrder },
+      });
+    }
+    console.log('✅ ادبیات GradeSubject rows:', adabiyatGrades.length);
+  }
+
   const tasksData = [
     { studentId: student1.id, subject: 'ریاضی', subjectColor: '#3EB489', topic: 'حد و پیوستگی', fieldType: 'کنکور', activityTypes: '["مطالعه","تست آموزشی"]', targetTimeMinutes: 90, targetTestCount: 30, createdBy: 'advisor', createdById: advisor1.id, order: 1 },
     { studentId: student1.id, subject: 'فیزیک', subjectColor: '#F59E0B', topic: 'الکتریسیته ساکن', fieldType: 'کنکور', activityTypes: '["مطالعه","تست سنجشی"]', targetTimeMinutes: 60, targetTestCount: 20, createdBy: 'advisor', createdById: advisor1.id, order: 2 },

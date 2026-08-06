@@ -132,13 +132,21 @@ export default function SidebarNav() {
               <li key={item.view}>
                 <button
                   onClick={() => setCurrentView(item.view)}
-                  className={`nav-item-hover group relative w-full flex items-center gap-3 rounded-xl px-3 h-11 ${
+                  className={`group relative w-full flex items-center gap-3 rounded-xl px-3 h-11 ${
                     isActive
-                      ? `${accentSoftBg} ${accentText} font-semibold`
+                      ? `${accentText} font-semibold`
                       : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
-                  } ${collapsed ? 'justify-center' : ''}`}
+                  } ${collapsed ? 'justify-center' : ''} nav-item-hover`}
                   title={collapsed ? item.label : undefined}
                 >
+                  {/* Sliding background pill */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="sidebar-pill"
+                      className={`absolute inset-0 rounded-xl ${accentSoftBg}`}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
                   {/* Active indicator bar (right side in RTL) */}
                   {isActive && (
                     <motion.span
@@ -147,8 +155,8 @@ export default function SidebarNav() {
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}
-                  <Icon className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? '' : 'opacity-80'}`} />
-                  {!collapsed && <span className="text-sm">{item.label}</span>}
+                  <Icon className={`relative w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? '' : 'opacity-80'}`} />
+                  {!collapsed && <span className="relative text-sm">{item.label}</span>}
                 </button>
               </li>
             );
