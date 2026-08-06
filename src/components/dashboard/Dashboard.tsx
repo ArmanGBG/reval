@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, Target, RotateCcw, Calendar, TrendingUp, ChevronLeft, Plus } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, Target, RotateCcw, Calendar, TrendingUp, ChevronLeft, Plus, Focus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -35,6 +35,7 @@ import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
 import { useCelebration } from '@/hooks/use-celebration';
 import UpcomingExamsCard from './UpcomingExamsCard';
+import WeeklyReviewCard from './WeeklyReviewCard';
 
 // ===== Motivational Quotes =====
 const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
@@ -219,6 +220,24 @@ function MotivationalQuoteCard() {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// ===== Mobile Focus Mode Button =====
+// Touch-friendly button that toggles Focus Mode on mobile (where the F
+// keyboard shortcut isn't available). Renders only on small screens.
+function MobileFocusButton() {
+  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
+  return (
+    <button
+      onClick={toggleFocusMode}
+      className="md:hidden shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-bold border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)] active:scale-95 transition-all"
+      aria-label="حالت تمرکز"
+      title="حالت تمرکز (پنهان کردن منو)"
+    >
+      <Focus className="w-3.5 h-3.5" />
+      تمرکز
+    </button>
   );
 }
 
@@ -418,13 +437,20 @@ export default function Dashboard() {
   return (
     <div dir="rtl" className="max-w-2xl mx-auto px-4 md:px-0 py-6">
       {/* ===== Header ===== */}
-      <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-          <span className="text-2xl">{timeOfDay.emoji}</span>
-          <span>{greeting}</span>
-        </h1>
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">{rangeLabel}</p>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl md:text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
+            <span className="text-2xl">{timeOfDay.emoji}</span>
+            <span>{greeting}</span>
+          </h1>
+          <p className="text-xs text-[var(--foreground-muted)] mt-1">{rangeLabel}</p>
+        </div>
+        {/* Mobile Focus Mode button — touch-friendly, only on mobile */}
+        <MobileFocusButton />
       </div>
+
+      {/* ===== Weekly Review Card (dismissible, once per week) ===== */}
+      <WeeklyReviewCard tasks={tasks} streakDays={streakDays} />
 
       {/* ===== Daily Progress Summary + Streak Cards ===== */}
       {todayTasks.length > 0 && (
@@ -513,12 +539,31 @@ export default function Dashboard() {
               />
             )}
             <div className="relative z-10 flex flex-col items-center justify-center h-full min-w-[5.5rem] gap-1.5">
-              <span className="text-2xl leading-none">
+              <motion.span
+                className="text-2xl leading-none"
+                animate={
+                  streakDays > 0
+                    ? { scale: [1, 1.12, 1], filter: ['drop-shadow(0 0 0px var(--gold-glow))', 'drop-shadow(0 0 6px var(--gold-glow))', 'drop-shadow(0 0 0px var(--gold-glow))'] }
+                    : {}
+                }
+                transition={
+                  streakDays > 0
+                    ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' }
+                    : {}
+                }
+              >
                 {streakDays >= 7 ? '🔥🔥' : streakDays > 0 ? '🔥' : '💤'}
-              </span>
-              <span className="text-lg font-bold tabular-nums" style={{ color: streakDays > 0 ? 'var(--gold)' : 'var(--foreground-muted)' }}>
+              </motion.span>
+              <motion.span
+                key={streakDays}
+                initial={streakDays > 0 ? { scale: 1.4, opacity: 0.5 } : false}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                className="text-lg font-bold tabular-nums"
+                style={{ color: streakDays > 0 ? 'var(--gold)' : 'var(--foreground-muted)' }}
+              >
                 {toPersianDigits(streakDays)}
-              </span>
+              </motion.span>
               <span className="text-[10px] font-medium text-center leading-tight" style={{ color: streakDays > 0 ? 'var(--gold)' : 'var(--foreground-muted)' }}>
                 {streakDays >= 7
                   ? 'هفته‌ای کامل!'
@@ -598,11 +643,23 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="surface-1 rounded-[var(--radius-lg)] p-3 mb-5 border border-[var(--border)]"
+          className="rounded-[var(--radius-lg)] p-3 mb-5 border border-[var(--border)] relative overflow-hidden"
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            boxShadow: '0 0 32px -16px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.03)',
+          }}
         >
-          <div className="flex items-center justify-around gap-2 text-xs">
+          {/* Subtle accent gradient backdrop */}
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 50% 90% at 50% 100%, var(--accent-soft), transparent)',
+            }}
+          />
+          <div className="relative z-10 flex items-center justify-around gap-2 text-xs">
             {totalTaskCount > 0 && (
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-1 px-2 py-1 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]">
                 <span className="text-[var(--foreground)] font-bold tabular-nums text-sm">
                   {toPersianDigits(totalTaskCount)}
                 </span>
@@ -612,7 +669,7 @@ export default function Dashboard() {
             {totalHours > 0 && (
               <>
                 <span className="w-px h-8 bg-[var(--border)]" />
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1 px-2 py-1 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]">
                   <span className="flex items-center gap-1 text-[var(--foreground)] font-bold tabular-nums text-sm">
                     <Clock className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
                     {toPersianDigits(totalHours)}
@@ -624,7 +681,7 @@ export default function Dashboard() {
             {totalTests > 0 && (
               <>
                 <span className="w-px h-8 bg-[var(--border)]" />
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1 px-2 py-1 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]">
                   <span className="flex items-center gap-1 text-[var(--foreground)] font-bold tabular-nums text-sm">
                     <Target className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
                     {toPersianDigits(totalTests)}
@@ -636,7 +693,7 @@ export default function Dashboard() {
             {totalTaskCount > 0 && (
               <>
                 <span className="w-px h-8 bg-[var(--border)]" />
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1 px-2 py-1 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.03)]">
                   <span className="flex items-center gap-1 text-[var(--foreground)] font-bold tabular-nums text-sm">
                     <TrendingUp className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
                     {toPersianDigits(completionRate)}٪

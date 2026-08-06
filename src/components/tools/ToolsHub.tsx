@@ -86,6 +86,21 @@ export default function ToolsHub() {
     setCurrentTool(null);
   }, [setCurrentTool]);
 
+  // Escape closes the modal (the global keyboard-shortcuts hook ignores
+  // Escape while focus is inside the modal — handle it locally instead)
+  useEffect(() => {
+    if (!activeTool) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [activeTool, handleClose]);
+
   const activeToolObj = TOOLS.find((t) => t.id === activeTool) || null;
 
   return (

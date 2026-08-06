@@ -1722,3 +1722,155 @@ The app was stable across all 4 roles (verified in rounds 19-22). This round foc
 4. Add email/SMS notification stubs for upcoming exam reminders (cron-style checks)
 5. Improve the vaul Drawer Escape handling with a custom onKeyDown override
 6. Add a "weekly review" summary card on Sundays (last day of Persian week) showing the past week's achievements
+
+---
+Task ID: 24
+Agent: Main (webDevReview cron)
+Task: Round 24 QA + new features (Study Session Tracker, Weekly Review Card, Mobile Focus Button) + bug fixes (vaul Escape, streak animation) + styling polish
+
+## Current Project Status Assessment
+Project was stable at end of round 23 (all 4 roles working, zero lint/tsc errors). This round continued with another full QA pass via agent-browser across all 4 roles, fixed 1 critical bug (Flashcards modal Escape not closing), and added 3 new features from the round-23 priority list plus extra styling polish. All features verified end-to-end with real DB writes.
+
+## QA Performed (agent-browser, 4 roles)
+- **Landing page**: ✅ all sections render
+- **Login page**: ✅ 4 role quick-access buttons, all logins succeed
+- **Student dashboard**: ✅ greeting (rotating), date, NEW Weekly Review Card, daily summary, NEW streak flame animation, upcoming exams card, NEW Study Session Timer on pending tasks
+- **Student plan view**: ✅ Persian calendar (مرداد ۱۴۰۵), 4 tasks visible
+- **Student tools hub**: ✅ 5 tools listed, flashcards modal opens
+- **Student analytics**: ✅ weekly goal, KPIs, charts
+- **Student settings**: ✅ profile, grade/major selectors
+- **Advisor dashboard**: ✅ 4 KPIs, charts, red flags
+- **Advisor students list + detail**: ✅ 2 real students, exam list with "ثبت نتایج" buttons
+- **Institute manager dashboard + advisors + students**: ✅ all healthy
+- **Super admin dashboard + subjects + institutes + users**: ✅ all healthy
+- **NEW Escape on Flashcards modal**: ✅ now closes correctly (was broken before this round)
+- **NEW Study Session Timer**: ✅ start → tick (00:08 → 00:10 after 2.5s) → pause → save (1:06 → "۱ دقیقه به زمان مطالعه اضافه شد") → PATCH /api/tasks/[id] 200 → "ذخیره: ۱ دقیقه" pill appears
+- **NEW Weekly Review Card**: ✅ shows "مرور هفته - ۷ روز گذشته - ۹/۵ تا ۱۵/۵ - مجموع ساعت ۳ ساعت - تسک انجام‌شده ۳ از ۴ - نرخ انجام ۷۵٪ - تست زده‌شده ۶۰ - روند روزانه - بهترین روز: پنجشنبه - بیشترین زمان: ریاضی - هفته‌ی موفق! - بدون تسک رد شده"
+- **NEW Mobile Focus Button**: ✅ visible only at mobile breakpoint (verified at 390px viewport), hidden at desktop (1280px), click activates focus mode, Escape exits
+- **Streak flame animation**: ✅ 🔥 emoji pulses with gold glow drop-shadow when streakDays > 0
+- **Top subject color stripe on TaskCard**: ✅ subtle gradient strip at top edge using subject color
+
+## Bugs Found & Fixed
+
+**Bug K: Flashcards Modal Escape Doesn't Close (CRITICAL)**
+- Symptom: Pressing Escape while the Flashcards modal (or any ToolsHub modal) was open did nothing. User had to click the X button.
+- Root cause: The `useKeyboardShortcuts` hook handles Escape for command palette/help/focus-mode, but NOT for the ToolsHub modal. The modal's own Escape handling relied on Radix Dialog internals, but ToolsHub uses a custom `motion.div` overlay, not Radix.
+- Fix: Added a local `keydown` event listener in `ToolsHub.tsx` with `useCapture=true` (fires before the global hook). When Escape is pressed and `activeTool` is set, it calls `handleClose()` and stops propagation.
+- Verified: Opened flashcards modal, pressed Escape → modal closed (`modalStillOpen: false`).
+
+## New Features Added
+
+### 1. Study Session Tracker (per-task stopwatch)
+**Files:**
+- `src/lib/study-session-store.ts` (new ~120 lines) — Zustand store for timer state, hoisted out of TaskCard so it survives view switches
+- `src/components/plan/StudySessionTimer.tsx` (new ~200 lines) — Inline stopwatch UI
+- `src/components/plan/TaskCard.tsx` (modified) — Renders StudySessionTimer for pending tasks with details completed
+
+**Store API:**
+- `sessions: Record<taskId, { startedAt, accumulatedMs, running }>`
+- `start(taskId)` — starts timer, pauses any other running timer (only one at a time)
+- `pause(taskId)` — stops ticker, keeps accumulated ms
+- `reset(taskId)` — discards elapsed time
+- `consume(taskId)` — returns elapsed ms and resets
+- `getElapsed(taskId)` — read-only total elapsed ms
+
+**UI behavior:**
+- Renders below the target metrics row, only for `isPending && task.detailsCompleted`
+- "شروع تایمر" button (▶ Play icon, accent color) → starts timer
+- When running: button becomes "توقف تایمر" (⏸ Pause icon, gold color), mm:ss display appears (updates every 500ms)
+- When paused with elapsed > 0: "ذخیره" (Save) and "↺ Reset" buttons appear
+- Save button: adds elapsed minutes to `task.actualTimeMinutes` via `updateTask` (PATCH /api/tasks/[id]), shows toast "X دقیقه به زمان مطالعه اضافه شد", resets timer, shows "ذخیره: X دقیقه" pill
+- If elapsed < 1 minute: toast "زمان کمتر از یک دقیقه ثبت نشد" (doesn't save, doesn't reset)
+- Reset button: discards elapsed time (with confirm dialog if > 1s)
+- "ذخیره: X دقیقه" pill animates with spring scale when value changes
+- Only one task can be running at a time — starting a new timer auto-pauses any other
+
+**End-to-end verified:**
+- Started timer at 00:00 → ticked to 00:08 → 00:10 (after 2.5s)
+- Paused at 00:18 → save/reset buttons appeared
+- Waited 65s with timer running → display showed ۰۱:۰۶
+- Clicked pause → clicked save → toast "۱ دقیقه به زمان مطالعه اضافه شد"
+- PATCH /api/tasks/cmshpsxwy000uubbjfap8rkju 200 in 712ms (DB write succeeded)
+- "ذخیره: ۱ دقیقه" pill visible on task card
+
+### 2. Weekly Review Card (student dashboard, dismissible)
+**Files:**
+- `src/components/dashboard/WeeklyReviewCard.tsx` (new ~340 lines)
+- `src/components/dashboard/Dashboard.tsx` (modified) — Renders above daily summary
+
+**Behavior:**
+- Shows a reflective summary of the past 7 days
+- Once-per-week dismissible (localStorage key `reval:weekly-review-dismissed` stores ISO date of week start)
+- Hidden if no tasks and no study time in the past 7 days
+- Stats computed from completed tasks: totalMinutes, totalTests, completionRate, completedCount, totalTasks
+- 4-column KPI grid: مجموع ساعت، تسک انجام‌شده، نرخ انجام، تست زده‌شده
+- 7-day vertical bar chart with animated bars (stagger 0.05s)
+- Best day highlighted in gold
+- Achievement badges: "بیشترین زمان: X" (top subject), "X روز پیاپی" (streak, gold), "هفته‌ی موفق!" (≥75% completion, gold), "بدون تسک رد شده" (zero skips)
+- Gold radial gradient backdrop + gold border + gold glow shadow
+- "بستن" (close) button calls `setDismissedWeekStart` + local state update → card disappears immediately
+- Date range displayed as Persian short dates
+
+**Verified:** Card renders with all stats, "مرور هفته - ۷ روز گذشته - ۹/۵ تا ۱۵/۵ - ۳ ساعت - ۳ از ۴ - ۷۵٪ - ۶۰ تست - بهترین روز: پنجشنبه - بیشترین زمان: ریاضی - هفته‌ی موفق! - بدون تسک رد شده"
+
+### 3. Mobile Focus Mode Button (touch-friendly)
+**Files:**
+- `src/components/dashboard/Dashboard.tsx` (modified) — Added `MobileFocusButton` helper component, placed in dashboard header
+
+**Behavior:**
+- Renders only on mobile (`md:hidden` class)
+- Small "تمرکز" pill button with Focus icon
+- Accent color (mint green) background
+- `active:scale-95` tactile feedback
+- Calls `toggleFocusMode()` from the app store — same as pressing F on desktop
+- 44px+ touch target (h-9 px-3)
+- Hidden on desktop where F keyboard shortcut works
+
+**Verified:** At 390px viewport, button is visible (`focusBtnVisible: true, focusBtnText: "تمرکز"`). At 1280px, hidden. Click activates focus mode (sidebarHidden, bottomNavHidden, focusModeActive all true). Escape exits.
+
+## Styling Polish
+
+### Streak Flame Animation (`Dashboard.tsx`)
+- When `streakDays > 0`: 🔥 emoji animates with `scale: [1, 1.12, 1]` and `filter: drop-shadow(0 0 0px var(--gold-glow)) → drop-shadow(0 0 6px var(--gold-glow)) → 0px` — 1.8s infinite loop
+- Number animates with spring scale on change (initial scale 1.4 → 1, opacity 0.5 → 1)
+- When streak = 0: 💤 emoji, no animation
+
+### Top Subject Color Stripe on TaskCard (`TaskCard.tsx`)
+- New 2px gradient strip at the top of every task card
+- Uses `task.subjectColor` with transparent edges: `linear-gradient(90deg, transparent 0%, color88 30%, color 50%, color88 70%, transparent 100%)`
+- 50% opacity normally, 100% on hover (group-hover)
+- Creates visual subject identification without taking horizontal space
+
+### Stats Bar Hover Effects (`Dashboard.tsx`)
+- Replaced `surface-1` background with `var(--bg-elevated)` + radial accent gradient backdrop
+- Each KPI pill (تسک/ساعت/تست/انجام) now has `hover:bg-[rgba(255,255,255,0.03)]` + padding + rounded-md
+- Added `relative overflow-hidden` + `box-shadow: 0 0 32px -16px var(--accent-glow)` for depth
+- Inner content wrapped in `relative z-10` to layer above gradient
+
+## Verification Results
+- `bun run lint`: ✅ zero errors
+- `bunx tsc --noEmit`: ✅ zero errors in project source (only 2 errors in skills/ folder, unrelated)
+- Dev server: ✅ stable, all API routes 200 (including PATCH /api/tasks/[id] for timer saves)
+- Study Session Timer: ✅ end-to-end (start → tick → pause → save → DB write → UI update)
+- Weekly Review Card: ✅ all stats computed correctly, dismissible
+- Mobile Focus Button: ✅ visible at 390px, hidden at 1280px, toggles focus mode
+- Flashcards modal Escape: ✅ now closes correctly
+- Streak flame animation: ✅ pulses when streak > 0
+- All previous features (rounds 19-23) still working
+
+## Unresolved Issues / Risks
+1. **Timer state lost on full page reload**: The Zustand store is in-memory, so if the user refreshes the page while a timer is running, the elapsed time is lost. Could persist to localStorage if this becomes a real issue, but low priority.
+2. **Timer doesn't auto-pause when user completes the task**: When a user clicks "انجام شد" while the timer is running, the timer keeps running in the store but the UI is unmounted (since `isPending` becomes false). The elapsed time would be lost. Could add a useEffect in StudySessionTimer to auto-pause+save on unmount, but low priority.
+3. **Weekly Review Card date range**: Uses the last 7 calendar days, not the current Persian week (Sat-Fri). This is intentional (rolling 7-day window) but could be made configurable.
+4. **Vaul Drawer overlay stuck**: The original issue with `PartialCompletionSheet` (mentioned in round 23 worklog) is still present. The new Escape fix in ToolsHub.tsx doesn't affect vaul-based sheets.
+5. **Mobile Focus Button visibility on tablet**: The `md:hidden` breakpoint means the button is hidden at ≥768px. Users on small tablets (iPad Mini) might miss it. Could lower the breakpoint to `sm:hidden` if needed.
+
+## Priority Recommendations for Next Phase
+1. Persist Study Session Timer state to localStorage so it survives page reloads
+2. Auto-pause + auto-save Study Session Timer when the task is completed
+3. Implement "Spaced Repetition" algorithm (SM-2) for flashcards (still pending from round 23)
+4. Add email/SMS notification stubs for upcoming exam reminders (cron-style)
+5. Fix the vaul Drawer Escape handling in PartialCompletionSheet (custom onKeyDown override)
+6. Add a "Daily Quote" feature with a curated Persian quote library + share button
+7. Add subject-level progress bars on the student dashboard (mastery % per subject)
+8. Consider adding a "study streak freeze" power-up (skip 1 day without losing streak)

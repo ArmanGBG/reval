@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Task } from '@/lib/types';
 import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constants/feedbackMessages';
 import { toPersianDigits, minutesToHoursLabel } from '@/lib/persian-date';
+import StudySessionTimer from './StudySessionTimer';
 
 // ===== Animation Variants =====
 const cardVariants: Variants = {
@@ -77,6 +78,14 @@ export default function TaskCard({
         ${isCompleted || isSkipped ? 'opacity-60 hover:opacity-90' : ''}
       `}
     >
+      {/* Top subject color stripe (subtle accent strip at the very top) */}
+      <div
+        aria-hidden
+        className="absolute top-0 left-0 right-0 h-[2px] opacity-50 group-hover:opacity-100 transition-opacity"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${task.subjectColor}88 30%, ${task.subjectColor} 50%, ${task.subjectColor}88 70%, transparent 100%)`,
+        }}
+      />
       {/* Subtle accent gradient overlay on hover (top-right) */}
       {!isCompleted && !isSkipped && (
         <div
@@ -186,6 +195,11 @@ export default function TaskCard({
                   </span>
                 )}
               </div>
+            )}
+
+            {/* Study Session Timer — only for pending tasks with details completed */}
+            {isPending && task.detailsCompleted && (
+              <StudySessionTimer taskId={task.id} savedMinutes={task.actualTimeMinutes} />
             )}
           </div>
         </div>
