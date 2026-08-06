@@ -21,6 +21,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
+import WeeklyGoalCard from '@/components/analytics/WeeklyGoalCard';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
 const FIELD_FILTERS = ['همه', 'کنکوری', 'نهایی'] as const;
@@ -265,6 +266,16 @@ export default function AnalyticsView() {
 
         {view === 'نمای کلی' && (
           <>
+            {/* Weekly Study Goal */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="mb-6"
+            >
+              <WeeklyGoalCard />
+            </motion.div>
+
             {/* Filters */}
             <div className="space-y-3 mb-6">
               <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -364,6 +375,16 @@ export default function AnalyticsView() {
 
         {view === 'نمای کلی' && (
           <>
+            {/* Weekly Study Goal */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="mb-8"
+            >
+              <WeeklyGoalCard />
+            </motion.div>
+
             {/* Field + Time filters */}
             <div className="flex items-center justify-between gap-2 mb-8 flex-wrap">
               <div className="flex gap-2">

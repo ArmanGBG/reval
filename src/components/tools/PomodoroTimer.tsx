@@ -185,6 +185,16 @@ export default function PomodoroTimer() {
     setIsRunning((r) => !r);
   }, []);
 
+  // ----- Global Space-to-toggle listener -----
+  // The useKeyboardShortcuts hook dispatches a 'pomodoro-toggle' custom
+  // event when the user presses Space on the Tools page with Pomodoro open.
+  // We listen here only while mounted, and reuse toggleRunning (stable ref).
+  useEffect(() => {
+    const handler = () => toggleRunning();
+    window.addEventListener('pomodoro-toggle', handler);
+    return () => window.removeEventListener('pomodoro-toggle', handler);
+  }, [toggleRunning]);
+
   const handleReset = useCallback(() => {
     setTimeLeft(DURATIONS[mode]);
     setIsRunning(false);

@@ -33,6 +33,7 @@ import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import { SortableTaskList } from '@/components/plan/SortableTaskList';
 import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
+import { useCelebration } from '@/hooks/use-celebration';
 
 // ===== Motivational Quotes =====
 const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
@@ -223,6 +224,7 @@ function MotivationalQuoteCard() {
 export default function Dashboard() {
   const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak, setCurrentView } = useAppStore();
   const studentId = useCurrentStudentId();
+  const { celebrate } = useCelebration();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -371,7 +373,8 @@ export default function Dashboard() {
     updateTask(taskId, { completed: true });
     incrementStreak();
     toast.success(getRandomSuccessMessage());
-  }, [updateTask, incrementStreak]);
+    celebrate('big');
+  }, [updateTask, incrementStreak, celebrate]);
 
   const handleSkip = useCallback((taskId: string) => {
     updateTask(taskId, { completed: false });
@@ -401,7 +404,8 @@ export default function Dashboard() {
     incrementStreak();
     setSheetOpen(false);
     toast.success(getRandomSuccessMessage());
-  }, [updateTask, incrementStreak]);
+    celebrate('small');
+  }, [updateTask, incrementStreak, celebrate]);
 
   const handleEdit = useCallback((taskId: string) => {
     setEditingTaskId(taskId);

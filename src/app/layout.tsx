@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 const vazirmatn = Vazirmatn({
   variable: "--font-vazirmatn",
@@ -43,23 +43,7 @@ export default function RootLayout({
         }}
       >
         {children}
-        <Toaster
-          position="top-center"
-          dir="rtl"
-          toastOptions={{
-            style: {
-              background: "var(--bg-overlay)",
-              color: "var(--foreground)",
-              border: "1px solid var(--border-strong)",
-              direction: "rtl",
-              fontFamily: "var(--font-vazirmatn)",
-              borderRadius: "12px",
-              fontSize: "14px",
-              boxShadow: "0 12px 32px -10px rgba(0,0,0,0.6)",
-            },
-          }}
-          richColors
-        />
+        <Toaster />
       </body>
     </html>
   );

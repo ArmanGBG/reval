@@ -141,6 +141,13 @@ interface AppState {
   streakDays: number;
   streakLastDate: string | null;
   incrementStreak: () => void;
+
+  // ===== Weekly Study Goal =====
+  // The student's target study hours per Persian week (Sat–Fri).
+  // Default is 20 hours. The history is computed dynamically from
+  // `tasks` (no need to persist a separate history map).
+  weeklyGoalHours: number;
+  setWeeklyGoalHours: (hours: number) => void;
 }
 
 // Build a StudentProfile from a real DB student row (from /api/students).
@@ -592,5 +599,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       // First ever completion — start at 1
       set({ streakDays: 1, streakLastDate: today });
     }
+  },
+
+  // ===== Weekly Study Goal =====
+  weeklyGoalHours: 20,
+  setWeeklyGoalHours: (hours) => {
+    // Clamp to a sensible range (10–40 hours) and round to integers.
+    const clamped = Math.min(40, Math.max(10, Math.round(hours)));
+    set({ weeklyGoalHours: clamped });
   },
 }));

@@ -2,9 +2,12 @@
 
 import { ReactNode } from 'react';
 import { useAppStore } from '@/lib/store';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import BottomNav from './BottomNav';
 import SidebarNav from './SidebarNav';
 import MusicPlayer from './MusicPlayer';
+import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
+import CelebrationOverlay from './CelebrationOverlay';
 
 /**
  * AppShell — responsive layout wrapper.
@@ -21,10 +24,20 @@ import MusicPlayer from './MusicPlayer';
 export default function AppShell({ children }: { children: ReactNode }) {
   const { userRole, currentView, onboardingComplete } = useAppStore();
 
+  // Register global keyboard shortcuts.
+  // Must be called unconditionally (Rules of Hooks); the hook itself
+  // bails out early when the user is not yet logged in.
+  useKeyboardShortcuts();
+
   const isLoggedIn = onboardingComplete && userRole !== undefined;
   if (!isLoggedIn) {
     // Pre-auth: no chrome, just render the page (login/landing/onboarding)
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <CelebrationOverlay />
+      </>
+    );
   }
 
   const isDetailPage =
@@ -63,6 +76,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Student music player (floating) */}
       {showMusicPlayer && <MusicPlayer />}
+
+      {/* Global keyboard shortcuts help dialog (managed by useKeyboardShortcuts) */}
+      <KeyboardShortcutsHelp />
+
+      {/* Celebration overlay — confetti bursts on task completion.
+          Rendered once at the app root so it's always available.
+          pointer-events: none, so it never blocks interaction. */}
+      <CelebrationOverlay />
 
     </div>
   );
