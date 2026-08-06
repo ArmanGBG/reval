@@ -1,0 +1,240 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { requireAuth, canModifyTask, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
+
+// Helper: parse activityTypes JSON string → array
+function parseTask(task: Record<string, unknown>) {
+  if (typeof task.activityTypes === 'string') {
+    try {
+      task.activityTypes = JSON.parse(task.activityTypes);
+    } catch {
+      task.activityTypes = [];
+    }
+  }
+  return task;
+}
+
+// GET /api/tasks/[taskId] — Get a single task
+// Authorization: caller must be able to view the task's student (owner,
+// assigned advisor, institute manager, or super admin).
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> },
+) {
+  const { ctx, error: authError } = await requireAuth(request);
+  if (authError || !ctx) return authError;
+
+  const { taskId } = await params;
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+  });
+
+  if (!task) {
+    return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
+  }
+
+  // Ownership check
+  const allowed = await canModifyTask(ctx, taskId);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'دسترسی به این تسک مجاز نیست' },
+      { status: 403 },
+    );
+  }
+
+  const parsed = parseTask({ ...task });
+  return NextResponse.json({ task: parsed });
+}
+
+// PATCH /api/tasks/[taskId] — Update a task (partial update)
+// Accepts optional chapterId / topicId / topicModeId. When any of these are
+// present in the body AND at least one is a non-empty string, the text fields
+// (subject / subjectColor / topic) are auto-resolved from the linked entity.
+//
+// Authorization: caller must be able to modify the task (owner, assigned
+// advisor, or super admin). createdBy and createdById are NOT updatable
+// via PATCH (they're set at creation time and immutable).
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> },
+) {
+  const { ctx, error: authError } = await requireAuth(request);
+  if (authError || !ctx) return authError;
+
+  const { taskId } = await params;
+
+  // Ownership check before any modification
+  const canModify = await canModifyTask(ctx, taskId);
+  if (!canModify) {
+    return NextResponse.json(
+      { error: 'دسترسی به این تسک مجاز نیست' },
+      { status: 403 },
+    );
+  }
+
+  try {
+    const body = await request.json();
+    const existing = await db.task.findUnique({ where: { id: taskId } });
+    if (!existing) return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
+
+    // createdBy and createdById are intentionally NOT in the allowed list —
+    // they're immutable after creation to prevent spoofing.
+    const allowed = [
+      'subjectId',
+      'fieldType',
+      'activityTypes',
+      'targetTimeMinutes',
+      'actualTimeMinutes',
+      'targetTestCount',
+      'actualTestCount',
+      'completed',
+      'detailsCompleted',
+      'date',
+      'order',
+      'chapterId',
+      'topicId',
+      'topicModeId',
+      'pageStart',
+      'pageEnd',
+    ];
+
+    const data: Record<string, unknown> = {};
+
+    for (const key of allowed) {
+      if (body[key] !== undefined) {
+        data[key] = body[key];
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { error: 'هیچ فیلدی برای به‌روزرسانی ارسال نشده' },
+        { status: 400 },
+      );
+    }
+
+    const fieldType = body.fieldType ?? existing.fieldType;
+    const subjectId = body.subjectId ?? existing.subjectId;
+    if (!isTaskFieldType(fieldType) || typeof subjectId !== 'string') return NextResponse.json({ error: 'subjectId یا fieldType معتبر نیست' }, { status: 400 });
+    const subject = await getEligibleTaskSubject(existing.studentId, subjectId, fieldType);
+    if (!subject) return NextResponse.json({ error: 'درس برای دانش‌آموز مجاز نیست' }, { status: 400 });
+    const pageStart = 'pageStart' in body ? body.pageStart : existing.pageStart;
+    const pageEnd = 'pageEnd' in body ? body.pageEnd : existing.pageEnd;
+    if (!isValidTaskPageRange(pageStart, pageEnd)) return NextResponse.json({ error: 'بازه صفحه معتبر نیست' }, { status: 400 });
+    const curriculum = await validateTaskCurriculum({
+      subjectId,
+      chapterId: 'chapterId' in body ? body.chapterId : existing.chapterId,
+      topicId: 'topicId' in body ? body.topicId : existing.topicId,
+      topicModeId: 'topicModeId' in body ? body.topicModeId : existing.topicModeId,
+    });
+    if (!curriculum) return NextResponse.json({ error: 'شناسه‌های برنامه درسی با درس انتخابی سازگار نیستند' }, { status: 400 });
+    const detailsCompleted = body.detailsCompleted ?? existing.detailsCompleted;
+    if (typeof detailsCompleted !== 'boolean') return NextResponse.json({ error: 'detailsCompleted باید boolean باشد' }, { status: 400 });
+    const activityTypes = body.activityTypes ?? (existing.activityTypes ? JSON.parse(existing.activityTypes) : null);
+    const targetTimeMinutes = body.targetTimeMinutes ?? existing.targetTimeMinutes;
+    const targetTestCount = body.targetTestCount ?? existing.targetTestCount;
+    if (detailsCompleted && (!Array.isArray(activityTypes) || typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0 || typeof targetTestCount !== 'number' || targetTestCount < 0)) {
+      return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
+    }
+    if ((body.completed === true || body.completed === false) && !detailsCompleted) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
+    data.subjectId = subject.id;
+    data.subject = subject.name;
+    data.subjectColor = subject.color;
+    data.topic = curriculum.topic;
+
+    // If activityTypes is provided, serialize array to JSON string
+    if (data.activityTypes !== undefined) {
+      if (Array.isArray(data.activityTypes)) {
+        data.activityTypes = JSON.stringify(data.activityTypes);
+      } else if (typeof data.activityTypes === 'string') {
+        // Already a string — validate it's valid JSON
+        try {
+          JSON.parse(data.activityTypes);
+        } catch {
+          return NextResponse.json(
+            { error: 'activityTypes باید آرایه معتبر باشد' },
+            { status: 400 },
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'activityTypes باید آرایه باشد' },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Handle completed boolean — allow null for "pending" state
+    if ('completed' in data) {
+      if (
+        data.completed === true ||
+        data.completed === false ||
+        data.completed === null
+      ) {
+        // Valid value, keep as-is
+      } else {
+        return NextResponse.json(
+          { error: 'completed باید true، false یا null باشد' },
+          { status: 400 },
+        );
+      }
+    }
+
+    // If linked curriculum IDs are being updated and at least one is non-null,
+    // resolve the text fields from DB (DB is source of truth).
+    const task = await db.task.update({
+      where: { id: taskId },
+      data,
+    });
+
+    const parsed = parseTask({ ...task });
+    return NextResponse.json({ task: parsed });
+  } catch (error) {
+    console.error('PATCH /api/tasks/[taskId] error:', error);
+    // Prisma not-found error on update
+    if (error instanceof Error && error.message.includes('Record not found')) {
+      return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: 'خطا در به‌روزرسانی وظیفه' },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/tasks/[taskId] — Delete a task
+// Authorization: caller must be able to modify the task (owner, assigned
+// advisor, or super admin).
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ taskId: string }> },
+) {
+  const { ctx, error: authError } = await requireAuth(request);
+  if (authError || !ctx) return authError;
+
+  const { taskId } = await params;
+
+  // Ownership check
+  const canModify = await canModifyTask(ctx, taskId);
+  if (!canModify) {
+    return NextResponse.json(
+      { error: 'دسترسی به این تسک مجاز نیست' },
+      { status: 403 },
+    );
+  }
+
+  try {
+    await db.task.delete({
+      where: { id: taskId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/tasks/[taskId] error:', error);
+    if (error instanceof Error && error.message.includes('Record not found')) {
+      return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
+    }
+    return NextResponse.json({ error: 'خطا در حذف وظیفه' }, { status: 500 });
+  }
+}

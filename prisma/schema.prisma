@@ -1,0 +1,250 @@
+// ===== Reval (روال) - Prisma Schema =====
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== User (all roles) =====
+model User {
+  id                String   @id @default(cuid())
+  phone             String   @unique
+  password          String   // bcrypt hashed
+  name              String
+  avatar            String   @default("🦊")
+  role              String   @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
+  grade             String?  // دهم, یازدهم, دوازدهم, پشت کنکوری
+  major             String?  // تجربی, ریاضی, انسانی, معارف
+  goal              String?  // کنکور, نهایی, هر دو
+  dailyTargetHours  Int      @default(6)
+  instituteId       String?
+  assignedAdvisorId String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  institute         Institute?  @relation("InstituteMembers", fields: [instituteId], references: [id])
+  managedInstitute  Institute?  @relation("InstituteManager")
+  assignedAdvisor   User?       @relation("AdvisorStudents", fields: [assignedAdvisorId], references: [id])
+  students          User[]      @relation("AdvisorStudents")
+  tasks             Task[]
+  examParticipants   ExamParticipant[]
+  examResults       ExamResult[]
+  createdTasks      Task[]      @relation("TaskCreator")
+  createdExams      Exam[]      @relation("ExamCreator")
+}
+
+// ===== Institute =====
+model Institute {
+  id                String   @id @default(cuid())
+  name              String
+  logoUrl           String?
+  managerId         String   @unique
+  subscriptionPlan  String   @default("free") // free, basic, pro, enterprise
+  status            String   @default("active") // active, suspended, trial
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  manager           User     @relation("InstituteManager", fields: [managerId], references: [id])
+  members           User[]   @relation("InstituteMembers")
+  exams             Exam[]
+}
+
+// ===== Task =====
+model Task {
+  id                String   @id @default(cuid())
+  studentId         String
+  subjectId         String
+  subject           String
+  subjectColor      String
+  topic             String?
+  fieldType         String   // کنکور, نهایی
+  activityTypes     String?  // JSON array stored as string
+  targetTimeMinutes Int?
+  actualTimeMinutes Int?
+  targetTestCount   Int?
+  actualTestCount   Int?
+  completed         Boolean? // null = pending, true = done, false = skipped
+  detailsCompleted  Boolean  @default(true)
+  date              String   // ISO date string
+  order             Int
+  createdBy         String   // "student" or "advisor"
+  createdById       String?
+  // FK links to curriculum structure (all optional — task may reference chapter, topic, or topic mode)
+  chapterId         String?
+  topicId           String?
+  topicModeId       String?
+  pageStart         Int?
+  pageEnd           Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  student           User     @relation(fields: [studentId], references: [id])
+  subjectRef        Subject  @relation(fields: [subjectId], references: [id])
+  creator           User?    @relation("TaskCreator", fields: [createdById], references: [id])
+  chapter           Chapter?   @relation(fields: [chapterId], references: [id])
+  topicRef          Topic?     @relation(fields: [topicId], references: [id])
+  topicMode         TopicMode? @relation(fields: [topicModeId], references: [id])
+}
+
+// ===== Exam =====
+model Exam {
+  id            String   @id @default(cuid())
+  title         String
+  subject       String
+  subjectColor  String
+  date          String
+  startTime     String
+  duration      Int
+  totalScore    Int
+  status        String   @default("upcoming") // upcoming, in-progress, completed
+  createdById   String
+  instituteId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  creator       User     @relation("ExamCreator", fields: [createdById], references: [id])
+  institute     Institute? @relation(fields: [instituteId], references: [id])
+  participants  ExamParticipant[]
+  results       ExamResult[]
+}
+
+// ===== Exam Participant =====
+model ExamParticipant {
+  id        String @id @default(cuid())
+  examId    String
+  studentId String
+
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+// ===== Exam Result =====
+model ExamResult {
+  id        String @id @default(cuid())
+  examId    String
+  studentId String
+  score     Int?
+  rank      Int?
+
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+// ===== Subject Management System (Super Admin) =====
+// Top-level subject: زیست‌شناسی، فیزیک، شیمی، ریاضی، زمین‌شناسی ...
+model Subject {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  // normalizedName: normalized form (Persian Yeh/Kaf, collapsed spaces, lowercased)
+  // used for deduplication so "ریاضی" / "رياضي" / "ریاضی " don't create duplicates.
+  normalizedName String   @unique
+  color           String   @default("#3EB489")
+  icon            String?  // emoji or lucide icon name
+  sortOrder       Int      @default(0)
+  // isKonkur: whether this subject is tested in konkur.
+  // When a student creates a کنکور task, only subjects with isKonkur=true are shown.
+  isKonkur        Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  grades          GradeSubject[]
+  topicModes      TopicMode[]
+  tasks           Task[]
+}
+
+// ===== Grade-Subject Pivot =====
+// Links subjects to grades (and major applicability).
+// e.g. زیست‌شناسی → applies to دهم/یازدهم/دوازدهم for تجربی
+// Valid grades: دهم | یازدهم | دوازدهم  (validation enforced in API)
+// Valid majors: تجربی | انسانی | ریاضی  (validation enforced in API)
+model GradeSubject {
+  id          String @id @default(cuid())
+  subjectId   String
+  grade       String // دهم | یازدهم | دوازدهم
+  major       String // تجربی | ریاضی | انسانی
+  sortOrder    Int    @default(0)
+  isActive     Boolean @default(true)
+
+  subject      Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  chapters     Chapter[]
+
+  @@unique([subjectId, grade, major])
+}
+
+// ===== Chapter (فصل) =====
+// Belongs to a GradeSubject (subject+grade+major pivot).
+// Chapters contain گفتار (topics) as children when they exist.
+// Page ranges enable auto page→chapter/topic lookup.
+model Chapter {
+  id              String   @id @default(cuid())
+  gradeSubjectId  String
+  title           String   // e.g. "دنیای زنده"
+  chapterNo       Int      // sequential within gradeSubject
+  pageStart       Int?     // شماره صفحه شروع
+  pageEnd         Int?     // شماره صفحه پایان
+  isLastPage      Boolean  @default(false)  // "تا پایان کتاب" — any page >= pageStart matches
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gradeSubject    GradeSubject @relation(fields: [gradeSubjectId], references: [id], onDelete: Cascade)
+  topics          Topic[]
+  tasks           Task[]
+
+  @@unique([gradeSubjectId, chapterNo])
+}
+
+// ===== Topic (گفتار) =====
+// Child of a Chapter. Optional — chapters without topics are "whole chapter" selections.
+// Page ranges enable auto page→topic lookup.
+model Topic {
+  id          String   @id @default(cuid())
+  chapterId   String
+  title       String   // e.g. "زیست‌شناسی چیست؟"
+  topicNo     Int      // sequential within chapter
+  pageStart   Int?     // شماره صفحه شروع
+  pageEnd     Int?     // شماره صفحه پایان
+  isLastPage  Boolean  @default(false)  // "تا پایان کتاب"
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@unique([chapterId, topicNo])
+}
+
+// ===== TopicMode (حالت مبحثی) =====
+// The thematic / integrated konkur view for a subject.
+// e.g. زیست‌شناسی → "زیست سلولی و مولکولی", "ژنتیک و تقسیم یاخته", ...
+// When a student selects "مبحثی" mode, they pick from this list instead of chapters.
+model TopicMode {
+  id          String   @id @default(cuid())
+  subjectId   String
+  title       String   // e.g. "زیست سلولی و مولکولی"
+  description String?  // optional long description
+  modeNo      Int      // sequential within subject
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@unique([subjectId, modeNo])
+}
