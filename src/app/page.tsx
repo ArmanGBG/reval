@@ -25,6 +25,7 @@ import InstituteDetail from '@/components/super-admin/InstituteDetail';
 import UserDetail from '@/components/super-admin/UserDetail';
 import LandingPage from '@/components/landing/LandingPage';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
+import SessionGuard from '@/components/shared/SessionGuard';
 import { UserRole } from '@/lib/types';
 
 export default function Home() {
@@ -188,18 +189,23 @@ export default function Home() {
     currentView;
 
   return (
-    <AppShell>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={viewGroupKey}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {renderView()}
-        </motion.div>
-      </AnimatePresence>
-    </AppShell>
+    <>
+      {/* Global session guard: catches 401s from any API call and
+          re-validates the session on window focus / periodically. */}
+      <SessionGuard />
+      <AppShell>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={viewGroupKey}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {renderView()}
+          </motion.div>
+        </AnimatePresence>
+      </AppShell>
+    </>
   );
 }

@@ -5,6 +5,7 @@
 // from MOCK_TASKS for display; always go through this service.
 
 import { Task } from '@/lib/types';
+import { apiFetch, parseError } from '@/lib/api-client';
 
 // Types for API payloads — what the client sends to the API.
 // Note: `id` is NOT in the create payload (the DB generates it).
@@ -98,13 +99,12 @@ export async function loadTasks(opts: {
   if (opts.startDate) params.set('startDate', opts.startDate);
   if (opts.endDate) params.set('endDate', opts.endDate);
 
-  const res = await fetch(`/api/tasks?${params.toString()}`, {
+  const res = await apiFetch(`/api/tasks?${params.toString()}`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در بارگذاری وظایف');
+    throw new Error(await parseError(res, 'خطا در بارگذاری وظایف'));
   }
   const data = await res.json();
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -116,14 +116,13 @@ export async function loadTasks(opts: {
 export async function createTask(
   payload: CreateTaskPayload,
 ): Promise<Task> {
-  const res = await fetch('/api/tasks', {
+  const res = await apiFetch('/api/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در ایجاد وظیفه');
+    throw new Error(await parseError(res, 'خطا در ایجاد وظیفه'));
   }
   const data = await res.json();
   return normalizeTask(data.task as Record<string, unknown>);
@@ -136,14 +135,13 @@ export async function createTasksBatch(
   payloads: CreateTaskPayload[],
 ): Promise<Task[]> {
   if (payloads.length === 0) return [];
-  const res = await fetch('/api/tasks/batch', {
+  const res = await apiFetch('/api/tasks/batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tasks: payloads }),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در ایجاد دسته‌ای وظایف');
+    throw new Error(await parseError(res, 'خطا در ایجاد دسته‌ای وظایف'));
   }
   const data = await res.json();
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -156,14 +154,13 @@ export async function updateTask(
   taskId: string,
   updates: UpdateTaskPayload,
 ): Promise<Task> {
-  const res = await fetch(`/api/tasks/${taskId}`, {
+  const res = await apiFetch(`/api/tasks/${taskId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در به‌روزرسانی وظیفه');
+    throw new Error(await parseError(res, 'خطا در به‌روزرسانی وظیفه'));
   }
   const data = await res.json();
   return normalizeTask(data.task as Record<string, unknown>);
@@ -172,14 +169,18 @@ export async function updateTask(
 // ===== deleteTask =====
 // Delete a task by id. Returns void (throws on error).
 export async function deleteTask(taskId: string): Promise<void> {
-  const res = await fetch(`/api/tasks/${taskId}`, {
+  const res = await apiFetch(`/api/tasks/${taskId}`, {
     method: 'DELETE',
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در حذف وظیفه');
+    throw new Error(await parseError(res, 'خطا در حذف وظیفه'));
   }
 }
+
+// ===== AuthError re-export for callers =====
+// Allows components to check `err instanceof AuthError` and suppress
+// duplicate error toasts (the global handler already shows a redirect notice).
+export { AuthError } from '@/lib/api-client';
 
 // ===== reorderTasks =====
 // Update the `order` field for multiple tasks (used by drag-and-drop).
@@ -188,13 +189,12 @@ export async function reorderTasks(
   ordered: { id: string; order: number }[],
 ): Promise<void> {
   if (ordered.length === 0) return;
-  const res = await fetch('/api/tasks/batch', {
+  const res = await apiFetch('/api/tasks/batch', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tasks: ordered }),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در مرتب‌سازی وظایف');
+    throw new Error(await parseError(res, 'خطا در مرتب‌سازی وظایف'));
   }
 }

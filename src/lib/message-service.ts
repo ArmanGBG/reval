@@ -5,6 +5,8 @@
 // The Zustand store (refreshNotifications, markNotificationRead) calls these
 // functions to fetch the student's DB-backed inbox and to persist read state.
 
+import { apiFetch } from '@/lib/api-client';
+
 // ===== InboxMessage =====
 // A message addressed to the current student (or broadcast to all students).
 export interface InboxMessage {
@@ -55,7 +57,7 @@ export interface SendMessageResponse {
 // Fetch the current student's inbox (recipientId = me OR recipientId = null).
 // Returns InboxMessage[] sorted by createdAt DESC.
 export async function loadInboxMessages(): Promise<InboxMessage[]> {
-  const res = await fetch('/api/messages', {
+  const res = await apiFetch('/api/messages', {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -72,7 +74,7 @@ export async function loadInboxMessages(): Promise<InboxMessage[]> {
 // Fetch messages the current advisor/super-admin has sent.
 // Returns SentMessage[] sorted by createdAt DESC.
 export async function loadSentMessages(): Promise<SentMessage[]> {
-  const res = await fetch('/api/messages?sentBy=me', {
+  const res = await apiFetch('/api/messages?sentBy=me', {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -90,7 +92,7 @@ export async function loadSentMessages(): Promise<SentMessage[]> {
 export async function sendMessage(
   payload: SendMessagePayload,
 ): Promise<SendMessageResponse> {
-  const res = await fetch('/api/messages', {
+  const res = await apiFetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -108,7 +110,7 @@ export async function sendMessage(
 // are swallowed so they don't break the optimistic UI update.
 export async function markMessageRead(messageId: string): Promise<void> {
   try {
-    await fetch(`/api/messages/${messageId}/read`, {
+    await apiFetch(`/api/messages/${messageId}/read`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
     });

@@ -2,6 +2,7 @@
 // Used by the Zustand store so components don't deal with fetch directly.
 
 import type { Exam, ExamResult } from '@/lib/types';
+import { apiFetch } from '@/lib/api-client';
 
 export interface CreateExamInput {
   title: string;
@@ -36,7 +37,7 @@ export async function loadExams(opts?: {
 
   const qs = params.toString();
   const url = qs ? `/api/exams?${qs}` : '/api/exams';
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await apiFetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(await parseError(res));
   const data = await res.json();
   return data.exams as Exam[];
@@ -44,7 +45,7 @@ export async function loadExams(opts?: {
 
 // Create a new exam via the API.
 export async function createExam(input: CreateExamInput): Promise<Exam> {
-  const res = await fetch('/api/exams', {
+  const res = await apiFetch('/api/exams', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -59,7 +60,7 @@ export async function updateExam(
   id: string,
   updates: Partial<CreateExamInput & { status: Exam['status'] }>,
 ): Promise<Exam> {
-  const res = await fetch(`/api/exams/${id}`, {
+  const res = await apiFetch(`/api/exams/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
@@ -71,7 +72,7 @@ export async function updateExam(
 
 // Delete an exam.
 export async function deleteExam(id: string): Promise<void> {
-  const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+  const res = await apiFetch(`/api/exams/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error(await parseError(res));
 }
 
@@ -82,7 +83,7 @@ export async function saveExamResults(
   examId: string,
   results: Array<{ studentId: string; score?: number | null; rank?: number | null }>,
 ): Promise<ExamResult[]> {
-  const res = await fetch(`/api/exams/${examId}/results`, {
+  const res = await apiFetch(`/api/exams/${examId}/results`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ results }),
@@ -94,7 +95,7 @@ export async function saveExamResults(
 
 // Load exam results (advisor/manager see all; student sees only their own).
 export async function loadExamResults(examId: string): Promise<ExamResult[]> {
-  const res = await fetch(`/api/exams/${examId}/results`, { cache: 'no-store' });
+  const res = await apiFetch(`/api/exams/${examId}/results`, { cache: 'no-store' });
   if (!res.ok) throw new Error(await parseError(res));
   const data = await res.json();
   return data.results as ExamResult[];

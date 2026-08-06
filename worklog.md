@@ -2969,3 +2969,64 @@ Stage Summary:
 - آدرس مخزن: https://github.com/ArmanGBG/reval (branch: main, tip: 506fee2)
 - تاریخچه قدیمی remote در برنچ محلی backup حفظ شده است.
 - پروژه آماده ادامه توسعه فاز بعدی است.
+
+---
+Task ID: fix-task-401-graceful-session
+Agent: Main
+Task: رفع خطای مکرر «احراز هویت لازم است» هنگام افزودن تسک از پنل دانش‌آموز — کاربر برای بار دوم این مشکل را گزارش داد.
+
+Work Log:
+
+**تحلیل عمیق:**
+- بررسی dev.log: هیچ 401 در کل لاگ ثبت نشده بود. همه POST /api/tasks یا 201 (موفق) یا 400 (bad request) بودند.
+- بازتولید با agent-browser به‌عنوان دانش‌آموز seed شده (سارا محمدی): POST /api/tasks 201 ✓ — بدون خطا.
+- بازتولید با ثبت‌نام دانش‌آموز کاملاً جدید: POST /api/tasks 201 ✓ — بدون خطا.
+- نتیجه: خطا در حالت عادی قابل بازتولید نبود. علت واقعی = **سناریوی انقضای کوکی**: کوکی سشن بعد از 24h منقضی می‌شود، اما localStorage هنوز «logged in» می‌گوید. اگر کاربر بعد از انقضای کوکی تسک اضافه کند، POST /api/tasks با 401 برمی‌گردد و پیام ترسناک «احراز هویت لازم است» نمایش داده می‌شود.
+
+**بررسی ثانویه — خطای 500 روی /api/messages:**
+- کشف باگ جداگانه: `GET /api/messages 500` به‌دلیل `TypeError: Cannot read properties of undefined (reading 'findMany')` — یعنی `db.message` undefined بود چون Prisma Client بعد از اضافه شدن مدل Message regenerate نشده بود.
+- رفع: `bun run db:push` → Prisma Client regenerated → `db.message` تعریف شد → 500ها از بین رفتند.
+
+**راه‌حل اصلی — مدیریت مودبانه 401 (3 لایه دفاعی):**
+
+لایه ۱ — Global 401 Interceptor (`src/lib/api-client.ts` — فایل جدید):
+- `apiFetch()`: wrapper حول fetch که `credentials: 'same-origin'` اضافه می‌کند.
+- هر پاسخ 401 → `AuthError` پرتاب می‌کند + handler سراسری را یک‌بار فراخوانی می‌کند (de-dupe با flag).
+- `registerUnauthHandler()`: app shell یک callback ثبت می‌کند که logout + redirect به landing page انجام می‌دهد.
+- `parseError()`: helper برای parse کردن JSON error از response.
+
+لایه ۲ — SessionGuard (`src/components/shared/SessionGuard.tsx` — فایل جدید):
+- کامپوننت نامرئی که در app shell render می‌شود.
+- ثبت global 401 handler: toast دوستانه «نشست شما منقضی شده است» + clearAuthStorage + logout + redirect به `/`.
+- re-validation روی window focus (کاربر به tab برمی‌گردد).
+- re-validation دوره‌ای هر 10 دقیقه (پروアクتیو — قبل از تعامل کاربر).
+- /api/auth/me با raw fetch (نه apiFetch) صدا زده می‌شود تا از loop جلوگیری شود.
+
+لایه ۳ — به‌روزرسانی service‌ها و components برای استفاده از apiFetch:
+- `src/lib/task-service.ts`: همه 6 تابع (loadTasks, createTask, createTasksBatch, updateTask, deleteTask, reorderTasks) به apiFetch تغییر یافتند + re-export AuthError.
+- `src/lib/exam-service.ts`: همه 6 تابع به apiFetch تغییر یافتند.
+- `src/lib/message-service.ts`: همه 4 تابع به apiFetch تغییر یافتند.
+- `src/components/shared/TaskSubjectPicker.tsx`: fetch subjects → apiFetch + suppress error on AuthError.
+- `src/components/plan/ManualEntrySheet.tsx`: catch block — اگر AuthError، toast ترسناک نشان نده، فقط dialog را ببند (redirect سراسری انجام می‌شود).
+- `src/lib/store.ts`: 5 catch block در addTask/addTasks/updateTask/deleteTask/reorderTasks — اگر AuthError، آن را as-is re-throw کن (نه wrap در new Error) تا نوع حفظ شود.
+
+**به‌روزرسانی page.tsx:**
+- SessionGuard در app shell render می‌شود (همراه با AppShell).
+- به‌روزرسانی import.
+
+Verification Results (agent-browser end-to-end):
+
+1. **ایجاد تسک عادی (سارا محمدی):** POST /api/tasks 201 ✓ + toast «تسک اولیه ثبت شد» ✓
+2. **ایجاد تسک بعد از ثبت‌نام جدید:** POST /api/tasks 201 ✓
+3. **سناریوی انقضای کوکی:** پاک کردن cookie → کاربر به landing page هدایت می‌شود (نه dashboard با خطای 401) ✓
+4. **خطای 500 /api/messages:** بعد از db:push + regenerate Prisma Client → همه 200 ✓
+5. `bun run lint`: ✅ zero errors
+6. dev.log: ✅ هیچ 401، هیچ 500، همه روت‌ها 200/201
+
+Stage Summary:
+- خطای «احراز هویت لازم است» هنگام افزودن تسک = نتیجه انقضای کوکی سشن (24h) بدون مدیریت مودبانه.
+- راه‌حل 3-لایه: apiFetch (interceptor سراسری) + SessionGuard (re-validation روی focus + دوره‌ای) + به‌روزرسانی service‌ها.
+- حالا وقتی کوکی منقضی می‌شود: کاربر toast دوستانه «نشست شما منقضی شده است» می‌بیند و به‌طور خودکار به landing page هدایت می‌شود — به‌جای دیدن خطای ترسناک روی dashboard.
+- باگ ثانویه (500 روی /api/messages) هم رفع شد: Prisma Client regenerate شد.
+- فایل‌های ساخته‌شده: `src/lib/api-client.ts`، `src/components/shared/SessionGuard.tsx`
+- فایل‌های تغییر یافته: `src/lib/task-service.ts`، `src/lib/exam-service.ts`، `src/lib/message-service.ts`، `src/lib/store.ts`، `src/components/shared/TaskSubjectPicker.tsx`، `src/components/plan/ManualEntrySheet.tsx`، `src/app/page.tsx`

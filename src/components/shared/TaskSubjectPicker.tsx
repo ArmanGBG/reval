@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { Subject } from '@/lib/subjects-types';
 import { FieldType } from '@/lib/types';
+import { apiFetch, AuthError } from '@/lib/api-client';
 import {
   Tabs,
   TabsList,
@@ -185,7 +186,7 @@ export function TaskSubjectPicker({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(
+    apiFetch(
       `/api/subjects/for-task?fieldType=${encodeURIComponent(fieldType)}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`,
     )
       .then(async (res) => {
@@ -199,6 +200,8 @@ export function TaskSubjectPicker({
       })
       .catch((err) => {
         if (cancelled) return;
+        // AuthError is handled globally — don't show a scary subject-load error.
+        if (err instanceof AuthError) return;
         setError(err.message || 'خطا در بارگذاری');
         setSubjects([]);
       })

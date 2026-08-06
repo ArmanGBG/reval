@@ -5,6 +5,7 @@ import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
 import { initSRSFields } from '@/lib/spaced-repetition';
+import { AuthError } from '@/lib/api-client';
 
 // ====================================================================
 // Flashcards persistence (localStorage)
@@ -752,10 +753,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         tasks: state.tasks.map((t) => (t.id === task.id ? realTask : t)),
       }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'خطا در ایجاد وظیفه';
       // Remove the optimistic task on error
       set((state) => ({ tasks: state.tasks.filter((t) => t.id !== task.id) }));
-      // Re-throw so the caller can show a toast
+      // Preserve AuthError type so callers can suppress duplicate toasts
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در ایجاد وظیفه';
       throw new Error(msg);
     }
   },
@@ -798,12 +800,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         ],
       }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'خطا در ایجاد وظایف';
       // Remove optimistic tasks on error
       const tempIds = new Set(newTasks.map((t) => t.id));
       set((state) => ({
         tasks: state.tasks.filter((t) => !tempIds.has(t.id)),
       }));
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در ایجاد وظایف';
       throw new Error(msg);
     }
   },
@@ -824,13 +827,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         tasks: state.tasks.map((t) => (t.id === id ? realTask : t)),
       }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'خطا در به‌روزرسانی';
       // Revert on error
       if (original) {
         set((state) => ({
           tasks: state.tasks.map((t) => (t.id === id ? original : t)),
         }));
       }
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در به‌روزرسانی';
       throw new Error(msg);
     }
   },
@@ -845,11 +849,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await taskService.deleteTask(id);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'خطا در حذف';
       // Re-add on error
       if (original) {
         set((state) => ({ tasks: [...state.tasks, original] }));
       }
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در حذف';
       throw new Error(msg);
     }
   },
@@ -883,7 +888,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         reorderedTasks.map((t, i) => ({ id: t.id, order: i })),
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'خطا در مرتب‌سازی';
       // Revert on error
       set((state) => ({
         tasks: state.tasks.map((t) =>
@@ -892,6 +896,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             : t,
         ),
       }));
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در مرتب‌سازی';
       throw new Error(msg);
     }
   },
