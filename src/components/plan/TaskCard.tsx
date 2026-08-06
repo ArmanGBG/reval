@@ -48,11 +48,13 @@ export default function TaskCard({
   const isPending = task.completed === null;
 
   // Accent border classes based on status
+  // Pending tasks use the subject color so students can visually scan by subject.
+  // Completed/skipped use status colors (accent/danger).
   const accentBorder = isCompleted
     ? 'before:bg-[var(--accent)] before:w-[3px]'
     : isSkipped
       ? 'before:bg-[var(--danger)] before:w-[3px]'
-      : 'before:bg-[var(--foreground-subtle)] before:w-[3px] before:opacity-30';
+      : 'before:bg-[var(--subject-accent)] before:w-[3px]'; // pending: subject color
 
   // Status dot color
   const statusDotColor = isCompleted
@@ -77,6 +79,10 @@ export default function TaskCard({
         ${accentBorder}
         ${isCompleted || isSkipped ? 'opacity-60 hover:opacity-90' : ''}
       `}
+      style={isPending ? {
+        // Subject-color accent stripe on the right edge (RTL) for pending tasks
+        '--subject-accent': task.subjectColor,
+      } as React.CSSProperties : undefined}
     >
       {/* Top subject color stripe (subtle accent strip at the very top) */}
       <div

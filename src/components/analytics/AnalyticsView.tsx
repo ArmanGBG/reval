@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -801,12 +801,43 @@ function ChartContent({
   pieTotal: number;
   renderPieLegend: (payload: Array<{ value: string; color: string }>) => React.ReactNode;
 }) {
+  // Defer chart rendering until the container actually has non-zero width.
+  // During AnimatePresence slide-in transitions the parent has width=0, which
+  // triggers recharts' "width(0) and height(0)" console warnings. We use a
+  // ResizeObserver to detect when the container is truly laid out.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) {
+          setReady(true);
+          ro.disconnect();
+          break;
+        }
+      }
+    });
+    ro.observe(el);
+    // Fallback: if ResizeObserver never fires with width>0 (e.g. already laid
+    // out), check synchronously after a frame.
+    const id = requestAnimationFrame(() => {
+      if (el.offsetWidth > 0) {
+        setReady(true);
+        ro.disconnect();
+      }
+    });
+    return () => { ro.disconnect(); cancelAnimationFrame(id); };
+  }, []);
   return (
-    <>
+    <div ref={containerRef}>
       {chartTab === 'روند روزانه' && (
         <div>
           <h3 className="text-sm font-bold text-[var(--foreground)] mb-4">روند روزانه مطالعه</h3>
           <div className="h-64" dir="ltr">
+            {ready ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={MOCK_DAILY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -825,6 +856,9 @@ function ChartContent({
                 <Bar dataKey="hours" name="ساعت" fill="#3EB489" radius={[6, 6, 0, 0]} barSize={32} />
               </BarChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full animate-pulse rounded-lg bg-[rgba(255,255,255,0.03)]" />
+            )}
           </div>
         </div>
       )}
@@ -833,6 +867,7 @@ function ChartContent({
         <div>
           <h3 className="text-sm font-bold text-[var(--foreground)] mb-4">سهم دروس</h3>
           <div className="h-64 relative" dir="ltr">
+            {ready ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -863,6 +898,9 @@ function ChartContent({
                 />
               </PieChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full animate-pulse rounded-full bg-[rgba(255,255,255,0.03)] mx-auto" style={{ maxWidth: 220 }} />
+            )}
             <PieCenterLabel total={pieTotal} />
           </div>
         </div>
@@ -872,6 +910,7 @@ function ChartContent({
         <div>
           <h3 className="text-sm font-bold text-[var(--foreground)] mb-4">نوع فعالیت</h3>
           <div className="h-64" dir="ltr">
+            {ready ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={MOCK_ACTIVITY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -893,6 +932,9 @@ function ChartContent({
                 <Bar dataKey="تست_سنجشی" name="تست سنجشی" stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full animate-pulse rounded-lg bg-[rgba(255,255,255,0.03)]" />
+            )}
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3" dir="rtl">
             {Object.entries(ACTIVITY_LABELS).map(([key, label]) => (
@@ -911,7 +953,7 @@ function ChartContent({
       {chartTab === 'تفکیک فصول' && (
         <SubjectChapterBreakdown timeFilter={timeFilter} fieldFilter={fieldFilter} />
       )}
-    </>
+    </div>
   );
 }
 
