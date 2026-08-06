@@ -75,6 +75,21 @@ export interface Flashcard {
   isSystem: boolean;
   mastery: 'mastered' | 'review' | 'weak';
   subject?: string;
+  // ===== SM-2 Spaced Repetition Fields =====
+  // Days until next review (0 = due today).
+  interval?: number;
+  // Number of consecutive successful reviews.
+  repetition?: number;
+  // Ease factor (multiplier for interval growth). Default 2.5, min 1.3.
+  easeFactor?: number;
+  // ISO date string when this card is due next.
+  dueDate?: string;
+  // ISO date string of the last review (or undefined if never reviewed).
+  lastReviewed?: string;
+  // Total number of times this card has been reviewed.
+  reviewCount?: number;
+  // Total number of times the student forgot this card (quality < 3).
+  lapseCount?: number;
 }
 
 export interface MusicTrack {

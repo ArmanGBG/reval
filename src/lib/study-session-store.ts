@@ -9,6 +9,12 @@ import { create } from 'zustand';
 // (Dashboard ↔ Plan ↔ Tools) and re-renders without losing elapsed time.
 // Only one task can be "running" at a time — starting a new timer pauses
 // any other running timer (you can't study two things at once).
+//
+// State is also persisted to localStorage so a page refresh doesn't
+// lose the elapsed time. On hydration, any timer that was "running"
+// when the page closed is auto-paused — its elapsed time is preserved
+// (added to accumulatedMs), but the ticker doesn't resume on its own.
+// The student can click ▶ again to continue.
 // =================================================================
 
 export interface SessionState {
@@ -32,6 +38,8 @@ interface StudySessionStore {
   consume: (taskId: string) => number;
   // Read-only: total elapsed ms including the current run.
   getElapsed: (taskId: string) => number;
+  // Pause + persist any running timer (used on tab close / pagehide).
+  pauseAll: () => void;
 }
 
 const emptySession: SessionState = {
@@ -40,8 +48,69 @@ const emptySession: SessionState = {
   running: false,
 };
 
+// ===== localStorage persistence =====
+const STORAGE_KEY = 'reval:study-sessions:v1';
+
+function loadSessions(): Record<string, SessionState> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, SessionState>;
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    // Hydration safety: any timer that was "running" when the page closed
+    // is auto-paused. The elapsed time during the closed period is added
+    // to accumulatedMs so the user doesn't lose progress — but the ticker
+    // doesn't resume on its own (the student must click ▶ to continue).
+    const now = Date.now();
+    const result: Record<string, SessionState> = {};
+    for (const [id, s] of Object.entries(parsed)) {
+      if (!s || typeof s !== 'object') continue;
+      if (s.running && s.startedAt !== null) {
+        // Cap the auto-pause at 8 hours so a 3-day tab-close doesn't add
+        // 72 hours of fake study time.
+        const elapsed = Math.min(now - s.startedAt, 8 * 60 * 60 * 1000);
+        result[id] = {
+          startedAt: null,
+          accumulatedMs: (s.accumulatedMs ?? 0) + elapsed,
+          running: false,
+        };
+      } else {
+        result[id] = {
+          startedAt: null,
+          accumulatedMs: s.accumulatedMs ?? 0,
+          running: false,
+        };
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function saveSessions(sessions: Record<string, SessionState>) {
+  if (typeof window === 'undefined') return;
+  try {
+    // Don't persist empty sessions (cleanup).
+    const hasData = Object.keys(sessions).length > 0;
+    if (hasData) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // Quota exceeded — fail silently.
+  }
+}
+
+// Initial state — hydrate from localStorage on the client.
+const initialSessions =
+  typeof window !== 'undefined' ? loadSessions() : {};
+
 export const useStudySessionStore = create<StudySessionStore>((set, get) => ({
-  sessions: {},
+  sessions: initialSessions,
 
   start: (taskId) =>
     set((state) => {
@@ -68,6 +137,7 @@ export const useStudySessionStore = create<StudySessionStore>((set, get) => ({
         running: true,
       };
 
+      saveSessions(sessions);
       return { sessions };
     }),
 
@@ -76,22 +146,23 @@ export const useStudySessionStore = create<StudySessionStore>((set, get) => ({
       const s = state.sessions[taskId];
       if (!s || !s.running || s.startedAt === null) return state;
       const now = Date.now();
-      return {
-        sessions: {
-          ...state.sessions,
-          [taskId]: {
-            startedAt: null,
-            accumulatedMs: s.accumulatedMs + (now - s.startedAt),
-            running: false,
-          },
+      const sessions = {
+        ...state.sessions,
+        [taskId]: {
+          startedAt: null,
+          accumulatedMs: s.accumulatedMs + (now - s.startedAt),
+          running: false,
         },
       };
+      saveSessions(sessions);
+      return { sessions };
     }),
 
   reset: (taskId) =>
     set((state) => {
       const sessions = { ...state.sessions };
       delete sessions[taskId];
+      saveSessions(sessions);
       return { sessions };
     }),
 
@@ -111,6 +182,27 @@ export const useStudySessionStore = create<StudySessionStore>((set, get) => ({
     }
     return s.accumulatedMs;
   },
+
+  pauseAll: () =>
+    set((state) => {
+      const now = Date.now();
+      let changed = false;
+      const sessions: Record<string, SessionState> = {};
+      for (const [id, s] of Object.entries(state.sessions)) {
+        if (s.running && s.startedAt !== null) {
+          sessions[id] = {
+            startedAt: null,
+            accumulatedMs: s.accumulatedMs + (now - s.startedAt),
+            running: false,
+          };
+          changed = true;
+        } else {
+          sessions[id] = s;
+        }
+      }
+      if (changed) saveSessions(sessions);
+      return changed ? { sessions } : state;
+    }),
 }));
 
 // Format milliseconds as mm:ss (Persian digits).

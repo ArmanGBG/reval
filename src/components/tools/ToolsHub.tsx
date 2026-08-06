@@ -1,19 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Flashcard } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Music, Brain, Timer, Calculator, Heart, X,
   Plus, ImagePlus, ChevronLeft, ChevronRight,
-  ChevronDown, Sparkles,
+  ChevronDown, Sparkles, RotateCcw, Calendar, Zap, Flame,
 } from 'lucide-react';
 import PomodoroTimer from './PomodoroTimer';
 import StudyMusicPlayer from './StudyMusicPlayer';
 import GradeCalculator from './GradeCalculator';
 import BreathingExercise from './BreathingExercise';
 import { toast } from 'sonner';
+import {
+  scheduleNextReview,
+  masteryToQuality,
+  isCardDue,
+  formatNextReview,
+  retentionStrength,
+} from '@/lib/spaced-repetition';
 
 // ===== Tool Definitions =====
 const TOOLS = [
@@ -304,10 +311,11 @@ const SUBJECT_COLORS: Record<string, string> = {
 };
 
 type MasteryFilter = 'all' | 'mastered' | 'review' | 'weak';
+type StudyTab = 'due' | 'study' | 'marked';
 
 function FlashcardsTool() {
-  const { flashcards, addFlashcard, updateFlashcard } = useAppStore();
-  const [tab, setTab] = useState<'study' | 'marked'>('study');
+  const { flashcards, addFlashcard, reviewFlashcard, resetFlashcardSRS } = useAppStore();
+  const [tab, setTab] = useState<StudyTab>('due');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [masteryFilter, setMasteryFilter] = useState<MasteryFilter>('all');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -318,20 +326,50 @@ function FlashcardsTool() {
   const [newSubject, setNewSubject] = useState('');
 
   // Get unique subjects from all flashcards
-  const allSubjects = [...new Set(flashcards.map((c) => c.subject).filter(Boolean) as string[])];
+  const allSubjects = useMemo(
+    () => [...new Set(flashcards.map((c) => c.subject).filter(Boolean) as string[])],
+    [flashcards]
+  );
 
-  // Filter cards based on all criteria
-  const filteredCards = flashcards.filter((c) => {
-    if (tab === 'marked') {
-      if (c.mastery === 'mastered' && masteryFilter === 'all') return true;
-      if (c.mastery === 'review' && masteryFilter === 'all') return true;
-      if (c.mastery === 'weak' && masteryFilter === 'all') return true;
+  // ===== SRS-aware filtering =====
+  // In "due" tab: only show cards due today (or overdue), sorted by due date.
+  // In "study" tab: show all cards (no SRS filter), respects subject + mastery filters.
+  // In "marked" tab: same as study, but defaults to showing review+weak cards.
+  const filteredCards = useMemo(() => {
+    const base = flashcards.filter((c) => {
+      if (selectedSubject && c.subject !== selectedSubject) return false;
       if (masteryFilter !== 'all' && c.mastery !== masteryFilter) return false;
+      return true;
+    });
+
+    if (tab === 'due') {
+      // Only due cards, sorted by due date (oldest first = most overdue first).
+      const due = base.filter((c) => isCardDue(c));
+      due.sort((a, b) => {
+        const da = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+        const db = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+        return da - db;
+      });
+      return due;
     }
-    if (selectedSubject && c.subject !== selectedSubject) return false;
-    if (masteryFilter !== 'all' && c.mastery !== masteryFilter) return false;
-    return true;
-  });
+
+    if (tab === 'marked') {
+      // Show review + weak cards first (cards that need attention).
+      return base.sort((a, b) => {
+        const order = { weak: 0, review: 1, mastered: 2 };
+        return order[a.mastery] - order[b.mastery];
+      });
+    }
+
+    // study tab — keep insertion order
+    return base;
+  }, [flashcards, selectedSubject, masteryFilter, tab]);
+
+  // Cards due today (used by the badge on the "due" tab)
+  const dueCount = useMemo(
+    () => flashcards.filter((c) => isCardDue(c)).length,
+    [flashcards]
+  );
 
   const currentCard = filteredCards[currentIndex] || null;
 
@@ -342,15 +380,32 @@ function FlashcardsTool() {
   const handleMastery = useCallback(
     (mastery: Flashcard['mastery']) => {
       if (!currentCard) return;
-      updateFlashcard(currentCard.id, { mastery });
+      // ===== SM-2 Scheduling =====
+      const quality = masteryToQuality(mastery);
+      const updates = scheduleNextReview(currentCard, quality);
+      reviewFlashcard(currentCard.id, updates);
+
+      const nextLabel = formatNextReview({ ...currentCard, ...updates });
+      const msgs: Record<Flashcard['mastery'], string> = {
+        mastered: `عالی! یادت میاد. مرور بعدی: ${nextLabel}`,
+        review: 'خوب بود. کمی بیشتر تمرین کن.',
+        weak: `فراموش کردی. فردا دوباره نشونت می‌دم.`,
+      };
+      toast(msgs[mastery], { duration: 2200 });
+
       setIsFlipped(false);
       setTimeout(() => {
-        if (currentIndex < filteredCards.length - 1) {
+        // In "due" tab, the reviewed card is no longer due, so the list
+        // shrinks. Stay at the same index (which now points to the next
+        // due card) unless we were at the end.
+        if (tab === 'due') {
+          setCurrentIndex((prev) => Math.min(prev, Math.max(0, filteredCards.length - 2)));
+        } else if (currentIndex < filteredCards.length - 1) {
           setCurrentIndex((prev) => prev + 1);
         }
       }, 300);
     },
-    [currentCard, updateFlashcard, currentIndex, filteredCards.length]
+    [currentCard, reviewFlashcard, currentIndex, filteredCards.length, tab]
   );
 
   const handlePrev = useCallback(() => {
@@ -362,6 +417,15 @@ function FlashcardsTool() {
     setIsFlipped(false);
     setCurrentIndex((prev) => Math.min(filteredCards.length - 1, prev + 1));
   }, [filteredCards.length]);
+
+  const handleResetCard = useCallback(
+    (cardId: string) => {
+      resetFlashcardSRS(cardId);
+      setIsFlipped(false);
+      toast('پیشرفت این کارت صفر شد.', { duration: 1800 });
+    },
+    [resetFlashcardSRS]
+  );
 
   const handleAddCard = useCallback(() => {
     if (!newFront.trim() || !newBack.trim()) {
@@ -388,12 +452,67 @@ function FlashcardsTool() {
   const reviewCount = flashcards.filter((c) => c.mastery === 'review').length;
   const weakCount = flashcards.filter((c) => c.mastery === 'weak').length;
 
+  // SRS stage counts (New / Learning / Mature)
+  const srsStats = useMemo(() => {
+    let neu = 0, learning = 0, mature = 0;
+    for (const c of flashcards) {
+      const rep = c.repetition ?? 0;
+      const interval = c.interval ?? 0;
+      if (rep === 0 && (c.reviewCount ?? 0) === 0) neu++;
+      else if (interval >= 21 && rep >= 3) mature++;
+      else learning++;
+    }
+    return { neu, learning, mature };
+  }, [flashcards]);
+
   const toPersianNum = (n: number) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)]);
 
   return (
     <div>
+      {/* SRS Stats Strip — shows learning progress at a glance */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="surface-1 rounded-[var(--radius)] border border-[var(--border)] p-2.5 text-center">
+          <p className="text-[10px] text-[var(--foreground-subtle)] mb-0.5 uppercase tracking-wider">جدید</p>
+          <p className="text-base font-bold text-[var(--foreground-muted)] tabular-nums">{toPersianNum(srsStats.neu)}</p>
+        </div>
+        <div className="surface-1 rounded-[var(--radius)] border border-[var(--accent)]/20 p-2.5 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-[var(--accent-soft)] opacity-30 pointer-events-none" />
+          <p className="text-[10px] text-[var(--accent)] mb-0.5 uppercase tracking-wider relative">در حال یادگیری</p>
+          <p className="text-base font-bold text-[var(--accent)] tabular-nums relative">{toPersianNum(srsStats.learning)}</p>
+        </div>
+        <div className="surface-1 rounded-[var(--radius)] border border-[var(--gold)]/30 p-2.5 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-[var(--gold-soft)] opacity-20 pointer-events-none" />
+          <p className="text-[10px] text-[var(--gold)] mb-0.5 uppercase tracking-wider relative">مسلط</p>
+          <p className="text-base font-bold text-[var(--gold)] tabular-nums relative">{toPersianNum(srsStats.mature)}</p>
+        </div>
+      </div>
+
       {/* Main Tabs */}
       <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => { setTab('due'); setMasteryFilter('all'); setCurrentIndex(0); setIsFlipped(false); }}
+          className={`btn-hover flex-1 py-2.5 rounded-[var(--radius)] text-sm font-medium transition-colors min-h-[44px] border relative ${
+            tab === 'due'
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/30'
+              : 'surface-1 text-[var(--foreground-muted)] border-[var(--border)]'
+          }`}
+        >
+          <span className="flex items-center justify-center gap-1.5">
+            <Flame className="w-3.5 h-3.5" />
+            مرور امروز
+          </span>
+          {dueCount > 0 && (
+            <motion.span
+              key={dueCount}
+              initial={{ scale: 1.4, opacity: 0.5 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              className="absolute -top-1 -left-1 min-w-5 h-5 px-1 bg-[var(--accent)] rounded-full text-[10px] font-bold text-[var(--bg-deep)] flex items-center justify-center"
+            >
+              {toPersianNum(dueCount)}
+            </motion.span>
+          )}
+        </button>
         <button
           onClick={() => { setTab('study'); setMasteryFilter('all'); setCurrentIndex(0); setIsFlipped(false); }}
           className={`btn-hover flex-1 py-2.5 rounded-[var(--radius)] text-sm font-medium transition-colors min-h-[44px] border ${
@@ -575,17 +694,24 @@ function FlashcardsTool() {
         <div>
           <div className="flex items-center justify-between text-xs text-[var(--foreground-muted)] mb-3">
             <span className="tabular-nums">{toPersianNum(currentIndex + 1)} از {toPersianNum(filteredCards.length)}</span>
-            {currentCard.subject && (
-              <span
-                className="px-2 py-0.5 rounded-md text-[10px] font-bold"
-                style={{
-                  backgroundColor: (SUBJECT_COLORS[currentCard.subject] || 'var(--accent)') + '22',
-                  color: SUBJECT_COLORS[currentCard.subject] || 'var(--accent)',
-                }}
-              >
-                {currentCard.subject}
+            <div className="flex items-center gap-2">
+              {currentCard.subject && (
+                <span
+                  className="px-2 py-0.5 rounded-md text-[10px] font-bold"
+                  style={{
+                    backgroundColor: (SUBJECT_COLORS[currentCard.subject] || 'var(--accent)') + '22',
+                    color: SUBJECT_COLORS[currentCard.subject] || 'var(--accent)',
+                  }}
+                >
+                  {currentCard.subject}
+                </span>
+              )}
+              {/* Next-review badge */}
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[rgba(255,255,255,0.04)] border border-[var(--border)] text-[var(--foreground-muted)]">
+                <Calendar className="w-3 h-3" />
+                {formatNextReview(currentCard)}
               </span>
-            )}
+            </div>
           </div>
 
           {/* 3D Flip Card */}
@@ -599,9 +725,18 @@ function FlashcardsTool() {
             >
               {/* Front */}
               <div
-                className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-6 min-h-[220px] flex flex-col items-center justify-center"
+                className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-6 min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden"
                 style={{ backfaceVisibility: 'hidden' }}
               >
+                {/* Subject color stripe (top edge) */}
+                {currentCard.subject && (
+                  <div
+                    className="absolute top-0 left-0 right-0 h-[3px] opacity-70"
+                    style={{
+                      background: `linear-gradient(90deg, transparent, ${SUBJECT_COLORS[currentCard.subject] || 'var(--accent)'}, transparent)`,
+                    }}
+                  />
+                )}
                 <p className="text-base text-[var(--foreground)] text-center leading-relaxed font-medium">
                   {currentCard.front}
                 </p>
@@ -620,8 +755,43 @@ function FlashcardsTool() {
                 <p className="text-base text-[var(--accent)] text-center leading-relaxed font-medium">
                   {currentCard.back}
                 </p>
+                <p className="text-[10px] text-[var(--foreground-subtle)] mt-3">باکیفیت پاسخ بده تا فاصله‌ی مرور‌ها بیشتر بشه</p>
               </div>
             </motion.div>
+          </div>
+
+          {/* SRS Meta Bar — ease factor, review count, retention strength */}
+          <div className="surface-1 rounded-[var(--radius)] border border-[var(--border)] p-3 mb-3">
+            <div className="flex items-center justify-between text-[11px] mb-2">
+              <span className="flex items-center gap-1 text-[var(--foreground-muted)]">
+                <Zap className="w-3 h-3 text-[var(--accent)]" />
+                <span>راحتی یادآوری: <span className="text-[var(--foreground)] font-bold tabular-nums">{toPersianNum(Math.round((currentCard.easeFactor ?? 2.5) * 10) / 10)}</span></span>
+              </span>
+              <span className="text-[var(--foreground-muted)]">
+                مرورها: <span className="text-[var(--foreground)] font-bold tabular-nums">{toPersianNum(currentCard.reviewCount ?? 0)}</span>
+                {Boolean(currentCard.lapseCount) && (
+                  <span className="text-[#F87171] mr-2">· فراموشی: {toPersianNum(currentCard.lapseCount ?? 0)}</span>
+                )}
+              </span>
+            </div>
+            {/* Retention strength bar */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">قدرت حافظه</span>
+              <div className="flex-1 h-1.5 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
+                <motion.div
+                  key={`${currentCard.id}-${retentionStrength(currentCard)}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${retentionStrength(currentCard)}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className="h-full rounded-full"
+                  style={{
+                    background: `linear-gradient(90deg, var(--accent), var(--gold))`,
+                    boxShadow: '0 0 8px var(--accent-glow)',
+                  }}
+                />
+              </div>
+              <span className="text-[11px] font-bold text-[var(--foreground)] tabular-nums w-8 text-left">{toPersianNum(retentionStrength(currentCard))}٪</span>
+            </div>
           </div>
 
           {/* Feedback Buttons */}
@@ -654,6 +824,14 @@ function FlashcardsTool() {
                     ضعف
                   </button>
                 </div>
+                {/* Reset progress button */}
+                <button
+                  onClick={() => handleResetCard(currentCard.id)}
+                  className="btn-hover w-full flex items-center justify-center gap-1.5 text-[var(--foreground-subtle)] text-[11px] py-2 hover:text-[var(--foreground-muted)] transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  صفر کردن پیشرفت این کارت
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
@@ -680,12 +858,31 @@ function FlashcardsTool() {
         </div>
       ) : (
         <div className="surface-1 rounded-[var(--radius-lg)] p-8 text-center">
-          <p className="text-[var(--foreground-muted)] text-sm">
-            {tab === 'marked'
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+            className="w-14 h-14 mx-auto mb-3 rounded-full bg-[var(--accent-soft)] flex items-center justify-center"
+          >
+            {tab === 'due' ? (
+              <Sparkles className="w-7 h-7 text-[var(--accent)]" />
+            ) : (
+              <Brain className="w-7 h-7 text-[var(--accent)]" />
+            )}
+          </motion.div>
+          <p className="text-[var(--foreground)] text-sm font-medium mb-1">
+            {tab === 'due'
+              ? 'مرور امروز تمومه!'
+              : tab === 'marked'
               ? 'هنوز کارتی نشانه‌گذاری نشده'
               : selectedSubject
               ? `فلش‌کارت ${selectedSubject} نداری`
               : 'فلش‌کارت نداری'}
+          </p>
+          <p className="text-[var(--foreground-muted)] text-xs">
+            {tab === 'due'
+              ? 'آفرین! تا الان همه‌ی کارت‌های مورد نیاز رو مرور کردی.'
+              : 'با دکمه‌ی «افزودن کارت جدید» شروع کن.'}
           </p>
         </div>
       )}

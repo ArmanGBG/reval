@@ -3,6 +3,90 @@ import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, Institut
 import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_PLATFORM_INSTITUTES, MOCK_GLOBAL_USERS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
+import { initSRSFields } from '@/lib/spaced-repetition';
+
+// ====================================================================
+// Flashcards persistence (localStorage)
+// -------------------------------------
+// The student's review history (SM-2 scheduling state, due dates, ease
+// factors) is precious — losing it on refresh would reset their entire
+// spaced-repetition schedule. We persist the flashcards array to
+// localStorage under a versioned key and hydrate it on store creation.
+// ====================================================================
+
+const FLASHCARDS_STORAGE_KEY = 'reval:flashcards:v1';
+
+function loadFlashcardsFromStorage(): Flashcard[] {
+  if (typeof window === 'undefined') return MOCK_FLASHCARDS;
+  try {
+    const raw = window.localStorage.getItem(FLASHCARDS_STORAGE_KEY);
+    if (!raw) return MOCK_FLASHCARDS;
+    const parsed = JSON.parse(raw) as Flashcard[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_FLASHCARDS;
+    return parsed;
+  } catch {
+    return MOCK_FLASHCARDS;
+  }
+}
+
+function saveFlashcardsToStorage(cards: Flashcard[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(FLASHCARDS_STORAGE_KEY, JSON.stringify(cards));
+  } catch {
+    // Quota exceeded or serialization error — fail silently.
+    // The in-memory state is still correct.
+  }
+}
+
+// ====================================================================
+// Streak persistence (localStorage)
+// ---------------------------------
+// The student's streak (days, last active date, freezes, best) is precious
+// and was previously lost on page refresh. We persist it to localStorage
+// under a versioned key and hydrate it on store creation.
+// ====================================================================
+
+const STREAK_STORAGE_KEY = 'reval:streak:v1';
+
+interface PersistedStreak {
+  streakDays: number;
+  streakLastDate: string | null;
+  streakFreezes: number;
+  streakBest: number;
+}
+
+function loadStreakFromStorage(): PersistedStreak {
+  const defaults: PersistedStreak = {
+    streakDays: 0,
+    streakLastDate: null,
+    streakFreezes: 1,
+    streakBest: 0,
+  };
+  if (typeof window === 'undefined') return defaults;
+  try {
+    const raw = window.localStorage.getItem(STREAK_STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw) as Partial<PersistedStreak>;
+    return {
+      streakDays: typeof parsed.streakDays === 'number' ? parsed.streakDays : 0,
+      streakLastDate: typeof parsed.streakLastDate === 'string' ? parsed.streakLastDate : null,
+      streakFreezes: typeof parsed.streakFreezes === 'number' ? parsed.streakFreezes : 1,
+      streakBest: typeof parsed.streakBest === 'number' ? parsed.streakBest : 0,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveStreakToStorage(s: PersistedStreak) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(s));
+  } catch {
+    // Quota exceeded — fail silently.
+  }
+}
 
 interface AppState {
   // ===== Role-Based Access Control =====
@@ -87,6 +171,12 @@ interface AppState {
   flashcards: Flashcard[];
   addFlashcard: (card: Flashcard) => void;
   updateFlashcard: (id: string, updates: Partial<Flashcard>) => void;
+  // Apply an SM-2 review to a card. `updates` should come from
+  // scheduleNextReview() — this is a thin wrapper that also triggers
+  // localStorage persistence.
+  reviewFlashcard: (id: string, updates: Partial<Flashcard>) => void;
+  // Reset all SRS state (used by the "reset progress" button).
+  resetFlashcardSRS: (id: string) => void;
 
   // Tickets
   tickets: Ticket[];
@@ -157,6 +247,13 @@ interface AppState {
   // ===== Daily Streak =====
   streakDays: number;
   streakLastDate: string | null;
+  // Streak freeze power-up: a "saved" day that prevents the streak from
+  // resetting when the student misses a day. Each freeze covers one missed
+  // day. Default: 1. Earned at every 7-day milestone (7, 14, 21, ...).
+  // Capped at 3.
+  streakFreezes: number;
+  // Maximum days the student has ever reached (for the "personal best" badge).
+  streakBest: number;
   incrementStreak: () => void;
 
   // ===== Weekly Study Goal =====
@@ -485,13 +582,53 @@ export const useAppStore = create<AppState>((set, get) => ({
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
-  // Flashcards
-  flashcards: MOCK_FLASHCARDS,
-  addFlashcard: (card) => set((state) => ({ flashcards: [...state.flashcards, card] })),
+  // Flashcards — hydrate from localStorage if available, else MOCK_FLASHCARDS.
+  // Every card is guaranteed to have SRS fields (interval/repetition/easeFactor/dueDate).
+  flashcards: (typeof window !== 'undefined'
+    ? loadFlashcardsFromStorage().map((c) =>
+        c.dueDate ? c : { ...c, ...initSRSFields() }
+      )
+    : MOCK_FLASHCARDS),
+  addFlashcard: (card) =>
+    set((state) => {
+      // New cards start with fresh SRS state (due immediately).
+      const newCard: Flashcard = { ...card, ...initSRSFields() };
+      const next = [...state.flashcards, newCard];
+      saveFlashcardsToStorage(next);
+      return { flashcards: next };
+    }),
   updateFlashcard: (id, updates) =>
-    set((state) => ({
-      flashcards: state.flashcards.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-    })),
+    set((state) => {
+      const next = state.flashcards.map((c) =>
+        c.id === id ? { ...c, ...updates } : c
+      );
+      saveFlashcardsToStorage(next);
+      return { flashcards: next };
+    }),
+  reviewFlashcard: (id, updates) =>
+    set((state) => {
+      const next = state.flashcards.map((c) =>
+        c.id === id ? { ...c, ...updates } : c
+      );
+      saveFlashcardsToStorage(next);
+      return { flashcards: next };
+    }),
+  resetFlashcardSRS: (id) =>
+    set((state) => {
+      const next = state.flashcards.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              ...initSRSFields(),
+              mastery: 'review' as const,
+              reviewCount: 0,
+              lapseCount: 0,
+            }
+          : c
+      );
+      saveFlashcardsToStorage(next);
+      return { flashcards: next };
+    }),
 
   // Tickets
   tickets: MOCK_TICKETS,
@@ -665,21 +802,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // ===== Daily Streak =====
-  streakDays: 0,
-  streakLastDate: null,
+  // ===== Daily Streak (persisted to localStorage) =====
+  ...loadStreakFromStorage(),
   incrementStreak: () => {
     const today = (() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })();
 
-    const { streakLastDate, streakDays } = get();
+    const { streakLastDate, streakDays, streakFreezes, streakBest } = get();
 
     // Same day — already counted
     if (streakLastDate === today) return;
 
-    // Check if today is the next consecutive day
+    // Helper: persist after every state change.
+    const persist = (next: PersistedStreak) => {
+      saveStreakToStorage(next);
+    };
+
+    // Helper: grant a freeze at every 7-day milestone (7, 14, 21, 28...).
+    // Caps at 3 freezes total (so a long-time user doesn't accumulate 50).
+    const grantMilestoneFreeze = (newStreak: number, freezes: number): number => {
+      if (newStreak > 0 && newStreak % 7 === 0) {
+        return Math.min(3, freezes + 1);
+      }
+      return freezes;
+    };
+
     if (streakLastDate) {
       const lastDate = new Date(streakLastDate);
       const todayDate = new Date(today);
@@ -687,15 +836,51 @@ export const useAppStore = create<AppState>((set, get) => ({
       const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
       if (diffDays === 1) {
-        // Next consecutive day — increment streak
-        set({ streakDays: streakDays + 1, streakLastDate: today });
+        // Next consecutive day — increment streak.
+        const newStreak = streakDays + 1;
+        const newFreezes = grantMilestoneFreeze(newStreak, streakFreezes);
+        const next = {
+          streakDays: newStreak,
+          streakLastDate: today,
+          streakFreezes: newFreezes,
+          streakBest: Math.max(streakBest, newStreak),
+        };
+        set(next);
+        persist(next);
+      } else if (diffDays === 2 && streakFreezes > 0) {
+        // Missed exactly 1 day AND have a freeze → consume freeze,
+        // increment streak (the missed day is "frozen", today is the next day).
+        const newStreak = streakDays + 1;
+        const newFreezes = grantMilestoneFreeze(newStreak, streakFreezes - 1);
+        const next = {
+          streakDays: newStreak,
+          streakLastDate: today,
+          streakFreezes: newFreezes,
+          streakBest: Math.max(streakBest, newStreak),
+        };
+        set(next);
+        persist(next);
       } else {
-        // Gap in days — reset to 1
-        set({ streakDays: 1, streakLastDate: today });
+        // Gap too large, or no freeze available — reset to 1.
+        const next = {
+          streakDays: 1,
+          streakLastDate: today,
+          streakFreezes: streakFreezes, // keep existing freezes
+          streakBest: Math.max(streakBest, 1),
+        };
+        set(next);
+        persist(next);
       }
     } else {
-      // First ever completion — start at 1
-      set({ streakDays: 1, streakLastDate: today });
+      // First ever completion — start at 1.
+      const next = {
+        streakDays: 1,
+        streakLastDate: today,
+        streakFreezes: streakFreezes,
+        streakBest: Math.max(streakBest, 1),
+      };
+      set(next);
+      persist(next);
     }
   },
 

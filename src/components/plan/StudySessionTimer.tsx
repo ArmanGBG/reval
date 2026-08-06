@@ -18,7 +18,9 @@ interface StudySessionTimerProps {
  * Inline stopwatch that lives inside TaskCard.
  *
  * State is hoisted to useStudySessionStore so it survives view switches
- * (Dashboard ↔ Plan ↔ Tools) without losing elapsed time.
+ * (Dashboard ↔ Plan ↔ Tools) without losing elapsed time. The store is
+ * also persisted to localStorage, so a page refresh preserves elapsed
+ * time (running timers are auto-paused on reload).
  *
  * Behavior:
  *  - ▶ Play  → starts the timer (pauses any other running timer).
@@ -26,6 +28,14 @@ interface StudySessionTimerProps {
  *  - 💾 Save → adds elapsed minutes to task.actualTimeMinutes via updateTask,
  *              then resets the timer. Toast confirmation.
  *  - ↺ Reset → discards elapsed time without saving (with confirm).
+ *
+ * Auto-save hooks:
+ *  - `beforeunload` / `pagehide`: pauses all running timers (so the elapsed
+ *    time is captured in localStorage before the tab closes).
+ *  - Unmount (when the task is completed/skipped and the timer is unmounted):
+ *    auto-saves any paused elapsed time ≥ 1 minute to the DB. This prevents
+ *    the "user completes task while timer is running → elapsed time lost"
+ *    scenario from round 24's known-issues list.
  */
 export default function StudySessionTimer({ taskId, savedMinutes }: StudySessionTimerProps) {
   const session = useStudySessionStore((s) => s.sessions[taskId]);
@@ -34,6 +44,7 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
   const consume = useStudySessionStore((s) => s.consume);
   const reset = useStudySessionStore((s) => s.reset);
   const getElapsed = useStudySessionStore((s) => s.getElapsed);
+  const pauseAll = useStudySessionStore((s) => s.pauseAll);
   const updateTask = useAppStore((s) => s.updateTask);
 
   const [display, setDisplay] = useState('۰۰:۰۰');
@@ -69,6 +80,45 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
     const ms = session?.accumulatedMs ?? 0;
     setDisplay(formatStopwatch(ms));
   }, [session?.running, session?.accumulatedMs]);
+
+  // ===== Global pause on tab close =====
+  // Pause all running timers when the user leaves/closes the tab so the
+  // elapsed time is captured in localStorage (which is read on next load).
+  useEffect(() => {
+    const handler = () => pauseAll();
+    window.addEventListener('pagehide', handler);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        // Don't pause on visibility change — the user might be switching
+        // to another app briefly and want the timer to keep running.
+        // Just persist the current state.
+        pauseAll(); // OK to pause — they can resume on return
+      }
+    });
+    return () => {
+      window.removeEventListener('pagehide', handler);
+    };
+  }, [pauseAll]);
+
+  // ===== Auto-save on unmount =====
+  // When this timer component unmounts (e.g., the task was completed and
+  // the card re-rendered without the timer), if there's accumulated time
+  // ≥ 1 minute that hasn't been saved yet, save it silently.
+  useEffect(() => {
+    return () => {
+      const elapsedMs = getElapsed(taskId);
+      const minutes = msToMinutes(elapsedMs);
+      if (minutes === 0) return;
+      // Consume + save silently (no toast — the user might be mid-action)
+      consume(taskId);
+      const newTotal = (savedPillRef.current ?? 0) + minutes;
+      updateTask(taskId, { actualTimeMinutes: newTotal }).catch(() => {
+        // On error, restore the elapsed time so the user can retry.
+        start(taskId);
+        pause(taskId);
+      });
+    };
+  }, [taskId, consume, getElapsed, updateTask, start, pause]);
 
   const running = session?.running ?? false;
   const accumulatedMs = session?.accumulatedMs ?? 0;

@@ -36,6 +36,7 @@ import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
 import { useCelebration } from '@/hooks/use-celebration';
 import UpcomingExamsCard from './UpcomingExamsCard';
 import WeeklyReviewCard from './WeeklyReviewCard';
+import SubjectMasteryCard from './SubjectMasteryCard';
 
 // ===== Motivational Quotes =====
 const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
@@ -242,7 +243,7 @@ function MobileFocusButton() {
 }
 
 export default function Dashboard() {
-  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, incrementStreak, setCurrentView, exams } = useAppStore();
+  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, streakFreezes, streakBest, incrementStreak, setCurrentView, exams } = useAppStore();
   const studentId = useCurrentStudentId();
   const { celebrate } = useCelebration();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
@@ -522,9 +523,9 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-            className="relative rounded-[var(--radius-lg)] p-4 overflow-hidden border border-[var(--border)] flex-shrink-0"
+            className="relative rounded-[var(--radius-lg)] p-4 overflow-hidden border border-[var(--border)] flex-shrink-0 group"
             style={{
-              backgroundColor: streakDays > 0 ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
+              backgroundColor: 'var(--bg-elevated)',
               boxShadow: streakDays > 0
                 ? '0 0 32px -8px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.04)'
                 : '0 0 40px -12px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.04)',
@@ -571,6 +572,27 @@ export default function Dashboard() {
                     ? 'روز متوالی'
                     : 'شروع کن!'}
               </span>
+              {/* Streak Freeze indicator */}
+              {streakFreezes > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full bg-[rgba(99,179,237,0.1)] border border-[rgba(99,179,237,0.25)]"
+                  title={`شما ${toPersianDigits(streakFreezes)} یخ‌کننده دارید — اگر یک روز مطالعه نکنید، استریک حفظ می‌شود`}
+                >
+                  <span className="text-[11px] leading-none">❄️</span>
+                  <span className="text-[10px] font-bold tabular-nums text-[#7DD3FC]">{toPersianDigits(streakFreezes)}</span>
+                </motion.div>
+              )}
+              {/* Personal best (shown on hover) */}
+              {streakBest > 0 && streakDays < streakBest && (
+                <div className="absolute -bottom-1 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <p className="text-[9px] text-[var(--foreground-subtle)] text-center tabular-nums">
+                    رکورد: {toPersianDigits(streakBest)}
+                  </p>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -578,6 +600,9 @@ export default function Dashboard() {
 
       {/* ===== Upcoming Exams Card (student-only) ===== */}
       <UpcomingExamsCard exams={exams} />
+
+      {/* ===== Subject Mastery Card (per-subject progress bars) ===== */}
+      <SubjectMasteryCard tasks={tasks} />
 
       {/* ===== Date Range Pills ===== */}
       <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar mb-4">
