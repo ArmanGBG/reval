@@ -3380,3 +3380,44 @@ Stage Summary:
 - Files modified: dashboard/{Dashboard,SubjectMasteryCard,WeeklyReviewCard,UpcomingExamsCard}.tsx, plan/{TaskCard,StudySessionTimer,AiEntryModal,ManualEntrySheet,PlanView}.tsx, tools/{ToolsHub,PomodoroTimer,BreathingExercise,GradeCalculator,StudyMusicPlayer,ActiveSummary}.tsx, analytics/{WeeklyGoalCard,StudyHeatmap,AnalyticsView}.tsx, settings/SettingsView.tsx, shared/{CommandPalette,CelebrationOverlay,MusicPlayer,SessionGuard,FocusMode}.tsx (24 files; PartialCompletionSheet + 6 shared files were already clean).
 - Key changes: (1) Multi-hue decorative palettes (per-tool, per-subject, per-activity, confetti) collapsed to single var(--accent) or chart-token monochrome. (2) All colored glow boxShadows / drop-shadows / accent-glow rings removed or replaced with neutral rgba(0,0,0,0.3) shadows. (3) Heatmap rebuilt as single-hue accent scale rgba(94,106,210,0.18→var(--accent)). (4) Status colors (success/warning/danger) kept but desaturated to token palette — danger rgba(239,68,68,...) → rgba(229,72,77,...), warning rgba(245,181,68,...) → rgba(216,150,20,...). (5) Linear-style confetti palette (6 colors: accent/hover/foreground/muted/success/warning) replaces 8-color rainbow.
 - Lint result: `bun run lint` → exit code 0, zero errors. No logic/props/state changes; only visual/styling tokens replaced. RTL Persian text and component composition fully preserved.
+
+---
+Task ID: LINEAR-REDESIGN
+Agent: main (Z.ai Code) + 4 parallel subagents (7a/7b/7c/7d)
+Task: بازطراحی ظاهری کامل به سبک Linear.app — مونوکروم، تک اکسنت، بدون نئون/گلو (بدون تغییر فانکشن)
+
+Work Log:
+- ممیزی کامل الگوی طراحی فعلی: شناسایی ~۲۳۳ مورد رنگ نئون/گرادیان/گلو در ۵۱ فایل + ~۱۰۱ مورد هگز سخت‌کد شده.
+- بازنویسی پایه `src/app/globals.css` به سیستم توکن مونوکروم Linear:
+  - سطوح خاکستری نزدیک به مشکی (#08090A / #0B0C0E / #141517 / #1C1D20)
+  - تک اکسنت بنفش ملایم (#5E6AD2) استفاده محدود
+  - `--gold` → `--accent` (یونیفای پالت نقش‌ها، حفظ لاجیک)
+  - `--accent-glow` / `--gold-glow` → `transparent` (حذف گلو)
+  - رادیوس‌ها کوچکتر و معماری‌گونه (6/8/12/16)
+  - حذف wash گرادیانی body
+  - نوت racialize کلاس‌های یوتیلیتی (.glow-hover, .gradient-text-accent, .gradient-border, .pulse-glow, .card-hover) به شیفت‌های ملایم bg/border
+- `src/components/ui/sonner.tsx`: تست‌ها مونوکروم با دات وضعیت ظریف، حذف گلو رنگی.
+- `src/app/layout.tsx`: themeColor → #0B0C0E.
+- شل Components (SidebarNav, BottomNav, CircularProgress, MobileCommandFab, NotificationCenter badge): حذف inline glow shadow، اکسنت تک.
+- ۴ ساب‌اجنت موازی برای پاکسازی inline در ~۶۵ فایل ویو:
+  - 7a: landing/auth/onboarding (۱۲ فایل)
+  - 7b: dashboard/plan/tools/analytics/settings/shared (۳۶ فایل)
+  - 7c: advisor + institute (۱۶ فایل)
+  - 7d: super-admin (۱۴ فایل)
+- پاکسازی palette داده‌ها (mockData.ts, analytics.ts): هگز‌های نئون → پالت هارمونیک مات (#5E6AD2, #6E7AE0, #3EBA8C, #9B8CF0, #D89614, #8A8F98...).
+
+Verification Results:
+- `bun run lint`: ✅ zero errors
+- dev.log: ✅ همه API‌ها 200 (login/logout/me/tasks/exams/messages)؛ خطاهای findMany گذرا حین ریکامپایل موازی بودند و رفع شدند.
+- agent-browser + VLM:
+  - Dashboard: 8/10 — calm, dark, monochrome, single indigo accent, no neon glow ✅
+  - Tools Hub: calm monochrome, single accent, no neon, no render errors ✅
+  - Analytics: calm monochrome, single accent, charts use accent shades, no errors ✅
+  - VLM پیشنهاد داد: notification badge نارنجی → اصلاح شد به accent.
+
+Stage Summary:
+- کامیت `dfa1ad7` به origin/main پوش شد (۷۲ فایل، +987/-957).
+- سبک طراحی از "Modern Dark Cinema" (نئون mint + gold + گلو) به Linear.app (مونوکروم + تک اکسنت بنفش) تغییر یافت.
+- هیچ منطق/فانکشن/تکست/پراپ تغییر نکرد — فقط رنگ/گرادیان/گلو/شادو/رادیوس.
+- پالت نقش super-admin (gold) به‌صورت خودکار به اکسنت统一 شد (متغیر --gold = --accent).
+- ریسک: رنگ‌های subject ذخیره‌شده در DB قدیمی ممکن‌اند؛ seed data جدید مات است. در صورت تمایل می‌توان اسکریپت migration رنگ نوشت.
