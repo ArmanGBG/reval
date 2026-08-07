@@ -107,7 +107,7 @@ export function AdvisorStudentDetail() {
     { label: 'تکمیل وظایف', value: `${toPersianDigits(student.taskCompletionRate)}٪`, sub: 'این هفته', accent: 'var(--accent)' },
   ];
 
-  const moodAccent = student.mood === 'critical' ? 'var(--danger)' : student.mood === 'poor' ? 'orange' : student.mood === 'fair' ? 'var(--warning)' : 'var(--accent)';
+  const moodAccent = student.mood === 'critical' ? 'var(--danger)' : student.mood === 'poor' ? 'var(--warning)' : student.mood === 'fair' ? 'var(--warning)' : 'var(--accent)';
 
   return (
     <div className="space-y-4">
@@ -156,7 +156,7 @@ export function AdvisorStudentDetail() {
 
             {/* Wellbeing card */}
             <Card>
-              <SectionHeader icon={<Heart className="w-4 h-4" />} title="وضعیت روانی" accent={moodAccent === 'orange' ? '#FB923C' : moodAccent} />
+              <SectionHeader icon={<Heart className="w-4 h-4" />} title="وضعیت روانی" accent={moodAccent} />
               <div className="flex items-center gap-3 mb-4">
                 <span className={`w-10 h-10 rounded-xl flex items-center justify-center ring-1 ${MOOD_CONFIG[student.mood].bg} ${MOOD_CONFIG[student.mood].ring}`}>
                   <span className={`w-2.5 h-2.5 rounded-full ${MOOD_CONFIG[student.mood].dot}`} />
@@ -190,7 +190,7 @@ export function AdvisorStudentDetail() {
 
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-2.5 text-center border border-[var(--border)]">
-                  <Timer className="w-4 h-4 text-[#8B5CF6] mx-auto mb-1" />
+                  <Timer className="w-4 h-4 text-[var(--accent)] mx-auto mb-1" />
                   <p className="text-sm font-bold text-[var(--foreground)] tabular-nums">{toPersianDigits(student.pomodoroSessionsPerWeek)}</p>
                   <p className="text-[10px] text-[var(--foreground-muted)]">پومودورو/هفته</p>
                 </div>
@@ -239,7 +239,7 @@ export function AdvisorStudentDetail() {
 
             {/* Psychological assessment */}
             <Card>
-              <SectionHeader icon={<Brain className="w-4 h-4" />} title="ارزیابی روانشناختی" accent="#EC4899" />
+              <SectionHeader icon={<Brain className="w-4 h-4" />} title="ارزیابی روانشناختی" accent="var(--accent)" />
               <p className="text-[13px] text-[var(--foreground)] leading-relaxed">{analysis.psychologicalAssessment}</p>
             </Card>
 
@@ -258,7 +258,7 @@ export function AdvisorStudentDetail() {
 
             {/* Notes + Weekly Template */}
             <Card>
-              <SectionHeader icon={<FileText className="w-4 h-4" />} title="یادداشت‌ها و الگوها" accent="#8B5CF6" />
+              <SectionHeader icon={<FileText className="w-4 h-4" />} title="یادداشت‌ها و الگوها" accent="var(--accent)" />
               <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)] mb-3">
                 <p className="text-[10px] text-[var(--foreground-muted)] mb-1 font-medium">یادداشت مشاور:</p>
                 <p className="text-[12px] text-[var(--foreground)] leading-relaxed">{student.advisorNotes}</p>
@@ -268,7 +268,7 @@ export function AdvisorStudentDetail() {
                 {['الگوی فشرده کنکور', 'الگوی متعادل', 'الگوی مرور', 'الگوی سفارشی'].map((template) => (
                   <button
                     key={template}
-                    className="bg-[var(--bg-overlay)]/60 border border-[var(--border)] rounded-lg p-2.5 text-[12px] text-[var(--foreground-muted)] hover:border-[#8B5CF6]/30 hover:text-[var(--foreground)] nav-item-hover text-center"
+                    className="bg-[var(--bg-overlay)]/60 border border-[var(--border)] rounded-lg p-2.5 text-[12px] text-[var(--foreground-muted)] hover:border-[var(--accent)]/30 hover:text-[var(--foreground)] nav-item-hover text-center"
                   >
                     {template}
                   </button>
@@ -402,11 +402,11 @@ export function AdvisorStudentDetail() {
             <SectionHeader
               icon={<GraduationCap className="w-4 h-4" />}
               title="آزمون‌ها"
-              accent="#8B5CF6"
+              accent="var(--accent)"
               action={
                 <button
                   onClick={() => setExamModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8B5CF6]/15 border border-[#8B5CF6]/30 rounded-lg text-[11px] font-medium text-[#8B5CF6] btn-hover"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-soft)] border border-[var(--accent)]/30 rounded-lg text-[11px] font-medium text-[var(--accent)] btn-hover"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   ثبت آزمون
@@ -446,7 +446,7 @@ export function AdvisorStudentDetail() {
                                 setResultsExam(exam);
                                 setResultsModalOpen(true);
                               }}
-                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--gold)]/40 bg-[var(--gold-soft)] text-[10px] font-medium text-[var(--gold)] hover:bg-[rgba(245,181,68,0.18)] hover:border-[var(--gold)]/70 transition-colors"
+                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--gold)]/40 bg-[var(--gold-soft)] text-[10px] font-medium text-[var(--gold)] hover:bg-[var(--accent-soft)] hover:border-[var(--gold)]/70 transition-colors"
                               title="ثبت نمرات دانش‌آموزان"
                             >
                               <Trophy className="w-3 h-3" />

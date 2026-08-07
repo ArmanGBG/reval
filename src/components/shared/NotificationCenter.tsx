@@ -187,7 +187,7 @@ export default function NotificationCenter() {
               backgroundColor:
                 notifications.some((n) => n.color === 'var(--danger)' && !n.read)
                   ? 'var(--danger)'
-                  : 'var(--warning)',
+                  : 'var(--accent)',
             }}
           >
             {toPersianDigits(Math.min(unreadNotificationCount, 9))}

@@ -88,7 +88,7 @@ export default function CircularProgress({
             duration: 0.8,
             delay,
           }}
-          style={{ filter: `drop-shadow(0 0 ${strokeWidth}px ${color === 'var(--accent)' ? 'var(--accent-glow)' : 'rgba(62,180,137,0.25)'})` }}
+          style={{ filter: 'none' }}
         />
       </svg>
 

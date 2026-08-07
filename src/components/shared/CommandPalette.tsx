@@ -70,27 +70,27 @@ const ACCENT_COLORS: Record<
   accent: {
     text: 'text-[var(--accent-hover)]',
     bg: 'bg-[var(--accent-soft)]',
-    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--accent-glow)]',
+    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--border-strong)]',
   },
   gold: {
-    text: 'text-[var(--gold)]',
-    bg: 'bg-[var(--gold-soft)]',
-    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--gold-glow)]',
+    text: 'text-[var(--accent)]',
+    bg: 'bg-[var(--accent-soft)]',
+    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--border-strong)]',
   },
   pink: {
-    text: 'text-[#F472B6]',
-    bg: 'bg-[rgba(244,114,182,0.12)]',
-    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_rgba(244,114,182,0.3)]',
+    text: 'text-[var(--accent)]',
+    bg: 'bg-[var(--accent-soft)]',
+    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--border-strong)]',
   },
   cyan: {
-    text: 'text-[#22D3EE]',
-    bg: 'bg-[rgba(34,211,238,0.12)]',
-    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_rgba(34,211,238,0.3)]',
+    text: 'text-[var(--accent)]',
+    bg: 'bg-[var(--accent-soft)]',
+    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--border-strong)]',
   },
   violet: {
-    text: 'text-[#A78BFA]',
-    bg: 'bg-[rgba(167,139,250,0.12)]',
-    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_rgba(167,139,250,0.3)]',
+    text: 'text-[var(--accent)]',
+    bg: 'bg-[var(--accent-soft)]',
+    ring: 'group-data-[selected=true]:shadow-[0_0_0_1px_var(--border-strong)]',
   },
 };
 
@@ -554,7 +554,7 @@ export default function CommandPalette() {
             className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-elevated)]/95 backdrop-blur-xl shadow-2xl"
             style={{
               boxShadow:
-                '0 24px 64px -12px rgba(0,0,0,0.6), 0 0 0 1px var(--border-strong), 0 0 40px -8px var(--accent-glow)',
+                '0 24px 64px -12px rgba(0,0,0,0.6), 0 0 0 1px var(--border-strong)',
             }}
           >
             <CommandPrimitive

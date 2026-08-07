@@ -24,11 +24,11 @@ function toPersianDigits(num: number | string): string {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  excellent: { label: 'عالی', color: 'text-mint', bg: 'bg-mint/15', dot: 'bg-mint' },
-  good: { label: 'خوب', color: 'text-sky-400', bg: 'bg-sky-500/15', dot: 'bg-sky-500' },
-  fair: { label: 'متوسط', color: 'text-amber-400', bg: 'bg-amber-500/15', dot: 'bg-amber-500' },
-  'at-risk': { label: 'در خطر', color: 'text-orange-400', bg: 'bg-orange-500/15', dot: 'bg-orange-500' },
-  critical: { label: 'بحرانی', color: 'text-red-400', bg: 'bg-red-500/15', dot: 'bg-red-500' },
+  excellent: { label: 'عالی', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', dot: 'bg-[var(--accent)]' },
+  good: { label: 'خوب', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', dot: 'bg-[var(--accent)]' },
+  fair: { label: 'متوسط', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', dot: 'bg-[var(--warning)]' },
+  'at-risk': { label: 'در خطر', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', dot: 'bg-[var(--warning)]' },
+  critical: { label: 'بحرانی', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', dot: 'bg-[var(--danger)]' },
 };
 
 type SortKey = 'name' | 'mockExamScore' | 'weeklyCompletionRate' | 'totalStudyHours';
@@ -132,28 +132,28 @@ export default function InstituteDashboard() {
       label: 'دانش‌آموزان',
       value: kpis.totalStudents,
       icon: GraduationCap,
-      tint: 'bg-mint/15 text-mint',
+      tint: 'bg-[var(--accent-soft)] text-[var(--accent)]',
       sub: `${toPersianDigits(kpis.assignedCount)} تخصیص‌یافته`,
     },
     {
       label: 'مشاوران فعال',
       value: kpis.totalAdvisors,
       icon: Users,
-      tint: 'bg-sky-500/15 text-sky-400',
+      tint: 'bg-[var(--accent-soft)] text-[var(--accent)]',
       sub: `${toPersianDigits(instituteAdvisors.length)} کل مشاوران`,
     },
     {
       label: 'میانگین نمره',
       value: kpis.avgScore,
       icon: Target,
-      tint: 'bg-amber-500/15 text-amber-400',
+      tint: 'bg-[var(--warning)]/10 text-[var(--warning)]',
       sub: 'از ۱۰۰',
     },
     {
       label: 'در خطر / بحرانی',
       value: kpis.atRiskCount,
       icon: AlertTriangle,
-      tint: 'bg-red-500/15 text-red-400',
+      tint: 'bg-[var(--danger)]/10 text-[var(--danger)]',
       sub: kpis.atRiskCount > 0 ? 'نیازمند توجه' : 'بدون هشدار',
     },
   ];
@@ -163,8 +163,8 @@ export default function InstituteDashboard() {
       {/* ============ Page Header ============ */}
       <header className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-mint/15 border border-mint/20 flex items-center justify-center shrink-0">
-            <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6 text-mint" />
+          <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center shrink-0">
+            <LayoutDashboard className="w-5 h-5 md:w-6 md:h-6 text-[var(--accent)]" />
           </div>
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-foreground leading-tight">
@@ -206,7 +206,7 @@ export default function InstituteDashboard() {
       <section className="grid grid-cols-3 gap-3">
         <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover">
           <div className="flex items-center justify-center gap-1.5 mb-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-mint" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent)]" />
             <p className="text-[10px] md:text-xs text-muted-foreground">تخصیص‌یافته</p>
           </div>
           <p className="text-base md:text-lg font-bold text-foreground">
@@ -215,17 +215,17 @@ export default function InstituteDashboard() {
         </div>
         <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover">
           <div className="flex items-center justify-center gap-1.5 mb-1.5">
-            <Activity className="w-3.5 h-3.5 text-amber-400" />
+            <Activity className="w-3.5 h-3.5 text-[var(--warning)]" />
             <p className="text-[10px] md:text-xs text-muted-foreground">میانگین تکمیل</p>
           </div>
-          <p className="text-base md:text-lg font-bold text-amber-400">{toPersianDigits(kpis.avgCompletion)}٪</p>
+          <p className="text-base md:text-lg font-bold text-[var(--warning)]">{toPersianDigits(kpis.avgCompletion)}٪</p>
         </div>
         <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover">
           <div className="flex items-center justify-center gap-1.5 mb-1.5">
-            <Clock className="w-3.5 h-3.5 text-sky-400" />
+            <Clock className="w-3.5 h-3.5 text-[var(--accent)]" />
             <p className="text-[10px] md:text-xs text-muted-foreground">مجموع ساعت</p>
           </div>
-          <p className="text-base md:text-lg font-bold text-sky-400">{toPersianDigits(kpis.totalStudyHours)}</p>
+          <p className="text-base md:text-lg font-bold text-[var(--accent)]">{toPersianDigits(kpis.totalStudyHours)}</p>
         </div>
       </section>
 
@@ -254,14 +254,14 @@ export default function InstituteDashboard() {
                   placeholder="جستجوی نام یا شماره..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] pr-10 pl-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 focus:bg-[var(--bg-overlay)] transition-colors"
+                  className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] pr-10 pl-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 focus:bg-[var(--bg-overlay)] transition-colors"
                 />
               </div>
               <div className="flex gap-2">
                 <select
                   value={filterAdvisor}
                   onChange={(e) => setFilterAdvisor(e.target.value as FilterAdvisor)}
-                  className="flex-1 bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2 text-xs text-foreground/90 focus:outline-none focus:border-mint/50 transition-colors"
+                  className="flex-1 bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2 text-xs text-foreground/90 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                 >
                   <option value="all">همه مشاوران</option>
                   <option value="unassigned">بدون مشاور</option>
@@ -272,7 +272,7 @@ export default function InstituteDashboard() {
                 <select
                   value={filterPerformance}
                   onChange={(e) => setFilterPerformance(e.target.value as FilterPerformance)}
-                  className="flex-1 bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2 text-xs text-foreground/90 focus:outline-none focus:border-mint/50 transition-colors"
+                  className="flex-1 bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2 text-xs text-foreground/90 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                 >
                   <option value="all">همه عملکردها</option>
                   <option value="top">برترین‌ها</option>
@@ -290,25 +290,25 @@ export default function InstituteDashboard() {
                 onClick={() => handleSort('name')}
                 className="col-span-4 flex items-center gap-1 hover:text-foreground transition-colors text-right"
               >
-                دانش‌آموز <ArrowUpDown className={`w-3 h-3 ${sortKey === 'name' ? 'text-mint' : 'opacity-40'}`} />
+                دانش‌آموز <ArrowUpDown className={`w-3 h-3 ${sortKey === 'name' ? 'text-[var(--accent)]' : 'opacity-40'}`} />
               </button>
               <button
                 onClick={() => handleSort('mockExamScore')}
                 className="col-span-2 flex items-center gap-1 hover:text-foreground transition-colors text-right"
               >
-                نمره <ArrowUpDown className={`w-3 h-3 ${sortKey === 'mockExamScore' ? 'text-mint' : 'opacity-40'}`} />
+                نمره <ArrowUpDown className={`w-3 h-3 ${sortKey === 'mockExamScore' ? 'text-[var(--accent)]' : 'opacity-40'}`} />
               </button>
               <button
                 onClick={() => handleSort('weeklyCompletionRate')}
                 className="col-span-3 flex items-center gap-1 hover:text-foreground transition-colors text-right"
               >
-                نرخ تکمیل <ArrowUpDown className={`w-3 h-3 ${sortKey === 'weeklyCompletionRate' ? 'text-mint' : 'opacity-40'}`} />
+                نرخ تکمیل <ArrowUpDown className={`w-3 h-3 ${sortKey === 'weeklyCompletionRate' ? 'text-[var(--accent)]' : 'opacity-40'}`} />
               </button>
               <button
                 onClick={() => handleSort('totalStudyHours')}
                 className="col-span-1 flex items-center gap-1 hover:text-foreground transition-colors text-right"
               >
-                ساعت <ArrowUpDown className={`w-3 h-3 ${sortKey === 'totalStudyHours' ? 'text-mint' : 'opacity-40'}`} />
+                ساعت <ArrowUpDown className={`w-3 h-3 ${sortKey === 'totalStudyHours' ? 'text-[var(--accent)]' : 'opacity-40'}`} />
               </button>
               <div className="col-span-2 text-right">مشاور</div>
             </div>
@@ -346,7 +346,7 @@ export default function InstituteDashboard() {
                         <div className="flex-1 h-1.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              student.weeklyCompletionRate >= 75 ? 'bg-mint' : student.weeklyCompletionRate >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                              student.weeklyCompletionRate >= 75 ? 'bg-[var(--accent)]' : student.weeklyCompletionRate >= 50 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'
                             }`}
                             style={{ width: `${student.weeklyCompletionRate}%` }}
                           />
@@ -404,11 +404,11 @@ export default function InstituteDashboard() {
                       </div>
                       <div className="bg-[var(--bg-overlay)] rounded-[8px] py-1.5">
                         <p className="text-[10px] text-muted-foreground/70">تکمیل</p>
-                        <p className="text-sm font-bold text-amber-400">{toPersianDigits(student.weeklyCompletionRate)}٪</p>
+                        <p className="text-sm font-bold text-[var(--warning)]">{toPersianDigits(student.weeklyCompletionRate)}٪</p>
                       </div>
                       <div className="bg-[var(--bg-overlay)] rounded-[8px] py-1.5">
                         <p className="text-[10px] text-muted-foreground/70">ساعت</p>
-                        <p className="text-sm font-bold text-sky-400">{toPersianDigits(student.totalStudyHours)}</p>
+                        <p className="text-sm font-bold text-[var(--accent)]">{toPersianDigits(student.totalStudyHours)}</p>
                       </div>
                     </div>
                     <div className="mt-2 text-[11px] text-muted-foreground/80">
@@ -432,7 +432,7 @@ export default function InstituteDashboard() {
           className="lg:col-span-4 surface-1 rounded-[16px] p-4 md:p-5 self-start"
         >
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-mint" />
+            <Activity className="w-4 h-4 text-[var(--accent)]" />
             <h3 className="text-sm md:text-base font-semibold text-foreground">توزیع وضعیت</h3>
           </div>
 
@@ -473,7 +473,7 @@ export default function InstituteDashboard() {
           {/* Footer hint */}
           <div className="mt-4 pt-4 border-t border-[var(--border)]">
             <div className="flex items-start gap-2">
-              <TrendingUp className="w-3.5 h-3.5 text-mint mt-0.5 shrink-0" />
+              <TrendingUp className="w-3.5 h-3.5 text-[var(--accent)] mt-0.5 shrink-0" />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {kpis.atRiskCount > 0
                   ? `${toPersianDigits(kpis.atRiskCount)} دانش‌آموز نیازمند توجه فوری هستند.`

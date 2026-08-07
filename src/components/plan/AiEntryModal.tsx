@@ -75,14 +75,14 @@ function ParsedTaskCard({
         <div className="flex items-center gap-2 mb-1">
           <span
             className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: subjectObj?.color || '#3EB489' }}
+            style={{ backgroundColor: subjectObj?.color || 'var(--accent)' }}
           />
           <span className="text-[var(--foreground)] text-sm font-medium">{parsed.subject}</span>
           <span
             className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
               parsed.field_type === 'کنکور'
                 ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                : 'bg-[rgba(245,181,68,0.12)] text-[var(--warning)]'
+                : 'bg-[var(--accent-soft)] text-[var(--accent)]'
             }`}
           >
             {parsed.field_type}
@@ -126,7 +126,7 @@ function ParsedTaskCard({
       <motion.button
         whileTap={{ scale: 0.85 }}
         onClick={() => onDelete(index)}
-        className="icon-btn w-8 h-8 rounded-[var(--radius-sm)] text-[var(--foreground-subtle)] hover:text-[#F87171] flex items-center justify-center shrink-0"
+        className="icon-btn w-8 h-8 rounded-[var(--radius-sm)] text-[var(--foreground-subtle)] hover:text-[var(--danger)] flex items-center justify-center shrink-0"
         aria-label="حذف"
       >
         <Trash2 className="w-3.5 h-3.5" />
@@ -291,7 +291,7 @@ export default function AiEntryModal({
                 whileTap={{ scale: 0.95 }}
                 onClick={handleAnalyze}
                 disabled={loading || !aiText.trim()}
-                className="btn-hover glow-hover w-full py-3 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-medium text-sm disabled:opacity-50 min-h-[48px] flex items-center justify-center gap-2 shadow-[0_8px_20px_-6px_var(--accent-glow)]"
+                className="btn-hover glow-hover w-full py-3 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-medium text-sm disabled:opacity-50 min-h-[48px] flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <AnalyzingSpinner />
@@ -355,7 +355,7 @@ export default function AiEntryModal({
                   whileTap={{ scale: 0.95 }}
                   onClick={handleConfirm}
                   disabled={parsedTasks.length === 0}
-                  className="btn-hover glow-hover flex-1 py-2.5 rounded-[var(--radius)] text-sm bg-[var(--accent)] text-[var(--bg-deep)] font-medium disabled:opacity-50 min-h-[44px] shadow-[0_8px_20px_-6px_var(--accent-glow)]"
+                  className="btn-hover glow-hover flex-1 py-2.5 rounded-[var(--radius)] text-sm bg-[var(--accent)] text-[var(--bg-deep)] font-medium disabled:opacity-50 min-h-[44px]"
                 >
                   تایید و افزودن به برنامه
                 </motion.button>

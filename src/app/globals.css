@@ -37,84 +37,92 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --color-mint: #3EB489;
-  --color-mint-light: #4FD9A8;
-  --color-mint-dark: #2D8A66;
-  --color-gold: #F5B544;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  /* Legacy aliases — kept for compatibility, now resolve to the single accent */
+  --color-mint: var(--accent);
+  --color-mint-light: var(--accent-hover);
+  --color-mint-dark: var(--accent);
+  --color-gold: var(--accent);
 }
 
-/* ===== Modern Dark Cinema — Persian RTL Design System ===== */
+/* ============================================================
+   Linear-style Design System — calm, monochrome, restrained.
+   A single accent is used sparingly. No neon, no glows, no gold.
+   Variable NAMES are preserved so all existing components inherit
+   the new palette automatically.
+   ============================================================ */
 :root {
-  /* Elevation surfaces */
-  --bg-deep: #050507;
-  --bg-base: #0A0A0D;
-  --bg-elevated: #131318;
-  --bg-overlay: #1B1B22;
-  --surface-glass: rgba(255, 255, 255, 0.04);
-  --surface-glass-strong: rgba(255, 255, 255, 0.08);
+  /* Elevation surfaces — near-black, slightly cool grayscale */
+  --bg-deep: #08090A;
+  --bg-base: #0B0C0E;
+  --bg-elevated: #141517;
+  --bg-overlay: #1C1D20;
+  --surface-glass: rgba(255, 255, 255, 0.025);
+  --surface-glass-strong: rgba(255, 255, 255, 0.05);
 
-  /* Foreground */
-  --foreground: #EDEDEF;
+  /* Foreground — Linear's muted gray scale */
+  --foreground: #F7F8F8;
   --foreground-muted: #8A8F98;
-  --foreground-subtle: #5A5F66;
+  --foreground-subtle: #5C6066;
 
-  /* Accents */
-  --accent: #3EB489;
-  --accent-hover: #4FD9A8;
-  --accent-soft: rgba(62, 180, 137, 0.12);
-  --accent-glow: rgba(62, 180, 137, 0.25);
-  --gold: #F5B544;
-  --gold-soft: rgba(245, 181, 68, 0.12);
-  --gold-glow: rgba(245, 181, 68, 0.25);
+  /* Accents — a single restrained violet, used sparingly */
+  --accent: #5E6AD2;
+  --accent-hover: #6E7AE0;
+  --accent-soft: rgba(94, 106, 210, 0.12);
+  --accent-glow: transparent; /* no glow in Linear aesthetic */
 
-  /* Borders */
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.12);
+  /* Gold collapsed into accent — keeps role logic functional, unifies palette */
+  --gold: var(--accent);
+  --gold-soft: var(--accent-soft);
+  --gold-glow: transparent;
 
-  /* Status */
-  --success: #3EB489;
-  --warning: #F59E0B;
-  --danger: #EF4444;
-  --info: #06B6D4;
+  /* Borders — extremely subtle */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
 
-  /* Radius */
-  --radius: 12px;
+  /* Status — desaturated, used only for status dots/badges */
+  --success: #3EBA8C;
+  --warning: #D89614;
+  --danger: #E5484D;
+  --info: #5E6AD2;
 
-  /* shadcn mapping (keep for compatibility) */
+  /* Radius — tighter, more architectural (Linear-like) */
+  --radius: 8px;
+
+  /* shadcn mapping (kept for compatibility) */
   --background: var(--bg-base);
-  --foreground: #EDEDEF;
+  --foreground: #F7F8F8;
   --card: var(--bg-elevated);
-  --card-foreground: #EDEDEF;
+  --card-foreground: #F7F8F8;
   --popover: var(--bg-overlay);
-  --popover-foreground: #EDEDEF;
-  --primary: #3EB489;
-  --primary-foreground: #050507;
-  --secondary: #1B1B22;
-  --secondary-foreground: #EDEDEF;
-  --muted: #1B1B22;
+  --popover-foreground: #F7F8F8;
+  --primary: var(--accent);
+  --primary-foreground: #FFFFFF;
+  --secondary: #1C1D20;
+  --secondary-foreground: #F7F8F8;
+  --muted: #1C1D20;
   --muted-foreground: #8A8F98;
-  --accent: #3EB489;
-  --accent-foreground: #050507;
-  --destructive: #EF4444;
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #3EB489;
-  --chart-1: #3EB489;
-  --chart-2: #F59E0B;
-  --chart-3: #8B5CF6;
-  --chart-4: #EF4444;
-  --chart-5: #06B6D4;
+  --accent: #5E6AD2;
+  --accent-foreground: #FFFFFF;
+  --destructive: #E5484D;
+  --input: rgba(255, 255, 255, 0.06);
+  --ring: var(--accent);
+  --chart-1: #5E6AD2;
+  --chart-2: #8A8F98;
+  --chart-3: #3EBA8C;
+  --chart-4: #D89614;
+  --chart-5: #E5484D;
   --sidebar: var(--bg-deep);
-  --sidebar-foreground: #EDEDEF;
-  --sidebar-primary: #3EB489;
-  --sidebar-primary-foreground: #050507;
+  --sidebar-foreground: #F7F8F8;
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: rgba(255, 255, 255, 0.04);
-  --sidebar-accent-foreground: #EDEDEF;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #3EB489;
+  --sidebar-accent-foreground: #F7F8F8;
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-ring: var(--accent);
 }
 
 @layer base {
@@ -127,41 +135,39 @@
   }
   body {
     @apply text-foreground antialiased;
+    /* Flat, near-black background — no radial neon wash */
     background-color: var(--bg-base);
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(62, 180, 137, 0.08), transparent),
-      radial-gradient(ellipse 60% 50% at 100% 100%, rgba(139, 92, 246, 0.04), transparent);
-    background-attachment: fixed;
     font-feature-settings: "ss01", "cv01", "cv02";
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  /* Better focus rings */
+  /* Calm focus ring */
   *:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline-offset: 1px;
     border-radius: 4px;
   }
   /* Remove tap highlight */
   * {
     -webkit-tap-highlight-color: transparent;
   }
-  /* Selection */
+  /* Selection — subtle */
   ::selection {
     background: var(--accent-soft);
-    color: var(--accent-hover);
+    color: var(--foreground);
   }
-  /* Headings default */
+  /* Headings — tight, architectural */
   h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.01em;
+    letter-spacing: -0.011em;
+    font-weight: 600;
   }
 }
 
-/* ===== Custom Scrollbar ===== */
+/* ===== Custom Scrollbar — minimal, monochrome ===== */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -183,118 +189,109 @@
   transform: scaleX(-1);
 }
 
-/* ===== Custom scrollbar utility ===== */
+/* ===== Custom scrollbar utility (in-window) ===== */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(62, 180, 137, 0.25);
+  background: rgba(255, 255, 255, 0.10);
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(62, 180, 137, 0.45);
+  background: rgba(255, 255, 255, 0.20);
 }
 
 /* ============================================================
-   HOVER UTILITY CLASSES (CSS-based, more reliable than JS)
+   HOVER / INTERACTION UTILITIES — calm, no neon, no glow.
+   Class NAMES are preserved so existing markup keeps working;
+   only the visual behavior is neutralized.
    ============================================================ */
 
-/* Card hover — subtle lift + border highlight */
+/* Card hover — subtle border + background shift only (no lift, no glow) */
 .card-hover {
   transition:
-    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.22s ease,
-    box-shadow 0.22s ease,
-    background-color 0.22s ease;
-  will-change: transform;
-}
-.card-hover:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-strong);
-  box-shadow:
-    0 12px 32px -10px rgba(0, 0, 0, 0.5),
-    0 0 0 1px var(--accent-soft);
-}
-.card-hover:active {
-  transform: translateY(0);
-}
-
-/* Button hover — tiny lift */
-.btn-hover {
-  transition:
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-    background-color 0.18s ease,
     border-color 0.18s ease,
-    color 0.18s ease,
+    background-color 0.18s ease,
     box-shadow 0.18s ease;
 }
+.card-hover:hover {
+  border-color: var(--border-strong);
+  background-color: var(--bg-overlay);
+}
+.card-hover:active {
+  background-color: var(--bg-elevated);
+}
+
+/* Button hover — subtle background shift (no lift) */
+.btn-hover {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
 .btn-hover:hover {
-  transform: translateY(-1px);
+  background-color: rgba(255, 255, 255, 0.04);
 }
 .btn-hover:active {
-  transform: translateY(0);
-  transition-duration: 0.08s;
+  background-color: rgba(255, 255, 255, 0.06);
+  transition-duration: 0.05s;
 }
 
 /* Subtle nav item hover */
 .nav-item-hover {
   transition:
-    background-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 .nav-item-hover:hover {
   background-color: rgba(255, 255, 255, 0.04);
 }
 .nav-item-hover:active {
-  transform: scale(0.98);
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
-/* Glow hover for primary CTA */
+/* Former "glow" hovers — now aliases of btn-hover (no glow) */
 .glow-hover {
   transition:
-    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 .glow-hover:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px -6px var(--accent-glow);
+  background-color: var(--accent-soft);
+  border-color: var(--border-strong);
 }
 .glow-hover:active {
-  transform: translateY(0);
+  background-color: rgba(94, 106, 210, 0.18);
 }
-
-/* Gold variant for super admin */
 .glow-hover-gold:hover {
-  box-shadow: 0 8px 24px -6px var(--gold-glow);
+  background-color: var(--accent-soft);
 }
 
-/* Icon button hover */
+/* Icon button hover — monochrome */
 .icon-btn {
   transition:
-    background-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.18s ease;
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 .icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(255, 255, 255, 0.05);
   color: var(--foreground);
   border-color: var(--border-strong);
 }
 .icon-btn:active {
-  transform: scale(0.94);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Link underline reveal */
 .link-underline {
   position: relative;
-  transition: color 0.18s ease;
+  transition: color 0.15s ease;
 }
 .link-underline::after {
   content: "";
@@ -306,7 +303,7 @@
   background: currentColor;
   transform: scaleX(0);
   transform-origin: var(--tw-underline-origin, right);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s ease;
 }
 .link-underline:hover {
   color: var(--foreground);
@@ -327,13 +324,13 @@
   border: 1px solid var(--border-strong);
 }
 .surface-glass {
-  background-color: rgba(10, 10, 13, 0.7);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  background-color: rgba(11, 12, 14, 0.72);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
   border: 1px solid var(--border);
 }
 
-/* Subtle inner highlight (top edge light) */
+/* Subtle inner highlight — kept very faint */
 .edge-highlight {
   position: relative;
 }
@@ -345,7 +342,7 @@
   padding: 1px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.04) 0%,
     transparent 50%
   );
   -webkit-mask:
@@ -356,26 +353,26 @@
   pointer-events: none;
 }
 
-/* Accent text */
+/* Accent text — solid color, no gradient */
 .text-accent { color: var(--accent); }
 .text-accent-hover { color: var(--accent-hover); }
-.text-gold { color: var(--gold); }
+.text-gold { color: var(--accent); } /* collapsed */
 .text-muted-fg { color: var(--foreground-muted); }
 .text-subtle-fg { color: var(--foreground-subtle); }
 
 /* Accent backgrounds */
 .bg-accent { background-color: var(--accent); }
 .bg-accent-soft { background-color: var(--accent-soft); }
-.bg-gold-soft { background-color: var(--gold-soft); }
+.bg-gold-soft { background-color: var(--accent-soft); } /* collapsed */
 .bg-elevated { background-color: var(--bg-elevated); }
 .bg-overlay { background-color: var(--bg-overlay); }
 .bg-deep { background-color: var(--bg-deep); }
 
 /* ============================================================
-   ANIMATIONS (keep existing + add new)
+   ANIMATIONS — functional ones kept; glow animations neutralized
    ============================================================ */
 
-/* Breathing animation */
+/* Breathing animation (wellness tool — keep) */
 @keyframes breathe-in {
   0% { transform: scale(0.6); opacity: 0.5; }
   100% { transform: scale(1); opacity: 1; }
@@ -391,7 +388,7 @@
 .animate-breathe-hold { animation: breathe-hold 4s ease-in-out forwards; }
 .animate-breathe-out { animation: breathe-out 6s ease-in-out forwards; }
 
-/* Equalizer animation */
+/* Equalizer animation (music player — keep) */
 @keyframes eq-bar {
   0%, 100% { height: 4px; }
   50% { height: 16px; }
@@ -402,22 +399,22 @@
 .eq-bar:nth-child(4) { animation-delay: 0.1s; }
 .eq-bar:nth-child(5) { animation-delay: 0.3s; }
 
-/* Pulse glow — updated to use CSS vars for theme consistency */
+/* Former pulse-glow — now a subtle opacity pulse (no colored shadow) */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
-  50% { box-shadow: 0 0 20px -4px var(--accent-glow); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 .pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
 
-/* Slow ping (for mobile FAB pulse ring) — calmer than Tailwind's ping */
+/* Slow ping (mobile FAB) — calmer */
 @keyframes ping-slow {
-  0% { transform: scale(1); opacity: 0.4; }
+  0% { transform: scale(1); opacity: 0.35; }
   70%, 100% { transform: scale(1.8); opacity: 0; }
 }
 .animate-ping-slow { animation: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
 
-/* Shimmer (for skeletons / loading) — pseudo-element overlay */
+/* Shimmer (skeletons) */
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
@@ -433,18 +430,16 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.025) 50%,
     transparent 100%
   );
   animation: shimmer 2s infinite;
 }
 
-/* ============================================================
-   ANIMATED GRADIENT BORDER — premium hover effect
-   ============================================================ */
+/* Former animated gradient border — now a subtle solid border on hover */
 .gradient-border {
   position: relative;
-  border: none;
+  transition: border-color 0.18s ease;
 }
 .gradient-border::before {
   content: '';
@@ -452,25 +447,20 @@
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(
-    var(--gradient-angle, 0deg),
-    var(--accent),
-    var(--gold),
-    var(--accent)
-  );
+  background: var(--border-strong);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.18s ease;
 }
 .gradient-border:hover::before {
   opacity: 1;
 }
 
-/* Float subtle — very gentle floating animation */
+/* Float subtle (keep, very gentle) */
 @keyframes float-subtle {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
@@ -488,37 +478,37 @@
   animation: pulse-subtle 1.6s ease-in-out infinite;
 }
 
-/* Fade in up — for staggered reveals */
+/* Fade in up */
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-up {
-  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Scale in */
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
 .animate-scale-in {
-  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: scale-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Tool icon pulse on card hover (CSS-based) */
+/* Tool icon pulse on card hover — neutralized to a subtle scale */
 .tool-icon-pulse {
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.25s ease;
 }
 .group:hover .tool-icon-pulse {
-  animation: tool-icon-pulse-keyframes 1.5s ease-in-out infinite;
+  transform: scale(1.06);
 }
 @keyframes tool-icon-pulse-keyframes {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.12); }
+  50% { transform: scale(1.06); }
 }
 
-/* Safe area bottom for mobile */
+/* Safe area */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -535,13 +525,9 @@
   display: none;
 }
 
-/* Gradient text */
+/* Former gradient text — now solid foreground (no gradient) */
 .gradient-text-accent {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: var(--foreground);
 }
 
 /* Hide on desktop (mobile-only) */
@@ -553,12 +539,12 @@
   .desktop-only { display: none !important; }
 }
 
-/* ===== Study Music Player — custom range slider ===== */
+/* ===== Study Music Player — custom range slider (monochrome) ===== */
 .study-music-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   outline: none;
@@ -568,49 +554,48 @@
 .study-music-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--bg-deep);
-  box-shadow: 0 0 0 3px var(--accent-glow), 0 2px 6px rgba(0, 0, 0, 0.4);
+  background: var(--foreground);
+  border: 2px solid var(--bg-base);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease;
 }
 .study-music-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 0 0 5px var(--accent-glow), 0 2px 8px rgba(0, 0, 0, 0.5);
+  transform: scale(1.1);
 }
 .study-music-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--bg-deep);
-  box-shadow: 0 0 0 3px var(--accent-glow), 0 2px 6px rgba(0, 0, 0, 0.4);
+  background: var(--foreground);
+  border: 2px solid var(--bg-base);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transition: transform 0.15s ease;
 }
 .study-music-slider::-moz-range-thumb:hover {
-  transform: scale(1.15);
+  transform: scale(1.1);
 }
 .study-music-slider::-moz-range-track {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
 }
 .study-music-slider:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent-glow);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 /* ============================================================
-   SONNER TOAST OVERRIDES — Modern Dark Cinema variants
-   The base per-variant background/border/text colors come from
-   CSS vars set on the Toaster in src/components/ui/sonner.tsx.
-   These rules layer on the glow shadows + layout polish.
+   SONNER TOAST OVERRIDES — calm, monochrome with subtle status
+   The base per-variant colors come from CSS vars set on the
+   Toaster in src/components/ui/sonner.tsx. These rules layer on
+   a single soft shadow + layout polish (no colored glows).
    ============================================================ */
 
-/* Toast base — better RTL padding & content alignment */
+/* Toast base */
 [data-sonner-toast] {
   gap: 10px !important;
   align-items: flex-start !important;
@@ -618,7 +603,7 @@
 
 /* Toast titles & descriptions */
 .reval-toast-title {
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-size: 14px !important;
   letter-spacing: -0.01em !important;
   line-height: 1.4 !important;
@@ -629,53 +614,25 @@
   line-height: 1.5 !important;
 }
 
-/* Close button — subtle, fits the dark theme */
+/* Close button */
 .reval-toast-close {
-  opacity: 0.5 !important;
-  transition: opacity 0.18s ease, background-color 0.18s ease !important;
+  opacity: 0.45 !important;
+  transition: opacity 0.15s ease, background-color 0.15s ease !important;
 }
 .reval-toast-close:hover {
   opacity: 1 !important;
-  background-color: rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-/* Success — accent (mint) glow */
-[data-sonner-toast][data-type="success"] {
+/* Unified soft shadow for all toast variants (no colored glow) */
+[data-sonner-toast] {
   box-shadow:
-    0 0 0 1px rgba(62, 180, 137, 0.35),
-    0 12px 32px -10px rgba(62, 180, 137, 0.28),
-    0 8px 24px -12px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    0 0 0 1px var(--border),
+    0 12px 32px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 
-/* Error — red glow */
-[data-sonner-toast][data-type="error"] {
-  box-shadow:
-    0 0 0 1px rgba(239, 68, 68, 0.4),
-    0 12px 32px -10px rgba(239, 68, 68, 0.28),
-    0 8px 24px -12px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Warning — amber glow */
-[data-sonner-toast][data-type="warning"] {
-  box-shadow:
-    0 0 0 1px rgba(245, 158, 11, 0.4),
-    0 12px 32px -10px rgba(245, 158, 11, 0.28),
-    0 8px 24px -12px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Info — cyan glow */
-[data-sonner-toast][data-type="info"] {
-  box-shadow:
-    0 0 0 1px rgba(6, 182, 212, 0.4),
-    0 12px 32px -10px rgba(6, 182, 212, 0.28),
-    0 8px 24px -12px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Desktop: wider, with a min-width so titles like "آتیش به پا کردی" breathe */
+/* Desktop: comfortable width */
 @media (min-width: 768px) {
   [data-sonner-toaster] [data-sonner-toast] {
     max-width: 28rem !important;
@@ -683,11 +640,10 @@
   }
 }
 
-/* Mobile: full-width minus margins, comfortable touch target */
+/* Mobile: full-width minus margins */
 @media (max-width: 767px) {
   [data-sonner-toaster] [data-sonner-toast] {
     width: calc(100vw - 32px) !important;
     max-width: calc(100vw - 32px) !important;
   }
 }
-

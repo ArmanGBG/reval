@@ -89,17 +89,14 @@ export default function SidebarNav() {
       {/* ===== Brand / Logo ===== */}
       <div className="h-16 flex items-center gap-3 px-5 border-b border-[var(--border)]">
         <div
-          className={`relative w-9 h-9 rounded-xl ${accentBg} flex items-center justify-center shadow-lg`}
-          style={{
-            boxShadow: `0 8px 20px -6px ${isSuperAdmin ? 'var(--gold-glow)' : 'var(--accent-glow)'}`,
-          }}
+          className={`relative w-9 h-9 rounded-lg ${accentBg} flex items-center justify-center`}
         >
           {isSuperAdmin ? (
-            <Crown className="w-5 h-5 text-zinc-950" />
+            <Crown className="w-5 h-5 text-white" />
           ) : (
-            <span className="text-zinc-950 font-black text-base">ر</span>
+            <span className="text-white font-black text-base">ر</span>
           )}
-          <span className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20" />
+          <span className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
         </div>
         {!collapsed && (
           <div className="flex flex-col leading-tight">

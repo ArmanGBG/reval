@@ -73,8 +73,8 @@ export default function InstituteSettings() {
     <div className="space-y-5 md:space-y-6 animate-fade-in-up">
       {/* ============ Page Header ============ */}
       <header className="flex items-center gap-3">
-        <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-mint/15 border border-mint/20 flex items-center justify-center shrink-0">
-          <Settings className="w-5 h-5 md:w-6 md:h-6 text-mint" />
+        <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center shrink-0">
+          <Settings className="w-5 h-5 md:w-6 md:h-6 text-[var(--accent)]" />
         </div>
         <div>
           <h1 className="text-lg md:text-2xl font-bold text-foreground leading-tight">تنظیمات آموزشگاه</h1>
@@ -94,8 +94,8 @@ export default function InstituteSettings() {
             className="card-hover surface-1 edge-highlight rounded-[16px] p-5 md:p-6"
           >
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                <Type className="w-4 h-4 text-mint" />
+              <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                <Type className="w-4 h-4 text-[var(--accent)]" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">نام آموزشگاه</h3>
@@ -107,7 +107,7 @@ export default function InstituteSettings() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="نام آموزشگاه را وارد کنید"
-              className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 transition-colors"
+              className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
             />
           </motion.section>
 
@@ -119,8 +119,8 @@ export default function InstituteSettings() {
             className="card-hover surface-1 edge-highlight rounded-[16px] p-5 md:p-6"
           >
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                <ImageIcon className="w-4 h-4 text-mint" />
+              <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">لوگوی آموزشگاه</h3>
@@ -144,7 +144,7 @@ export default function InstituteSettings() {
                 </div>
                 <button
                   onClick={handleRemoveLogo}
-                  className="icon-btn p-2 rounded-[8px] bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-transparent shrink-0"
+                  className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border border-transparent shrink-0"
                   title="حذف لوگو"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -160,8 +160,8 @@ export default function InstituteSettings() {
               onClick={() => fileInputRef.current?.click()}
               className={`relative border-2 border-dashed rounded-[12px] p-8 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? 'border-mint bg-mint/10'
-                  : 'border-[var(--border-strong)] hover:border-mint/40 hover:bg-[var(--bg-overlay)]'
+                  ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                  : 'border-[var(--border-strong)] hover:border-[var(--accent)]/40 hover:bg-[var(--bg-overlay)]'
               }`}
             >
               <input
@@ -172,8 +172,8 @@ export default function InstituteSettings() {
                 onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
               />
               <div className="flex flex-col items-center gap-2">
-                <div className={`w-12 h-12 rounded-[12px] flex items-center justify-center transition-colors ${isDragging ? 'bg-mint/20' : 'bg-[var(--bg-overlay)]'}`}>
-                  <Upload className={`w-6 h-6 transition-colors ${isDragging ? 'text-mint' : 'text-muted-foreground'}`} />
+                <div className={`w-12 h-12 rounded-[12px] flex items-center justify-center transition-colors ${isDragging ? 'bg-[var(--accent)]/20' : 'bg-[var(--bg-overlay)]'}`}>
+                  <Upload className={`w-6 h-6 transition-colors ${isDragging ? 'text-[var(--accent)]' : 'text-muted-foreground'}`} />
                 </div>
                 <p className="text-sm text-foreground">
                   {isDragging ? 'فایل را رها کنید' : 'لوگو را اینجا بکشید یا کلیک کنید'}
@@ -193,8 +193,8 @@ export default function InstituteSettings() {
             className="lg:sticky lg:top-4 surface-1 rounded-[16px] p-5 md:p-6"
           >
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                <Eye className="w-4 h-4 text-mint" />
+              <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                <Eye className="w-4 h-4 text-[var(--accent)]" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground">پیش‌نمایش هدر</h3>
@@ -209,8 +209,8 @@ export default function InstituteSettings() {
                     <img src={logoPreview} alt="لوگو" className="w-full h-full object-contain p-1" />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 rounded-[10px] bg-mint/15 border border-mint/20 flex items-center justify-center">
-                    <span className="text-lg font-bold text-mint">ر</span>
+                  <div className="w-12 h-12 rounded-[10px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center">
+                    <span className="text-lg font-bold text-[var(--accent)]">ر</span>
                   </div>
                 )}
                 <div>
@@ -228,7 +228,7 @@ export default function InstituteSettings() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">لوگو</span>
-                <span className={logoPreview ? 'text-mint' : 'text-muted-foreground'}>
+                <span className={logoPreview ? 'text-[var(--accent)]' : 'text-muted-foreground'}>
                   {logoPreview ? 'بارگذاری شده' : 'پیش‌فرض'}
                 </span>
               </div>
@@ -237,7 +237,7 @@ export default function InstituteSettings() {
             {/* Save Button */}
             <button
               onClick={handleSave}
-              className="btn-hover glow-hover w-full mt-6 flex items-center justify-center gap-2 bg-mint text-[var(--bg-deep)] py-3 rounded-[10px] text-sm font-bold"
+              className="btn-hover glow-hover w-full mt-6 flex items-center justify-center gap-2 bg-[var(--accent)] text-[var(--bg-deep)] py-3 rounded-[10px] text-sm font-bold"
             >
               <AnimatePresence mode="wait">
                 {saved ? (

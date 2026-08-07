@@ -6,32 +6,28 @@ import { Check, X, AlertTriangle, Info } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /**
- * Variant visual config for toast icons.
- * Each variant gets a colored circular badge with an outlined icon.
+ * Variant visual config for toast icons — monochrome with a tiny
+ * status-colored dot. No neon, no colored glow.
  */
 const VARIANT_ICON_CONFIG = {
   success: {
-    color: 'var(--accent)',
-    bg: 'var(--accent-soft)',
-    border: 'rgba(62, 180, 137, 0.35)',
+    color: 'var(--success)',
+    bg: 'rgba(62, 186, 140, 0.10)',
     Icon: Check,
   },
   error: {
-    color: '#EF4444',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.35)',
+    color: 'var(--danger)',
+    bg: 'rgba(229, 72, 77, 0.10)',
     Icon: X,
   },
   warning: {
-    color: '#F59E0B',
-    bg: 'rgba(245, 158, 11, 0.12)',
-    border: 'rgba(245, 158, 11, 0.35)',
+    color: 'var(--warning)',
+    bg: 'rgba(216, 150, 20, 0.10)',
     Icon: AlertTriangle,
   },
   info: {
-    color: '#06B6D4',
-    bg: 'rgba(6, 182, 212, 0.12)',
-    border: 'rgba(6, 182, 212, 0.35)',
+    color: 'var(--accent)',
+    bg: 'var(--accent-soft)',
     Icon: Info,
   },
 } as const;
@@ -48,33 +44,26 @@ function ToastIcon({ variant }: { variant: ToastVariant }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 22,
-        height: 22,
+        width: 20,
+        height: 20,
         borderRadius: '9999px',
         backgroundColor: cfg.bg,
         color: cfg.color,
-        border: `1px solid ${cfg.border}`,
         flexShrink: 0,
         marginLeft: 2,
       }}
     >
-      <Icon size={13} strokeWidth={3} />
+      <Icon size={12} strokeWidth={2.5} />
     </span>
   );
 }
 
 /**
- * Reval Toaster — Modern Dark Cinema styling for sonner.
+ * Reval Toaster — Linear-style calm, monochrome styling for sonner.
  *
  * - Responsive position: bottom-center on mobile, bottom-left on desktop.
- * - Variant-specific backgrounds, borders, glow shadows (success/error/etc).
- * - Custom circular badge icons with lucide glyphs.
- * - Wider on desktop (max-w-md / 28rem) with comfortable padding.
- *
- * The per-variant colors are wired through sonner's CSS variables
- * (--success-bg, --success-border, …) so they cascade to every toast
- * of that type. Glow shadows are added via [data-sonner-toast] selectors
- * in globals.css.
+ * - Single neutral background + subtle border for all variants.
+ * - Tiny monochrome status icon badge per variant.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
   const isMobile = useIsMobile();
@@ -96,40 +85,40 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="reval-toaster"
       style={
         {
-          // Base / normal toast
+          // Base / normal toast — neutral elevated surface
           '--normal-bg': 'var(--bg-overlay)',
           '--normal-text': 'var(--foreground)',
-          '--normal-border': 'var(--border-strong)',
-          // Success — accent (mint) glow
-          '--success-bg': 'rgba(62, 180, 137, 0.10)',
+          '--normal-border': 'var(--border)',
+          // Success — neutral with subtle status tint
+          '--success-bg': 'var(--bg-overlay)',
           '--success-text': 'var(--foreground)',
-          '--success-border': 'rgba(62, 180, 137, 0.45)',
-          // Error — red glow
-          '--error-bg': 'rgba(239, 68, 68, 0.10)',
+          '--success-border': 'var(--border)',
+          // Error — neutral with subtle status tint
+          '--error-bg': 'var(--bg-overlay)',
           '--error-text': 'var(--foreground)',
-          '--error-border': 'rgba(239, 68, 68, 0.45)',
-          // Warning — amber glow
-          '--warning-bg': 'rgba(245, 158, 11, 0.10)',
+          '--error-border': 'var(--border)',
+          // Warning — neutral
+          '--warning-bg': 'var(--bg-overlay)',
           '--warning-text': 'var(--foreground)',
-          '--warning-border': 'rgba(245, 158, 11, 0.45)',
-          // Info — cyan glow
-          '--info-bg': 'rgba(6, 182, 212, 0.10)',
+          '--warning-border': 'var(--border)',
+          // Info — neutral
+          '--info-bg': 'var(--bg-overlay)',
           '--info-text': 'var(--foreground)',
-          '--info-border': 'rgba(6, 182, 212, 0.45)',
+          '--info-border': 'var(--border)',
         } as React.CSSProperties
       }
       toastOptions={{
         style: {
           direction: 'rtl',
           fontFamily: 'var(--font-vazirmatn)',
-          borderRadius: '14px',
+          borderRadius: '10px',
           fontSize: '14px',
           fontWeight: 500,
-          padding: '12px 16px',
+          padding: '12px 14px',
           maxWidth: '28rem',
           width: 'auto',
           boxShadow:
-            '0 16px 40px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)',
+            '0 12px 32px -12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03)',
         },
         classNames: {
           toast: 'reval-toast',

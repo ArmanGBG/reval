@@ -190,20 +190,19 @@ function WeeklyReviewContent({
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="relative rounded-[var(--radius-xl)] overflow-hidden mb-5 border border-[var(--gold)]/30 gradient-border"
+      className="relative rounded-[var(--radius-xl)] overflow-hidden mb-5 border border-[var(--border-strong)] gradient-border"
       style={{
         background:
-          'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-elevated) 60%, rgba(245,181,68,0.06) 100%)',
-        boxShadow:
-          '0 0 60px -20px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.04)',
+          'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-elevated) 60%, var(--accent-soft) 100%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
-      {/* Decorative gold radial */}
+      {/* Decorative accent radial (subtle) */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 60% 80% at 90% 0%, var(--gold-soft), transparent 60%)',
+            'radial-gradient(ellipse 60% 80% at 90% 0%, var(--accent-soft), transparent 60%)',
         }}
       />
 
@@ -214,16 +213,16 @@ function WeeklyReviewContent({
             <div
               className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center shrink-0"
               style={{
-                background: 'linear-gradient(135deg, var(--gold-soft), rgba(245,181,68,0.08))',
-                border: '1px solid rgba(245,181,68,0.2)',
+                backgroundColor: 'var(--accent-soft)',
+                border: '1px solid var(--border-strong)',
               }}
             >
-              <Sparkles className="w-5 h-5 text-[var(--gold)]" />
+              <Sparkles className="w-5 h-5 text-[var(--accent)]" />
             </div>
             <div>
               <h3 className="text-base font-bold text-[var(--foreground)] flex items-center gap-1.5">
                 مرور هفته
-                <span className="text-[10px] font-medium text-[var(--gold)] bg-[var(--gold-soft)] px-1.5 py-0.5 rounded-md border border-[rgba(245,181,68,0.2)]">
+                <span className="text-[10px] font-medium text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-md border border-[var(--border-strong)]">
                   ۷ روز گذشته
                 </span>
               </h3>
@@ -257,19 +256,19 @@ function WeeklyReviewContent({
             icon={<Target className="w-3.5 h-3.5" />}
             label="تسک انجام‌شده"
             value={`${toPersianDigits(stats.completedCount)} از ${toPersianDigits(stats.totalTasks)}`}
-            accent="var(--gold)"
+            accent="var(--accent)"
           />
           <KpiPill
             icon={<TrendingUp className="w-3.5 h-3.5" />}
             label="نرخ انجام"
             value={`${toPersianDigits(stats.completionRate)}٪`}
-            accent={stats.completionRate >= 75 ? 'var(--accent)' : stats.completionRate >= 50 ? 'var(--gold)' : 'var(--danger)'}
+            accent={stats.completionRate >= 75 ? 'var(--success)' : stats.completionRate >= 50 ? 'var(--accent)' : 'var(--danger)'}
           />
           <KpiPill
             icon={<Award className="w-3.5 h-3.5" />}
             label="تست زده‌شده"
             value={toPersianDigits(stats.totalTests)}
-            accent="var(--gold)"
+            accent="var(--accent)"
           />
         </div>
 
@@ -278,7 +277,7 @@ function WeeklyReviewContent({
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] text-[var(--foreground-muted)] font-medium">روند روزانه</span>
             {stats.bestDay && stats.bestDay.minutes > 0 && (
-              <span className="text-[10px] text-[var(--gold)] bg-[var(--gold-soft)] px-1.5 py-0.5 rounded-md border border-[rgba(245,181,68,0.2)]">
+              <span className="text-[10px] text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-md border border-[var(--border-strong)]">
                 بهترین روز: {stats.bestDay.label}
               </span>
             )}
@@ -296,10 +295,8 @@ function WeeklyReviewContent({
                       transition={{ duration: 0.5, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
                       className="w-full rounded-t-md min-h-[3px]"
                       style={{
-                        background: isBest
-                          ? 'linear-gradient(180deg, var(--gold), rgba(245,181,68,0.4))'
-                          : 'linear-gradient(180deg, var(--accent), rgba(62,180,137,0.3))',
-                        boxShadow: isBest ? '0 0 12px var(--gold-glow)' : 'none',
+                        backgroundColor: isBest ? 'var(--accent)' : 'var(--accent-soft)',
+                        opacity: isBest ? 1 : 0.55,
                       }}
                       title={`${d.label}: ${minutesToHoursLabel(d.minutes)}`}
                     />
@@ -367,8 +364,8 @@ function AchievementBadge({
       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       className={`text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-medium ${
         gold
-          ? 'bg-[var(--gold-soft)] text-[var(--gold)] border border-[rgba(245,181,68,0.25)]'
-          : 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(62,180,137,0.2)]'
+          ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)]'
+          : 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border)]'
       }`}
     >
       {icon}

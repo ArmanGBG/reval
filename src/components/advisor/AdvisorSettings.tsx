@@ -91,7 +91,7 @@ export function AdvisorSettings() {
               <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین نمره</p>
             </div>
             <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
-              <p className="text-2xl font-black text-[#8B5CF6] tabular-nums">
+              <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
                 {toPersianDigits(Math.round(MOCK_STUDENTS.reduce((a, s) => a + s.studyHoursPerWeek, 0) / MOCK_STUDENTS.length))}
               </p>
               <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین ساعت</p>
@@ -102,7 +102,7 @@ export function AdvisorSettings() {
 
       {/* About */}
       <Card>
-        <SectionHeader icon={<FileText className="w-4 h-4" />} title="درباره پنل مشاور" accent="#8B5CF6" />
+        <SectionHeader icon={<FileText className="w-4 h-4" />} title="درباره پنل مشاور" accent="var(--accent)" />
         <p className="text-[13px] text-[var(--foreground)] leading-relaxed">
           این پنل به مشاوران تحصیلی امکان مدیریت و تحلیل وضعیت دانش‌آموزان را می‌دهد. از اینجا می‌توانید پروفایل دانش‌آموزان را مشاهده، ارزیابی روانشناختی انجام و برنامه مداخله‌ای تعریف کنید.
         </p>

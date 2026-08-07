@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 const QUICK_ACCOUNTS = [
   { phone: '09121000000', label: 'سوپر ادمین', icon: Crown, color: 'text-gold', tint: 'bg-gold/10 border-gold/20', accentBorder: 'var(--gold)' },
   { phone: '09121111111', label: 'مدیر آموزشگاه', icon: Building2, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
-  { phone: '09121234567', label: 'مشاور', icon: Shield, color: 'text-violet-400', tint: 'bg-violet-500/10 border-violet-500/20', accentBorder: '#8B5CF6' },
+  { phone: '09121234567', label: 'مشاور', icon: Shield, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
   { phone: '09131111111', label: 'دانش‌آموز', icon: GraduationCap, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
 ];
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
       if (!res.ok) {
         setError(data.error || 'خطا در ورود');
         toast.error(data.error || 'خطا در ورود', {
-          style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+          style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
         });
         return;
       }
@@ -98,12 +98,12 @@ export default function LoginPage() {
       }
 
       toast.success(`خوش آمدی، ${data.user.name}`, {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--success)' },
       });
     } catch {
       setError('خطا در ارتباط با سرور');
       toast.error('خطا در ارتباط با سرور', {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
       });
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export default function LoginPage() {
       if (!res.ok) {
         setError(data.error || 'خطا در ورود');
         toast.error(data.error || 'خطا در ورود', {
-          style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+          style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
         });
         return;
       }
@@ -156,12 +156,12 @@ export default function LoginPage() {
       }
 
       toast.success(`خوش آمدی، ${data.user.name}`, {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--success)' },
       });
     } catch {
       setError('خطا در ارتباط با سرور');
       toast.error('خطا در ارتباط با سرور', {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
       });
     } finally {
       setLoading(false);
@@ -175,7 +175,7 @@ export default function LoginPage() {
         className="pointer-events-none absolute inset-0 opacity-70"
         style={{
           background:
-            'radial-gradient(ellipse 600px 300px at 50% 20%, rgba(62, 180, 137, 0.12), transparent 70%)',
+            'radial-gradient(ellipse 600px 300px at 50% 20%, var(--accent-soft), transparent 70%)',
         }}
       />
 
@@ -189,7 +189,7 @@ export default function LoginPage() {
           className="text-center mb-7 block w-full"
         >
           <div className="relative inline-block">
-            <div className="w-20 h-20 rounded-[20px] bg-mint/15 border border-mint/25 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-mint/10">
+            <div className="w-20 h-20 rounded-[20px] bg-mint/15 border border-mint/25 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-black/40">
               <BookOpen className="w-9 h-9 text-mint" />
             </div>
           </div>
@@ -210,7 +210,7 @@ export default function LoginPage() {
             y: { duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] },
             x: { duration: 0.5, ease: 'easeInOut' },
           }}
-          className={`surface-1 edge-highlight rounded-[20px] p-6 md:p-7 shadow-xl shadow-black/40 transition-colors duration-300 ${error ? 'border-red-500/40' : ''}`}
+          className={`surface-1 edge-highlight rounded-[20px] p-6 md:p-7 shadow-xl shadow-black/40 transition-colors duration-300 ${error ? 'border-[rgba(229,72,77,0.4)]' : ''}`}
         >
           <div className="flex items-center gap-2 mb-6">
             <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
@@ -268,9 +268,9 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 border border-red-500/20 rounded-[10px] p-3 text-center mb-4"
+              className="bg-[rgba(229,72,77,0.08)] border border-[rgba(229,72,77,0.18)] rounded-[10px] p-3 text-center mb-4"
             >
-              <p className="text-xs text-red-400">{error}</p>
+              <p className="text-xs text-[var(--danger)]">{error}</p>
             </motion.div>
           )}
 

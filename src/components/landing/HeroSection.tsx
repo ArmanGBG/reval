@@ -47,7 +47,7 @@ export function HeroSection() {
             className="text-4xl font-black text-[var(--foreground)] leading-[1.15] mb-5"
           >
             مسیر مطالعه‌ات رو{' '}
-            <span className="bg-gradient-to-l from-[var(--accent-hover)] to-[var(--accent)] bg-clip-text text-transparent">
+            <span className="text-[var(--accent)]">
               هموار
             </span>{' '}
             کن
@@ -133,7 +133,7 @@ export function HeroSection() {
               className="text-5xl lg:text-6xl font-black text-[var(--foreground)] leading-[1.1] mb-6 tracking-tight"
             >
               مسیر مطالعه‌ات رو{' '}
-              <span className="bg-gradient-to-l from-[var(--accent-hover)] to-[var(--accent)] bg-clip-text text-transparent">
+              <span className="text-[var(--accent)]">
                 هموار
               </span>{' '}
               کن
@@ -158,7 +158,7 @@ export function HeroSection() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setCurrentView('onboarding')}
-                className="btn-hover glow-hover px-8 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-w-[200px] shadow-[0_8px_24px_-6px_var(--accent-glow)]"
+                className="btn-hover glow-hover px-8 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-base min-w-[200px]"
               >
                 شروع کن
               </motion.button>
@@ -247,8 +247,8 @@ export function HeroSection() {
                 className="absolute -bottom-2 -left-4 surface-glass rounded-2xl px-4 py-3 shadow-lg"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[rgba(139,92,246,0.18)] flex items-center justify-center">
-                    <Timer className="w-4 h-4 text-[#8B5CF6]" />
+                  <div className="w-8 h-8 rounded-lg bg-[var(--accent-soft)] flex items-center justify-center">
+                    <Timer className="w-4 h-4 text-[var(--accent)]" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-[var(--foreground)]">۲۵ دقیقه مطالعه</p>

@@ -13,7 +13,7 @@ export function LandingFooter() {
         aria-hidden
         className="absolute top-0 inset-x-0 h-px"
         style={{
-          background: 'linear-gradient(to right, transparent, var(--accent-soft), var(--accent), var(--accent-soft), transparent)',
+          background: 'linear-gradient(to right, transparent, var(--border-strong), transparent)',
         }}
       />
       <div className="max-w-7xl mx-auto">

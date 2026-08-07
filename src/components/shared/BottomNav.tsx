@@ -68,9 +68,9 @@ export default function BottomNav() {
     <nav
       className="mobile-only fixed bottom-0 left-0 right-0 z-50 safe-area-bottom"
       style={{
-        backgroundColor: 'rgba(5, 5, 7, 0.85)',
-        backdropFilter: 'blur(20px) saturate(140%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+        backgroundColor: 'rgba(11, 12, 14, 0.82)',
+        backdropFilter: 'blur(16px) saturate(120%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(120%)',
         borderTop: '1px solid var(--border)',
       }}
     >
@@ -92,9 +92,8 @@ export default function BottomNav() {
               {isActive && (
                 <motion.span
                   layoutId="bottomnav-active"
-                  className={`absolute inset-x-1.5 top-0.5 bottom-0.5 rounded-2xl ${accentSoftBg}`}
+                  className={`absolute inset-x-1.5 top-0.5 bottom-0.5 rounded-xl ${accentSoftBg}`}
                   transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                  style={{ boxShadow: isActive ? '0 0 12px -2px var(--accent-glow)' : 'none' }}
                 />
               )}
               {/* Active top dot */}

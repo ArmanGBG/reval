@@ -282,7 +282,7 @@ export default function PlanView() {
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={() => setAddDrawerOpen(true)}
-          className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_8px_24px_-6px_var(--accent-glow)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
+          className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
           aria-label="اضافه کردن تسک"
         >
           <Plus className="w-5 h-5" />

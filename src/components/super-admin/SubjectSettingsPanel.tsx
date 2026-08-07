@@ -12,8 +12,8 @@ interface SubjectSettingsPanelProps {
 }
 
 const COLORS = [
-  '#3EB489', '#F59E0B', '#EF4444', '#8B5CF6',
-  '#EC4899', '#06B6D4', '#F97316', '#14B8A6',
+  '#3EBA8C', '#D89614', '#E5484D', '#5E6AD2',
+  '#EC4899', '#6E7AE0', '#F97316', '#14B8A6',
   '#A855F7', '#6366F1', '#D946EF', '#84CC16',
   '#A16207', '#0EA5E9',
 ];
@@ -97,7 +97,7 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
                 onClick={() => setColor(c)}
                 aria-label={`رنگ ${c}`}
                 className={`w-9 h-9 rounded-lg btn-hover ${
-                  color === c ? 'ring-2 ring-offset-2 ring-offset-[var(--bg-elevated)] ring-white/60' : ''
+                  color === c ? 'ring-2 ring-offset-2 ring-offset-[var(--bg-elevated)] ring-white/10' : ''
                 }`}
                 style={{ backgroundColor: c }}
               />
@@ -160,7 +160,7 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
           <button
             onClick={handleSave}
             disabled={saving}
-            className="btn-hover glow-hover-gold w-full h-11 rounded-xl bg-[var(--gold)] text-zinc-950 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            className="btn-hover glow-hover-gold w-full h-11 rounded-xl bg-[var(--gold)] text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

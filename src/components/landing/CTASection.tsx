@@ -17,7 +17,7 @@ export function CTASection() {
           <div className="relative overflow-hidden rounded-2xl bg-[var(--bg-elevated)] border border-[var(--accent-soft)] p-6 edge-highlight">
             <div
               aria-hidden
-              className="absolute inset-0 bg-gradient-to-bl from-[var(--accent-soft)] via-transparent to-transparent"
+              className="absolute inset-0 bg-[var(--accent-soft)] opacity-40"
             />
             <div className="relative text-center">
               <h2 className="text-2xl font-black text-[var(--foreground)] mb-3 leading-tight">
@@ -52,10 +52,10 @@ export function CTASection() {
         {/* Desktop: large gradient panel */}
         <AnimatedSection className="hidden md:block">
           <div className="relative overflow-hidden rounded-[var(--radius-xl)] bg-[var(--bg-elevated)] border border-[var(--accent-soft)] p-12 lg:p-16 edge-highlight">
-            {/* Gradient background layer */}
+            {/* Subtle accent surface tint */}
             <div
               aria-hidden
-              className="absolute inset-0 bg-gradient-to-bl from-[var(--accent-soft)] via-[var(--accent-soft)] to-transparent opacity-80"
+              className="absolute inset-0 bg-[var(--accent-soft)] opacity-50"
             />
             <div
               aria-hidden
@@ -65,7 +65,7 @@ export function CTASection() {
             <div className="relative text-center max-w-2xl mx-auto">
               <h2 className="text-3xl lg:text-4xl font-black text-[var(--foreground)] mb-4 leading-tight">
                 آماده‌ای مسیرت رو{' '}
-                <span className="bg-gradient-to-l from-[var(--accent-hover)] to-[var(--accent)] bg-clip-text text-transparent">
+                <span className="text-[var(--accent)]">
                   شروع
                 </span>{' '}
                 کنی؟
@@ -77,7 +77,7 @@ export function CTASection() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setCurrentView('onboarding')}
-                className="btn-hover glow-hover px-10 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-lg shadow-[0_8px_24px_-6px_var(--accent-glow)]"
+                className="btn-hover glow-hover px-10 py-4 rounded-2xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-lg"
               >
                 شروع کن
               </motion.button>

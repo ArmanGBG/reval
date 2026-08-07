@@ -108,11 +108,10 @@ export function SectionHeader({ icon, title, accent = 'var(--accent)', action }:
     <div className="flex items-center justify-between mb-4">
       <div className="flex items-center gap-2.5">
         <span
-          className="w-9 h-9 rounded-xl flex items-center justify-center ring-1 ring-inset ring-white/5"
+          className="w-9 h-9 rounded-xl flex items-center justify-center ring-1 ring-inset ring-white/10"
           style={{
             backgroundColor: `color-mix(in srgb, ${accent} 14%, transparent)`,
             color: accent,
-            boxShadow: `0 0 16px -4px color-mix(in srgb, ${accent} 25%, transparent)`,
           }}
         >
           {icon}

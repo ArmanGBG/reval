@@ -27,15 +27,15 @@ function toPersianDigits(num: number | string): string {
 
 const SUB_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   free: { label: 'رایگان', color: 'text-muted-foreground', bg: 'bg-zinc-500/15' },
-  basic: { label: 'پایه', color: 'text-sky-400', bg: 'bg-sky-500/15' },
+  basic: { label: 'پایه', color: 'text-muted-foreground', bg: 'bg-white/5' },
   pro: { label: 'حرفه‌ای', color: 'text-gold', bg: 'bg-gold/15' },
-  enterprise: { label: 'سازمانی', color: 'text-purple-400', bg: 'bg-purple-500/15' },
+  enterprise: { label: 'سازمانی', color: 'text-gold', bg: 'bg-gold/15' },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  active: { label: 'فعال', color: 'text-mint', bg: 'bg-mint/15', dot: 'bg-mint' },
-  suspended: { label: 'معلق', color: 'text-red-400', bg: 'bg-red-500/15', dot: 'bg-red-500' },
-  trial: { label: 'آزمایشی', color: 'text-sky-400', bg: 'bg-sky-500/15', dot: 'bg-sky-500' },
+  active: { label: 'فعال', color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/15', dot: 'bg-[var(--success)]' },
+  suspended: { label: 'معلق', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', dot: 'bg-[var(--danger)]' },
+  trial: { label: 'آزمایشی', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/15', dot: 'bg-[var(--warning)]' },
 };
 
 export default function SuperAdminInstitutes() {
@@ -124,7 +124,7 @@ export default function SuperAdminInstitutes() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn-hover glow-hover glow-hover-gold flex items-center gap-2 bg-gold text-[var(--bg-deep)] px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
+          className="btn-hover glow-hover glow-hover-gold flex items-center gap-2 bg-gold text-white px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
         >
           <Plus className="w-4 h-4" />
           افزودن آموزشگاه
@@ -250,8 +250,8 @@ export default function SuperAdminInstitutes() {
                       onClick={() => toggleInstituteStatus(institute.id, institute.status)}
                       className={`icon-btn p-2 rounded-[8px] border border-transparent ${
                         institute.status === 'active'
-                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                          : 'bg-mint/10 text-mint hover:bg-mint/20'
+                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
+                          : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
                       }`}
                       title={institute.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
                     >
@@ -325,7 +325,7 @@ export default function SuperAdminInstitutes() {
                     <span className="text-muted-foreground tabular-nums">{toPersianDigits(institute.studentCount)} دانش‌آموز</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Users className="w-3 h-3 text-sky-400" />
+                    <Users className="w-3 h-3 text-muted-foreground" />
                     <span className="text-muted-foreground tabular-nums">{toPersianDigits(institute.advisorCount)} مشاور</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -346,8 +346,8 @@ export default function SuperAdminInstitutes() {
                     onClick={() => toggleInstituteStatus(institute.id, institute.status)}
                     className={`btn-hover flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-[10px] font-medium ${
                       institute.status === 'active'
-                        ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                        : 'bg-mint/10 text-mint hover:bg-mint/20'
+                        ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
+                        : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
                     }`}
                   >
                     {institute.status === 'active' ? <Ban className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -455,7 +455,7 @@ export default function SuperAdminInstitutes() {
                 <button
                   onClick={handleAddInstitute}
                   disabled={!newName.trim() || !newManagerName.trim()}
-                  className="btn-hover glow-hover glow-hover-gold flex-1 py-2.5 rounded-[10px] bg-gold text-[var(--bg-deep)] text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="btn-hover glow-hover glow-hover-gold flex-1 py-2.5 rounded-[10px] bg-gold text-white text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   افزودن آموزشگاه
                 </button>

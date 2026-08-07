@@ -255,12 +255,12 @@ export default function AnalyticsView() {
   const pieTotal = subjectDistData.reduce((sum, d) => sum + d.value, 0);
   const hasData = hasAnyCompletedData(reportTasks);
 
-  // KPI cards data (real values)
+  // KPI cards data (real values) — monochrome accent
   const kpiCards = [
-    { icon: <Clock className="w-5 h-5" />, label: 'زمان کل', value: `${toPersianNum(totalHours.toFixed(1))} ساعت`, color: '#3EB489' },
-    { icon: <FileText className="w-5 h-5" />, label: 'تست‌های حل شده', value: toPersianNum(totalTests), color: '#F59E0B' },
-    { icon: <BarChart3 className="w-5 h-5" />, label: 'نرخ پایبندی', value: `${toPersianNum(adherenceRate)}٪`, color: '#8B5CF6' },
-    { icon: <TrendingUp className="w-5 h-5" />, label: 'میانگین روزانه', value: `${toPersianNum(dailyAvgHours.toFixed(1))} ساعت`, color: '#06B6D4' },
+    { icon: <Clock className="w-5 h-5" />, label: 'زمان کل', value: `${toPersianNum(totalHours.toFixed(1))} ساعت`, color: 'var(--accent)' },
+    { icon: <FileText className="w-5 h-5" />, label: 'تست‌های حل شده', value: toPersianNum(totalTests), color: 'var(--accent)' },
+    { icon: <BarChart3 className="w-5 h-5" />, label: 'نرخ پایبندی', value: `${toPersianNum(adherenceRate)}٪`, color: 'var(--accent)' },
+    { icon: <TrendingUp className="w-5 h-5" />, label: 'میانگین روزانه', value: `${toPersianNum(dailyAvgHours.toFixed(1))} ساعت`, color: 'var(--accent)' },
   ];
 
   // Insight cards data (real values)
@@ -271,12 +271,12 @@ export default function AnalyticsView() {
     { icon: <AlertTriangle className="w-4 h-4" />, title: insights.mostSkipped.title, value: insights.mostSkipped.value, color: insights.mostSkipped.color },
   ];
 
-  // Activity chart colors
+  // Activity chart colors — muted monochrome palette using chart tokens
   const ACTIVITY_COLORS = {
-    'مطالعه': '#3EB489',
-    'مرور': '#F59E0B',
-    'تست_آموزشی': '#8B5CF6',
-    'تست_سنجشی': '#EF4444',
+    'مطالعه': 'var(--chart-1)',
+    'مرور': 'var(--chart-2)',
+    'تست_آموزشی': 'var(--chart-3)',
+    'تست_سنجشی': 'var(--chart-5)',
   };
 
   const ACTIVITY_LABELS: Record<string, string> = {
@@ -751,7 +751,7 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
                     </span>
                     <span
                       className="font-bold tabular-nums"
-                      style={{ color: completionRate >= 70 ? '#3EB489' : completionRate >= 40 ? '#F59E0B' : '#EF4444' }}
+                      style={{ color: completionRate >= 70 ? 'var(--success)' : completionRate >= 40 ? 'var(--warning)' : 'var(--danger)' }}
                     >
                       {toPersianNum(completionRate)}٪
                     </span>
@@ -786,7 +786,7 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
                             <span>{toPersianNum(chActualH.toFixed(1))}/{toPersianNum(chTargetH.toFixed(1))}</span>
                             <span
                               className="font-bold"
-                              style={{ color: chRate >= 70 ? '#3EB489' : chRate >= 40 ? '#F59E0B' : '#EF4444' }}
+                              style={{ color: chRate >= 70 ? 'var(--success)' : chRate >= 40 ? 'var(--warning)' : 'var(--danger)' }}
                             >
                               {toPersianNum(chRate)}٪
                             </span>
@@ -916,7 +916,7 @@ function ChartContent({
                   tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="hours" name="ساعت" fill="#3EB489" radius={[6, 6, 0, 0]} barSize={32} />
+                <Bar dataKey="hours" name="ساعت" fill="var(--chart-1)" radius={[6, 6, 0, 0]} barSize={32} />
               </BarChart>
             </ResponsiveContainer>
             ) : (
@@ -995,10 +995,10 @@ function ChartContent({
                   tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="مطالعه" name="مطالعه" stackId="a" fill="#3EB489" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="مرور" name="مرور" stackId="a" fill="#F59E0B" />
-                <Bar dataKey="تست_آموزشی" name="تست آموزشی" stackId="a" fill="#8B5CF6" />
-                <Bar dataKey="تست_سنجشی" name="تست سنجشی" stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="مطالعه" name="مطالعه" stackId="a" fill="var(--chart-1)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="مرور" name="مرور" stackId="a" fill="var(--chart-2)" />
+                <Bar dataKey="تست_آموزشی" name="تست آموزشی" stackId="a" fill="var(--chart-3)" />
+                <Bar dataKey="تست_سنجشی" name="تست سنجشی" stackId="a" fill="var(--chart-5)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             ) : (
@@ -1134,9 +1134,9 @@ function formatHours(minutes: number): string {
 }
 
 function coverageColor(pct: number): string {
-  if (pct >= 70) return '#3EB489';
-  if (pct >= 40) return '#F59E0B';
-  return '#EF4444';
+  if (pct >= 70) return 'var(--success)';
+  if (pct >= 40) return 'var(--warning)';
+  return 'var(--danger)';
 }
 
 function ChapterProgressBar({ pct, color }: { pct: number; color: string }) {

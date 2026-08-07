@@ -74,7 +74,7 @@ export function TopicModesPanel({ subject, topicModes, onRefresh }: TopicModesPa
           </p>
           <button
             onClick={() => setShowAdd(true)}
-            className="btn-hover glow-hover-gold glow-hover inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[var(--gold)] text-zinc-950 font-bold text-sm"
+            className="btn-hover glow-hover-gold glow-hover inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[var(--gold)] text-white font-bold text-sm"
           >
             <Plus className="w-4 h-4" />
             افزودن مبحث اول
@@ -122,7 +122,7 @@ export function TopicModesPanel({ subject, topicModes, onRefresh }: TopicModesPa
                   </button>
                   <button
                     onClick={() => handleDelete(mode)}
-                    className="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-[var(--foreground-muted)] hover:text-rose-400"
+                    className="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -258,7 +258,7 @@ function TopicModeFormModal({
           <button
             onClick={handleSubmit}
             disabled={saving || !title.trim()}
-            className="btn-hover glow-hover-gold glow-hover flex-1 h-11 rounded-xl bg-[var(--gold)] text-zinc-950 font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            className="btn-hover glow-hover-gold glow-hover flex-1 h-11 rounded-xl bg-[var(--gold)] text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />

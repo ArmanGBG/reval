@@ -199,7 +199,7 @@ function MotivationalQuoteCard() {
             {/* Next quote button */}
             <button
               onClick={handleNext}
-              className="btn-hover flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-[var(--accent)] bg-[var(--accent-soft)] border border-[rgba(62,180,137,0.2)] hover:bg-[rgba(62,180,137,0.2)] transition-colors min-h-[32px]"
+              className="btn-hover flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-[var(--accent)] bg-[var(--accent-soft)] border border-[var(--border-strong)] hover:bg-[var(--accent-soft)] transition-colors min-h-[32px]"
             >
               <span>نقل قول بعدی</span>
               <ChevronLeft className="w-3.5 h-3.5 flip-rtl" />
@@ -501,7 +501,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-              className="w-20 h-20 mx-auto rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-4xl mb-4 ring-1 ring-[rgba(62,180,137,0.2)]"
+              className="w-20 h-20 mx-auto rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-4xl mb-4 ring-1 ring-[var(--border-strong)]"
             >
               🎯
             </motion.div>

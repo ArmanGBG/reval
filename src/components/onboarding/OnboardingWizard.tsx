@@ -220,7 +220,7 @@ function StepRole({
               className={`
                 w-full min-h-[68px] rounded-xl px-4 py-3 flex items-center gap-4 text-right transition-all duration-200 active:scale-[0.98] border-2
                 ${selected
-                  ? 'bg-mint/15 border-mint shadow-lg shadow-mint/10'
+                  ? 'bg-mint/15 border-mint shadow-lg shadow-black/40'
                   : 'bg-[var(--bg-overlay)] border-[var(--border-strong)] hover:border-[var(--border-strong)]'
                 }
               `}
@@ -304,7 +304,7 @@ function StepIdentity({
               className={`
                 h-20 rounded-xl flex items-center justify-center text-4xl transition-all duration-200 active:scale-[0.97]
                 ${selectedAvatar === avatar
-                  ? 'bg-mint/15 border-2 border-mint shadow-lg shadow-mint/20'
+                  ? 'bg-mint/15 border-2 border-mint shadow-lg shadow-black/40'
                   : 'bg-[var(--bg-overlay)] border-2 border-[var(--border-strong)] hover:border-[var(--border-strong)]'
                 }
               `}
@@ -581,7 +581,7 @@ export default function OnboardingWizard() {
       if (!res.ok) {
         const message = data.error || 'خطا در ساخت حساب کاربری';
         toast.error(message, {
-          style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+          style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
         });
         setSubmitting(false);
         return;
@@ -622,11 +622,11 @@ export default function OnboardingWizard() {
       }
 
       toast.success(`خوش امدی، ${realUser.name}`, {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(62, 180, 137, 0.3)', color: '#3EB489' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--success)' },
       });
     } catch {
       toast.error('خطا در ارتباط با سرور', {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
       });
       setSubmitting(false);
     }
@@ -634,11 +634,11 @@ export default function OnboardingWizard() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
-      {/* Subtle ambient mint glow */}
+      {/* Subtle ambient accent glow */}
       <div
         className="pointer-events-none absolute inset-0 opacity-60"
         style={{
-          background: 'radial-gradient(ellipse 600px 300px at 50% 25%, rgba(62, 180, 137, 0.10), transparent 70%)',
+          background: 'radial-gradient(ellipse 600px 300px at 50% 25%, var(--accent-soft), transparent 70%)',
         }}
       />
       <div className="w-full max-w-md flex flex-col items-center">

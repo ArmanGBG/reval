@@ -36,18 +36,16 @@ function subscribe(listener: CelebrationListener): () => void {
 }
 
 // ===== Confetti palette =====
-// Mix of design-system accent/gold + festive hex colors for variety.
+// Restrained palette — Linear-style. Uses accent + foreground tints.
 // CSS vars can't be read at module load (no DOM in SSR), so we resolve
 // them to hex literals here. Keep them in sync with globals.css.
 const CONFETTI_COLORS = [
-  '#3EB489', // accent (mint)
-  '#4FD9A8', // accent-hover / mint-light
-  '#F5B544', // gold
-  '#FF6B9D', // festive pink
-  '#F59E0B', // amber (warning)
-  '#06B6D4', // cyan (info)
-  '#8B5CF6', // purple
-  '#EF4444', // red (danger)
+  '#5E6AD2', // accent (violet)
+  '#6E7AE0', // accent-hover
+  '#F7F8F8', // foreground
+  '#8A8F98', // foreground-muted
+  '#3EBA8C', // success
+  '#D89614', // warning
 ] as const;
 
 type ParticleShape = 'circle' | 'square';
@@ -156,7 +154,7 @@ export default function CelebrationOverlay() {
               height: p.size,
               backgroundColor: p.color,
               borderRadius: p.shape === 'circle' ? '9999px' : '2px',
-              boxShadow: `0 0 6px ${p.color}66`,
+              boxShadow: 'none',
               willChange: 'transform, opacity',
             }}
           />

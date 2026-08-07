@@ -46,31 +46,31 @@ function urgencyStyle(days: number): {
   }
   if (days === 0) {
     return {
-      border: 'border-[var(--danger)]/50',
-      glow: 'shadow-[0_0_24px_-8px_rgba(239,68,68,0.4)]',
-      badge: 'bg-[rgba(239,68,68,0.15)] text-[var(--danger)]',
+      border: 'border-[var(--danger)]/40',
+      glow: '',
+      badge: 'bg-[rgba(229,72,77,0.15)] text-[var(--danger)]',
       label: 'امروز!',
     };
   }
   if (days <= 3) {
     return {
-      border: 'border-[var(--danger)]/40',
-      glow: 'shadow-[0_0_20px_-10px_rgba(239,68,68,0.3)]',
-      badge: 'bg-[rgba(239,68,68,0.12)] text-[var(--danger)]',
+      border: 'border-[var(--danger)]/30',
+      glow: '',
+      badge: 'bg-[rgba(229,72,77,0.12)] text-[var(--danger)]',
       label: `${toPersianDigits(days)} روز دیگر`,
     };
   }
   if (days <= 7) {
     return {
-      border: 'border-[var(--warning)]/40',
-      glow: 'shadow-[0_0_20px_-10px_rgba(245,158,11,0.3)]',
-      badge: 'bg-[rgba(245,158,11,0.12)] text-[var(--warning)]',
+      border: 'border-[var(--warning)]/30',
+      glow: '',
+      badge: 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)]',
       label: `${toPersianDigits(days)} روز دیگر`,
     };
   }
   return {
-    border: 'border-[var(--accent)]/30',
-    glow: 'shadow-[0_0_20px_-12px_var(--accent-glow)]',
+    border: 'border-[var(--border-strong)]',
+    glow: '',
     badge: 'bg-[var(--accent-soft)] text-[var(--accent)]',
     label: `${toPersianDigits(days)} روز دیگر`,
   };
@@ -98,7 +98,7 @@ export default function UpcomingExamsCard({ exams }: UpcomingExamsCardProps) {
       className="mb-4"
     >
       <div className="flex items-center gap-2 mb-2 px-1">
-        <Trophy className="w-3.5 h-3.5 text-[var(--gold)]" />
+        <Trophy className="w-3.5 h-3.5 text-[var(--accent)]" />
         <span className="text-xs font-bold text-[var(--foreground-muted)]">آزمون‌های پیش رو</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

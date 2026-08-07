@@ -23,15 +23,15 @@ function toPersianDigits(num: number | string): string {
 
 const SUB_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   free: { label: 'رایگان', color: 'text-muted-foreground', bg: 'bg-zinc-500/15' },
-  basic: { label: 'پایه', color: 'text-sky-400', bg: 'bg-sky-500/15' },
+  basic: { label: 'پایه', color: 'text-muted-foreground', bg: 'bg-white/5' },
   pro: { label: 'حرفه‌ای', color: 'text-gold', bg: 'bg-gold/15' },
-  enterprise: { label: 'سازمانی', color: 'text-purple-400', bg: 'bg-purple-500/15' },
+  enterprise: { label: 'سازمانی', color: 'text-gold', bg: 'bg-gold/15' },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  active: { label: 'فعال', color: 'text-mint', bg: 'bg-mint/15', dot: 'bg-mint' },
-  suspended: { label: 'معلق', color: 'text-red-400', bg: 'bg-red-500/15', dot: 'bg-red-500' },
-  trial: { label: 'آزمایشی', color: 'text-sky-400', bg: 'bg-sky-500/15', dot: 'bg-sky-500' },
+  active: { label: 'فعال', color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/15', dot: 'bg-[var(--success)]' },
+  suspended: { label: 'معلق', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', dot: 'bg-[var(--danger)]' },
+  trial: { label: 'آزمایشی', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/15', dot: 'bg-[var(--warning)]' },
 };
 
 export default function InstituteDetail() {
@@ -99,13 +99,6 @@ export default function InstituteDetail() {
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="relative surface-1 edge-highlight rounded-[20px] p-5 md:p-7 overflow-hidden"
       >
-        {/* Subtle gold radial — single, contained */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-50"
-          style={{
-            background: 'radial-gradient(ellipse 320px 160px at 90% -10%, rgba(245, 181, 68, 0.18), transparent 70%)',
-          }}
-        />
         <div className="relative">
           <div className="flex items-start gap-4 flex-wrap">
             <div className="w-14 h-14 md:w-16 md:h-16 rounded-[14px] bg-gold/15 border border-gold/25 flex items-center justify-center shrink-0">
@@ -134,7 +127,7 @@ export default function InstituteDetail() {
                   <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.studentCount)} دانش‌آموز</span>
                 </div>
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <Users className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.advisorCount)} مشاور</span>
                 </div>
               </div>
@@ -155,7 +148,7 @@ export default function InstituteDetail() {
                 initial={{ width: 0 }}
                 animate={{ width: `${institute.avgCompletionRate}%` }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                className="h-full bg-gradient-to-r from-gold/80 to-gold rounded-full"
+                className="h-full bg-[var(--gold)] rounded-full"
               />
             </div>
           </div>
@@ -175,7 +168,7 @@ export default function InstituteDetail() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Users className="w-4 h-4 text-sky-400" />
+                <Users className="w-4 h-4 text-muted-foreground" />
                 مشاوران
                 <span className="text-xs text-muted-foreground font-normal tabular-nums">({toPersianDigits(advisors.length)})</span>
               </h3>
@@ -192,7 +185,7 @@ export default function InstituteDetail() {
                 {advisors.map((advisor) => (
                   <div key={advisor.id} className="nav-item-hover grid grid-cols-12 gap-2 px-2 py-3 border-b border-[var(--border)] last:border-0 items-center">
                     <div className="col-span-5 flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-[10px] bg-sky-500/15 flex items-center justify-center text-lg shrink-0">
+                      <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center text-lg shrink-0">
                         {advisor.avatar}
                       </div>
                       <span className="text-sm text-foreground truncate">{advisor.name}</span>
@@ -201,7 +194,7 @@ export default function InstituteDetail() {
                       <span className="text-xs text-muted-foreground tabular-nums" dir="ltr">{advisor.phone}</span>
                     </div>
                     <div className="col-span-3 text-right">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${advisor.status === 'active' ? 'bg-mint/15 text-mint' : 'bg-red-500/15 text-red-400'}`}>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${advisor.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'}`}>
                         {advisor.status === 'active' ? 'فعال' : 'معلق'}
                       </span>
                     </div>
@@ -217,14 +210,14 @@ export default function InstituteDetail() {
             <div className="md:hidden space-y-2">
               {advisors.map((advisor) => (
                 <div key={advisor.id} className="nav-item-hover flex items-center gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px]">
-                  <div className="w-10 h-10 rounded-[10px] bg-sky-500/15 flex items-center justify-center text-xl shrink-0">
+                  <div className="w-10 h-10 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center text-xl shrink-0">
                     {advisor.avatar}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{advisor.name}</p>
                     <p className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">{advisor.phone}</p>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${advisor.status === 'active' ? 'bg-mint/15 text-mint' : 'bg-red-500/15 text-red-400'}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${advisor.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'}`}>
                     {advisor.status === 'active' ? 'فعال' : 'معلق'}
                   </span>
                 </div>
@@ -261,7 +254,7 @@ export default function InstituteDetail() {
                 {students.map((student) => (
                   <div key={student.id} className="nav-item-hover grid grid-cols-12 gap-2 px-2 py-3 border-b border-[var(--border)] last:border-0 items-center">
                     <div className="col-span-5 flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center text-lg shrink-0">
+                      <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center text-lg shrink-0">
                         {student.avatar}
                       </div>
                       <div className="min-w-0">
@@ -275,7 +268,7 @@ export default function InstituteDetail() {
                           <span className="text-[10px] text-muted-foreground w-12">تکمیل</span>
                           <div className="flex-1 h-1.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full ${student.completionRate >= 75 ? 'bg-mint' : student.completionRate >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                              className={`h-full rounded-full ${student.completionRate >= 75 ? 'bg-[var(--success)]' : student.completionRate >= 50 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'}`}
                               style={{ width: `${student.completionRate}%` }}
                             />
                           </div>
@@ -288,7 +281,7 @@ export default function InstituteDetail() {
                       </div>
                     </div>
                     <div className="col-span-2 text-right">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${student.status === 'active' ? 'bg-mint/15 text-mint' : 'bg-red-500/15 text-red-400'}`}>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${student.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'}`}>
                         {student.status === 'active' ? 'فعال' : 'معلق'}
                       </span>
                     </div>
@@ -305,25 +298,25 @@ export default function InstituteDetail() {
               {students.map((student) => (
                 <div key={student.id} className="nav-item-hover p-3 bg-[var(--bg-overlay)] rounded-[10px]">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-[10px] bg-mint/15 flex items-center justify-center text-xl shrink-0">
+                    <div className="w-10 h-10 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center text-xl shrink-0">
                       {student.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{student.name}</p>
                       <p className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">{student.phone}</p>
                     </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${student.status === 'active' ? 'bg-mint/15 text-mint' : 'bg-red-500/15 text-red-400'}`}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${student.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'}`}>
                       {student.status === 'active' ? 'فعال' : 'معلق'}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
                       <p className="text-[10px] text-muted-foreground/70">تکمیل</p>
-                      <p className="text-xs font-bold text-amber-400 tabular-nums">{toPersianDigits(student.completionRate)}٪</p>
+                      <p className="text-xs font-bold text-[var(--warning)] tabular-nums">{toPersianDigits(student.completionRate)}٪</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground/70">ساعت</p>
-                      <p className="text-xs font-bold text-sky-400 tabular-nums">{toPersianDigits(student.studyHours)}</p>
+                      <p className="text-xs font-bold text-muted-foreground tabular-nums">{toPersianDigits(student.studyHours)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground/70">نمره</p>
@@ -353,12 +346,12 @@ export default function InstituteDetail() {
               شاخص‌های کلیدی
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[10px] bg-mint/10 border border-mint/15 p-3 text-center">
-                <p className="text-xl font-bold text-mint tabular-nums">{toPersianDigits(institute.studentCount)}</p>
+              <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-3 text-center">
+                <p className="text-xl font-bold text-[var(--success)] tabular-nums">{toPersianDigits(institute.studentCount)}</p>
                 <p className="text-[11px] text-muted-foreground">دانش‌آموز</p>
               </div>
-              <div className="rounded-[10px] bg-sky-500/10 border border-sky-500/15 p-3 text-center">
-                <p className="text-xl font-bold text-sky-400 tabular-nums">{toPersianDigits(institute.advisorCount)}</p>
+              <div className="rounded-[10px] bg-[var(--accent-soft)] border border-[var(--accent)]/15 p-3 text-center">
+                <p className="text-xl font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(institute.advisorCount)}</p>
                 <p className="text-[11px] text-muted-foreground">مشاور</p>
               </div>
               <div className="rounded-[10px] bg-gold/10 border border-gold/15 p-3 text-center col-span-2">

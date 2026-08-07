@@ -102,7 +102,7 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
         transition: 'box-shadow 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = `0 12px 32px -10px rgba(0, 0, 0, 0.5), 0 0 20px -4px ${subject.color}25`;
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
         e.currentTarget.style.transform = 'translateY(-2px)';
       }}
       onMouseLeave={(e) => {

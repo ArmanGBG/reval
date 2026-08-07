@@ -116,7 +116,7 @@ export const STATUS_CONFIG: Record<StudentStatus, { label: string; color: string
   excellent: { label: 'عالی', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', ring: 'ring-[var(--accent)]/30', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   good: { label: 'خوب', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', ring: 'ring-[var(--accent)]/20', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
   fair: { label: 'متوسط', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', ring: 'ring-[var(--warning)]/30', icon: <Minus className="w-3.5 h-3.5" /> },
-  'at-risk': { label: 'در خطر', color: 'text-orange-400', bg: 'bg-orange-400/10', ring: 'ring-orange-400/30', icon: <AlertCircle className="w-3.5 h-3.5" /> },
+  'at-risk': { label: 'در خطر', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', ring: 'ring-[var(--warning)]/30', icon: <AlertCircle className="w-3.5 h-3.5" /> },
   critical: { label: 'بحرانی', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', ring: 'ring-[var(--danger)]/40', icon: <AlertTriangle className="w-3.5 h-3.5" /> },
 };
 
@@ -131,18 +131,18 @@ export const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; bg: 
   excellent: { label: 'عالی', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', ring: 'ring-[var(--accent)]/40', dot: 'bg-[var(--accent)]' },
   good: { label: 'خوب', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', ring: 'ring-[var(--accent)]/30', dot: 'bg-[var(--accent)]' },
   fair: { label: 'متوسط', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', ring: 'ring-[var(--warning)]/40', dot: 'bg-[var(--warning)]' },
-  poor: { label: 'ضعیف', color: 'text-orange-400', bg: 'bg-orange-400/10', ring: 'ring-orange-400/40', dot: 'bg-orange-400' },
+  poor: { label: 'ضعیف', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', ring: 'ring-[var(--warning)]/40', dot: 'bg-[var(--warning)]' },
   critical: { label: 'بحرانی', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', ring: 'ring-[var(--danger)]/40', dot: 'bg-[var(--danger)]' },
 };
 
 export const RISK_CONFIG = {
   high: { label: 'بالا', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', border: 'border-[var(--danger)]/30', dot: 'bg-[var(--danger)]' },
-  medium: { label: 'متوسط', color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/30', dot: 'bg-orange-400' },
+  medium: { label: 'متوسط', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', border: 'border-[var(--warning)]/30', dot: 'bg-[var(--warning)]' },
   low: { label: 'پایین', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', border: 'border-[var(--accent)]/30', dot: 'bg-[var(--accent)]' },
 };
 
 export const EXAM_STATUS_CONFIG: Record<ExamStatus, { label: string; color: string; bg: string }> = {
-  upcoming: { label: 'پیش‌رو', color: 'text-[#8B5CF6]', bg: 'bg-[#8B5CF6]/15' },
+  upcoming: { label: 'پیش‌رو', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]' },
   'in-progress': { label: 'در حال برگزاری', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/15' },
   completed: { label: 'برگزار شده', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]' },
 };

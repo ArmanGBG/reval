@@ -28,7 +28,7 @@ export function TestimonialsSection() {
               <Quote className="absolute -top-1 -left-1 w-16 h-16 text-[var(--accent)]/[0.06] pointer-events-none" />
               <div className="flex items-center gap-1 mb-3">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
+                  <Star key={i} className="w-4 h-4 fill-[var(--accent)] text-[var(--accent)]" />
                 ))}
               </div>
               <p className="text-sm text-[var(--foreground)] leading-relaxed mb-4">
@@ -65,7 +65,7 @@ export function TestimonialsSection() {
               <Quote className="absolute -top-1 -left-1 w-20 h-20 text-[var(--accent)]/[0.06] pointer-events-none" />
               <div className="flex items-center gap-1 mb-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-[#F59E0B] text-[#F59E0B]" />
+                  <Star key={i} className="w-4 h-4 fill-[var(--accent)] text-[var(--accent)]" />
                 ))}
               </div>
               <p className="text-sm text-[var(--foreground)] leading-relaxed mb-5">

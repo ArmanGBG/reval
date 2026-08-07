@@ -31,54 +31,54 @@ const TOOLS = [
     title: 'موزیک تمرکز',
     description: 'تمرکزتو با موسیقی بالا ببر',
     icon: Music,
-    color: '#8B5CF6',
-    gradientFrom: '#8B5CF6',
-    gradientTo: '#C084FC',
+    color: 'var(--accent)',
+    gradientFrom: 'var(--accent)',
+    gradientTo: 'var(--accent)',
   },
   {
     id: 'flashcards',
     title: 'فلش‌کارت هوشمند',
     description: 'یادگیری فعال با فلش‌کارت',
     icon: Brain,
-    color: '#3EB489',
-    gradientFrom: '#3EB489',
-    gradientTo: '#4FD9A8',
+    color: 'var(--accent)',
+    gradientFrom: 'var(--accent)',
+    gradientTo: 'var(--accent)',
   },
   {
     id: 'pomodoro',
     title: 'پومودورو',
     description: 'مدیریت زمان مطالعه',
     icon: Timer,
-    color: '#F5B544',
-    gradientFrom: '#F5B544',
-    gradientTo: '#F59E0B',
+    color: 'var(--accent)',
+    gradientFrom: 'var(--accent)',
+    gradientTo: 'var(--accent)',
   },
   {
     id: 'calculator',
     title: 'محاسبه‌گر درصد',
     description: 'درصد کنکور رو حساب کن',
     icon: Calculator,
-    color: '#3B82F6',
-    gradientFrom: '#3B82F6',
-    gradientTo: '#60A5FA',
+    color: 'var(--accent)',
+    gradientFrom: 'var(--accent)',
+    gradientTo: 'var(--accent)',
   },
   {
     id: 'breathing',
     title: 'اورژانس استرس',
     description: 'تنفس عمیق و آرامش',
     icon: Heart,
-    color: '#F43F5E',
-    gradientFrom: '#F43F5E',
-    gradientTo: '#FB7185',
+    color: 'var(--accent)',
+    gradientFrom: 'var(--accent)',
+    gradientTo: 'var(--accent)',
   },
   {
     id: 'summary',
     title: 'خلاصه‌نویس فعال',
     description: 'یادت پایدارتر می‌شه',
     icon: PenLine,
-    color: '#10B981',
-    gradientFrom: '#10B981',
-    gradientTo: '#34D399',
+    color: 'var(--accent)',
+    gradientFrom: 'var(--accent)',
+    gradientTo: 'var(--accent)',
   },
 ];
 
@@ -150,26 +150,26 @@ export default function ToolsHub() {
                   isLast && isOddTotal ? 'col-span-2 max-w-[calc(50%-6px)] mx-auto' : ''
                 }`}
               >
-                {/* Gradient glow overlay */}
+                {/* Subtle accent overlay on hover */}
                 <div
                   className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(ellipse 50% 60% at 30% 30%, ${tool.gradientFrom}15, transparent)`,
+                    background: 'radial-gradient(ellipse 50% 60% at 30% 30%, var(--accent-soft), transparent)',
                   }}
                 />
                 <div className="relative z-10">
                   <div
                     className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center mb-3 tool-icon-container"
-                    style={{ background: `linear-gradient(135deg, ${tool.gradientFrom}30, ${tool.gradientTo}15)` }}
+                    style={{ background: 'var(--accent-soft)' }}
                   >
-                    <IconComp className="w-7 h-7 tool-icon-pulse" style={{ color: tool.gradientFrom }} />
+                    <IconComp className="w-7 h-7 tool-icon-pulse" style={{ color: 'var(--accent)' }} />
                   </div>
                   <h3 className="text-sm font-bold text-[var(--foreground)] mb-1">{tool.title}</h3>
                   <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">{tool.description}</p>
                 </div>
                 <div
                   className="relative z-10 w-8 h-1 rounded-full mt-3"
-                  style={{ background: `linear-gradient(90deg, ${tool.gradientFrom}, ${tool.gradientTo})` }}
+                  style={{ background: 'var(--accent)' }}
                 />
               </motion.button>
             );
@@ -206,24 +206,24 @@ export default function ToolsHub() {
                 transition={{ delay: index * 0.05, duration: 0.3 }}
                 onClick={() => handleToolSelect(tool.id)}
                 className={`group surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-5 text-right min-h-[190px] flex flex-col justify-between transition-all overflow-hidden ${
-                  isActive ? 'border-[var(--accent)] ring-1 ring-[var(--accent-glow)]' : ''
+                  isActive ? 'border-[var(--accent)] ring-1 ring-[var(--border-strong)]' : ''
                 } ${
                   isLast && isOddTotal ? 'col-span-2 max-w-[calc(50%-8px)] mx-auto' : ''
                 }`}
               >
-                {/* Gradient glow overlay */}
+                {/* Subtle accent overlay on hover */}
                 <div
                   className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(ellipse 50% 60% at 25% 25%, ${tool.gradientFrom}18, transparent)`,
+                    background: 'radial-gradient(ellipse 50% 60% at 25% 25%, var(--accent-soft), transparent)',
                   }}
                 />
                 <div className="relative z-10">
                   <div
                     className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center mb-4 tool-icon-container"
-                    style={{ background: `linear-gradient(135deg, ${tool.gradientFrom}35, ${tool.gradientTo}18)` }}
+                    style={{ background: 'var(--accent-soft)' }}
                   >
-                    <IconComp className="w-8 h-8 tool-icon-pulse" style={{ color: tool.gradientFrom }} />
+                    <IconComp className="w-8 h-8 tool-icon-pulse" style={{ color: 'var(--accent)' }} />
                   </div>
                   <h3 className="text-base font-bold text-[var(--foreground)] mb-1.5">{tool.title}</h3>
                   <p className="text-xs text-[var(--foreground-muted)] leading-relaxed">{tool.description}</p>
@@ -231,7 +231,7 @@ export default function ToolsHub() {
                 <div className="relative z-10 flex items-center justify-between mt-4">
                   <div
                     className="w-10 h-1 rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${tool.gradientFrom}, ${tool.gradientTo})` }}
+                    style={{ background: 'var(--accent)' }}
                   />
                   <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl group-hover:text-[var(--foreground-muted)] transition-colors" />
                 </div>
@@ -273,10 +273,10 @@ export default function ToolsHub() {
                       <div
                         className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center"
                         style={{
-                          background: `linear-gradient(135deg, ${activeToolObj.gradientFrom}30, ${activeToolObj.gradientTo}15)`,
+                          background: 'var(--accent-soft)',
                         }}
                       >
-                        <HeaderIcon className="w-5 h-5" style={{ color: activeToolObj.gradientFrom }} />
+                        <HeaderIcon className="w-5 h-5" style={{ color: 'var(--accent)' }} />
                       </div>
                     );
                   })()}
@@ -314,14 +314,14 @@ export default function ToolsHub() {
 
 // ===== Tool 2: Smart Flashcards =====
 const SUBJECT_COLORS: Record<string, string> = {
-  'ریاضی': '#3EB489',
-  'فیزیک': '#F59E0B',
-  'شیمی': '#EF4444',
-  'زیست': '#8B5CF6',
-  'ادبیات': '#EC4899',
-  'عربی': '#06B6D4',
-  'دینی': '#F97316',
-  'زبان': '#14B8A6',
+  'ریاضی': 'var(--accent)',
+  'فیزیک': 'var(--accent)',
+  'شیمی': 'var(--accent)',
+  'زیست': 'var(--accent)',
+  'ادبیات': 'var(--accent)',
+  'عربی': 'var(--accent)',
+  'دینی': 'var(--accent)',
+  'زبان': 'var(--accent)',
 };
 
 type MasteryFilter = 'all' | 'mastered' | 'review' | 'weak';
@@ -604,7 +604,7 @@ function FlashcardsTool() {
           className={`btn-hover shrink-0 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium transition-colors border ${
             masteryFilter === 'mastered'
               ? 'bg-[var(--success)] text-[var(--bg-deep)] border-transparent'
-              : 'bg-[rgba(16,185,129,0.08)] text-[#34D399] border-[rgba(16,185,129,0.2)]'
+              : 'bg-[rgba(62,186,140,0.08)] text-[var(--success)] border-[rgba(62,186,140,0.2)]'
           }`}
         >
           مسلط ({toPersianNum(masteredCount)})
@@ -614,7 +614,7 @@ function FlashcardsTool() {
           className={`btn-hover shrink-0 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium transition-colors border ${
             masteryFilter === 'review'
               ? 'bg-[var(--warning)] text-[var(--bg-deep)] border-transparent'
-              : 'bg-[rgba(245,181,68,0.08)] text-[var(--warning)] border-[rgba(245,181,68,0.2)]'
+              : 'bg-[rgba(216,150,20,0.08)] text-[var(--warning)] border-[rgba(216,150,20,0.2)]'
           }`}
         >
           مرور ({toPersianNum(reviewCount)})
@@ -624,7 +624,7 @@ function FlashcardsTool() {
           className={`btn-hover shrink-0 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium transition-colors border ${
             masteryFilter === 'weak'
               ? 'bg-[var(--danger)] text-white border-transparent'
-              : 'bg-[rgba(239,68,68,0.08)] text-[#F87171] border-[rgba(239,68,68,0.2)]'
+              : 'bg-[rgba(229,72,77,0.08)] text-[var(--danger)] border-[rgba(229,72,77,0.2)]'
           }`}
         >
           ضعف ({toPersianNum(weakCount)})
@@ -635,7 +635,7 @@ function FlashcardsTool() {
       <div className="mb-4">
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="btn-hover flex items-center gap-2 bg-[var(--accent-soft)] text-[var(--accent)] rounded-[var(--radius)] px-4 py-2.5 text-sm font-medium min-h-[44px] hover:bg-[rgba(62,180,137,0.18)] border border-[var(--accent)]/20"
+          className="btn-hover flex items-center gap-2 bg-[var(--accent-soft)] text-[var(--accent)] rounded-[var(--radius)] px-4 py-2.5 text-sm font-medium min-h-[44px] hover:bg-[var(--accent-soft)] border border-[var(--border-strong)]"
         >
           <Plus className="w-4 h-4" />
           افزودن کارت جدید
@@ -747,7 +747,7 @@ function FlashcardsTool() {
                   <div
                     className="absolute top-0 left-0 right-0 h-[3px] opacity-70"
                     style={{
-                      background: `linear-gradient(90deg, transparent, ${SUBJECT_COLORS[currentCard.subject] || 'var(--accent)'}, transparent)`,
+                      background: 'var(--accent)',
                     }}
                   />
                 )}
@@ -763,7 +763,7 @@ function FlashcardsTool() {
                 style={{
                   backfaceVisibility: 'hidden',
                   transform: 'rotateY(180deg)',
-                  borderColor: 'rgba(62,180,137,0.3)',
+                  borderColor: 'var(--border-strong)',
                 }}
               >
                 <p className="text-base text-[var(--accent)] text-center leading-relaxed font-medium">
@@ -784,7 +784,7 @@ function FlashcardsTool() {
               <span className="text-[var(--foreground-muted)]">
                 مرورها: <span className="text-[var(--foreground)] font-bold tabular-nums">{toPersianNum(currentCard.reviewCount ?? 0)}</span>
                 {Boolean(currentCard.lapseCount) && (
-                  <span className="text-[#F87171] mr-2">· فراموشی: {toPersianNum(currentCard.lapseCount ?? 0)}</span>
+                  <span className="text-[var(--danger)] mr-2">· فراموشی: {toPersianNum(currentCard.lapseCount ?? 0)}</span>
                 )}
               </span>
             </div>
@@ -799,8 +799,7 @@ function FlashcardsTool() {
                   transition={{ duration: 0.6, ease: 'easeOut' }}
                   className="h-full rounded-full"
                   style={{
-                    background: `linear-gradient(90deg, var(--accent), var(--gold))`,
-                    boxShadow: '0 0 8px var(--accent-glow)',
+                    backgroundColor: 'var(--accent)',
                   }}
                 />
               </div>
@@ -821,19 +820,19 @@ function FlashcardsTool() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleMastery('mastered')}
-                    className="btn-hover flex-1 bg-[rgba(16,185,129,0.12)] text-[#34D399] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(16,185,129,0.2)] border border-[rgba(16,185,129,0.2)]"
+                    className="btn-hover flex-1 bg-[rgba(62,186,140,0.12)] text-[var(--success)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(62,186,140,0.18)] border border-[rgba(62,186,140,0.2)]"
                   >
                     مسلط
                   </button>
                   <button
                     onClick={() => handleMastery('review')}
-                    className="btn-hover flex-1 bg-[rgba(245,181,68,0.12)] text-[var(--warning)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(245,181,68,0.2)] border border-[rgba(245,181,68,0.2)]"
+                    className="btn-hover flex-1 bg-[rgba(216,150,20,0.12)] text-[var(--warning)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(216,150,20,0.18)] border border-[rgba(216,150,20,0.2)]"
                   >
                     مرور
                   </button>
                   <button
                     onClick={() => handleMastery('weak')}
-                    className="btn-hover flex-1 bg-[rgba(239,68,68,0.12)] text-[#F87171] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.2)]"
+                    className="btn-hover flex-1 bg-[rgba(229,72,77,0.12)] text-[var(--danger)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(229,72,77,0.18)] border border-[rgba(229,72,77,0.2)]"
                   >
                     ضعف
                   </button>

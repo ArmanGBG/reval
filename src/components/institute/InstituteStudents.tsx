@@ -23,11 +23,11 @@ function toPersianDigits(num: number | string): string {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  excellent: { label: 'عالی', color: 'text-mint', bg: 'bg-mint/15', dot: 'bg-mint' },
-  good: { label: 'خوب', color: 'text-sky-400', bg: 'bg-sky-500/15', dot: 'bg-sky-500' },
-  fair: { label: 'متوسط', color: 'text-amber-400', bg: 'bg-amber-500/15', dot: 'bg-amber-500' },
-  'at-risk': { label: 'در خطر', color: 'text-orange-400', bg: 'bg-orange-500/15', dot: 'bg-orange-500' },
-  critical: { label: 'بحرانی', color: 'text-red-400', bg: 'bg-red-500/15', dot: 'bg-red-500' },
+  excellent: { label: 'عالی', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', dot: 'bg-[var(--accent)]' },
+  good: { label: 'خوب', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]', dot: 'bg-[var(--accent)]' },
+  fair: { label: 'متوسط', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', dot: 'bg-[var(--warning)]' },
+  'at-risk': { label: 'در خطر', color: 'text-[var(--warning)]', bg: 'bg-[var(--warning)]/10', dot: 'bg-[var(--warning)]' },
+  critical: { label: 'بحرانی', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', dot: 'bg-[var(--danger)]' },
 };
 
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
@@ -118,8 +118,8 @@ export default function InstituteStudents() {
       {/* ============ Page Header ============ */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-mint/15 border border-mint/20 flex items-center justify-center shrink-0">
-            <GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-mint" />
+          <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-[var(--accent)]" />
           </div>
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-foreground leading-tight">دانش‌آموزان</h1>
@@ -130,7 +130,7 @@ export default function InstituteStudents() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn-hover glow-hover flex items-center gap-2 bg-mint text-[var(--bg-deep)] px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
+          className="btn-hover glow-hover flex items-center gap-2 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
         >
           <Plus className="w-4 h-4" />
           افزودن دانش‌آموز
@@ -145,11 +145,11 @@ export default function InstituteStudents() {
         </div>
         <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover">
           <p className="text-[10px] md:text-xs text-muted-foreground mb-1">تخصیص‌یافته</p>
-          <p className="text-base md:text-xl font-bold text-mint tabular-nums">{toPersianDigits(assignedCount)}</p>
+          <p className="text-base md:text-xl font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(assignedCount)}</p>
         </div>
         <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover">
           <p className="text-[10px] md:text-xs text-muted-foreground mb-1">بدون مشاور</p>
-          <p className="text-base md:text-xl font-bold text-amber-400 tabular-nums">{toPersianDigits(unassignedCount)}</p>
+          <p className="text-base md:text-xl font-bold text-[var(--warning)] tabular-nums">{toPersianDigits(unassignedCount)}</p>
         </div>
       </div>
 
@@ -162,7 +162,7 @@ export default function InstituteStudents() {
             placeholder="جستجوی نام یا شماره..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full surface-1 rounded-[12px] pr-10 pl-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 transition-colors"
+            className="w-full surface-1 rounded-[12px] pr-10 pl-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
           />
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function InstituteStudents() {
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-11 h-11 rounded-[11px] bg-mint/15 border border-mint/20 flex items-center justify-center text-xl shrink-0">
+                        <div className="w-11 h-11 rounded-[11px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center text-xl shrink-0">
                           {student.avatar}
                         </div>
                         <div className="min-w-0">
@@ -216,11 +216,11 @@ export default function InstituteStudents() {
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground/70 mb-0.5">تکمیل</p>
-                        <p className="text-sm font-bold text-amber-400 tabular-nums">{toPersianDigits(student.weeklyCompletionRate)}٪</p>
+                        <p className="text-sm font-bold text-[var(--warning)] tabular-nums">{toPersianDigits(student.weeklyCompletionRate)}٪</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground/70 mb-0.5">ساعت</p>
-                        <p className="text-sm font-bold text-sky-400 tabular-nums">{toPersianDigits(student.totalStudyHours)}</p>
+                        <p className="text-sm font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(student.totalStudyHours)}</p>
                       </div>
                     </div>
 
@@ -229,29 +229,29 @@ export default function InstituteStudents() {
                       <div className="flex items-center gap-2 min-w-0">
                         {advisorName ? (
                           <>
-                            <UserCheck className="w-3.5 h-3.5 text-mint shrink-0" />
+                            <UserCheck className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
                             <span className="text-[11px] text-muted-foreground truncate">
-                              <span className="text-mint font-medium">{advisorName}</span>
+                              <span className="text-[var(--accent)] font-medium">{advisorName}</span>
                             </span>
                           </>
                         ) : (
                           <>
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <span className="text-[11px] text-amber-400">بدون مشاور</span>
+                            <AlertTriangle className="w-3.5 h-3.5 text-[var(--warning)] shrink-0" />
+                            <span className="text-[11px] text-[var(--warning)]">بدون مشاور</span>
                           </>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => openAssignModal(student.id)}
-                          className="btn-hover text-[11px] px-2.5 py-1.5 rounded-[8px] bg-mint/10 text-mint hover:bg-mint/20 font-medium"
+                          className="btn-hover text-[11px] px-2.5 py-1.5 rounded-[8px] bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)]/20 font-medium"
                         >
                           تخصیص
                         </button>
                         {advisorName && (
                           <button
                             onClick={() => handleRemoveAssignment(student.id)}
-                            className="btn-hover text-[11px] px-2 py-1.5 rounded-[8px] bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                            className="btn-hover text-[11px] px-2 py-1.5 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20"
                           >
                             حذف
                           </button>
@@ -274,23 +274,23 @@ export default function InstituteStudents() {
         <aside className="lg:col-span-4 space-y-4">
           <div className="surface-1 rounded-[14px] p-4 md:p-5">
             <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Users className="w-4 h-4 text-mint" />
+              <Users className="w-4 h-4 text-[var(--accent)]" />
               وضعیت تخصیص
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-[10px] bg-mint/10 border border-mint/15">
+              <div className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--accent-soft)] border border-[var(--accent)]/15">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-mint" />
+                  <CheckCircle2 className="w-4 h-4 text-[var(--accent)]" />
                   <span className="text-xs text-foreground">تخصیص‌یافته</span>
                 </div>
-                <span className="text-sm font-bold text-mint tabular-nums">{toPersianDigits(assignedCount)}</span>
+                <span className="text-sm font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(assignedCount)}</span>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-[10px] bg-amber-500/10 border border-amber-500/15">
+              <div className="flex items-center justify-between p-3 rounded-[10px] bg-[var(--warning)]/10 border border-[var(--warning)]/15">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  <AlertTriangle className="w-4 h-4 text-[var(--warning)]" />
                   <span className="text-xs text-foreground">بدون مشاور</span>
                 </div>
-                <span className="text-sm font-bold text-amber-400 tabular-nums">{toPersianDigits(unassignedCount)}</span>
+                <span className="text-sm font-bold text-[var(--warning)] tabular-nums">{toPersianDigits(unassignedCount)}</span>
               </div>
             </div>
 
@@ -308,8 +308,8 @@ export default function InstituteStudents() {
             style={{ borderStyle: 'dashed' }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-[12px] bg-mint/15 border border-mint/20 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-mint" />
+              <div className="w-11 h-11 rounded-[12px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-[var(--accent)]" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">افزودن دانش‌آموز</p>
@@ -340,8 +340,8 @@ export default function InstituteStudents() {
             >
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4 text-mint" />
+                  <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                    <GraduationCap className="w-4 h-4 text-[var(--accent)]" />
                   </div>
                   <h2 className="text-base font-bold text-foreground">افزودن دانش‌آموز جدید</h2>
                 </div>
@@ -361,7 +361,7 @@ export default function InstituteStudents() {
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="مثلاً: سارا محمدی"
-                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 transition-colors"
+                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                   />
                 </div>
                 <div>
@@ -372,7 +372,7 @@ export default function InstituteStudents() {
                     onChange={(e) => setNewPhone(e.target.value)}
                     placeholder="09131234567"
                     dir="ltr"
-                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 text-left transition-colors"
+                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 text-left transition-colors"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -381,7 +381,7 @@ export default function InstituteStudents() {
                     <select
                       value={newGrade}
                       onChange={(e) => setNewGrade(e.target.value as Grade)}
-                      className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-mint/50 transition-colors"
+                      className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                     >
                       {GRADES.map((g) => (
                         <option key={g} value={g}>{g}</option>
@@ -393,7 +393,7 @@ export default function InstituteStudents() {
                     <select
                       value={newMajor}
                       onChange={(e) => setNewMajor(e.target.value as Major)}
-                      className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-mint/50 transition-colors"
+                      className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                     >
                       {MAJORS.map((m) => (
                         <option key={m} value={m}>{m}</option>
@@ -413,7 +413,7 @@ export default function InstituteStudents() {
                 <button
                   onClick={handleAddStudent}
                   disabled={!newName.trim() || !newPhone.trim()}
-                  className="btn-hover glow-hover flex-1 py-2.5 rounded-[10px] bg-mint text-[var(--bg-deep)] text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="btn-hover glow-hover flex-1 py-2.5 rounded-[10px] bg-[var(--accent)] text-[var(--bg-deep)] text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   افزودن دانش‌آموز
                 </button>
@@ -443,8 +443,8 @@ export default function InstituteStudents() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                    <UserCheck className="w-4 h-4 text-mint" />
+                  <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                    <UserCheck className="w-4 h-4 text-[var(--accent)]" />
                   </div>
                   <h2 className="text-base font-bold text-foreground">تخصیص مشاور</h2>
                 </div>
@@ -471,11 +471,11 @@ export default function InstituteStudents() {
                       onClick={() => handleAssign(advisor.id)}
                       className={`nav-item-hover w-full flex items-center gap-3 p-3 rounded-[12px] border transition-all ${
                         isCurrentAssignment
-                          ? 'bg-mint/10 border-mint/30'
+                          ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30'
                           : 'bg-[var(--bg-overlay)] border-[var(--border)] hover:border-[var(--border-strong)]'
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-[10px] bg-mint/15 flex items-center justify-center text-xl shrink-0">
+                      <div className="w-10 h-10 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center text-xl shrink-0">
                         {advisor.avatar}
                       </div>
                       <div className="flex-1 text-right min-w-0">
@@ -483,7 +483,7 @@ export default function InstituteStudents() {
                         <p className="text-[11px] text-muted-foreground/80 truncate">{advisor.specialty} • {toPersianDigits(studentCount)} دانش‌آموز</p>
                       </div>
                       {isCurrentAssignment && (
-                        <CheckCircle2 className="w-5 h-5 text-mint shrink-0" />
+                        <CheckCircle2 className="w-5 h-5 text-[var(--accent)] shrink-0" />
                       )}
                     </button>
                   );
@@ -502,7 +502,7 @@ export default function InstituteStudents() {
                     setShowAssignModal(false);
                     setAssigningStudentId(null);
                   }}
-                  className="btn-hover w-full mt-4 py-2.5 rounded-[10px] border border-red-500/20 text-sm text-red-400 hover:bg-red-500/10"
+                  className="btn-hover w-full mt-4 py-2.5 rounded-[10px] border border-[var(--danger)]/20 text-sm text-[var(--danger)] hover:bg-[var(--danger)]/10"
                 >
                   حذف مشاور اختصاص‌یافته
                 </button>

@@ -30,22 +30,22 @@ const TRACKS: TrackDef[] = [
     id: 'tajrobi',
     name: 'تجربی',
     subjects: [
-      { id: 'bio', name: 'زیست‌شناسی', emoji: '🧬', color: '#8B5CF6', coefficient: 2 },
-      { id: 'chem', name: 'شیمی', emoji: '⚗️', color: '#EF4444', coefficient: 2 },
-      { id: 'phys', name: 'فیزیک', emoji: '🔋', color: '#F59E0B', coefficient: 2 },
-      { id: 'math', name: 'ریاضی', emoji: '📐', color: '#3EB489', coefficient: 3 },
-      { id: 'geo', name: 'زمین‌شناسی', emoji: '🪨', color: '#06B6D4', coefficient: 1 },
+      { id: 'bio', name: 'زیست‌شناسی', emoji: '🧬', color: 'var(--accent)', coefficient: 2 },
+      { id: 'chem', name: 'شیمی', emoji: '⚗️', color: 'var(--accent)', coefficient: 2 },
+      { id: 'phys', name: 'فیزیک', emoji: '🔋', color: 'var(--accent)', coefficient: 2 },
+      { id: 'math', name: 'ریاضی', emoji: '📐', color: 'var(--accent)', coefficient: 3 },
+      { id: 'geo', name: 'زمین‌شناسی', emoji: '🪨', color: 'var(--accent)', coefficient: 1 },
     ],
   },
   {
     id: 'riazi',
     name: 'ریاضی',
     subjects: [
-      { id: 'math', name: 'ریاضی', emoji: '📐', color: '#3EB489', coefficient: 3 },
-      { id: 'phys', name: 'فیزیک', emoji: '🔋', color: '#F59E0B', coefficient: 2 },
-      { id: 'chem', name: 'شیمی', emoji: '⚗️', color: '#EF4444', coefficient: 2 },
-      { id: 'lit', name: 'ادبیات فارسی', emoji: '📚', color: '#EC4899', coefficient: 2 },
-      { id: 'religion', name: 'دین و زندگی', emoji: '🕌', color: '#F97316', coefficient: 1 },
+      { id: 'math', name: 'ریاضی', emoji: '📐', color: 'var(--accent)', coefficient: 3 },
+      { id: 'phys', name: 'فیزیک', emoji: '🔋', color: 'var(--accent)', coefficient: 2 },
+      { id: 'chem', name: 'شیمی', emoji: '⚗️', color: 'var(--accent)', coefficient: 2 },
+      { id: 'lit', name: 'ادبیات فارسی', emoji: '📚', color: 'var(--accent)', coefficient: 2 },
+      { id: 'religion', name: 'دین و زندگی', emoji: '🕌', color: 'var(--accent)', coefficient: 1 },
     ],
   },
 ];
@@ -80,19 +80,19 @@ function formatPercent(value: number): string {
   return decPart === '0' ? `${persianInt}٪` : `${persianInt}.${toPersianDigits(decPart)}٪`;
 }
 
-// Pick a color based on score band: red < 50, amber 50-70, accent > 70
+// Pick a color based on score band — desaturated status tokens
 function scoreBarColor(score: number): string {
-  if (score >= 70) return 'var(--accent)';
-  if (score >= 50) return '#F59E0B';
-  return '#EF4444';
+  if (score >= 70) return 'var(--success)';
+  if (score >= 50) return 'var(--warning)';
+  return 'var(--danger)';
 }
 
 // Rank message based on total percentage.
 function rankMessage(percent: number): { text: string; color: string } {
-  if (percent >= 80) return { text: 'تراز عالی! 🎉', color: 'var(--accent)' };
-  if (percent >= 60) return { text: 'تراز خوب 👍', color: '#3EB489' };
-  if (percent >= 40) return { text: 'تراز متوسط 📊', color: '#F59E0B' };
-  return { text: 'نیاز به تلاش بیشتر 💪', color: '#EF4444' };
+  if (percent >= 80) return { text: 'تراز عالی! 🎉', color: 'var(--success)' };
+  if (percent >= 60) return { text: 'تراز خوب 👍', color: 'var(--accent)' };
+  if (percent >= 40) return { text: 'تراز متوسط 📊', color: 'var(--warning)' };
+  return { text: 'نیاز به تلاش بیشتر 💪', color: 'var(--danger)' };
 }
 
 // ===== Animated Persian number (spring) =====
@@ -138,7 +138,7 @@ function SubjectRow({ subject, rawValue, onChange }: SubjectRowProps) {
           <div
             className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center flex-shrink-0"
             style={{
-              background: `linear-gradient(135deg, ${subject.color}30, ${subject.color}10)`,
+              background: 'var(--accent-soft)',
             }}
           >
             <span className="text-base leading-none">{subject.emoji}</span>
@@ -150,8 +150,8 @@ function SubjectRow({ subject, rawValue, onChange }: SubjectRowProps) {
             <span
               className="inline-block mt-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
               style={{
-                background: `${subject.color}20`,
-                color: subject.color,
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
               }}
             >
               ضریب {toPersianDigits(subject.coefficient)}
@@ -185,7 +185,7 @@ function SubjectRow({ subject, rawValue, onChange }: SubjectRowProps) {
           animate={{ width: `${hasValue ? score : 0}%` }}
           transition={{ type: 'spring', stiffness: 200, damping: 24 }}
           className="h-full rounded-full"
-          style={{ background: barColor, boxShadow: hasValue ? `0 0 8px ${barColor}66` : 'none' }}
+          style={{ background: barColor, boxShadow: 'none' }}
         />
       </div>
 
@@ -282,9 +282,8 @@ export default function GradeCalculator() {
                   layoutId="grade-calc-tab"
                   className="absolute inset-0 rounded-[var(--radius-sm)]"
                   style={{
-                    background:
-                      'linear-gradient(135deg, var(--accent-soft), var(--accent-glow))',
-                    boxShadow: '0 0 0 1px var(--accent-glow) inset',
+                    background: 'var(--accent-soft)',
+                    boxShadow: 'none',
                   }}
                   transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                 />
@@ -316,13 +315,13 @@ export default function GradeCalculator() {
         style={{
           background:
             'linear-gradient(135deg, var(--bg-elevated), var(--bg-overlay))',
-          boxShadow: `0 0 30px -8px var(--accent-glow)`,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
         }}
       >
-        {/* Decorative accent glow */}
+        {/* Decorative accent overlay */}
         <div
           className="absolute -top-10 -left-10 w-32 h-32 rounded-full opacity-20 pointer-events-none"
-          style={{ background: 'radial-gradient(circle, var(--accent), transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, var(--accent-soft), transparent 70%)' }}
         />
 
         <div className="relative z-10">
@@ -366,7 +365,7 @@ export default function GradeCalculator() {
               className="h-full rounded-full"
               style={{
                 background: hasAnyInput ? totalBarColor : 'transparent',
-                boxShadow: hasAnyInput ? `0 0 10px ${totalBarColor}88` : 'none',
+                boxShadow: 'none',
               }}
             />
           </div>

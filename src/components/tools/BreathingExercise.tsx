@@ -182,7 +182,7 @@ export default function BreathingExercise() {
     currentPhase === 'inhale'
       ? 'var(--accent)'
       : currentPhase === 'hold'
-      ? '#F5B544'
+      ? 'var(--warning)'
       : 'var(--accent-hover)';
 
   // ===== Completion Screen =====
@@ -216,7 +216,7 @@ export default function BreathingExercise() {
               disabled={isRunning}
               className={`px-3.5 py-2 rounded-full text-xs font-medium transition-all min-h-[40px] flex items-center gap-1.5 border ${
                 isActive
-                  ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-transparent shadow-[0_0_0_3px_var(--accent-glow)]'
+                  ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-transparent'
                   : 'bg-[rgba(255,255,255,0.03)] text-[var(--foreground-muted)] border-[var(--border)] hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--foreground)]'
               } ${isRunning && !isActive ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
@@ -274,7 +274,7 @@ export default function BreathingExercise() {
           }}
         />
 
-        {/* Outer glow */}
+        {/* Outer glow — kept subtle, no colored shadow */}
         <motion.div
           animate={{
             scale: targetScale,
@@ -288,7 +288,7 @@ export default function BreathingExercise() {
           style={{
             width: `${MAX_CIRCLE_SIZE}px`,
             height: `${MAX_CIRCLE_SIZE}px`,
-            backgroundColor: 'var(--accent-glow)',
+            backgroundColor: 'var(--accent-soft)',
           }}
         />
 
@@ -305,11 +305,9 @@ export default function BreathingExercise() {
           className="rounded-full flex items-center justify-center relative"
           style={{
             background:
-              'radial-gradient(circle at 50% 50%, var(--accent-soft) 0%, rgba(62,180,137,0.04) 70%, transparent 100%)',
+              'radial-gradient(circle at 50% 50%, var(--accent-soft) 0%, transparent 70%)',
             border: '1.5px solid var(--accent)',
-            boxShadow: isRunning
-              ? '0 0 40px var(--accent-glow), inset 0 0 30px var(--accent-soft)'
-              : '0 0 20px var(--accent-soft), inset 0 0 20px var(--accent-soft)',
+            boxShadow: 'none',
           }}
         >
           {/* Inner content */}
@@ -368,7 +366,7 @@ export default function BreathingExercise() {
             p === 'inhale'
               ? 'var(--accent)'
               : p === 'hold'
-              ? '#F5B544'
+              ? 'var(--warning)'
               : 'var(--accent-hover)';
           return (
             <div key={`${p}-${idx}`} className="flex flex-col items-center gap-1">
@@ -399,8 +397,8 @@ export default function BreathingExercise() {
           onClick={handleStartPause}
           className={`btn-hover glow-hover w-16 h-16 rounded-full flex items-center justify-center transition-all min-h-[44px] ${
             isRunning
-              ? 'bg-[rgba(245,181,68,0.12)] text-[#F5B544] border border-[rgba(245,181,68,0.3)] hover:bg-[rgba(245,181,68,0.2)]'
-              : 'bg-[var(--accent)] text-[var(--bg-deep)] hover:bg-[var(--accent-hover)] shadow-[0_0_20px_var(--accent-glow)]'
+              ? 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)] border border-[rgba(216,150,20,0.3)] hover:bg-[rgba(216,150,20,0.18)]'
+              : 'bg-[var(--accent)] text-[var(--bg-deep)] hover:bg-[var(--accent-hover)]'
           }`}
           aria-label={isRunning ? 'توقف' : 'شروع'}
         >
@@ -414,7 +412,7 @@ export default function BreathingExercise() {
         {(isRunning || cycleCount > 0) && (
           <button
             onClick={handleEnd}
-            className="btn-hover w-12 h-12 rounded-full flex items-center justify-center bg-[rgba(239,68,68,0.1)] text-[#F87171] border border-[rgba(239,68,68,0.25)] hover:bg-[rgba(239,68,68,0.18)] transition-all min-h-[44px]"
+            className="btn-hover w-12 h-12 rounded-full flex items-center justify-center bg-[rgba(229,72,77,0.1)] text-[var(--danger)] border border-[rgba(229,72,77,0.25)] hover:bg-[rgba(229,72,77,0.18)] transition-all min-h-[44px]"
             aria-label="پایان"
           >
             <Square className="w-4 h-4" fill="currentColor" />
@@ -506,7 +504,7 @@ function CompletionScreen({
             onClick={() => setFeedback('up')}
             className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all min-h-[44px] ${
               feedback === 'up'
-                ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-transparent shadow-[0_0_20px_var(--accent-glow)] scale-110'
+                ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-transparent scale-110'
                 : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
             }`}
             aria-label="بله، بهترم"
@@ -517,8 +515,8 @@ function CompletionScreen({
             onClick={() => setFeedback('down')}
             className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all min-h-[44px] ${
               feedback === 'down'
-                ? 'bg-[rgba(239,68,68,0.2)] text-[#F87171] border-transparent scale-110'
-                : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[#F87171] hover:border-[rgba(239,68,68,0.4)]'
+                ? 'bg-[rgba(229,72,77,0.2)] text-[var(--danger)] border-transparent scale-110'
+                : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:border-[rgba(229,72,77,0.4)]'
             }`}
             aria-label="نه، تفاوتی نکرد"
           >

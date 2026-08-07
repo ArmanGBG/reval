@@ -173,11 +173,10 @@ export default function PomodoroTimer() {
 
   const completionHandledRef = useRef(false);
 
-  // Mode-driven styling
+  // Mode-driven styling — single accent, no glow
   const isFocus = mode === 'focus';
-  const modeColor = isFocus ? 'var(--accent)' : 'var(--gold)';
-  const modeGlow = isFocus ? 'var(--accent-glow)' : 'var(--gold-glow)';
-  const modeHover = isFocus ? 'var(--accent-hover)' : '#F5C56B';
+  const modeColor = isFocus ? 'var(--accent)' : 'var(--accent)';
+  const modeHover = isFocus ? 'var(--accent-hover)' : 'var(--accent-hover)';
 
   const MODES: ModeConfig[] = useMemo(() => [
     { id: 'focus', label: 'تمرکز', hint: 'تمرکز کن', duration: durations.focus },
@@ -483,7 +482,7 @@ export default function PomodoroTimer() {
                 <motion.span
                   layoutId="pomodoro-mode-pill"
                   className="absolute inset-0 rounded-full"
-                  style={{ backgroundColor: m.id === 'focus' ? 'var(--accent)' : 'var(--gold)' }}
+                  style={{ backgroundColor: 'var(--accent)' }}
                   transition={{ type: 'spring', damping: 26, stiffness: 320 }}
                 />
               )}
@@ -503,8 +502,8 @@ export default function PomodoroTimer() {
               isRunning && isFocus ? 'animate-pulse-subtle' : ''
             }`}
             style={{
-              borderColor: `${linkedTask.subjectColor}55`,
-              boxShadow: isRunning && isFocus ? `0 0 0 1px ${linkedTask.subjectColor}33, 0 0 16px -4px ${linkedTask.subjectColor}55` : 'none',
+              borderColor: 'var(--border-strong)',
+              boxShadow: 'none',
             }}
           >
             <span
@@ -535,7 +534,7 @@ export default function PomodoroTimer() {
             <button
               onClick={() => setLinkedTaskId(null)}
               aria-label="قطع ارتباط تسک"
-              className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:bg-[rgba(239,68,68,0.08)] transition-colors"
+              className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] transition-colors"
             >
               <Unlink className="w-3.5 h-3.5" />
             </button>
@@ -610,7 +609,7 @@ export default function PomodoroTimer() {
         className="relative mb-7"
         style={{ width: size, height: size }}
       >
-        {/* Soft outer glow when running */}
+        {/* Soft outer ring when running (no glow) */}
         <AnimatePresence>
           {isRunning && (
             <motion.div
@@ -619,7 +618,7 @@ export default function PomodoroTimer() {
               exit={{ opacity: 0 }}
               className="absolute inset-0 rounded-full pointer-events-none"
               style={{
-                boxShadow: `0 0 60px 6px ${modeGlow}`,
+                boxShadow: 'none',
               }}
             />
           )}
@@ -648,7 +647,6 @@ export default function PomodoroTimer() {
             strokeDashoffset={strokeDashoffset}
             style={{
               transition: 'stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-              filter: `drop-shadow(0 0 6px ${modeGlow})`,
             }}
           />
         </svg>
@@ -693,11 +691,9 @@ export default function PomodoroTimer() {
                 className="w-2.5 h-2.5 rounded-full"
                 style={{
                   backgroundColor: filled
-                    ? isFocus
-                      ? 'var(--accent)'
-                      : 'var(--gold)'
+                    ? 'var(--accent)'
                     : 'rgba(255,255,255,0.12)',
-                  boxShadow: filled ? `0 0 8px ${modeGlow}` : 'none',
+                  boxShadow: 'none',
                 }}
               />
             );
@@ -723,7 +719,7 @@ export default function PomodoroTimer() {
           className="glow-hover btn-hover w-20 h-20 rounded-full flex items-center justify-center text-[var(--bg-deep)]"
           style={{
             backgroundColor: modeColor,
-            boxShadow: `0 8px 28px -8px ${modeGlow}`,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = modeHover;

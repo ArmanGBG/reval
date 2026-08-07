@@ -75,8 +75,8 @@ export default function InstituteAdvisors() {
       {/* ============ Page Header ============ */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-mint/15 border border-mint/20 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5 md:w-6 md:h-6 text-mint" />
+          <div className="w-11 h-11 md:w-12 md:h-12 rounded-[14px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5 md:w-6 md:h-6 text-[var(--accent)]" />
           </div>
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-foreground leading-tight">مشاوران</h1>
@@ -87,7 +87,7 @@ export default function InstituteAdvisors() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn-hover glow-hover flex items-center gap-2 bg-mint text-[var(--bg-deep)] px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
+          className="btn-hover glow-hover flex items-center gap-2 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
         >
           <Plus className="w-4 h-4" />
           افزودن مشاور
@@ -103,7 +103,7 @@ export default function InstituteAdvisors() {
             placeholder="جستجوی نام، شماره یا تخصص..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full surface-1 rounded-[12px] pr-10 pl-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 transition-colors"
+            className="w-full surface-1 rounded-[12px] pr-10 pl-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
           />
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function InstituteAdvisors() {
         <section className="lg:col-span-8 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-mint animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
               مشاوران فعال
               <span className="text-xs text-muted-foreground font-normal">({toPersianDigits(activeAdvisors.length)})</span>
             </h3>
@@ -133,7 +133,7 @@ export default function InstituteAdvisors() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-[12px] bg-mint/15 border border-mint/20 flex items-center justify-center text-2xl shrink-0">
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-[12px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center text-2xl shrink-0">
                         {advisor.avatar}
                       </div>
                       <div className="min-w-0">
@@ -146,7 +146,7 @@ export default function InstituteAdvisors() {
                     </div>
                     <button
                       onClick={() => toggleAdvisorStatus(advisor.id, advisor.isActive)}
-                      className="icon-btn p-2 rounded-[8px] bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-transparent shrink-0"
+                      className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border border-transparent shrink-0"
                       title="غیرفعال کردن"
                     >
                       <UserX className="w-4 h-4" />
@@ -155,11 +155,11 @@ export default function InstituteAdvisors() {
 
                   <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-[var(--border)]">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <Award className="w-3.5 h-3.5 text-[var(--warning)] shrink-0" />
                       <span className="text-[11px] md:text-xs text-muted-foreground truncate">{advisor.specialty}</span>
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <GraduationCap className="w-3.5 h-3.5 text-mint shrink-0" />
+                      <GraduationCap className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
                       <span className="text-[11px] md:text-xs text-muted-foreground">{toPersianDigits(getStudentCount(advisor.id))} دانش‌آموز</span>
                     </div>
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -204,7 +204,7 @@ export default function InstituteAdvisors() {
                       </div>
                       <button
                         onClick={() => toggleAdvisorStatus(advisor.id, advisor.isActive)}
-                        className="icon-btn p-2 rounded-[8px] bg-mint/10 text-mint hover:bg-mint/20 border border-transparent shrink-0"
+                        className="icon-btn p-2 rounded-[8px] bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)]/20 border border-transparent shrink-0"
                         title="فعال کردن"
                       >
                         <UserCheck className="w-4 h-4" />
@@ -222,7 +222,7 @@ export default function InstituteAdvisors() {
           {/* Summary card */}
           <div className="surface-1 rounded-[14px] p-4 md:p-5">
             <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-mint" />
+              <Sparkles className="w-4 h-4 text-[var(--accent)]" />
               خلاصه تیم
             </h3>
             <div className="space-y-3">
@@ -232,7 +232,7 @@ export default function InstituteAdvisors() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">فعال</span>
-                <span className="text-sm font-bold text-mint tabular-nums">{toPersianDigits(activeAdvisors.length)}</span>
+                <span className="text-sm font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(activeAdvisors.length)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">غیرفعال</span>
@@ -240,7 +240,7 @@ export default function InstituteAdvisors() {
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-[var(--border)]">
                 <span className="text-xs text-muted-foreground">تعداد دانش‌آموز/مشاور</span>
-                <span className="text-sm font-bold text-amber-400 tabular-nums">
+                <span className="text-sm font-bold text-[var(--warning)] tabular-nums">
                   {toPersianDigits(activeAdvisors.length > 0 ? Math.round(instituteStudents.length / activeAdvisors.length) : 0)}
                 </span>
               </div>
@@ -254,8 +254,8 @@ export default function InstituteAdvisors() {
             style={{ borderStyle: 'dashed' }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-[12px] bg-mint/15 border border-mint/20 flex items-center justify-center">
-                <Plus className="w-5 h-5 text-mint" />
+              <div className="w-11 h-11 rounded-[12px] bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center">
+                <Plus className="w-5 h-5 text-[var(--accent)]" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">افزودن مشاور جدید</p>
@@ -286,8 +286,8 @@ export default function InstituteAdvisors() {
             >
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                    <UserCheck className="w-4 h-4 text-mint" />
+                  <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                    <UserCheck className="w-4 h-4 text-[var(--accent)]" />
                   </div>
                   <h2 className="text-base font-bold text-foreground">افزودن مشاور جدید</h2>
                 </div>
@@ -307,7 +307,7 @@ export default function InstituteAdvisors() {
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="مثلاً: سرکار خانم احمدی"
-                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 transition-colors"
+                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                   />
                 </div>
                 <div>
@@ -318,7 +318,7 @@ export default function InstituteAdvisors() {
                     onChange={(e) => setNewPhone(e.target.value)}
                     placeholder="09121234567"
                     dir="ltr"
-                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 text-left transition-colors"
+                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 text-left transition-colors"
                   />
                 </div>
                 <div>
@@ -328,7 +328,7 @@ export default function InstituteAdvisors() {
                     value={newSpecialty}
                     onChange={(e) => setNewSpecialty(e.target.value)}
                     placeholder="مثلاً: ریاضی و فیزیک"
-                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-mint/50 transition-colors"
+                    className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
                   />
                 </div>
               </div>
@@ -343,7 +343,7 @@ export default function InstituteAdvisors() {
                 <button
                   onClick={handleAddAdvisor}
                   disabled={!newName.trim() || !newPhone.trim()}
-                  className="btn-hover glow-hover flex-1 py-2.5 rounded-[10px] bg-mint text-[var(--bg-deep)] text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="btn-hover glow-hover flex-1 py-2.5 rounded-[10px] bg-[var(--accent)] text-[var(--bg-deep)] text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   افزودن مشاور
                 </button>

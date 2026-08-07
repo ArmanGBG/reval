@@ -48,7 +48,7 @@ export function HowItWorksSection() {
           {/* Connecting line */}
           <div
             aria-hidden
-            className="absolute top-12 right-[16.66%] left-[16.66%] h-px bg-gradient-to-l from-[var(--accent-soft)] via-[var(--accent-glow)] to-[var(--accent-soft)]"
+            className="absolute top-12 right-[16.66%] left-[16.66%] h-px bg-[var(--border-strong)]"
           />
 
           {STEPS.map((step, index) => (
@@ -56,7 +56,7 @@ export function HowItWorksSection() {
               <div className="relative text-center">
                 {/* Step number circle */}
                 <div className="relative mx-auto w-24 h-24 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-strong)] flex items-center justify-center mb-6 card-hover edge-highlight">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--accent-soft)] to-transparent" />
+                  <div className="absolute inset-0 rounded-2xl bg-[var(--accent-soft)] opacity-50" />
                   <span className="relative text-4xl font-black text-[var(--accent)]">
                     {step.number}
                   </span>

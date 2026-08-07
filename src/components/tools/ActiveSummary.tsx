@@ -326,8 +326,8 @@ export default function ActiveSummary() {
           disabled={!content.trim() && !keyPoints.some((k) => k.trim())}
           className="btn-hover w-full h-11 rounded-xl flex items-center justify-center gap-2 text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           style={{
-            background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
-            boxShadow: '0 6px 18px -4px var(--accent-glow)',
+            backgroundColor: 'var(--accent)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}
         >
           <Save className="w-4 h-4" />
@@ -372,7 +372,7 @@ export default function ActiveSummary() {
                     <button
                       onClick={() => handleDelete(s.id)}
                       aria-label="حذف خلاصه"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(239,68,68,0.08)]"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)]"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

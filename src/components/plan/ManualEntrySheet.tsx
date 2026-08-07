@@ -24,7 +24,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     setSaving(true);
     try {
       await onSubmit({ id: crypto.randomUUID(), studentId, subjectId: selection.subjectId,
-        subject: selection.subjectName, subjectColor: selection.subjectColor ?? '#3EB489', topic: selection.displayText ?? null,
+        subject: selection.subjectName, subjectColor: selection.subjectColor ?? 'var(--accent)', topic: selection.displayText ?? null,
         fieldType, activityTypes: null, targetTimeMinutes: null, actualTimeMinutes: null,
         targetTestCount: null, actualTestCount: null, completed: null, date: selectedDate,
         order: existingTaskCount + 1, createdBy: 'student', chapterId: selection.chapterId ?? null, topicId: selection.topicId ?? null,

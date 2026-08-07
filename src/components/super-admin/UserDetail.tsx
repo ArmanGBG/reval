@@ -29,7 +29,7 @@ function toPersianDigits(num: number | string): string {
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: LucideIcon }> = {
   student: { label: 'دانش‌آموز', color: 'text-mint', bg: 'bg-mint/15', icon: GraduationCap },
-  advisor: { label: 'مشاور', color: 'text-sky-400', bg: 'bg-sky-500/15', icon: ShieldCheck },
+  advisor: { label: 'مشاور', color: 'text-muted-foreground', bg: 'bg-white/5', icon: ShieldCheck },
   institute_manager: { label: 'مدیر آموزشگاه', color: 'text-gold', bg: 'bg-gold/15', icon: UserCheck },
 };
 
@@ -87,12 +87,6 @@ export default function UserDetail() {
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="relative surface-1 edge-highlight rounded-[20px] p-5 md:p-6 overflow-hidden"
           >
-            <div
-              className="pointer-events-none absolute inset-0 opacity-40"
-              style={{
-                background: 'radial-gradient(ellipse 280px 140px at 85% -10%, rgba(245, 181, 68, 0.18), transparent 70%)',
-              }}
-            />
             <div className="relative">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-[16px] bg-gold/15 border border-gold/25 flex items-center justify-center text-3xl md:text-4xl shrink-0">
@@ -108,9 +102,9 @@ export default function UserDetail() {
                   </div>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                      user.status === 'active' ? 'bg-mint/15 text-mint' : 'bg-red-500/15 text-red-400'
+                      user.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'active' ? 'bg-mint' : 'bg-red-500'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'active' ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'}`} />
                       {user.status === 'active' ? 'فعال' : 'معلق'}
                     </span>
                     <span className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">{user.phone}</span>
@@ -120,8 +114,8 @@ export default function UserDetail() {
                   onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' })}
                   className={`btn-hover p-3 rounded-[12px] font-bold text-xs border ${
                     user.status === 'active'
-                      ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20'
-                      : 'bg-mint/10 text-mint hover:bg-mint/20 border-mint/20'
+                      ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border-[var(--danger)]/20'
+                      : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 border-[var(--success)]/20'
                   }`}
                   title={user.status === 'active' ? 'تعلیق کاربر' : 'فعال‌سازی کاربر'}
                 >
@@ -164,14 +158,14 @@ export default function UserDetail() {
             </h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
-                <div className="w-2 h-2 rounded-full bg-mint mt-1.5 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-[var(--success)] mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-foreground">آخرین فعالیت</p>
                   <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{toPersianDigits(user.lastActiveDate)}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
-                <div className="w-2 h-2 rounded-full bg-sky-500 mt-1.5 shrink-0" />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-foreground">تاریخ عضویت</p>
                   <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{toPersianDigits(user.joinDate)}</p>
@@ -208,13 +202,13 @@ export default function UserDetail() {
                   <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(user.completionRate)}٪</p>
                   <p className="text-[10px] text-muted-foreground">تکمیل</p>
                 </div>
-                <div className="rounded-[10px] bg-sky-500/10 border border-sky-500/15 p-3 text-center">
-                  <Clock className="w-4 h-4 text-sky-400 mx-auto mb-1" />
+                <div className="rounded-[10px] bg-[var(--accent-soft)] border border-[var(--accent)]/15 p-3 text-center">
+                  <Clock className="w-4 h-4 text-[var(--accent)] mx-auto mb-1" />
                   <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(user.studyHours)}</p>
                   <p className="text-[10px] text-muted-foreground">ساعت</p>
                 </div>
-                <div className="rounded-[10px] bg-mint/10 border border-mint/15 p-3 text-center">
-                  <BookOpen className="w-4 h-4 text-mint mx-auto mb-1" />
+                <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-3 text-center">
+                  <BookOpen className="w-4 h-4 text-[var(--success)] mx-auto mb-1" />
                   <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(user.mockExamScore)}</p>
                   <p className="text-[10px] text-muted-foreground">نمره</p>
                 </div>
@@ -231,7 +225,7 @@ export default function UserDetail() {
                     initial={{ width: 0 }}
                     animate={{ width: `${user.completionRate}%` }}
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    className={`h-full rounded-full ${user.completionRate >= 75 ? 'bg-mint' : user.completionRate >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    className={`h-full rounded-full ${user.completionRate >= 75 ? 'bg-[var(--success)]' : user.completionRate >= 50 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'}`}
                   />
                 </div>
               </div>
@@ -247,7 +241,7 @@ export default function UserDetail() {
               className="surface-1 rounded-[16px] p-5 md:p-6"
             >
               <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-sky-400" />
+                <UserCheck className="w-4 h-4 text-muted-foreground" />
                 عملکرد مشاور
               </h3>
               <div className="grid grid-cols-2 gap-3">
@@ -256,8 +250,8 @@ export default function UserDetail() {
                   <p className="text-xl font-bold text-foreground tabular-nums">{toPersianDigits(user.completionRate)}٪</p>
                   <p className="text-[11px] text-muted-foreground mt-1">نرخ تکمیل دانش‌آموزان</p>
                 </div>
-                <div className="rounded-[10px] bg-mint/10 border border-mint/15 p-4 text-center">
-                  <CheckCircle2 className="w-4 h-4 text-mint mx-auto mb-2" />
+                <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-4 text-center">
+                  <CheckCircle2 className="w-4 h-4 text-[var(--success)] mx-auto mb-2" />
                   <p className="text-sm font-bold text-foreground">{user.status === 'active' ? 'فعال' : 'معلق'}</p>
                   <p className="text-[11px] text-muted-foreground mt-1">وضعیت حساب</p>
                 </div>
@@ -284,7 +278,7 @@ export default function UserDetail() {
                 </div>
                 <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px]">
                   <span className="text-xs text-muted-foreground">وضعیت</span>
-                  <span className={`text-xs font-medium ${user.status === 'active' ? 'text-mint' : 'text-red-400'}`}>
+                  <span className={`text-xs font-medium ${user.status === 'active' ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                     {user.status === 'active' ? 'فعال' : 'معلق'}
                   </span>
                 </div>
@@ -307,8 +301,8 @@ export default function UserDetail() {
               onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' })}
               className={`btn-hover w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-sm font-bold border ${
                 user.status === 'active'
-                  ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/20'
-                  : 'bg-mint/10 text-mint hover:bg-mint/20 border-mint/20'
+                  ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border-[var(--danger)]/20'
+                  : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 border-[var(--success)]/20'
               }`}
             >
               {user.status === 'active' ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}

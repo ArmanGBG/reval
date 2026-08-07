@@ -26,7 +26,7 @@ function toPersianDigits(num: number | string): string {
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: LucideIcon }> = {
   student: { label: 'دانش‌آموز', color: 'text-mint', bg: 'bg-mint/15', icon: GraduationCap },
-  advisor: { label: 'مشاور', color: 'text-sky-400', bg: 'bg-sky-500/15', icon: Shield },
+  advisor: { label: 'مشاور', color: 'text-muted-foreground', bg: 'bg-white/5', icon: Shield },
   institute_manager: { label: 'مدیر آموزشگاه', color: 'text-gold', bg: 'bg-gold/15', icon: UserCheck },
 };
 
@@ -205,9 +205,9 @@ export default function SuperAdminUsers() {
                   {/* Status */}
                   <div className="col-span-1 text-center">
                     <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                      user.status === 'active' ? 'bg-mint/15 text-mint' : 'bg-red-500/15 text-red-400'
+                      user.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'active' ? 'bg-mint' : 'bg-red-500'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'active' ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'}`} />
                       {user.status === 'active' ? 'فعال' : 'معلق'}
                     </span>
                   </div>
@@ -224,8 +224,8 @@ export default function SuperAdminUsers() {
                       onClick={() => toggleUserStatus(user.id, user.status)}
                       className={`icon-btn p-2 rounded-[8px] border border-transparent ${
                         user.status === 'active'
-                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                          : 'bg-mint/10 text-mint hover:bg-mint/20'
+                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
+                          : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
                       }`}
                       title={user.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
                     >
@@ -286,8 +286,8 @@ export default function SuperAdminUsers() {
                       onClick={() => toggleUserStatus(user.id, user.status)}
                       className={`icon-btn p-2 rounded-[8px] border border-transparent ${
                         user.status === 'active'
-                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                          : 'bg-mint/10 text-mint hover:bg-mint/20'
+                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
+                          : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
                       }`}
                       title={user.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
                     >

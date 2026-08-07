@@ -78,7 +78,7 @@ export function GroupExamModal({
     }
 
     const subjectObj = SUBJECTS.find(s => s.name === subject);
-    const subjectColor = subjectObj?.color ?? '#8B5CF6';
+    const subjectColor = subjectObj?.color ?? 'var(--accent)';
 
     toast.loading('در حال ثبت آزمون...', { id: 'exam-create' });
     try {
@@ -131,14 +131,14 @@ export function GroupExamModal({
                     key={student.id}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer nav-item-hover ${
                       checked
-                        ? 'bg-[#8B5CF6]/10 border border-[#8B5CF6]/30'
+                        ? 'bg-[var(--accent-soft)] border border-[var(--accent)]/30'
                         : 'hover:bg-[var(--bg-overlay)] border border-transparent'
                     }`}
                   >
                     <Checkbox
                       checked={checked}
                       onCheckedChange={() => toggleStudent(student.id)}
-                      className="border-[var(--border-strong)] data-[state=checked]:bg-[#8B5CF6] data-[state=checked]:border-[#8B5CF6]"
+                      className="border-[var(--border-strong)] data-[state=checked]:bg-[var(--accent)] data-[state=checked]:border-[var(--accent)]"
                     />
                     <span className="text-lg">{student.avatar}</span>
                     <span className="text-sm text-[var(--foreground)] flex-1">{student.name}</span>
@@ -148,7 +148,7 @@ export function GroupExamModal({
               })}
             </div>
             {selectedStudentIds.length > 0 && (
-              <p className="text-[11px] text-[#8B5CF6] mt-1.5 font-medium">{toPersianDigits(selectedStudentIds.length)} دانش‌آموز انتخاب شده</p>
+              <p className="text-[11px] text-[var(--accent)] mt-1.5 font-medium">{toPersianDigits(selectedStudentIds.length)} دانش‌آموز انتخاب شده</p>
             )}
           </div>
 
@@ -175,7 +175,7 @@ export function GroupExamModal({
           </DialogClose>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2.5 bg-[#8B5CF6] text-white rounded-lg text-sm font-semibold btn-hover"
+            className="px-6 py-2.5 bg-[var(--accent)] text-white rounded-lg text-sm font-semibold btn-hover"
           >
             ثبت آزمون گروهی
           </button>

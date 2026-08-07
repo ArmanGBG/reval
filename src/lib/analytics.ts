@@ -183,7 +183,7 @@ export function buildSubjectDistribution(tasks: Task[]): SubjectDatum[] {
   const completed = tasks.filter((t) => t.completed === true);
   const bySubject = new Map<string, { minutes: number; color: string }>();
   for (const t of completed) {
-    const entry = bySubject.get(t.subject) ?? { minutes: 0, color: t.subjectColor || '#3EB489' };
+    const entry = bySubject.get(t.subject) ?? { minutes: 0, color: t.subjectColor || '#5E6AD2' };
     entry.minutes += t.actualTimeMinutes ?? 0;
     bySubject.set(t.subject, entry);
   }
@@ -321,7 +321,7 @@ export function computeInsights(tasks: Task[]): {
   for (const t of tasks) {
     if (t.detailsCompleted === false) continue;
     const entry = subjects.get(t.subject) ?? {
-      color: t.subjectColor || '#3EB489',
+      color: t.subjectColor || '#5E6AD2',
       minutes: 0,
       total: 0,
       completed: 0,
@@ -350,14 +350,14 @@ export function computeInsights(tasks: Task[]): {
   const most = sortedByMin[0];
   const mostStudied: InsightDatum = most && most[1].minutes > 0
     ? { title: 'بیشترین مطالعه', value: `${most[0]} - ${fmtDuration(most[1].minutes)}`, color: most[1].color }
-    : { title: 'بیشترین مطالعه', value: 'داده‌ای نیست', color: '#3EB489' };
+    : { title: 'بیشترین مطالعه', value: 'داده‌ای نیست', color: '#5E6AD2' };
 
   // 2. Least studied (smallest non-zero minutes)
   const nonZero = sortedByMin.filter(([, v]) => v.minutes > 0);
   const least = nonZero[nonZero.length - 1];
   const leastStudied: InsightDatum = least
     ? { title: 'کمترین مطالعه', value: `${least[0]} - ${fmtDuration(least[1].minutes)}`, color: least[1].color }
-    : { title: 'کمترین مطالعه', value: 'داده‌ای نیست', color: '#F59E0B' };
+    : { title: 'کمترین مطالعه', value: 'داده‌ای نیست', color: '#D89614' };
 
   // 3. Most consistent (highest completion rate, min 3 tasks)
   const withMin = entries.filter(([, v]) => v.total >= 3);
@@ -369,7 +369,7 @@ export function computeInsights(tasks: Task[]): {
   const consistent = sortedByRate[0];
   const mostConsistent: InsightDatum = consistent
     ? { title: 'منظم‌ترین درس', value: `${consistent[0]} (${Math.round((consistent[1].completed / consistent[1].total) * 100)}٪)`, color: consistent[1].color }
-    : { title: 'منظم‌ترین درس', value: 'داده‌ای نیست', color: '#3EB489' };
+    : { title: 'منظم‌ترین درس', value: 'داده‌ای نیست', color: '#5E6AD2' };
 
   // 4. Most skipped (most skipped tasks, ties broken by skip ratio)
   const withSkips = entries.filter(([, v]) => v.skipped > 0);
@@ -381,8 +381,8 @@ export function computeInsights(tasks: Task[]): {
   });
   const skipped = sortedBySkips[0];
   const mostSkipped: InsightDatum = skipped
-    ? { title: 'بیشترین کنسلی', value: `${skipped[0]} (${skipped[1].skipped} تسک)`, color: '#EF4444' }
-    : { title: 'بیشترین کنسلی', value: 'نداریم 🎉', color: '#3EB489' };
+    ? { title: 'بیشترین کنسلی', value: `${skipped[0]} (${skipped[1].skipped} تسک)`, color: '#E5484D' }
+    : { title: 'بیشترین کنسلی', value: 'نداریم 🎉', color: '#5E6AD2' };
 
   return { mostStudied, leastStudied, mostConsistent, mostSkipped };
 }

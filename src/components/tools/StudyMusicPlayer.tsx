@@ -30,7 +30,7 @@ const PRESETS: Preset[] = [
     id: 'rain',
     name: 'باران',
     emoji: '🌧️',
-    color: '#60A5FA',
+    color: 'var(--accent)',
     noise: 'white',
     filterType: 'lowpass',
     filterFreq: 2400,
@@ -41,7 +41,7 @@ const PRESETS: Preset[] = [
     id: 'ocean',
     name: 'امواج',
     emoji: '🌊',
-    color: '#22D3EE',
+    color: 'var(--accent)',
     noise: 'brown',
     filterType: 'lowpass',
     filterFreq: 700,
@@ -53,7 +53,7 @@ const PRESETS: Preset[] = [
     id: 'forest',
     name: 'نسیم',
     emoji: '🍃',
-    color: '#3EB489',
+    color: 'var(--accent)',
     noise: 'white',
     filterType: 'highpass',
     filterFreq: 2000,
@@ -64,7 +64,7 @@ const PRESETS: Preset[] = [
     id: 'fire',
     name: 'آتش',
     emoji: '🔥',
-    color: '#F59E0B',
+    color: 'var(--accent)',
     noise: 'brown',
     filterType: 'lowpass',
     filterFreq: 900,
@@ -75,7 +75,7 @@ const PRESETS: Preset[] = [
     id: 'library',
     name: 'کتابخانه',
     emoji: '📚',
-    color: '#A78BFA',
+    color: 'var(--accent)',
     noise: 'pink',
     filterType: 'lowpass',
     filterFreq: 1100,
@@ -555,8 +555,8 @@ export default function StudyMusicPlayer() {
               <div
                 className="w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110"
                 style={{
-                  background: `radial-gradient(circle at 30% 30%, ${preset.color}30, ${preset.color}08 70%)`,
-                  boxShadow: `0 0 0 1px ${preset.color}20`,
+                  background: 'var(--accent-soft)',
+                  boxShadow: 'none',
                 }}
               >
                 <span className="leading-none">{preset.emoji}</span>
@@ -601,7 +601,7 @@ export default function StudyMusicPlayer() {
                 transition={{ duration: 2.4, repeat: Infinity, ease: 'easeOut' }}
                 className="absolute w-28 h-28 rounded-full"
                 style={{
-                  border: `1.5px solid ${selectedPreset.color}50`,
+                  border: '1.5px solid var(--border-strong)',
                 }}
               />
               <motion.div
@@ -612,7 +612,7 @@ export default function StudyMusicPlayer() {
                 transition={{ duration: 2.4, repeat: Infinity, delay: 1.2, ease: 'easeOut' }}
                 className="absolute w-28 h-28 rounded-full"
                 style={{
-                  border: `1.5px solid ${selectedPreset.color}40`,
+                  border: '1.5px solid var(--border)',
                 }}
               />
             </>
@@ -632,8 +632,8 @@ export default function StudyMusicPlayer() {
           }
           className="relative w-28 h-28 rounded-full flex items-center justify-center text-6xl"
           style={{
-            background: `radial-gradient(circle at 35% 30%, ${selectedPreset.color}35, ${selectedPreset.color}08 70%)`,
-            boxShadow: `0 0 40px -8px ${selectedPreset.color}55, inset 0 0 0 1px ${selectedPreset.color}30`,
+            background: 'var(--accent-soft)',
+            boxShadow: 'inset 0 0 0 1px var(--border-strong)',
           }}
         >
           <span className="leading-none">{selectedPreset.emoji}</span>

@@ -37,7 +37,7 @@ const GOALS: Goal[] = ['کنکور', 'نهایی', 'هر دو'];
 const TICKET_TOPICS = ['مشکل فنی', 'پیشنهاد', 'سوال', 'شکایت'] as const;
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  open: { label: 'باز', color: 'bg-[rgba(245,181,68,0.12)] text-[var(--warning)]' },
+  open: { label: 'باز', color: 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)]' },
   answered: { label: 'پاسخ داده شده', color: 'bg-[var(--accent-soft)] text-[var(--accent)]' },
   closed: { label: 'بسته شده', color: 'bg-[rgba(255,255,255,0.06)] text-[var(--foreground-muted)]' },
 };
@@ -359,7 +359,7 @@ function SupportSection({
 
       <button
         onClick={onLogout}
-        className="btn-hover w-full flex items-center justify-center gap-2 border-2 border-[#EF4444] text-[#F87171] font-semibold py-3 rounded-[var(--radius)] min-h-[44px] hover:bg-[rgba(239,68,68,0.08)]"
+        className="btn-hover w-full flex items-center justify-center gap-2 border-2 border-[var(--danger)] text-[var(--danger)] font-semibold py-3 rounded-[var(--radius)] min-h-[44px] hover:bg-[rgba(229,72,77,0.08)]"
       >
         <LogOut className="w-5 h-5" />
         خروج از حساب

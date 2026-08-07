@@ -260,9 +260,9 @@ export function ExamResultsModal({
             const scoreColor = !validScore
               ? 'border-[var(--border-strong)]'
               : percent < 50
-                ? 'border-[var(--danger)]/60 bg-[rgba(239,68,68,0.05)]'
+                ? 'border-[var(--danger)]/60 bg-[var(--danger)]/5'
                 : percent < 70
-                  ? 'border-[var(--warning)]/60 bg-[rgba(245,158,11,0.05)]'
+                  ? 'border-[var(--warning)]/60 bg-[var(--warning)]/5'
                   : 'border-[var(--accent)]/60 bg-[var(--accent-soft)]';
 
             return (
@@ -319,9 +319,9 @@ export function ExamResultsModal({
                   <div
                     className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium tabular-nums ${
                       percent < 50
-                        ? 'bg-[rgba(239,68,68,0.12)] text-[var(--danger)]'
+                        ? 'bg-[var(--danger)]/10 text-[var(--danger)]'
                         : percent < 70
-                          ? 'bg-[rgba(245,158,11,0.12)] text-[var(--warning)]'
+                          ? 'bg-[var(--warning)]/10 text-[var(--warning)]'
                           : 'bg-[var(--accent-soft)] text-[var(--accent)]'
                     }`}
                   >

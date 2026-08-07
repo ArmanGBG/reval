@@ -54,7 +54,7 @@ export function ExamModal({
     }
 
     const subjectObj = SUBJECTS.find(s => s.name === subject);
-    const subjectColor = subjectObj?.color ?? '#8B5CF6';
+    const subjectColor = subjectObj?.color ?? 'var(--accent)';
 
     toast.loading('در حال ثبت آزمون...', { id: 'exam-create' });
     try {
@@ -117,7 +117,7 @@ export function ExamModal({
           </DialogClose>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2.5 bg-[#8B5CF6] text-white rounded-lg text-sm font-semibold btn-hover"
+            className="px-6 py-2.5 bg-[var(--accent)] text-white rounded-lg text-sm font-semibold btn-hover"
           >
             ثبت آزمون
           </button>

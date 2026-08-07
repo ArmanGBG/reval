@@ -241,7 +241,7 @@ export default function SuperAdminMessages() {
           <button
             onClick={handleSend}
             disabled={sending || !title.trim() || !body.trim()}
-            className="btn-hover w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 h-11 text-sm font-semibold bg-[var(--gold)] text-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            className="btn-hover w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 h-11 text-sm font-semibold bg-[var(--gold)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           >
             {sending ? (
               <>

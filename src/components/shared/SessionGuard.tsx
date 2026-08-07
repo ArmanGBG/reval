@@ -32,8 +32,8 @@ export default function SessionGuard() {
         duration: 3000,
         style: {
           background: 'var(--bg-overlay, #1B1B22)',
-          border: '1px solid rgba(245, 181, 68, 0.3)',
-          color: '#F5B544',
+          border: '1px solid var(--warning)',
+          color: 'var(--warning)',
         },
       });
 
@@ -75,8 +75,8 @@ export default function SessionGuard() {
               duration: 3000,
               style: {
                 background: 'var(--bg-overlay, #1B1B22)',
-                border: '1px solid rgba(245, 181, 68, 0.3)',
-                color: '#F5B544',
+                border: '1px solid var(--warning)',
+                color: 'var(--warning)',
               },
             });
             setTimeout(() => {

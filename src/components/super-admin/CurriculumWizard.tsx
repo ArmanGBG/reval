@@ -313,7 +313,7 @@ export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newSubjectName.trim(),
-          color: '#3EB489',
+          color: '#5E6AD2',
           icon: '📚',
           isKonkur: true,
           sortOrder: 0,
@@ -742,7 +742,7 @@ export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
                 disabled={s.n > step}
                 className={`flex items-center gap-1.5 px-2 h-8 rounded-lg text-xs font-bold transition-all ${
                   isActive
-                    ? 'bg-[var(--gold)] text-zinc-950'
+                    ? 'bg-[var(--gold)] text-white'
                     : isDone
                       ? 'bg-[var(--gold-soft)] text-[var(--gold)] border border-[var(--gold)]/30 cursor-pointer'
                       : 'text-[var(--foreground-subtle)] cursor-not-allowed'
@@ -985,7 +985,7 @@ export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
                   <button
                     onClick={handleCreateNewSubject}
                     disabled={creatingSubject || !newSubjectName.trim()}
-                    className="btn-hover glow-hover-gold h-11 px-4 rounded-xl bg-[var(--gold)] text-zinc-950 font-bold text-sm disabled:opacity-50 flex items-center gap-2"
+                    className="btn-hover glow-hover-gold h-11 px-4 rounded-xl bg-[var(--gold)] text-white font-bold text-sm disabled:opacity-50 flex items-center gap-2"
                   >
                     {creatingSubject ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1090,14 +1090,14 @@ export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
                     <button
                       onClick={() => setStep(5)}
                       disabled={chapters.length === 0 || chapters.some((c) => !c.id)}
-                      className="btn-hover glow-hover-gold h-10 px-4 rounded-lg bg-[var(--gold)] text-zinc-950 font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
+                      className="btn-hover glow-hover-gold h-10 px-4 rounded-lg bg-[var(--gold)] text-white font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
                     >
                       گفتارها
                       <ArrowLeft className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   {chapters.length > 0 && chapters.some((c) => !c.id) && (
-                    <p className="text-[10px] text-amber-400/80 text-center flex items-center justify-center gap-1.5">
+                    <p className="text-[10px] text-[var(--warning)]/80 text-center flex items-center justify-center gap-1.5">
                       <AlertCircle className="w-3 h-3" />
                       ابتدا تمام فصل‌ها را ذخیره کنید تا به بخش گفتارها بروید.
                     </p>
@@ -1195,7 +1195,7 @@ export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
                               </button>
                             </div>
                           ) : (
-                            <p className="text-[11px] text-amber-400/80 text-center py-3 flex items-center justify-center gap-1.5">
+                            <p className="text-[11px] text-[var(--warning)]/80 text-center py-3 flex items-center justify-center gap-1.5">
                               <AlertCircle className="w-3 h-3" />
                               ابتدا این فصل را ذخیره کنید.
                             </p>
@@ -1369,7 +1369,7 @@ function ChapterRowCard({
               ذخیره شده
             </span>
           ) : (
-            <span className="text-amber-400/80 flex items-center gap-1">
+            <span className="text-[var(--warning)]/80 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               ذخیره نشده
             </span>
@@ -1385,7 +1385,7 @@ function ChapterRowCard({
           <button
             onClick={onSave}
             disabled={row.saving || !row.title.trim() || (!row.pageStart && !row.isLastPage)}
-            className="btn-hover glow-hover-gold h-8 px-3 rounded-lg bg-[var(--gold)] text-zinc-950 font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
+            className="btn-hover glow-hover-gold h-8 px-3 rounded-lg bg-[var(--gold)] text-white font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
           >
             {row.saving ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -1398,7 +1398,7 @@ function ChapterRowCard({
           </button>
           <button
             onClick={onDelete}
-            className="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-[var(--foreground-muted)] hover:text-rose-400"
+            className="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
             aria-label="حذف"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -1500,7 +1500,7 @@ function TopicRowCard({
               ذخیره شده
             </span>
           ) : (
-            <span className="text-amber-400/80 flex items-center gap-1">
+            <span className="text-[var(--warning)]/80 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               ذخیره نشده
             </span>
@@ -1523,7 +1523,7 @@ function TopicRowCard({
           </button>
           <button
             onClick={onDelete}
-            className="icon-btn w-7 h-7 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-rose-400"
+            className="icon-btn w-7 h-7 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
             aria-label="حذف گفتار"
           >
             <Trash2 className="w-3 h-3" />

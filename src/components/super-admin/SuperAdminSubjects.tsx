@@ -148,11 +148,7 @@ export default function SuperAdminSubjects() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn-hover inline-flex items-center gap-2 h-11 px-5 rounded-xl font-bold text-sm text-zinc-950"
-          style={{
-            background: 'linear-gradient(135deg, var(--gold) 0%, #F5D544 100%)',
-            boxShadow: '0 8px 24px -6px var(--gold-glow)',
-          }}
+          className="btn-hover inline-flex items-center gap-2 h-11 px-5 rounded-xl font-bold text-sm text-white bg-[var(--gold)]"
         >
           <Plus className="w-4 h-4" />
           افزودن درس جدید
@@ -165,7 +161,7 @@ export default function SuperAdminSubjects() {
           { label: 'دروس', value: subjects.length, icon: BookOpen, color: 'text-[var(--gold)]' },
           { label: 'درس‌های کنکوری', value: konkurCount, icon: Award, color: 'text-[var(--gold)]' },
           { label: 'فصل‌ها', value: totalChapters, icon: Layers, color: 'text-[var(--accent)]' },
-          { label: 'مباحث کنکوری', value: totalTopicModes, icon: Sparkles, color: 'text-[#F59E0B]' },
+          { label: 'مباحث کنکوری', value: totalTopicModes, icon: Sparkles, color: 'text-[var(--warning)]' },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
@@ -219,7 +215,7 @@ export default function SuperAdminSubjects() {
               onClick={() => setFilterKonkur(opt.id)}
               className={`relative px-3 h-8 rounded-lg text-xs font-medium transition-colors duration-150 ${
                 filterKonkur === opt.id
-                  ? 'text-zinc-950'
+                  ? 'text-white'
                   : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
               }`}
             >

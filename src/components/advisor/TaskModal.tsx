@@ -124,7 +124,7 @@ export function TaskModal({
     }
 
     const subjectName = selection.subjectName || editTask?.subject || '';
-    const subjectColor = selection.subjectColor || editTask?.subjectColor || '#3EB489';
+    const subjectColor = selection.subjectColor || editTask?.subjectColor || 'var(--accent)';
     const topic = selection.displayText || null;
 
     if (isEdit && editTask) {

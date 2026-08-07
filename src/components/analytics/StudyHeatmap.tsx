@@ -21,21 +21,21 @@ import {
 // Day labels (right side): Sat–Fri
 const DAY_LABELS = PERSIAN_WEEKDAYS_SHORT; // ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']
 
-// Color levels by study intensity
+// Color levels by study intensity — single-hue accent scale
 function getSquareColor(minutes: number): string {
   if (minutes === 0) return 'var(--bg-elevated)';
-  if (minutes <= 30) return 'var(--accent-soft)';
-  if (minutes <= 60) return 'rgba(62, 180, 137, 0.3)';
-  if (minutes <= 120) return 'rgba(62, 180, 137, 0.55)';
+  if (minutes <= 30) return 'rgba(94, 106, 210, 0.18)';
+  if (minutes <= 60) return 'rgba(94, 106, 210, 0.35)';
+  if (minutes <= 120) return 'rgba(94, 106, 210, 0.6)';
   return 'var(--accent)'; // 120+ min
 }
 
 function getSquareBorder(minutes: number): string {
   if (minutes === 0) return '1px solid var(--border)';
-  if (minutes <= 30) return '1px solid rgba(62, 180, 137, 0.15)';
-  if (minutes <= 60) return '1px solid rgba(62, 180, 137, 0.25)';
-  if (minutes <= 120) return '1px solid rgba(62, 180, 137, 0.35)';
-  return '1px solid rgba(62, 180, 137, 0.5)';
+  if (minutes <= 30) return '1px solid rgba(94, 106, 210, 0.2)';
+  if (minutes <= 60) return '1px solid rgba(94, 106, 210, 0.3)';
+  if (minutes <= 120) return '1px solid rgba(94, 106, 210, 0.4)';
+  return '1px solid rgba(94, 106, 210, 0.55)';
 }
 
 export default function StudyHeatmap() {
@@ -141,10 +141,10 @@ export default function StudyHeatmap() {
   // Legend items
   const legendItems = [
     { color: 'var(--bg-elevated)', border: '1px solid var(--border)', label: 'بدون مطالعه' },
-    { color: 'var(--accent-soft)', border: '1px solid rgba(62,180,137,0.15)', label: 'کم' },
-    { color: 'rgba(62, 180, 137, 0.3)', border: '1px solid rgba(62,180,137,0.25)', label: 'متوسط' },
-    { color: 'rgba(62, 180, 137, 0.55)', border: '1px solid rgba(62,180,137,0.35)', label: 'زیاد' },
-    { color: 'var(--accent)', border: '1px solid rgba(62,180,137,0.5)', label: 'خیلی زیاد' },
+    { color: 'rgba(94, 106, 210, 0.18)', border: '1px solid rgba(94, 106, 210, 0.2)', label: 'کم' },
+    { color: 'rgba(94, 106, 210, 0.35)', border: '1px solid rgba(94, 106, 210, 0.3)', label: 'متوسط' },
+    { color: 'rgba(94, 106, 210, 0.6)', border: '1px solid rgba(94, 106, 210, 0.4)', label: 'زیاد' },
+    { color: 'var(--accent)', border: '1px solid rgba(94, 106, 210, 0.55)', label: 'خیلی زیاد' },
   ];
 
   return (
@@ -160,7 +160,7 @@ export default function StudyHeatmap() {
               className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center float-subtle"
               style={{
                 backgroundColor: 'var(--accent-soft)',
-                border: '1px solid rgba(62,180,137,0.2)',
+                border: '1px solid var(--border-strong)',
               }}
             >
               <Calendar className="w-4 h-4 text-[var(--accent)]" />
@@ -234,9 +234,7 @@ export default function StudyHeatmap() {
                         border: isToday
                           ? '1.5px solid var(--accent)'
                           : getSquareBorder(day.minutes),
-                        boxShadow: isToday
-                          ? '0 0 4px var(--accent-glow)'
-                          : 'none',
+                        boxShadow: 'none',
                       }}
                     />
                   );

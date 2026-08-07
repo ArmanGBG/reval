@@ -150,11 +150,11 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
       setSavedPill(newTotal);
       savedPillRef.current = newTotal;
       toast.success(`${toPersianDigits(minutes)} دقیقه به زمان مطالعه اضافه شد`, {
-        style: { background: 'var(--bg-overlay)', border: '1px solid var(--accent-glow)', color: 'var(--accent)' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
       });
     } catch {
       toast.error('خطا در ذخیره زمان مطالعه', {
-        style: { background: 'var(--bg-overlay)', border: '1px solid rgba(239,68,68,0.3)', color: '#F87171' },
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--danger)', color: 'var(--danger)' },
       });
       // restore the elapsed time so user can retry
       start(taskId);
@@ -189,7 +189,7 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
               initial={{ scale: 0.85, opacity: 0.5 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-              className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(62,180,137,0.2)] font-medium"
+              className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] font-medium"
             >
               ذخیره: {minutesToHoursLabel(savedPill)}
             </motion.span>
@@ -220,8 +220,8 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
             onClick={handleStartPause}
             className={`w-8 h-8 rounded-md flex items-center justify-center border transition-all active:scale-95 ${
               running
-                ? 'bg-[rgba(245,181,68,0.12)] text-[var(--warning)] border-[rgba(245,181,68,0.25)] hover:bg-[rgba(245,181,68,0.2)]'
-                : 'bg-[var(--accent-soft)] text-[var(--accent)] border-[rgba(62,180,137,0.25)] hover:bg-[rgba(62,180,137,0.2)]'
+                ? 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)] border-[rgba(216,150,20,0.25)] hover:bg-[rgba(216,150,20,0.18)]'
+                : 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--border-strong)] hover:bg-[var(--accent-soft)]'
             }`}
             aria-label={running ? 'توقف تایمر' : 'شروع تایمر'}
             title={running ? 'توقف' : 'شروع'}
@@ -239,7 +239,7 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
                 exit={{ opacity: 0, width: 0 }}
                 onClick={handleSave}
                 disabled={saving}
-                className="h-8 px-2.5 rounded-md flex items-center gap-1 text-[11px] font-bold bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(62,180,137,0.25)] hover:bg-[rgba(62,180,137,0.2)] disabled:opacity-50 active:scale-95 transition-all overflow-hidden"
+                className="h-8 px-2.5 rounded-md flex items-center gap-1 text-[11px] font-bold bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] hover:bg-[var(--accent-soft)] disabled:opacity-50 active:scale-95 transition-all overflow-hidden"
                 aria-label="ذخیره زمان"
               >
                 <Save className="w-3 h-3" />
@@ -257,7 +257,7 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={handleReset}
-                className="w-8 h-8 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[#F87171] hover:bg-[rgba(239,68,68,0.08)] transition-all active:scale-95"
+                className="w-8 h-8 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] transition-all active:scale-95"
                 aria-label="صفر کردن تایمر"
                 title="صفر کردن"
               >

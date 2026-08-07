@@ -18,7 +18,7 @@ export function StatsSection() {
         <div className="hidden md:block bg-[var(--bg-elevated)] rounded-[var(--radius-xl)] border border-[var(--border)] p-10 lg:p-12 relative overflow-hidden edge-highlight">
           <div
             aria-hidden
-            className="absolute inset-0 bg-gradient-to-bl from-[var(--accent-soft)] via-transparent to-transparent opacity-60"
+            className="absolute inset-0 bg-[var(--accent-soft)] opacity-30"
           />
           <div className="relative grid grid-cols-4 gap-6">
             {STATS.map((stat) => (

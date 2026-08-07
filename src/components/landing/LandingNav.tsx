@@ -27,7 +27,7 @@ export function LandingNav() {
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-[var(--radius)] bg-[var(--accent)] flex items-center justify-center shadow-[0_4px_14px_-2px_var(--accent-glow)]">
+          <div className="w-9 h-9 rounded-[var(--radius)] bg-[var(--accent)] flex items-center justify-center">
             <span className="text-[var(--bg-deep)] font-black text-base">ر</span>
           </div>
           <span className="text-lg font-bold text-[var(--foreground)]">روال</span>

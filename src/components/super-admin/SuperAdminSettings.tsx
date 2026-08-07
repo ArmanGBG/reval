@@ -34,12 +34,12 @@ export default function SuperAdminSettings() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // Toggle switch (gold accent for super admin)
+  // Toggle switch (accent for super admin)
   const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
     <button
       onClick={onClick}
       className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
-        on ? 'bg-gold' : 'bg-[var(--bg-overlay)] border border-[var(--border-strong)]'
+        on ? 'bg-[var(--accent)]' : 'bg-[var(--bg-overlay)] border border-[var(--border-strong)]'
       }`}
     >
       <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-0.5' : 'translate-x-6'}`} />
@@ -66,11 +66,11 @@ export default function SuperAdminSettings() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="card-hover edge-highlight rounded-[16px] p-5 md:p-6 bg-[var(--gold-soft)] border border-gold/25"
+          className="card-hover edge-highlight rounded-[16px] p-5 md:p-6 bg-[var(--accent-soft)] border border-[var(--accent)]/25"
         >
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-[10px] bg-gold/15 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-gold" />
+            <div className="w-9 h-9 rounded-[10px] bg-[var(--accent)]/15 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-[var(--accent)]" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">کنترل پلتفرم</h3>
@@ -82,8 +82,8 @@ export default function SuperAdminSettings() {
             {/* Maintenance Mode */}
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[12px] border border-[var(--border)]">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${maintenanceMode ? 'bg-red-500/15' : 'bg-mint/15'}`}>
-                  <AlertTriangle className={`w-4 h-4 ${maintenanceMode ? 'text-red-400' : 'text-mint'}`} />
+                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${maintenanceMode ? 'bg-[var(--danger)]/15' : 'bg-[var(--success)]/15'}`}>
+                  <AlertTriangle className={`w-4 h-4 ${maintenanceMode ? 'text-[var(--danger)]' : 'text-[var(--success)]'}`} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-foreground font-medium">حالت تعمیرات</p>
@@ -96,8 +96,8 @@ export default function SuperAdminSettings() {
             {/* Allow New Registrations */}
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[12px] border border-[var(--border)]">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${allowNewRegistrations ? 'bg-mint/15' : 'bg-[var(--bg-overlay)]'}`}>
-                  <Globe className={`w-4 h-4 ${allowNewRegistrations ? 'text-mint' : 'text-muted-foreground'}`} />
+                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${allowNewRegistrations ? 'bg-[var(--success)]/15' : 'bg-[var(--bg-overlay)]'}`}>
+                  <Globe className={`w-4 h-4 ${allowNewRegistrations ? 'text-[var(--success)]' : 'text-muted-foreground'}`} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm text-foreground font-medium">ثبت‌نام جدید</p>
@@ -129,9 +129,9 @@ export default function SuperAdminSettings() {
           <div className="space-y-2.5">
             {[
               { label: 'رایگان', value: maxFreeStudents, set: setMaxFreeStudents, tint: 'text-muted-foreground' },
-              { label: 'پایه', value: maxBasicStudents, set: setMaxBasicStudents, tint: 'text-sky-400' },
+              { label: 'پایه', value: maxBasicStudents, set: setMaxBasicStudents, tint: 'text-muted-foreground' },
               { label: 'حرفه‌ای', value: maxProStudents, set: setMaxProStudents, tint: 'text-gold' },
-              { label: 'سازمانی', value: maxEnterpriseStudents, set: setMaxEnterpriseStudents, tint: 'text-purple-400' },
+              { label: 'سازمانی', value: maxEnterpriseStudents, set: setMaxEnterpriseStudents, tint: 'text-gold' },
             ].map((row) => (
               <div key={row.label} className="flex items-center gap-3 p-2.5 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
                 <span className={`text-xs font-medium w-16 ${row.tint}`}>{row.label}</span>
@@ -178,8 +178,8 @@ export default function SuperAdminSettings() {
               <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Server className="w-3 h-3" /> وضعیت سرور
               </span>
-              <span className="text-xs text-mint font-bold flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-mint animate-pulse" />
+              <span className="text-xs text-[var(--success)] font-bold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
                 سالم
               </span>
             </div>
@@ -210,15 +210,15 @@ export default function SuperAdminSettings() {
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-[10px] bg-mint/15 flex items-center justify-center">
-                  <span className="text-xs font-bold text-mint">م</span>
+                <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
+                  <span className="text-xs font-bold text-[var(--accent)]">م</span>
                 </div>
                 <div>
                   <p className="text-sm text-foreground font-medium">تم تیره</p>
                   <p className="text-[11px] text-muted-foreground">حالت سینمایی</p>
                 </div>
               </div>
-              <span className="text-[10px] px-2 py-1 rounded-full bg-mint/15 text-mint font-medium">فعال</span>
+              <span className="text-[10px] px-2 py-1 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] font-medium">فعال</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <div className="flex items-center gap-3">
@@ -240,7 +240,7 @@ export default function SuperAdminSettings() {
       <div className="lg:sticky lg:bottom-4 lg:flex lg:justify-end">
         <button
           onClick={handleSave}
-          className="btn-hover glow-hover glow-hover-gold w-full lg:w-auto flex items-center justify-center gap-2 bg-gold text-[var(--bg-deep)] px-6 py-3 rounded-[12px] text-sm font-bold shadow-lg shadow-gold/20"
+          className="btn-hover glow-hover glow-hover-gold w-full lg:w-auto flex items-center justify-center gap-2 bg-gold text-white px-6 py-3 rounded-[12px] text-sm font-bold shadow-lg shadow-black/20"
         >
           <AnimatePresence mode="wait">
             {saved ? (

@@ -50,9 +50,9 @@ export default function SuperAdminDashboard() {
 
   const SUB_LABELS: Record<string, { label: string; color: string; bg: string; dot: string }> = {
     free: { label: 'رایگان', color: 'text-muted-foreground', bg: 'bg-zinc-500/15', dot: 'bg-zinc-500' },
-    basic: { label: 'پایه', color: 'text-sky-400', bg: 'bg-sky-500/15', dot: 'bg-sky-500' },
+    basic: { label: 'پایه', color: 'text-muted-foreground', bg: 'bg-white/5', dot: 'bg-muted-foreground' },
     pro: { label: 'حرفه‌ای', color: 'text-gold', bg: 'bg-gold/15', dot: 'bg-gold' },
-    enterprise: { label: 'سازمانی', color: 'text-purple-400', bg: 'bg-purple-500/15', dot: 'bg-purple-500' },
+    enterprise: { label: 'سازمانی', color: 'text-gold', bg: 'bg-gold/15', dot: 'bg-gold' },
   };
 
   // Role distribution
@@ -94,7 +94,7 @@ export default function SuperAdminDashboard() {
       value: toPersianDigits(kpis.totalAdvisors),
       sub: 'در پلتفرم',
       icon: Users,
-      tint: 'bg-sky-500/15 text-sky-400',
+      tint: 'bg-white/5 text-muted-foreground',
       featured: false,
     },
     {
@@ -102,7 +102,7 @@ export default function SuperAdminDashboard() {
       value: `${toPersianDigits(kpis.avgCompletion)}٪`,
       sub: 'پلتفرم',
       icon: TrendingUp,
-      tint: 'bg-amber-500/15 text-amber-400',
+      tint: 'bg-gold/15 text-gold',
       featured: false,
     },
   ];
@@ -111,13 +111,6 @@ export default function SuperAdminDashboard() {
     <div className="space-y-5 md:space-y-6 animate-fade-in-up">
       {/* ============ God Mode Hero Header ============ */}
       <header className="relative surface-1 edge-highlight rounded-[20px] p-5 md:p-7 overflow-hidden">
-        {/* Subtle gold radial glow (single, contained, not covering content) */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-60"
-          style={{
-            background: 'radial-gradient(ellipse 380px 180px at 88% -20%, rgba(245, 181, 68, 0.22), transparent 70%)',
-          }}
-        />
         <div className="relative flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 md:w-14 md:h-14 rounded-[14px] bg-gold/15 border border-gold/25 flex items-center justify-center shrink-0">
@@ -194,7 +187,7 @@ export default function SuperAdminDashboard() {
                 <span className="w-2 h-2 rounded-full bg-mint" /> دانش‌آموز
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-sky-500" /> مشاور
+                <span className="w-2 h-2 rounded-full bg-muted-foreground" /> مشاور
               </span>
             </div>
           </div>
@@ -221,7 +214,7 @@ export default function SuperAdminDashboard() {
                         initial={{ width: 0 }}
                         animate={{ width: `${(item.advisors / 30) * 100}%` }}
                         transition={{ duration: 0.8, delay: idx * 0.1 + 0.05, ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full bg-sky-500 rounded-full"
+                        className="h-full bg-muted-foreground rounded-full"
                       />
                     </div>
                     <span className="text-[11px] text-muted-foreground w-7 tabular-nums">{toPersianDigits(item.advisors)}</span>
@@ -307,7 +300,7 @@ export default function SuperAdminDashboard() {
           <div className="space-y-3">
             {[
               { label: 'دانش‌آموز', value: roleDist.student || 0, color: 'text-mint', bg: 'bg-mint' },
-              { label: 'مشاور', value: roleDist.advisor || 0, color: 'text-sky-400', bg: 'bg-sky-500' },
+              { label: 'مشاور', value: roleDist.advisor || 0, color: 'text-muted-foreground', bg: 'bg-muted-foreground' },
               { label: 'مدیر آموزشگاه', value: roleDist.institute_manager || 0, color: 'text-gold', bg: 'bg-gold' },
             ].map((role) => {
               const total = (roleDist.student || 0) + (roleDist.advisor || 0) + (roleDist.institute_manager || 0);
@@ -345,25 +338,25 @@ export default function SuperAdminDashboard() {
             وضعیت موسسات
           </h3>
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-[10px] bg-mint/10 border border-mint/15 p-3 text-center">
-              <div className="w-8 h-8 rounded-[8px] bg-mint/15 flex items-center justify-center mx-auto mb-2">
-                <ShieldCheck className="w-4 h-4 text-mint" />
+            <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-3 text-center">
+              <div className="w-8 h-8 rounded-[8px] bg-[var(--success)]/15 flex items-center justify-center mx-auto mb-2">
+                <ShieldCheck className="w-4 h-4 text-[var(--success)]" />
               </div>
-              <p className="text-lg font-bold text-mint tabular-nums">{toPersianDigits(instituteStatusDist.active || 0)}</p>
+              <p className="text-lg font-bold text-[var(--success)] tabular-nums">{toPersianDigits(instituteStatusDist.active || 0)}</p>
               <p className="text-[10px] text-muted-foreground">فعال</p>
             </div>
-            <div className="rounded-[10px] bg-sky-500/10 border border-sky-500/15 p-3 text-center">
-              <div className="w-8 h-8 rounded-[8px] bg-sky-500/15 flex items-center justify-center mx-auto mb-2">
-                <Activity className="w-4 h-4 text-sky-400" />
+            <div className="rounded-[10px] bg-[var(--warning)]/10 border border-[var(--warning)]/15 p-3 text-center">
+              <div className="w-8 h-8 rounded-[8px] bg-[var(--warning)]/15 flex items-center justify-center mx-auto mb-2">
+                <Activity className="w-4 h-4 text-[var(--warning)]" />
               </div>
-              <p className="text-lg font-bold text-sky-400 tabular-nums">{toPersianDigits(instituteStatusDist.trial || 0)}</p>
+              <p className="text-lg font-bold text-[var(--warning)] tabular-nums">{toPersianDigits(instituteStatusDist.trial || 0)}</p>
               <p className="text-[10px] text-muted-foreground">آزمایشی</p>
             </div>
-            <div className="rounded-[10px] bg-red-500/10 border border-red-500/15 p-3 text-center">
-              <div className="w-8 h-8 rounded-[8px] bg-red-500/15 flex items-center justify-center mx-auto mb-2">
-                <AlertOctagon className="w-4 h-4 text-red-400" />
+            <div className="rounded-[10px] bg-[var(--danger)]/10 border border-[var(--danger)]/15 p-3 text-center">
+              <div className="w-8 h-8 rounded-[8px] bg-[var(--danger)]/15 flex items-center justify-center mx-auto mb-2">
+                <AlertOctagon className="w-4 h-4 text-[var(--danger)]" />
               </div>
-              <p className="text-lg font-bold text-red-400 tabular-nums">{toPersianDigits(instituteStatusDist.suspended || 0)}</p>
+              <p className="text-lg font-bold text-[var(--danger)] tabular-nums">{toPersianDigits(instituteStatusDist.suspended || 0)}</p>
               <p className="text-[10px] text-muted-foreground">معلق</p>
             </div>
           </div>
@@ -376,13 +369,13 @@ export default function SuperAdminDashboard() {
           <p className="text-[10px] md:text-xs text-muted-foreground mb-1">کاربران فعال</p>
           <p className="text-base md:text-lg font-bold text-gold tabular-nums">{toPersianDigits(kpis.activeUsers)}</p>
         </div>
-        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-red-500/15">
+        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-[var(--danger)]/15">
           <p className="text-[10px] md:text-xs text-muted-foreground mb-1">معلق</p>
-          <p className="text-base md:text-lg font-bold text-red-400 tabular-nums">{toPersianDigits(kpis.suspendedUsers)}</p>
+          <p className="text-base md:text-lg font-bold text-[var(--danger)] tabular-nums">{toPersianDigits(kpis.suspendedUsers)}</p>
         </div>
-        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-purple-500/15">
+        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-gold/15">
           <p className="text-[10px] md:text-xs text-muted-foreground mb-1">اشتراک پولی</p>
-          <p className="text-base md:text-lg font-bold text-purple-400 tabular-nums">{toPersianDigits(kpis.proInstitutes)}</p>
+          <p className="text-base md:text-lg font-bold text-gold tabular-nums">{toPersianDigits(kpis.proInstitutes)}</p>
         </div>
       </section>
     </div>

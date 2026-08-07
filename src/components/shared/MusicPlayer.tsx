@@ -28,18 +28,18 @@ export default function MusicPlayer() {
           <div className="flex items-center gap-2">
             {isPlaying && (
               <div className="flex items-end gap-0.5 h-4">
-                <div className="eq-bar w-1 bg-[#3EB489] rounded-full" />
-                <div className="eq-bar w-1 bg-[#3EB489] rounded-full" />
-                <div className="eq-bar w-1 bg-[#3EB489] rounded-full" />
-                <div className="eq-bar w-1 bg-[#3EB489] rounded-full" />
-                <div className="eq-bar w-1 bg-[#3EB489] rounded-full" />
+                <div className="eq-bar w-1 bg-[var(--accent)] rounded-full" />
+                <div className="eq-bar w-1 bg-[var(--accent)] rounded-full" />
+                <div className="eq-bar w-1 bg-[var(--accent)] rounded-full" />
+                <div className="eq-bar w-1 bg-[var(--accent)] rounded-full" />
+                <div className="eq-bar w-1 bg-[var(--accent)] rounded-full" />
               </div>
             )}
             <motion.button
               onClick={togglePlay}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
-              className="w-10 h-10 rounded-full bg-[#3EB489]/20 flex items-center justify-center text-[#3EB489] hover:bg-[#3EB489]/30 transition-colors"
+              className="w-10 h-10 rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </motion.button>

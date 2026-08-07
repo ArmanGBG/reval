@@ -116,7 +116,7 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
               onClick={() => setTab(t.id)}
               className={`btn-hover flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-xs font-semibold transition-all ${
                 tab === t.id
-                  ? 'bg-[var(--gold)] text-zinc-950'
+                  ? 'bg-[var(--gold)] text-white'
                   : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
               }`}
             >

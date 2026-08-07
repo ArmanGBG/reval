@@ -82,11 +82,11 @@ function EmptyStateStudents({ hasStudents }: { hasStudents: boolean }) {
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       className="surface-1 card-hover rounded-2xl p-10 sm:p-12 text-center border border-[var(--border)] overflow-hidden relative"
     >
-      {/* Soft purple glow backdrop to match the advisor theme */}
+      {/* Soft neutral backdrop (Linear-style: subtle, no neon glow) */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 60% 70% at 50% 30%, rgba(139, 92, 246, 0.10), transparent)',
+          background: 'radial-gradient(ellipse 60% 70% at 50% 30%, rgba(255,255,255,0.03), transparent)',
         }}
       />
       <div className="relative z-10 flex flex-col items-center">
@@ -94,7 +94,7 @@ function EmptyStateStudents({ hasStudents }: { hasStudents: boolean }) {
           initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
-          className="w-20 h-20 mx-auto rounded-full bg-[rgba(139,92,246,0.12)] flex items-center justify-center text-4xl mb-4 ring-1 ring-[rgba(139,92,246,0.25)]"
+          className="w-20 h-20 mx-auto rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-4xl mb-4 ring-1 ring-[var(--border-strong)]"
         >
           👥
         </motion.div>
@@ -161,7 +161,7 @@ export function AdvisorStudentsList() {
         </div>
         <button
           onClick={() => setGroupExamOpen(true)}
-          className="flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 text-[#8B5CF6] rounded-xl px-4 py-3 text-sm font-medium btn-hover shrink-0"
+          className="flex items-center gap-2 bg-[var(--accent-soft)] border border-[var(--accent)]/30 text-[var(--accent)] rounded-xl px-4 py-3 text-sm font-medium btn-hover shrink-0"
         >
           <GraduationCap className="w-4 h-4" />
           <span className="hidden sm:inline">آزمون جدید</span>

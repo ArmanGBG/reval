@@ -114,7 +114,7 @@ export default function SubjectMasteryCard({ tasks, onSelectSubject }: Props) {
       className="relative rounded-[var(--radius-lg)] p-4 md:p-5 overflow-hidden border border-[var(--border)] mb-5"
       style={{
         backgroundColor: 'var(--bg-elevated)',
-        boxShadow: '0 0 40px -16px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.04)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       {/* Backdrop accent glow */}
@@ -206,15 +206,12 @@ function SubjectBar({
   const isStrong = stat.mastery >= 75;
   const isWeak = stat.mastery < 40;
 
-  // Bar color depends on mastery level
+  // Bar color depends on mastery level — desaturated status tokens only
   const barColor = isStrong
-    ? stat.color
+    ? 'var(--success)'
     : isWeak
-    ? '#F87171'
-    : stat.color;
-
-  // Glow color matches bar color (for hover + strong subjects)
-  const glowColor = isStrong ? stat.color : 'transparent';
+    ? 'var(--danger)'
+    : 'var(--accent)';
 
   return (
     <motion.button
@@ -229,12 +226,11 @@ function SubjectBar({
     >
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
-          {/* Color dot */}
+          {/* Color dot — subject identifier (no glow) */}
           <span
             className="w-2.5 h-2.5 rounded-full shrink-0"
             style={{
               backgroundColor: stat.color,
-              boxShadow: `0 0 6px ${stat.color}88`,
             }}
           />
           <span className="text-sm font-medium text-[var(--foreground)] truncate">
@@ -256,7 +252,7 @@ function SubjectBar({
           )}
           <span
             className="text-xs font-bold tabular-nums"
-            style={{ color: isStrong ? 'var(--gold)' : isWeak ? '#F87171' : 'var(--foreground)' }}
+            style={{ color: isStrong ? 'var(--success)' : isWeak ? 'var(--danger)' : 'var(--foreground)' }}
           >
             {toPersianDigits(stat.mastery)}٪
           </span>
@@ -267,8 +263,7 @@ function SubjectBar({
         <motion.div
           className="h-full rounded-full relative"
           style={{
-            background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`,
-            boxShadow: isStrong ? `0 0 8px ${glowColor}` : 'none',
+            backgroundColor: barColor,
           }}
           initial={{ width: 0 }}
           animate={{ width: `${stat.mastery}%` }}

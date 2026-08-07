@@ -46,7 +46,7 @@ export default function MobileCommandFab() {
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           onClick={() => setOpen(true)}
           aria-label="باز کردن پنل دستورات"
-          className="md:hidden fixed bottom-20 left-4 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-[var(--accent)] text-[var(--bg-deep)] shadow-[0_8px_24px_-4px_var(--accent-glow),0_4px_8px_-2px_rgba(0,0,0,0.3)] active:scale-95 transition-transform"
+          className="md:hidden fixed bottom-20 left-4 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-[var(--accent)] text-white shadow-[0_4px_12px_-2px_rgba(0,0,0,0.4)] active:scale-95 transition-transform"
         >
           {/* Pulse ring */}
           <span

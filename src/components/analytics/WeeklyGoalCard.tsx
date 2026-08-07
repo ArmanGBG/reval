@@ -146,8 +146,9 @@ export default function WeeklyGoalCard() {
     ...dailyBuckets.map((d) => d.hours),
   );
 
-  // Days exceeding the daily average get the gold treatment.
+  // (formerly used for gold treatment on high-volume days — now monochrome)
   const exceedsThreshold = Math.max(dailyAverage, 0.001);
+  void exceedsThreshold;
 
   // SVG stroke-dashoffset (animates from full → target)
   const ringOffset = CIRCUMFERENCE - (goalProgressPct / 100) * CIRCUMFERENCE;
@@ -246,11 +247,7 @@ export default function WeeklyGoalCard() {
             >
               {dailyBuckets.map((b, idx) => {
                 const heightPct = (b.hours / maxDayHours) * 100;
-                const isGold = b.hours > exceedsThreshold && b.hours > 0;
-                const barColor = isGold ? 'var(--gold)' : 'var(--accent)';
-                const glow = isGold
-                  ? '0 0 8px var(--gold-glow)'
-                  : '0 0 6px var(--accent-glow)';
+                const barColor = 'var(--accent)';
                 return (
                   <div
                     key={b.iso}
@@ -265,7 +262,7 @@ export default function WeeklyGoalCard() {
                           className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
                           style={{
                             backgroundColor: 'var(--accent)',
-                            boxShadow: '0 0 6px var(--accent-glow)',
+                            boxShadow: 'none',
                           }}
                           aria-hidden="true"
                         />
@@ -281,7 +278,7 @@ export default function WeeklyGoalCard() {
                         className="w-full max-w-[28px] rounded-t-md"
                         style={{
                           backgroundColor: barColor,
-                          boxShadow: b.hours > 0 ? glow : 'none',
+                          boxShadow: 'none',
                           opacity: b.hours > 0 ? 1 : 0.25,
                           minHeight: b.hours > 0 ? 6 : 2,
                         }}

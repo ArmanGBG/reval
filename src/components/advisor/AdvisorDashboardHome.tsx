@@ -153,9 +153,6 @@ export function AdvisorDashboardHome() {
         className="border-[var(--danger)]/25"
         style={{
           borderRight: '3px solid var(--danger)',
-          boxShadow: activeRisks.length > 0
-            ? '0 0 32px -8px rgba(239, 68, 68, 0.2), inset 0 0 32px -16px rgba(239, 68, 68, 0.04)'
-            : 'none',
         }}
       >
         <SectionHeader

@@ -56,12 +56,12 @@ export default function TaskCard({
       ? 'before:bg-[var(--danger)] before:w-[3px]'
       : 'before:bg-[var(--subject-accent)] before:w-[3px]'; // pending: subject color
 
-  // Status dot color
+  // Status dot color — neutral, no glow shadows
   const statusDotColor = isCompleted
-    ? 'bg-[var(--accent)] shadow-[0_0_6px_var(--accent-glow)]'
+    ? 'bg-[var(--accent)]'
     : isSkipped
-      ? 'bg-[var(--danger)] shadow-[0_0_6px_rgba(239,68,68,0.3)]'
-      : 'bg-[var(--warning)] shadow-[0_0_6px_var(--gold-glow)]';
+      ? 'bg-[var(--danger)]'
+      : 'bg-[var(--warning)]';
 
   return (
     <motion.div
@@ -75,7 +75,7 @@ export default function TaskCard({
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       className={`surface-1 edge-highlight card-hover group relative overflow-hidden rounded-[var(--radius-lg)] p-4 md:p-5
         before:absolute before:right-0 before:top-0 before:bottom-0 before:transition-all before:duration-300
-        border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-[0_8px_32px_-12px_var(--accent-glow),0_0_0_1px_var(--accent-glow)]
+        border border-[var(--border)] hover:border-[var(--border-strong)]
         ${accentBorder}
         ${isCompleted || isSkipped ? 'opacity-60 hover:opacity-90' : ''}
       `}
@@ -89,17 +89,17 @@ export default function TaskCard({
         aria-hidden
         className="absolute top-0 left-0 right-0 h-[2px] opacity-50 group-hover:opacity-100 transition-opacity"
         style={{
-          background: `linear-gradient(90deg, transparent 0%, ${task.subjectColor}88 30%, ${task.subjectColor} 50%, ${task.subjectColor}88 70%, transparent 100%)`,
+          backgroundColor: task.subjectColor,
         }}
       />
-      {/* Subtle accent gradient overlay on hover (top-right) */}
+      {/* Subtle accent overlay on hover (top-right) — kept calm, no glow */}
       {!isCompleted && !isSkipped && (
         <div
           aria-hidden
           className="absolute -top-12 -left-12 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
           style={{
             background:
-              'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)',
+              'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
           }}
         />
       )}
@@ -127,7 +127,7 @@ export default function TaskCard({
                 className={`w-2 h-2 rounded-full shrink-0 transition-all duration-300 ${statusDotColor}`}
               />
               <span
-                className="w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white/5"
+                className="w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white/10"
                 style={{ backgroundColor: task.subjectColor }}
               />
               <span className="text-[var(--foreground)] font-bold text-sm md:text-base truncate">
@@ -137,7 +137,7 @@ export default function TaskCard({
                 className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
                   task.fieldType === 'کنکور'
                     ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                    : 'bg-[rgba(245,181,68,0.12)] text-[var(--warning)]'
+                    : 'bg-[var(--accent-soft)] text-[var(--accent)]'
                 }`}
               >
                 {task.fieldType}
@@ -145,7 +145,7 @@ export default function TaskCard({
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
                   task.createdBy === 'advisor'
-                    ? 'bg-[rgba(139,92,246,0.12)] text-[#A78BFA]'
+                    ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
                     : 'bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)]'
                 }`}
               >
@@ -220,12 +220,12 @@ export default function TaskCard({
                   toast.success(getRandomSuccessMessage(), {
                     style: {
                       background: 'var(--bg-overlay)',
-                      border: '1px solid var(--accent-glow)',
+                      border: '1px solid var(--border-strong)',
                       color: 'var(--accent)',
                     },
                   });
                 }}
-                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[var(--accent-soft)] text-[var(--accent)] border border-[rgba(62,180,137,0.2)] flex items-center justify-center hover:bg-[rgba(62,180,137,0.2)] hover:border-[var(--accent)]"
+                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] flex items-center justify-center hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]"
                 aria-label="انجام شد"
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
@@ -236,12 +236,12 @@ export default function TaskCard({
                   toast(getRandomFailureMessage(), {
                     style: {
                       background: 'var(--bg-overlay)',
-                      border: '1px solid rgba(239,68,68,0.3)',
-                      color: '#F87171',
+                      border: '1px solid var(--danger)',
+                      color: 'var(--danger)',
                     },
                   });
                 }}
-                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(239,68,68,0.12)] text-[#F87171] border border-[rgba(239,68,68,0.2)] flex items-center justify-center hover:bg-[rgba(239,68,68,0.2)] hover:border-[#EF4444]"
+                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
                 aria-label="انجام نشد"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -267,12 +267,12 @@ export default function TaskCard({
             <div className="flex items-center gap-1.5">
               {/* Status badge */}
               {isCompleted ? (
-                <span className="text-[var(--accent)] text-xs font-bold flex items-center gap-1 bg-[var(--accent-soft)] px-2 py-1 rounded-md border border-[rgba(62,180,137,0.2)]">
+                <span className="text-[var(--accent)] text-xs font-bold flex items-center gap-1 bg-[var(--accent-soft)] px-2 py-1 rounded-md border border-[var(--border-strong)]">
                   <Check className="w-3 h-3" />
                   انجام شد
                 </span>
               ) : (
-                <span className="text-[#F87171] text-xs font-bold flex items-center gap-1 bg-[rgba(239,68,68,0.12)] px-2 py-1 rounded-md border border-[rgba(239,68,68,0.2)]">
+                <span className="text-[var(--danger)] text-xs font-bold flex items-center gap-1 bg-[rgba(229,72,77,0.12)] px-2 py-1 rounded-md border border-[rgba(229,72,77,0.2)]">
                   <X className="w-3 h-3" />
                   انجام نشد
                 </span>
@@ -302,7 +302,7 @@ export default function TaskCard({
                     style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--foreground-muted)' },
                   });
                 }}
-                className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[#F87171] hover:bg-[rgba(239,68,68,0.08)] flex items-center justify-center"
+                className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
                 aria-label="حذف"
               >
                 <Trash2 className="w-3.5 h-3.5" />

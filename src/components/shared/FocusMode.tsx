@@ -66,7 +66,7 @@ export default function FocusMode({ children }: FocusModeProps) {
             className="absolute inset-0 opacity-60 pointer-events-none"
             style={{
               background:
-                'radial-gradient(ellipse at 50% 0%, rgba(62,180,137,0.06) 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, rgba(245,181,68,0.04) 0%, transparent 60%)',
+                'radial-gradient(ellipse at 50% 0%, var(--accent-soft) 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, var(--accent-soft) 0%, transparent 60%)',
             }}
           />
 
