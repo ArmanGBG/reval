@@ -81,11 +81,21 @@ export function getAuthSecret(): string {
 // within the iframe), which means every /api/* call after login would
 // return 401 → SessionGuard fires "نشست شما منقضی شده" → auto-logout.
 //
-// Fix: when the request is served over HTTPS (which the preview is,
-// via the gateway / reverse proxy), use SameSite=None + Secure so the
-// cookie is sent in the cross-site iframe context. For direct HTTP
-// localhost access (dev), keep SameSite=Lax (SameSite=None requires
-// Secure which requires HTTPS).
+// Fix: detect the cross-site / HTTPS preview context and use
+// SameSite=None + Secure so the cookie is sent in the cross-site
+// iframe context. For direct HTTP localhost access (dev), keep
+// SameSite=Lax.
+//
+// Detection:
+//   The local Caddy gateway terminates TLS and forwards to the app via
+//   HTTP, so X-Forwarded-Proto is "http" (Caddy rewrites it). We can't
+//   rely on it. Instead, we check the X-Forwarded-Host / Host header:
+//     - If it contains "space-z.ai" → the request is from the preview
+//       panel (HTTPS cross-site iframe) → use SameSite=None; Secure.
+//     - Also check X-Forwarded-Proto as a fallback for other HTTPS setups.
+//   SameSite=None requires Secure, and Secure cookies are only sent over
+//   HTTPS. The preview iframe IS served over HTTPS (browser perspective),
+//   so Secure cookies will be stored and sent correctly.
 // ====================================================================
 
 export interface SessionCookieOptions {
@@ -97,23 +107,46 @@ export interface SessionCookieOptions {
 }
 
 /**
- * Detect whether the request was served over HTTPS.
- * Checks X-Forwarded-Proto (set by the gateway / reverse proxy) first,
- * then falls back to the request URL protocol.
+ * Detect whether the request should use cross-site-compatible cookies
+ * (SameSite=None; Secure).
+ *
+ * Returns true when the request is coming through the HTTPS preview panel
+ * (cross-site iframe context). In that context, SameSite=Lax cookies are
+ * NOT sent by the browser, so we must use SameSite=None; Secure.
  */
-export function isHttpsRequest(request: NextRequest): boolean {
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-  if (forwardedProto) {
-    return forwardedProto.includes('https');
+export function isCrossSiteHttpsRequest(request: NextRequest): boolean {
+  // 1. Check X-Forwarded-Host — set by the gateway, contains the original
+  //    host the browser used. The preview panel uses *.space-z.ai hosts.
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  if (forwardedHost && forwardedHost.includes('space-z.ai')) {
+    return true;
   }
-  return request.nextUrl.protocol === 'https:';
+
+  // 2. Check Host header (fallback if gateway doesn't set X-Forwarded-Host).
+  const host = request.headers.get('host');
+  if (host && host.includes('space-z.ai')) {
+    return true;
+  }
+
+  // 3. Check X-Forwarded-Proto for other HTTPS reverse-proxy setups.
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedProto && forwardedProto.includes('https')) {
+    return true;
+  }
+
+  // 4. Direct HTTPS access.
+  if (request.nextUrl.protocol === 'https:') {
+    return true;
+  }
+
+  return false;
 }
 
 /**
  * Get cookie options for SETTING a session cookie (maxAge = 24h).
  */
 export function getSessionCookieOptions(request: NextRequest): SessionCookieOptions {
-  if (isHttpsRequest(request)) {
+  if (isCrossSiteHttpsRequest(request)) {
     return {
       httpOnly: true,
       path: '/',
@@ -136,7 +169,7 @@ export function getSessionCookieOptions(request: NextRequest): SessionCookieOpti
  * browser won't delete it.
  */
 export function getClearCookieOptions(request: NextRequest): SessionCookieOptions {
-  if (isHttpsRequest(request)) {
+  if (isCrossSiteHttpsRequest(request)) {
     return {
       httpOnly: true,
       path: '/',

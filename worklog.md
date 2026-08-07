@@ -3159,3 +3159,63 @@ Stage Summary:
 - علت اصلی واقعی «نشست شما منقضی شده» بلافاصله پس از ورود = `SameSite=Lax` کوکی در cross-site iframe (preview panel) ارسال نمی‌شد.
 - راه‌حل: تشخیص HTTPS (via X-Forwarded-Proto) → `SameSite=None; Secure` برای cross-site iframe compat. HTTP → `SameSite=Lax`.
 - فایل‌های تغییر یافته: `src/lib/auth.ts`، `src/app/api/auth/login/route.ts`، `src/app/api/auth/register/route.ts`، `src/app/api/auth/logout/route.ts`، `src/proxy.ts`
+
+---
+Task ID: fix-cross-site-cookie-detection-v2
+Agent: Main
+Task: رفع نهایی مشکل logout بلافاصله پس از ورود از پنل پیش‌نمایش — کاربر: «مشکل عدم لاگین به پنل دانش آموز تست رو حل بکن. باز هم میندازه بیرون منو!!!!»
+
+Work Log:
+
+**تحلیل عمیق — چرا fix قبلی کار نکرد:**
+- fix قبلی (Task ID: fix-cross-site-iframe-cookie) از `X-Forwarded-Proto` برای تشخیص HTTPS استفاده می‌کرد.
+- اما بررسی زنده نشان داد: Caddy gateway تمام هدرهای `X-Forwarded-Proto` را با مقدار محلی خود (`http`) **بازنویسی می‌کند** — حتی وقتی کاربر از طریق HTTPS به preview دسترسی دارد.
+- نتیجه: `isHttpsRequest()` همیشه `false` برمی‌گردت → کوکی `SameSite=lax` ست می‌شد → در cross-site iframe ارسال نمی‌شد → 401 → logout.
+
+**تأیید با debug endpoint:**
+- ایجاد `src/app/api/debug-headers/route.ts` (موقت) برای بررسی هدرهای دریافتی.
+- درخواست از طریق gateway با Host: `preview-chat-...space-z.ai`:
+  - `X-Forwarded-Host: preview-chat-...space-z.ai` ✅ (gateway این را حفظ می‌کند)
+  - `Host: preview-chat-...space-z.ai` ✅
+  - `X-Forwarded-Proto: http` ❌ (gateway این را بازنویسی می‌کند)
+- نتیجه: باید از `X-Forwarded-Host` / `Host` برای تشخیص استفاده کنیم، نه `X-Forwarded-Proto`.
+
+**راه‌حل نهایی:**
+
+`src/lib/auth.ts`:
+- جایگزینی `isHttpsRequest()` با `isCrossSiteHttpsRequest()`:
+  ۱. بررسی `X-Forwarded-Host` — اگر شامل `space-z.ai` باشد → preview panel (HTTPS cross-site iframe).
+  ۲. بررسی `Host` (fallback).
+  ۳. بررسی `X-Forwarded-Proto: https` (برای setupهای دیگر).
+  ۴. بررسی `request.nextUrl.protocol === 'https:'` (direct HTTPS).
+- `getSessionCookieOptions()` و `getClearCookieOptions()` از تابع جدید استفاده می‌کنند.
+- کامنت توضیحی کامل درباره چرا `X-Forwarded-Proto` کار نمی‌کند.
+
+**پاکسازی:**
+- حذف `src/app/api/debug-headers/` (endpoint موقت).
+- حذف `/api/debug-headers` از proxy allowlist.
+
+Verification Results:
+
+۱. **curl از طریق gateway با preview host:**
+   - login: `Set-Cookie: ...; Secure; HttpOnly; SameSite=none` ✅
+   - /api/auth/me با کوکی: `{"user":{...}}` HTTP 200 ✅
+
+۲. **curl مستقیم localhost (HTTP dev):**
+   - login: `Set-Cookie: ...; HttpOnly; SameSite=lax` ✅ (بدون Secure، برای HTTP)
+
+۳. **agent-browser (direct localhost):**
+   - login دانش‌آموز → ۶ API call همگی 200 ✅
+   - بعد از 15s: stillLoggedIn=true ✅
+   - همه ۴ حساب (سوپر ادمین، مدیر آموزشگاه، مشاور، دانش‌آموز): ✅ همگی وارد شدند و ماندند
+
+۴. `bun run lint`: ✅ zero errors
+۵. dev.log: ✅ هیچ 401، هیچ 500
+
+Stage Summary:
+- علت اصلی نهایی: Caddy gateway `X-Forwarded-Proto` را بازنویسی می‌کند، بنابراین تشخیص HTTPS قبلی کار نمی‌کرد.
+- راه‌حل: تشخیص cross-site iframe از طریق `X-Forwarded-Host` / `Host` (شامل `space-z.ai`) به‌جای `X-Forwarded-Proto`.
+- حالا: preview panel (HTTPS cross-site iframe) → `SameSite=None; Secure` (کار می‌کند). direct localhost (HTTP) → `SameSite=Lax` (کار می‌کند).
+- فایل‌های تغییر یافته: `src/lib/auth.ts`
+- فایل‌های موقت ساخته‌شده و حذف‌شده: `src/app/api/debug-headers/route.ts`
+- فایل‌های پاکسازی‌شده: `src/proxy.ts` (حذف debug-headers از allowlist)
