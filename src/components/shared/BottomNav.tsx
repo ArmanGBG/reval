@@ -15,6 +15,7 @@ import {
   Shield,
   ClipboardList,
   BookOpen,
+  LogOut,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -48,7 +49,7 @@ const SUPER_ADMIN_NAV: { view: ViewName; label: string; icon: React.ComponentTyp
 ];
 
 export default function BottomNav() {
-  const { currentView, setCurrentView, userRole } = useAppStore();
+  const { currentView, setCurrentView, userRole, logout } = useAppStore();
 
   const navItems =
     userRole === 'SUPER_ADMIN'
@@ -119,6 +120,19 @@ export default function BottomNav() {
             </button>
           );
         })}
+
+        {/* Logout button */}
+        <button
+          onClick={async () => {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+            logout();
+          }}
+          className="nav-item-hover relative flex flex-col items-center justify-center gap-1 flex-1 min-w-[56px] min-h-[48px] rounded-xl text-red-400"
+          aria-label="خروج"
+        >
+          <LogOut className="relative w-[22px] h-[22px]" />
+          <span className="relative text-[10px] leading-none font-medium">خروج</span>
+        </button>
       </div>
     </nav>
   );

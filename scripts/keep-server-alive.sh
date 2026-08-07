@@ -1,19 +1,27 @@
 #!/bin/bash
-# Persistent dev server with auto-restart
-cd /home/z/my-project
+# Production server with auto-restart watchdog
+cd /home/z/my-project/reval
 
-LOG=/home/z/my-project/dev.log
-NEXT=/home/z/my-project/node_modules/.bin/next
+LOG=/tmp/reval-server.log
+STANDALONE=./.next/standalone/server.js
 
 # Kill any existing instances
-pkill -f "next dev" 2>/dev/null
+pkill -f "next-server" 2>/dev/null
+pkill -f "server.js" 2>/dev/null
 pkill -f "reval-watchdog" 2>/dev/null
 sleep 2
+
+# Ensure static assets are in standalone dir
+if [ ! -f .next/standalone/.next/static/chunks/58c60a5fa6b544da.js ]; then
+  echo "Copying static assets to standalone..."
+  cp -rn .next/static .next/standalone/.next/ 2>/dev/null
+  cp -rn public/* .next/standalone/public/ 2>/dev/null
+fi
 
 # Start watchdog in a new session, fully detached
 setsid bash -c "
   while true; do
-    $NEXT dev -p 3000 >> $LOG 2>&1
+    node $STANDALONE >> $LOG 2>&1
     echo \"[watchdog \$(date)] restart in 3s\" >> $LOG 2>&1
     sleep 3
   done

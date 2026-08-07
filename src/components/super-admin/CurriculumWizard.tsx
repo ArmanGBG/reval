@@ -77,6 +77,9 @@ interface TopicRow {
 
 interface CurriculumWizardProps {
   subjectId: string;
+  /** Pre-select grade & jump to chapters on mount (from grade completion overview) */
+  initialGrade?: Grade;
+  initialMajor?: Major;
 }
 
 const STEPS = [
@@ -89,10 +92,12 @@ const STEPS = [
 // ============================================================
 // Main Component
 // ============================================================
-export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const [grade, setGrade] = useState<Grade | null>(null);
-  const [major, setMajor] = useState<Major | null>(null);
+export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: CurriculumWizardProps) {
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(
+    initialGrade && initialMajor ? 4 : 1,
+  );
+  const [grade, setGrade] = useState<Grade | null>(initialGrade || null);
+  const [major, setMajor] = useState<Major | null>(initialMajor || null);
 
   // Subjects list (step 3)
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -333,6 +338,38 @@ export function CurriculumWizard({ subjectId }: CurriculumWizardProps) {
       setCreatingSubject(false);
     }
   };
+
+  // ============================================================
+  // Auto-advance from initialGrade + initialMajor (grade completion overview click)
+  // We need to fetch subjects first so findExistingGradeSubject works,
+  // then the step-4 useEffect will handle the rest.
+  // ============================================================
+  useEffect(() => {
+    if (!initialGrade || !initialMajor) return;
+    // Only run once on mount
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/subjects?include=tree');
+        const data = await res.json();
+        if (!res.ok || cancelled) return;
+        setSubjects(data.subjects || []);
+        // Find the existing GradeSubject in the fetched data
+        const subj = (data.subjects || []).find((s: Subject) => s.id === subjectId);
+        const existingGs = subj?.grades?.find(
+          (gs: { grade: string; major: string; isActive: boolean }) =>
+            gs.grade === initialGrade && gs.major === initialMajor && gs.isActive,
+        );
+        if (existingGs && !cancelled) {
+          setGradeSubjectId(existingGs.id);
+        }
+      } catch {
+        // Silently fail — the step-4 useEffect will retry via ensureGradeSubject
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
 
   // ============================================================
   // Step 4 mount: ensure gradeSubject + load chapters

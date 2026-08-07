@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ParsedTask, FieldType, ActivityType } from '@/lib/types';
-import { SUBJECTS, TOPICS } from '@/lib/constants/mockData';
+import { db } from '@/lib/db';
 
 // ===== Local Persian Text Parser =====
 // Used as fallback when Gemini API key is not available
+// NOW READS SUBJECT/TOPIC NAMES FROM DATABASE instead of hardcoded mockData
 
 const ACTIVITY_MAP: Record<string, ActivityType> = {
   'مطالعه': 'مطالعه',
@@ -14,8 +15,6 @@ const ACTIVITY_MAP: Record<string, ActivityType> = {
   'حل تمرین': 'تست آموزشی',
   'آموزش': 'مطالعه',
 };
-
-const SUBJECT_NAMES = SUBJECTS.map((s) => s.name);
 
 function parsePersianNumber(text: string): number | null {
   const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
@@ -33,16 +32,35 @@ function parsePersianNumber(text: string): number | null {
   return result ? parseInt(result) : null;
 }
 
-function findSubject(text: string): string | null {
-  for (const name of SUBJECT_NAMES) {
+/** Find the best subject match from DB names. Supports both full name and abbreviation. */
+function findSubject(text: string, subjectNames: string[]): string | null {
+  // Try exact match first (longest names first to avoid partial matches)
+  const sortedNames = [...subjectNames].sort((a, b) => b.length - a.length);
+  for (const name of sortedNames) {
     if (text.includes(name)) return name;
   }
+
+  // Try common abbreviations
+  const abbreviations: Record<string, string> = {
+    'زیست': 'زیست‌شناسی',
+    'ریاضی': 'ریاضی',
+    'فیزیک': 'فیزیک',
+    'شیمی': 'شیمی',
+  };
+  for (const [abbr, fullName] of Object.entries(abbreviations)) {
+    if (text.includes(abbr) && subjectNames.includes(fullName)) {
+      return fullName;
+    }
+  }
+
   return null;
 }
 
-function findTopic(text: string, subject: string): string | null {
-  const subjectTopics = TOPICS[subject] || [];
-  for (const topic of subjectTopics) {
+/** Find a topic/chapter name that appears in the text. */
+function findTopic(text: string, topicNames: string[]): string | null {
+  // Sort by length desc so longer (more specific) matches win
+  const sorted = [...topicNames].sort((a, b) => b.length - a.length);
+  for (const topic of sorted) {
     if (text.includes(topic)) return topic;
   }
   return null;
@@ -96,13 +114,79 @@ function findFieldType(text: string): FieldType {
   return 'کنکور';
 }
 
-function parseSingleEntry(text: string): ParsedTask | null {
-  const subject = findSubject(text);
+// ===== Curriculum Data Cache =====
+// Cache DB curriculum data for the lifetime of the server process (refresh on restart)
+let curriculumCache: {
+  subjectNames: string[];
+  topicsBySubject: Record<string, string[]>;
+  lastLoaded: number;
+} | null = null;
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getCurriculumData() {
+  // Return cached data if still fresh
+  if (curriculumCache && Date.now() - curriculumCache.lastLoaded < CACHE_TTL_MS) {
+    return curriculumCache;
+  }
+
+  // Fetch from DB: all active subjects with their chapter and topic titles
+  const subjects = await db.subject.findMany({
+    where: { isActive: true },
+    select: {
+      name: true,
+      grades: {
+        where: { isActive: true },
+        select: {
+          chapters: {
+            where: { isActive: true },
+            select: {
+              title: true,
+              topics: {
+                where: { isActive: true },
+                select: { title: true },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { sortOrder: 'asc' },
+  });
+
+  const subjectNames = subjects.map((s) => s.name);
+  const topicsBySubject: Record<string, string[]> = {};
+
+  for (const s of subjects) {
+    const allNames: string[] = [];
+    for (const gs of s.grades) {
+      for (const ch of gs.chapters) {
+        // Include chapter title as a matchable "topic"
+        allNames.push(ch.title);
+        for (const tp of ch.topics) {
+          allNames.push(tp.title);
+        }
+      }
+    }
+    // Deduplicate
+    topicsBySubject[s.name] = [...new Set(allNames)];
+  }
+
+  curriculumCache = { subjectNames, topicsBySubject, lastLoaded: Date.now() };
+  return curriculumCache;
+}
+
+function parseSingleEntry(
+  text: string,
+  subjectNames: string[],
+  topicsBySubject: Record<string, string[]>,
+): ParsedTask | null {
+  const subject = findSubject(text, subjectNames);
   if (!subject) return null;
 
   return {
     subject,
-    topic: findTopic(text, subject),
+    topic: findTopic(text, topicsBySubject[subject] || []),
     target_time_minutes: findTimeMinutes(text),
     target_test_count: findTestCount(text),
     field_type: findFieldType(text),
@@ -110,7 +194,9 @@ function parseSingleEntry(text: string): ParsedTask | null {
   };
 }
 
-function localParse(text: string): ParsedTask[] {
+async function localParse(text: string): Promise<ParsedTask[]> {
+  const { subjectNames, topicsBySubject } = await getCurriculumData();
+
   // Split by common delimiters: comma, "،", newline, semicolon
   const entries = text
     .split(/[،,\n؛;]/)
@@ -119,13 +205,13 @@ function localParse(text: string): ParsedTask[] {
 
   const tasks: ParsedTask[] = [];
   for (const entry of entries) {
-    const parsed = parseSingleEntry(entry);
+    const parsed = parseSingleEntry(entry, subjectNames, topicsBySubject);
     if (parsed) tasks.push(parsed);
   }
 
   // If no entries parsed with delimiters, try the whole text
   if (tasks.length === 0) {
-    const parsed = parseSingleEntry(text);
+    const parsed = parseSingleEntry(text, subjectNames, topicsBySubject);
     if (parsed) tasks.push(parsed);
   }
 
@@ -134,8 +220,21 @@ function localParse(text: string): ParsedTask[] {
 
 // ===== Gemini API Parser =====
 // Used when GEMINI_API_KEY is available in environment
+// NOW DYNAMICALLY BUILDS the valid subjects list from the database
 
-const GEMINI_SYSTEM_PROMPT = `You are a Persian study plan parser for an Iranian student app called Reval (روال).
+async function buildGeminiPrompt(): Promise<string> {
+  const { subjectNames, topicsBySubject } = await getCurriculumData();
+
+  // Build a subjects + topics reference for the AI
+  let subjectsRef = '';
+  for (const name of subjectNames) {
+    const topics = topicsBySubject[name] || [];
+    // Only include first 10 topics per subject to keep prompt size manageable
+    const sampleTopics = topics.slice(0, 10);
+    subjectsRef += `\n- ${name}: ${sampleTopics.join('، ')}${topics.length > 10 ? '، ...' : ''}`;
+  }
+
+  return `You are a Persian study plan parser for an Iranian student app called Reval (روال).
 The user will provide a natural language description of their study plan in Persian/Farsi.
 You must parse it and return a STRICT JSON array matching this TypeScript interface:
 
@@ -148,17 +247,23 @@ interface ParsedTask {
   activity_types: ("مطالعه" | "مرور" | "تست آموزشی" | "تست سنجشی")[];
 }
 
-Valid subjects: ریاضی, فیزیک, شیمی, زیست, ادبیات, عربی, دینی, زبان, تاریخ, جغرافیا, فلسفه, اقتصاد
+Valid subjects and their known topics/chapters:
+${subjectsRef}
+
 Valid activity types: مطالعه, مرور, تست آموزشی, تست سنجشی
 Default field_type to "کنکور" unless "نهایی" is explicitly mentioned.
 Default activity_types to ["مطالعه"] if not specified.
+The subject field MUST exactly match one of the valid subject names above.
 Return ONLY the JSON array, no markdown, no explanation.`;
+}
 
 async function geminiParse(text: string): Promise<ParsedTask[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return [];
 
   try {
+    const systemPrompt = await buildGeminiPrompt();
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -168,7 +273,7 @@ async function geminiParse(text: string): Promise<ParsedTask[]> {
           contents: [
             {
               parts: [
-                { text: GEMINI_SYSTEM_PROMPT },
+                { text: systemPrompt },
                 { text: `\n\nUser input: ${text}` },
               ],
             },
@@ -232,7 +337,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback to local parser
-    const tasks = localParse(text);
+    const tasks = await localParse(text);
     return NextResponse.json({ tasks, source: 'local' });
   } catch {
     return NextResponse.json({ error: 'خطا در پردازش متن' }, { status: 500 });

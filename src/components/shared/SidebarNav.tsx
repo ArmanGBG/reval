@@ -17,6 +17,7 @@ import {
   Crown,
   BookOpen,
   Send,
+  LogOut,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -62,7 +63,7 @@ const ROLE_LABEL: Record<UserRole, { label: string; sub: string }> = {
 };
 
 export default function SidebarNav() {
-  const { currentView, setCurrentView, userRole, user } = useAppStore();
+  const { currentView, setCurrentView, userRole, user, logout } = useAppStore();
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems =
@@ -200,10 +201,23 @@ export default function SidebarNav() {
           </div>
         )}
 
+        {/* Logout button */}
+        <button
+          onClick={async () => {
+            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+            logout();
+          }}
+          className="nav-item-hover mt-2 w-full flex items-center justify-center gap-2 rounded-lg h-9 text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs transition-colors"
+          title="خروج از حساب"
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span>خروج</span>}
+        </button>
+
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="nav-item-hover mt-2 w-full flex items-center justify-center gap-2 rounded-lg h-8 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] text-[11px]"
+          className="nav-item-hover mt-1 w-full flex items-center justify-center gap-2 rounded-lg h-8 text-[var(--foreground-subtle)] hover:text-[var(--foreground)] text-[11px]"
         >
           {collapsed ? '«' : '» فشرده'}
         </button>

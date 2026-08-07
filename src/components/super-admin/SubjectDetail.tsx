@@ -9,6 +9,10 @@ import {
   Layers,
   Sparkles,
   Pencil,
+  CheckCircle2,
+  MessageSquare,
+  GraduationCap,
+  ChevronLeft,
 } from 'lucide-react';
 import { Subject } from '@/lib/subjects-types';
 import { SubjectSettingsPanel } from './SubjectSettingsPanel';
@@ -36,6 +40,9 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
   const [subject, setSubject] = useState<Subject>(initialSubject);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>('tree');
+  // When user clicks a grade card, we store the target grade+major
+  // and switch to the 'tree' tab so CurriculumWizard receives them.
+  const [navigateToGrade, setNavigateToGrade] = useState<{ grade: string; major: string } | null>(null);
 
   // ===== Refresh subject (with full tree) =====
   const refresh = useCallback(async () => {
@@ -102,6 +109,108 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
         {loading && <Loader2 className="w-4 h-4 animate-spin text-[var(--gold)]" />}
       </div>
 
+      {/* ===== Grade Completion Overview ===== */}
+      {(() => {
+        // Only show grades that have at least one chapter (populated)
+        const populatedGrades = (subject.grades || [])
+          .map((gs) => {
+            const chapters = gs.chapters || [];
+            const topics = chapters.reduce((a, c) => a + (c.topics?.length || 0), 0);
+            // A grade is considered "populated" if it has at least one chapter
+            const hasChapters = chapters.length > 0;
+            // Check if all chapters have valid page ranges
+            const allPagesValid = chapters.every(
+              (c) => c.pageStart != null && (c.isLastPage || c.pageEnd != null),
+            );
+            return {
+              grade: gs.grade,
+              major: gs.major,
+              chapterCount: chapters.length,
+              topicCount: topics,
+              hasChapters,
+              allPagesValid,
+              // Completion level: 'full' = has chapters + all pages valid, 'partial' = has chapters but some pages missing
+              completionLevel: hasChapters ? (allPagesValid ? 'full' as const : 'partial' as const) : null,
+            };
+          })
+          .filter((g) => g.hasChapters);
+
+        if (populatedGrades.length === 0) return null;
+
+        return (
+          <div className="surface-1 edge-highlight rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <GraduationCap className="w-4 h-4 text-[var(--gold)]" />
+              <h3 className="text-sm font-bold text-[var(--foreground)]">پایه‌های تکمیل‌شده</h3>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/30">
+                {toPersianDigits(populatedGrades.length)}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {populatedGrades.map((g) => (
+                <motion.div
+                  key={`${g.grade}-${g.major}`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => {
+                    setNavigateToGrade({ grade: g.grade, major: g.major });
+                    setTab('tree');
+                  }}
+                  className="flex items-center gap-3 rounded-xl p-3 border cursor-pointer group/grade hover:shadow-md transition-shadow duration-200"
+                  style={{
+                    backgroundColor: `${subject.color}08`,
+                    borderColor: g.completionLevel === 'full'
+                      ? `${subject.color}30`
+                      : 'var(--border)',
+                  }}
+                >
+                  {/* Status icon */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: g.completionLevel === 'full' ? `${subject.color}20` : 'var(--bg-overlay)',
+                    }}
+                  >
+                    {g.completionLevel === 'full' ? (
+                      <CheckCircle2 className="w-4 h-4" style={{ color: subject.color }} />
+                    ) : (
+                      <Layers className="w-4 h-4 text-[var(--warning)]" />
+                    )}
+                  </div>
+                  {/* Grade info */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-[var(--foreground)] truncate">
+                      {g.grade} {g.major}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-[var(--foreground-muted)] flex items-center gap-0.5">
+                        <Layers className="w-2.5 h-2.5" />
+                        {toPersianDigits(g.chapterCount)} فصل
+                      </span>
+                      {g.topicCount > 0 && (
+                        <span className="text-[10px] text-[var(--foreground-muted)] flex items-center gap-0.5">
+                          <MessageSquare className="w-2.5 h-2.5" />
+                          {toPersianDigits(g.topicCount)} گفتار
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Page validity badge */}
+                  {g.completionLevel === 'partial' && (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/30 whitespace-nowrap">
+                      صفحه ناقص
+                    </span>
+                  )}
+                  {/* Click indicator */}
+                  <ChevronLeft className="w-3.5 h-3.5 text-[var(--foreground-subtle)] group-hover/grade:text-[var(--gold)] group-hover/grade:-translate-x-0.5 transition-all shrink-0" />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ===== Tabs ===== */}
       <div className="flex gap-1 surface-1 rounded-xl p-1 sticky top-0 z-10">
         {[
@@ -113,7 +222,12 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
           return (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                setTab(t.id);
+                // Clear navigateToGrade when switching tabs directly
+                // so CurriculumWizard starts fresh from step 1
+                if (t.id !== 'tree') setNavigateToGrade(null);
+              }}
               className={`btn-hover flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-xs font-semibold transition-all ${
                 tab === t.id
                   ? 'bg-[var(--gold)] text-white'
@@ -136,7 +250,14 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
         >
-          {tab === 'tree' && <CurriculumWizard subjectId={subject.id} />}
+          {tab === 'tree' && (
+            <CurriculumWizard
+              key={navigateToGrade ? `${navigateToGrade.grade}-${navigateToGrade.major}` : 'default'}
+              subjectId={subject.id}
+              initialGrade={navigateToGrade?.grade as 'دهم' | 'یازدهم' | 'دوازدهم' | undefined}
+              initialMajor={navigateToGrade?.major as 'تجربی' | 'ریاضی' | 'انسانی' | undefined}
+            />
+          )}
           {tab === 'topicModes' && (
             <TopicModesPanel
               subject={subject}

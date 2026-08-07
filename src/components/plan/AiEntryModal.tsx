@@ -5,7 +5,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Wand2, Sparkles, Trash2, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { ParsedTask, Task } from '@/lib/types';
-import { SUBJECTS } from '@/lib/constants/mockData';
+// Subject colors - kept in sync with DB seed data
+const KNOWN_SUBJECT_COLORS: Record<string, string> = {
+  'زیست‌شناسی': '#8B5CF6',
+  'فیزیک': '#F59E0B',
+  'شیمی': '#EF4444',
+  'ریاضی': '#3EB489',
+};
+
+function getSubjectColor(name: string): string {
+  return KNOWN_SUBJECT_COLORS[name] || 'var(--accent)';
+}
 import { useAppStore } from '@/lib/store';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import {
@@ -61,7 +71,7 @@ function ParsedTaskCard({
   index: number;
   onDelete: (index: number) => void;
 }) {
-  const subjectObj = SUBJECTS.find((s) => s.name === parsed.subject);
+  const subjectColor = getSubjectColor(parsed.subject);
 
   return (
     <motion.div
@@ -75,7 +85,7 @@ function ParsedTaskCard({
         <div className="flex items-center gap-2 mb-1">
           <span
             className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: subjectObj?.color || 'var(--accent)' }}
+            style={{ backgroundColor: subjectColor }}
           />
           <span className="text-[var(--foreground)] text-sm font-medium">{parsed.subject}</span>
           <span
