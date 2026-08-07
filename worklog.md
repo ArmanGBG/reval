@@ -3421,3 +3421,30 @@ Stage Summary:
 - هیچ منطق/فانکشن/تکست/پراپ تغییر نکرد — فقط رنگ/گرادیان/گلو/شادو/رادیوس.
 - پالت نقش super-admin (gold) به‌صورت خودکار به اکسنت统一 شد (متغیر --gold = --accent).
 - ریسک: رنگ‌های subject ذخیره‌شده در DB قدیمی ممکن‌اند؛ seed data جدید مات است. در صورت تمایل می‌توان اسکریپت migration رنگ نوشت.
+
+---
+Task ID: AUTH-FIX-FINAL
+Agent: main (Z.ai Code)
+Task: رفع نهایی مشکل لاگ‌اوت بلافاصله بعد از ورود + تأیید اعتبارنامه‌های تست
+
+Work Log:
+- بررسی دیتابیس: ۱۷ کاربر موجود، همگی فعال، همگی پسورد = `1234` (bcrypt تأیید شد).
+- تشخیص مشکل: کوکی `SameSite=Lax` در iframe کراس‌سایت پنل پیش‌نمایش ارسال نمی‌شه → 401 → لاگ‌اوت.
+- علت ریشه‌ای نسخه قبلی: تشخیص cross-site فقط روی host حاوی `space-z.ai` متکی بود؛ اگر پنل پیش‌نمایش host متفاوتی داشت، fallback به Lax می‌شد.
+- راه‌حل bulletproof (default-secure): `SameSite=None; Secure` برای همه‌ی درخواست‌ها به‌جز دسترسی مستقیم localhost HTTP.
+  - تابع جدید `isDirectLocalHttpAccess(request)`: فقط localhost/127.0.0.1 روی http بدون forwarding header.
+  - `getSessionCookieOptions` / `getClearCookieOptions` معکوس شدن: فقط در حالت local-dev از Lax استفاده می‌کن.
+
+Verification Results:
+- gateway با host دلخواه (non-space-z) → `SameSite=none; Secure` ✅
+- مستقیم localhost:3000 HTTP → `SameSite=lax` ✅
+- مستقیم 127.0.0.1:3000 → `SameSite=lax` ✅
+- gateway با host=localhost → `SameSite=lax` ✅
+- تست end-to-end: login → استخراج cookie → /api/auth/me با همان cookie → کاربر کامل برگشت ✅
+- `bun run lint`: ✅ zero errors
+
+Stage Summary:
+- کامیت `5633586` به origin/main پوش شد.
+- اعتبارنامه‌های تست همگی `1234` هستن و درست کار می‌کنن.
+- مشکل لاگ‌اوت با رویکرد default-secure رفع شد؛ دیگر وابسته به نام host نیست.
+- نکته برای کاربر: باید cache/cookie قدیمی مرورگر رو پاک کنه یا hard refresh بزنه تا کوکی Lax قدیمی با None جایگزین شه.
