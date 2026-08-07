@@ -3030,3 +3030,67 @@ Stage Summary:
 - باگ ثانویه (500 روی /api/messages) هم رفع شد: Prisma Client regenerate شد.
 - فایل‌های ساخته‌شده: `src/lib/api-client.ts`، `src/components/shared/SessionGuard.tsx`
 - فایل‌های تغییر یافته: `src/lib/task-service.ts`، `src/lib/exam-service.ts`، `src/lib/message-service.ts`، `src/lib/store.ts`، `src/components/shared/TaskSubjectPicker.tsx`، `src/components/plan/ManualEntrySheet.tsx`، `src/app/page.tsx`
+
+---
+Task ID: fix-login-stale-session-toast
+Agent: Main
+Task: رفع خطای «نشست شما منقضی شده» هنگام تلاش برای ورود به حساب‌های آزمایشی — کاربر: «من نمیتونم لاگین کنم به اکانت های اماده تست. میگه نشست شما منقضی شده هست»
+
+Work Log:
+
+**تحلیل عمیق:**
+- بررسی dev.log: هیچ 401 ثبت نشده بود — اما این گمراه‌کننده بود. کشف شد که 401های صادرشده از middleware (proxy.ts) در dev.log لاگ نمی‌شوند. فقط 401های صادرشده از route handlerها لاگ می‌شوند.
+- تأیید با agent-browser: `fetch('/api/auth/me')` بدون کوکی → 401 (در dev.log ظاهر نشد).
+- علت اصلی: **race condition در بارگذاری اولیه با stale localStorage**:
+  1. کاربر اپ را باز می‌کند. localStorage یک سشن قبلی منقضی‌شده دارد (`onboardingComplete: true`).
+  2. کد قدیمی `hydrateAuth()` را بلافاصله صدا می‌زد → store با `onboardingComplete=true` ست می‌شد.
+  3. AppShell + SessionGuard mount می‌شدند (چون `isLoggedIn=true` بود).
+  4. `queueMicrotask` در store.ts → `refreshNotifications` → `loadInboxMessages` → `/api/messages` → **401** (کوکی منقضی شده).
+  5. `apiFetch` در api-client.ts → `unauthHandler` (که توسط SessionGuard ثبت شده بود) را صدا می‌زد → toast «نشست شما منقضی شده» + redirect.
+  6. کاربر toast ترسناک را می‌دید حتی قبل از تلاش برای ورود.
+
+**راه‌حل (3 لایه):**
+
+لایه ۱ — `src/app/page.tsx` (تغییر اساسی):
+- حذف `hydrateAuth()` بلافاصله. حالا ابتدا `/api/auth/me` صدا زده می‌شود، و فقط در صورت 200، store از پاسخ سرور hydrate می‌شود.
+- اگر 401: فقط `clearAuthStorage()` (بدون toast، بدون logout — چون store هنوز در حالت default است).
+- اگر network error: `hydrateAuth()` به‌عنوان fallback (برای حالت offline).
+- اضافه کردن **loading screen** وقتی `authValidated === false`: صفحه ساده با اسپینر و متن «در حال بارگذاری…». این جلوی flash صفحه landing را می‌گیرد و جلوی mount زودرس AppShell/SessionGuard را.
+- حذف `logout` از destructure (دیگر استفاده نمی‌شود).
+
+لایه ۲ — `src/lib/store.ts` (queueMicrotask):
+- `queueMicrotask` حالا `refreshNotifications` را فقط اگر `onboardingComplete === true` صدا می‌زند. قبل از این، با default `userRole === 'STUDENT'`، `loadInboxMessages` صدا زده می‌شد که بدون کوکی 401 می‌شد (اگرچه无害 چون unauthHandler null بود، ولی درخواست بی‌موقع بود).
+- کامنت توضیحی کامل اضافه شد.
+
+لایه ۳ — `src/lib/store.ts` (refreshNotifications):
+- شرط `state.userRole === 'STUDENT'` به `state.userRole === 'STUDENT' && state.onboardingComplete` ارتقا یافت. این gate اطمینان می‌دهد که حتی اگر NotificationCenter periodic refresh صدا بزند، قبل از validation session درخواست API نرود.
+
+Verification Results (agent-browser end-to-end):
+
+1. **سناریوی stale localStorage (بدون کوکی معتبر):**
+   - ست کردن stale localStorage (student) → reload.
+   - ✅ صفحه landing بارگذاری شد (نه dashboard).
+   - ✅ localStorage پاک شد (auth = null).
+   - ✅ هیچ toast «نشست شما منقضی شده» ظاهر نشد.
+   - ✅ loading screen مختصر دیده شد قبل از landing.
+
+2. **ورود به همه ۴ حساب آزمایشی:**
+   - سوپر ادمین (09121000000): ✅ dashboard GOD MODE.
+   - مدیر آموزشگاه (09121111111): ✅ پنل موسسه.
+   - مشاور (09121234567): ✅ پنل مشاور.
+   - دانش‌آموز (09131111111): ✅ dashboard دانش‌آموز.
+   - هیچ‌کدام toast خطا نشان ندادند.
+
+3. **سناریوی انقضای واقعی session (while using app):**
+   - ورود به‌عنوان دانش‌آموز → invalidation کوکی (via /api/auth/logout) → dispatch window focus.
+   - ✅ SessionGuard's revalidation fired → /api/auth/me 401 → localStorage پاک شد → redirect به landing.
+   - ✅ رفتار درست حفظ شد: انقضای واقعی همچنان toast + redirect می‌دهد (این رفتار مطلوب است).
+
+4. `bun run lint`: ✅ zero errors.
+5. dev.log: ✅ بدون runtime error، همه روت‌ها 200.
+
+Stage Summary:
+- علت اصلی «نشست شما منقضی شده» هنگام ورود = race condition بین `hydrateAuth()` بلافاصله و validation session از سرور. stale localStorage باعث mount زودرس AppShell/SessionGuard می‌شد که توسط 401های middleware (که در dev.log لاگ نمی‌شوند) فعال می‌گشت.
+- راه‌حل 3-لایه: (1) validate-first hydrate در page.tsx + loading screen، (2) gate queueMicrotask بر onboardingComplete، (3) gate refreshNotifications بر onboardingComplete.
+- حالا: stale localStorage → loading screen کوتاه → landing page (بدون toast). ورود به همه حساب‌ها کار می‌کند. انقضای واقعی session همچنان به‌درستی toast + redirect می‌دهد.
+- فایل‌های تغییر یافته: `src/app/page.tsx`، `src/lib/store.ts`

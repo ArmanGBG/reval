@@ -1314,7 +1314,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     // notifications are shown immediately; DB messages are merged in once
     // the fetch resolves. This keeps the bell responsive while still showing
     // advisor/super-admin messages.
-    if (state.userRole === 'STUDENT') {
+    //
+    // GATE on `onboardingComplete` to avoid calling /api/messages before the
+    // session has been validated. Without this gate, a stale localStorage
+    // (onboardingComplete=true from a previous session) could trigger a 401
+    // that fires the global unauth handler prematurely.
+    if (state.userRole === 'STUDENT' && state.onboardingComplete) {
       // Show computed notifications immediately
       const unreadNow = computed.filter((n) => !n.read).length;
       set({ notifications: computed, unreadNotificationCount: unreadNow });
@@ -1373,10 +1378,29 @@ export const useAppStore = create<AppState>((set, get) => ({
 // ===== Initialize notifications on first client render =====
 // We call refreshNotifications once on the client so that
 // notifications are computed from the current store data.
+//
+// NOTE: This runs on module load, BEFORE the page.tsx useEffect has a chance
+// to validate the session with the server. At this point, `onboardingComplete`
+// is false (default store state) and `userRole` is 'STUDENT' (default).
+//
+// `refreshNotifications` checks `userRole === 'STUDENT'` to decide whether to
+// fetch inbox messages. With the default `userRole === 'STUDENT'`, it WOULD
+// call `loadInboxMessages` → `/api/messages`. If the user isn't authenticated
+// yet (no cookie), this returns 401. The apiFetch wrapper would throw an
+// AuthError, which is caught by the `.catch(() => {})` in refreshNotifications.
+//
+// This is safe (no toast, no redirect) because the SessionGuard hasn't mounted
+// yet (the unauthHandler is null). But it's still a wasted request. To avoid
+// it, we gate the call on `onboardingComplete` — only refresh notifications
+// once the user is actually logged in.
 if (typeof window !== 'undefined') {
-  // Use queueMicrotask to defer until after the store is fully created,
-  // so all state fields are accessible.
   queueMicrotask(() => {
-    useAppStore.getState().refreshNotifications();
+    const state = useAppStore.getState();
+    // Only fetch notifications if the user is logged in. Otherwise, skip —
+    // the AppShell / NotificationCenter will call refreshNotifications after
+    // the session is validated.
+    if (state.onboardingComplete) {
+      state.refreshNotifications();
+    }
   });
 }

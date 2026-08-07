@@ -29,59 +29,74 @@ import SessionGuard from '@/components/shared/SessionGuard';
 import { UserRole } from '@/lib/types';
 
 export default function Home() {
-  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setUserRole, setUser, setOnboardingComplete } = useAppStore();
+  const { currentView, onboardingComplete, userRole, hydrateAuth, setUserRole, setUser, setOnboardingComplete } = useAppStore();
   // Track whether we've validated the persisted session with the server
   const [authValidated, setAuthValidated] = useState(false);
 
   useEffect(() => {
-    // On mount, hydrate from localStorage if available
+    // On mount, check if there's a persisted session in localStorage.
+    // CRITICAL: We do NOT call hydrateAuth() until the server confirms the
+    // session cookie is still valid. This prevents a race condition where:
+    //   1. Stale localStorage says onboardingComplete=true (from a previous
+    //      session that has since expired).
+    //   2. The AppShell + SessionGuard mount prematurely.
+    //   3. A concurrent API call (e.g. loadInboxMessages from the store's
+    //      queueMicrotask) returns 401.
+    //   4. The SessionGuard fires the "نشست شما منقضی شده" toast even though
+    //      the user hasn't even tried to log in yet.
+    // By validating FIRST and only hydrating on success, the AppShell never
+    // mounts with stale state, so no premature 401 handler fires.
     const persisted = loadAuthFromStorage();
     if (persisted && persisted.onboardingComplete) {
-      hydrateAuth();
-
-      // Validate the session cookie with the server.
-      // If the cookie is expired/invalid, clear localStorage and reset.
-      fetch('/api/auth/me')
+      // Validate the session cookie with the server BEFORE hydrating the store.
+      fetch('/api/auth/me', { credentials: 'same-origin' })
         .then((res) => {
           if (!res.ok) {
-            // Session is invalid — clear persisted auth and reset store
+            // Session is invalid/expired — silently clear persisted auth.
+            // Do NOT show a toast here; the user simply sees the landing page.
             clearAuthStorage();
-            logout();
-          } else {
-            // Session is valid — optionally refresh user data from server
-            return res.json().then((data) => {
-              if (data.user) {
-                const role = data.user.role as UserRole;
-                setUserRole(role);
-                setUser({
-                  id: data.user.id,
-                  name: data.user.name,
-                  avatar: data.user.avatar,
-                  grade: data.user.grade || 'دوازدهم',
-                  major: data.user.major || 'تجربی',
-                  goal: data.user.goal || 'کنکور',
-                  dailyTargetHours: data.user.dailyTargetHours || 6,
-                  phone: data.user.phone,
-                  assignedAdvisorId: data.user.assignedAdvisorId || null,
-                });
-                setOnboardingComplete(true);
+            return null;
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (!data || !data.user) {
+            // Either the session was invalid, or no user data returned.
+            // Either way, we're not logged in.
+            return;
+          }
+          // Session is valid — NOW hydrate the store from the server response.
+          const role = data.user.role as UserRole;
+          setUserRole(role);
+          setUser({
+            id: data.user.id,
+            name: data.user.name,
+            avatar: data.user.avatar,
+            grade: data.user.grade || 'دوازدهم',
+            major: data.user.major || 'تجربی',
+            goal: data.user.goal || 'کنکور',
+            dailyTargetHours: data.user.dailyTargetHours || 6,
+            phone: data.user.phone,
+            assignedAdvisorId: data.user.assignedAdvisorId || null,
+          });
+          setOnboardingComplete(true);
 
-                // Load role-specific data in the background
-                const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
-                if (role === 'STUDENT') {
-                  loadTasksForStudent(data.user.id).catch(() => {});
-                  loadExams({ studentId: data.user.id }).catch(() => {});
-                } else if (role === 'ADVISOR') {
-                  loadAdvisorStudents(data.user.id).catch(() => {});
-                  loadExams({ advisorId: data.user.id }).catch(() => {});
-                }
-              }
-            });
+          // Load role-specific data in the background
+          const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
+          if (role === 'STUDENT') {
+            loadTasksForStudent(data.user.id).catch(() => {});
+            loadExams({ studentId: data.user.id }).catch(() => {});
+          } else if (role === 'ADVISOR') {
+            loadAdvisorStudents(data.user.id).catch(() => {});
+            loadExams({ advisorId: data.user.id }).catch(() => {});
           }
         })
         .catch(() => {
-          // Network error — trust the localStorage + cookie combo
-          // (could be offline; don't log the user out)
+          // Network error — trust the localStorage + cookie combo as a
+          // fallback (could be offline). Hydrate from localStorage so the
+          // user can use the app offline; API calls will fail individually
+          // if the cookie is actually expired.
+          hydrateAuth();
         })
         .finally(() => {
           setAuthValidated(true);
@@ -93,6 +108,28 @@ export default function Home() {
 
   // Not logged in yet → show login / landing / onboarding (no chrome)
   const isLoggedIn = onboardingComplete && userRole !== undefined;
+
+  // While validating a persisted session with the server, show a minimal
+  // loading screen. This prevents:
+  //   - A flash of the landing page before the user is logged in.
+  //   - The AppShell + SessionGuard mounting with stale state and firing
+  //     premature 401 toasts.
+  // Only shown when there might be a persisted session (authValidated is false).
+  if (!authValidated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-deep)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-mint/15 border border-mint/25 flex items-center justify-center shadow-lg shadow-mint/10">
+            <span className="text-2xl">📚</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="w-4 h-4 rounded-full border-2 border-mint/30 border-t-mint animate-spin" />
+            <span className="text-sm">در حال بارگذاری…</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Landing page is full-bleed (no AppShell)
   if (currentView === 'landing' && !isLoggedIn) {
