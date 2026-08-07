@@ -3219,3 +3219,24 @@ Stage Summary:
 - فایل‌های تغییر یافته: `src/lib/auth.ts`
 - فایل‌های موقت ساخته‌شده و حذف‌شده: `src/app/api/debug-headers/route.ts`
 - فایل‌های پاکسازی‌شده: `src/proxy.ts` (حذف debug-headers از allowlist)
+
+---
+Task ID: FINAL-PUSH
+Agent: main (Z.ai Code)
+Task: پوش کردن حالت نهایی پروژه به گیت‌هاب و ایجاد تسک زمان‌بندی‌شده‌ی بازبینی هر ۱۵ دقیقه
+
+Work Log:
+- بررسی git status: working tree clean، ۳ کامیت جلوتر از origin/main.
+- بررسی dev.log: همه‌ی API‌ها (login, logout, /api/auth/me, tasks, exams, messages) با وضعیت ۲۰۰ پاسخ می‌دهند؛ بدون 401 یا 500.
+- پوش ۳ کامیت به origin/main با موفقیت انجام شد:
+  - `4c73602` رفع race condition (page.tsx + store.ts)
+  - `77ac9fd` رفع SameSite cookie (login, logout, register, auth.ts, proxy.ts)
+  - `dc1c3ff` بهبود نهایی auth.ts (تشخیص cross-site iframe) + worklog
+- تأیید همگام‌سازی: `Your branch is up to date with 'origin/main'`.
+- ایجاد cron job (job_id: 311887) برای بازبینی و توسعه‌ی مستقل هر ۱۵ دقیقه با kind=webDevReview.
+
+Stage Summary:
+- وضعیت پروژه: پایدار. سرور توسعه روی پورت ۳۰۰۰ سالم. auth برای همه‌ی ۴ نقش (super-admin, school-admin, advisor, student) کار می‌کند.
+- remote: `origin/main` در `dc1c3ff` همگام شد.
+- تسک زمان‌بندی‌شده: هر ۱۵ دقیقه (fixed_rate 900s, tz=Asia/Tehran) برای ادامه‌ی توسعه و QA خودکار.
+- ریسک‌های باقی‌مانده: رفتار کوکی در preview panel واقعی کاربر باید توسط کاربر تأیید شود (تست‌های agent-browser از طریق localhost هم‌سایت هستند و کانتکست iframe کراس‌سایت رو دقیقاً بازتولید نمی‌کنند).
