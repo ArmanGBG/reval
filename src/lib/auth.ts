@@ -73,29 +73,23 @@ export function getAuthSecret(): string {
 }
 
 // ====================================================================
-// Session cookie options — cross-site iframe compatible
+// Session cookie options — cross-site iframe compatible (bulletproof)
 // --------------------------------------------------------------------
-// The preview panel renders the app inside a cross-site iframe
-// (preview-chat-*.space-z.ai → app origin). Browsers do NOT send
-// SameSite=Lax cookies on cross-site subrequests (e.g. fetch from
-// within the iframe), which means every /api/* call after login would
-// return 401 → SessionGuard fires "نشست شما منقضی شده" → auto-logout.
+// The app is rendered inside a cross-site iframe in the preview panel
+// (and any deployed context). Browsers do NOT send SameSite=Lax cookies
+// on cross-site subrequests (e.g. fetch from within the iframe), so
+// every /api/* call after login would return 401 → SessionGuard fires
+// "نشست شما منقضی شده" → auto-logout.
 //
-// Fix: detect the cross-site / HTTPS preview context and use
-// SameSite=None + Secure so the cookie is sent in the cross-site
-// iframe context. For direct HTTP localhost access (dev), keep
-// SameSite=Lax.
+// Strategy (default-secure):
+//   Use SameSite=None; Secure for ALL requests EXCEPT direct local HTTP
+//   development access (localhost / 127.0.0.1 over plain HTTP). Secure
+//   cookies are only stored/sent over HTTPS, so we cannot use them on
+//   plain HTTP localhost — there we fall back to SameSite=Lax.
 //
-// Detection:
-//   The local Caddy gateway terminates TLS and forwards to the app via
-//   HTTP, so X-Forwarded-Proto is "http" (Caddy rewrites it). We can't
-//   rely on it. Instead, we check the X-Forwarded-Host / Host header:
-//     - If it contains "space-z.ai" → the request is from the preview
-//       panel (HTTPS cross-site iframe) → use SameSite=None; Secure.
-//     - Also check X-Forwarded-Proto as a fallback for other HTTPS setups.
-//   SameSite=None requires Secure, and Secure cookies are only sent over
-//   HTTPS. The preview iframe IS served over HTTPS (browser perspective),
-//   so Secure cookies will be stored and sent correctly.
+//   This means any preview/deployed/gateway context (regardless of the
+//   exact host name) gets the cross-site-compatible cookie, which fixes
+//   the "kicked out after login" issue robustly.
 // ====================================================================
 
 export interface SessionCookieOptions {
@@ -107,59 +101,63 @@ export interface SessionCookieOptions {
 }
 
 /**
- * Detect whether the request should use cross-site-compatible cookies
- * (SameSite=None; Secure).
+ * Detect whether the request is a DIRECT local HTTP development access
+ * (the only context where SameSite=None; Secure would NOT work, because
+ * Secure cookies require HTTPS).
  *
- * Returns true when the request is coming through the HTTPS preview panel
- * (cross-site iframe context). In that context, SameSite=Lax cookies are
- * NOT sent by the browser, so we must use SameSite=None; Secure.
+ * Returns true ONLY for plain-HTTP requests to localhost / 127.0.0.1
+ * with no forwarding headers (i.e. truly direct local dev, not proxied).
+ */
+export function isDirectLocalHttpAccess(request: NextRequest): boolean {
+  // If any forwarding header is present, this is a proxied/deployed
+  // request, not direct local access.
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedHost || forwardedProto || forwardedFor) {
+    // Still allow localhost hosts through the proxy (e.g. localhost:81
+    // gateway used for local testing) to use Lax if the connection is
+    // plain HTTP and the host is localhost.
+    const host = (forwardedHost || request.headers.get('host') || '').toLowerCase();
+    const proto = (forwardedProto || request.nextUrl.protocol.replace(':', '') || 'http').toLowerCase();
+    return proto === 'http' && (host.startsWith('localhost') || host.startsWith('127.0.0.1'));
+  }
+
+  // No forwarding headers — direct access. Check protocol + host.
+  const host = (request.headers.get('host') || '').toLowerCase();
+  const isHttp = request.nextUrl.protocol === 'http:';
+  return isHttp && (host.startsWith('localhost') || host.startsWith('127.0.0.1'));
+}
+
+/**
+ * Detect whether the request should use cross-site-compatible cookies
+ * (SameSite=None; Secure). Kept for backward compatibility.
  */
 export function isCrossSiteHttpsRequest(request: NextRequest): boolean {
-  // 1. Check X-Forwarded-Host — set by the gateway, contains the original
-  //    host the browser used. The preview panel uses *.space-z.ai hosts.
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  if (forwardedHost && forwardedHost.includes('space-z.ai')) {
-    return true;
-  }
-
-  // 2. Check Host header (fallback if gateway doesn't set X-Forwarded-Host).
-  const host = request.headers.get('host');
-  if (host && host.includes('space-z.ai')) {
-    return true;
-  }
-
-  // 3. Check X-Forwarded-Proto for other HTTPS reverse-proxy setups.
-  const forwardedProto = request.headers.get('x-forwarded-proto');
-  if (forwardedProto && forwardedProto.includes('https')) {
-    return true;
-  }
-
-  // 4. Direct HTTPS access.
-  if (request.nextUrl.protocol === 'https:') {
-    return true;
-  }
-
-  return false;
+  return !isDirectLocalHttpAccess(request);
 }
 
 /**
  * Get cookie options for SETTING a session cookie (maxAge = 24h).
+ *
+ * Default-secure: SameSite=None; Secure everywhere except direct local
+ * HTTP dev access.
  */
 export function getSessionCookieOptions(request: NextRequest): SessionCookieOptions {
-  if (isCrossSiteHttpsRequest(request)) {
+  if (isDirectLocalHttpAccess(request)) {
     return {
       httpOnly: true,
       path: '/',
       maxAge: TOKEN_EXPIRY_SECONDS,
-      sameSite: 'none',
-      secure: true,
+      sameSite: 'lax',
     };
   }
   return {
     httpOnly: true,
     path: '/',
     maxAge: TOKEN_EXPIRY_SECONDS,
-    sameSite: 'lax',
+    sameSite: 'none',
+    secure: true,
   };
 }
 
@@ -169,19 +167,19 @@ export function getSessionCookieOptions(request: NextRequest): SessionCookieOpti
  * browser won't delete it.
  */
 export function getClearCookieOptions(request: NextRequest): SessionCookieOptions {
-  if (isCrossSiteHttpsRequest(request)) {
+  if (isDirectLocalHttpAccess(request)) {
     return {
       httpOnly: true,
       path: '/',
       maxAge: 0,
-      sameSite: 'none',
-      secure: true,
+      sameSite: 'lax',
     };
   }
   return {
     httpOnly: true,
     path: '/',
     maxAge: 0,
-    sameSite: 'lax',
+    sameSite: 'none',
+    secure: true,
   };
 }
