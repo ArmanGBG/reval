@@ -3094,3 +3094,68 @@ Stage Summary:
 - راه‌حل 3-لایه: (1) validate-first hydrate در page.tsx + loading screen، (2) gate queueMicrotask بر onboardingComplete، (3) gate refreshNotifications بر onboardingComplete.
 - حالا: stale localStorage → loading screen کوتاه → landing page (بدون toast). ورود به همه حساب‌ها کار می‌کند. انقضای واقعی session همچنان به‌درستی toast + redirect می‌دهد.
 - فایل‌های تغییر یافته: `src/app/page.tsx`، `src/lib/store.ts`
+
+---
+Task ID: fix-cross-site-iframe-cookie
+Agent: Main
+Task: رفع قطعی بلافاصله پس از ورود — کاربر: «هنوز مشکل حل نشده و من بلا فاصله بعد از وروی به حساب کاربری دانش آموز لاگ اوت میشم و میگه نشست شما منقضی شده است»
+
+Work Log:
+
+**تحلیل عمیق — چرا تست agent-browser مشکل را نشان نداد:**
+- در تست agent-browser، مرورگر مستقیماً به `http://localhost:3000` دسترسی داشت (top-level navigation, same-site). کوکی `SameSite=Lax` در این حالت ارسال می‌شود.
+- اما کاربر از طریق **preview panel** دسترسی دارد که یک **cross-site iframe** است (`preview-chat-*.space-z.ai` → app origin).
+- طبق spec: `SameSite=Lax` کوکی‌ها در **cross-site subrequests** (مثل fetch از داخل iframe) ارسال نمی‌شوند.
+- بنابراین: login POST موفق می‌شد (Set-Cookie در response کار می‌کند)، اما تمام fetchهای بعدی (`/api/tasks`, `/api/messages`, `/api/auth/me`) کوکی را ارسال نمی‌کردند → 401 → SessionGuard → «نشست شما منقضی شده» → logout.
+
+**تأیید با curl:**
+- قبل از fix: `Set-Cookie: reval-session=...; SameSite=lax` — در cross-site iframe کار نمی‌کند.
+- بعد از fix (HTTPS mode): `Set-Cookie: reval-session=...; Secure; HttpOnly; SameSite=none` — در cross-site iframe کار می‌کند.
+
+**راه‌حل:**
+
+۱. `src/lib/auth.ts` — helperهای مشترک:
+- `isHttpsRequest(request)`: بررسی `X-Forwarded-Proto` (ست شده توسط gateway) یا `request.nextUrl.protocol`.
+- `getSessionCookieOptions(request)`: HTTPS → `SameSite=None; Secure` / HTTP → `SameSite=Lax`.
+- `getClearCookieOptions(request)`: همان منطق با `maxAge: 0`.
+- کامنت توضیحی کامل درباره cross-site iframe problem.
+
+۲. `src/app/api/auth/login/route.ts`:
+- استفاده از `getSessionCookieOptions(request)` به‌جای hardcoded `sameSite: 'lax'`.
+
+۳. `src/app/api/auth/register/route.ts`:
+- همان تغییر — استفاده از `getSessionCookieOptions(request)`.
+
+۴. `src/app/api/auth/logout/route.ts`:
+- بازنویسی: استفاده از `getClearCookieOptions(request)` (همان ویژگی‌ها برای پاک‌کردن صحیح کوکی).
+- اضافه‌شدن پارامتر `request: NextRequest` به signature.
+
+۵. `src/proxy.ts` — allowlist:
+- اضافه‌شدن `/api/auth/logout` به مسیرهای عمومی. logout باید حتی با session منقضی شده کار کند (وگرنه کاربر نمی‌تواند خارج شود).
+
+Verification Results:
+
+1. **curl test (HTTPS simulation via X-Forwarded-Proto):**
+   - login: `Set-Cookie: ...; Secure; HttpOnly; SameSite=none` ✅
+   - logout: `Set-Cookie: reval-session=; Max-Age=0; Secure; HttpOnly; SameSite=none` ✅
+   - HTTP mode: `SameSite=lax` (بدون Secure) ✅
+
+2. **agent-browser end-to-end (student):**
+   - login → 6 API calls، همگی 200 ✅
+   - بعد از 20s: هیچ 401، stillLoggedIn=true ✅
+   - navigation به «برنامه من» → 5 درس بارگذاری شد ✅
+   - ایجاد تسک: POST /api/tasks **201** ✅
+
+3. **همه ۴ حساب آزمایشی:**
+   - سوپر ادمین: ✅ dashboard GOD MODE
+   - مدیر آموزشگاه: ✅ پنل موسسه
+   - مشاور: ✅ پنل مشاور
+   - دانش‌آموز: ✅ dashboard + task creation
+
+4. `bun run lint`: ✅ zero errors
+5. dev.log: ✅ هیچ 401، هیچ 500
+
+Stage Summary:
+- علت اصلی واقعی «نشست شما منقضی شده» بلافاصله پس از ورود = `SameSite=Lax` کوکی در cross-site iframe (preview panel) ارسال نمی‌شد.
+- راه‌حل: تشخیص HTTPS (via X-Forwarded-Proto) → `SameSite=None; Secure` برای cross-site iframe compat. HTTP → `SameSite=Lax`.
+- فایل‌های تغییر یافته: `src/lib/auth.ts`، `src/app/api/auth/login/route.ts`، `src/app/api/auth/register/route.ts`، `src/app/api/auth/logout/route.ts`، `src/proxy.ts`

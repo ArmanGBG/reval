@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
-import { generateToken, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { generateToken, SESSION_COOKIE_NAME, getSessionCookieOptions } from '@/lib/auth';
 
 // ===== POST /api/auth/register =====
 // Sign-up / onboarding endpoint.
@@ -197,12 +197,9 @@ export async function POST(request: NextRequest) {
       message: 'حساب شما با موفقیت ساخته شد',
     });
 
-    response.cookies.set(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      path: '/',
-      maxAge: 86400, // 24 hours — matches login
-      sameSite: 'lax',
-    });
+    // Set httpOnly session cookie.
+    // Uses SameSite=None+Secure over HTTPS (cross-site preview iframe compat).
+    response.cookies.set(SESSION_COOKIE_NAME, token, getSessionCookieOptions(request));
 
     return response;
   } catch (error) {

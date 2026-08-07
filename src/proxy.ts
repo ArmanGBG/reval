@@ -9,8 +9,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow auth routes that issue sessions without requiring a session first.
-  if (pathname === '/api/auth/login' || pathname === '/api/auth/register') {
+  // Allow auth routes that issue/clear sessions without requiring a session first.
+  // - login:    issues a new session cookie
+  // - register: issues a new session cookie (sign-up)
+  // - logout:   clears the session cookie (must work even if the current
+  //             session is already expired, otherwise the user can't log out)
+  if (
+    pathname === '/api/auth/login' ||
+    pathname === '/api/auth/register' ||
+    pathname === '/api/auth/logout'
+  ) {
     return NextResponse.next();
   }
 

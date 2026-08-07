@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
-import { generateToken, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { generateToken, SESSION_COOKIE_NAME, getSessionCookieOptions } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,13 +61,10 @@ export async function POST(request: NextRequest) {
       message: 'ورود موفقیت‌آمیز بود',
     });
 
-    // Set httpOnly session cookie
-    response.cookies.set(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      path: '/',
-      maxAge: 86400, // 24 hours
-      sameSite: 'lax', // 'lax' allows the cookie in top-level navigations and same-site iframes (preview panel)
-    });
+    // Set httpOnly session cookie.
+    // Uses SameSite=None+Secure over HTTPS so the cookie is sent in the
+    // cross-site preview iframe. SameSite=Lax over HTTP (localhost dev).
+    response.cookies.set(SESSION_COOKIE_NAME, token, getSessionCookieOptions(request));
 
     return response;
   } catch (error) {
