@@ -153,7 +153,7 @@ export default function TaskCard({
               </span>
             </div>
 
-            {!task.detailsCompleted && <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">جزئیات ناقص · تکمیل کنید</button>}
+            {!task.detailsCompleted && <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">نیازمند تکمیل</button>}
             {task.detailsCompleted && task.topic && <p className="text-[var(--foreground-muted)] text-xs md:text-sm mb-2 line-clamp-2">{task.topic}</p>}
 
             {/* Activity Chips */}
@@ -308,7 +308,7 @@ export default function TaskCard({
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل جزئیات</button> : null}
+          ) : onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button> : null}
         </div>
       </div>
     </motion.div>
