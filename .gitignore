@@ -61,5 +61,8 @@ db/*.db-journal
 tool-results/
 upload/
 reval/
-*.png
+# Specific screenshots / debug images (NOT a broad *.png — landing assets need tracking)
 chapter-view-*.png
+debug-screenshot.png
+# Sandbox daemon PID files
+.zscripts/*.pid

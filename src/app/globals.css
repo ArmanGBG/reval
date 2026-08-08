@@ -3,10 +3,60 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============ Yekan Bakh (Persian) — used by the landing page ============ */
+@font-face {
+  font-family: "Yekan Bakh";
+  src: url("/fonts/YekanBakh-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Yekan Bakh";
+  src: url("/fonts/YekanBakh-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Yekan Bakh";
+  src: url("/fonts/YekanBakh-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Yekan Bakh";
+  src: url("/fonts/YekanBakh-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Yekan Bakh";
+  src: url("/fonts/YekanBakh-ExtraBlack.woff2") format("woff2");
+  font-weight: 950;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Animated CSS custom properties used by landing shimmer borders */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@property --shimmer-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-vazirmatn);
+  --font-yekan: "Yekan Bakh", var(--font-vazirmatn), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -41,18 +91,26 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-  /* Legacy aliases — kept for compatibility, now resolve to the single accent */
-  --color-mint: var(--accent);
-  --color-mint-light: var(--accent-hover);
-  --color-mint-dark: var(--accent);
+  /* Mint — the landing's light sage green (for buttons with dark text, tints, glows) */
+  --color-mint: var(--mint);
+  --color-mint-bright: var(--mint-bright);
+  --color-mint-soft: var(--mint-soft);
+  /* Legacy aliases — kept for app compatibility */
+  --color-mint-light: var(--mint-bright);
+  --color-mint-dark: var(--mint);
   --color-gold: var(--accent);
 }
 
 /* ============================================================
-   Linear-style Design System — calm, monochrome, restrained.
-   A single accent is used sparingly. No neon, no glows, no gold.
-   Variable NAMES are preserved so all existing components inherit
-   the new palette automatically.
+   Design System — calm dark canvas with an elegant green accent.
+   Two green tones work together:
+     • --accent  (emerald #3E9F70) — app primary buttons, active
+       states, focus rings, charts. Medium tone, white text reads.
+     • --mint    (sage #7DC499)   — landing CTA buttons (dark text),
+       decorative tints, glows, particle accents.
+   Both share hue ~158 (teal-emerald) for a cohesive, refined look.
+   No neon, no harsh glows. Variable NAMES are preserved so all
+   existing components inherit the new palette automatically.
    ============================================================ */
 :root {
   /* Elevation surfaces — near-black, slightly cool grayscale */
@@ -63,18 +121,24 @@
   --surface-glass: rgba(255, 255, 255, 0.025);
   --surface-glass-strong: rgba(255, 255, 255, 0.05);
 
-  /* Foreground — Linear's muted gray scale */
+  /* Foreground — muted gray scale */
   --foreground: #F7F8F8;
   --foreground-muted: #8A8F98;
   --foreground-subtle: #5C6066;
 
-  /* Accents — a single restrained violet, used sparingly */
-  --accent: #5E6AD2;
-  --accent-hover: #6E7AE0;
-  --accent-soft: rgba(94, 106, 210, 0.12);
-  --accent-glow: transparent; /* no glow in Linear aesthetic */
+  /* Accent — elegant emerald (medium, white text reads on it) */
+  --accent: #3E9F70;
+  --accent-hover: #4CB17E;
+  --accent-soft: rgba(62, 159, 112, 0.12);
+  --accent-glow: transparent;
 
-  /* Gold collapsed into accent — keeps role logic functional, unifies palette */
+  /* Mint — soft sage green (lighter, dark text reads on it).
+     Used by landing CTA buttons and decorative accents. */
+  --mint: #7DC499;
+  --mint-bright: #98D6AE;
+  --mint-soft: rgba(125, 196, 153, 0.14);
+
+  /* Gold collapsed into accent — keeps role logic functional */
   --gold: var(--accent);
   --gold-soft: var(--accent-soft);
   --gold-glow: transparent;
@@ -87,9 +151,9 @@
   --success: #3EBA8C;
   --warning: #D89614;
   --danger: #E5484D;
-  --info: #5E6AD2;
+  --info: #3E9F70;
 
-  /* Radius — tighter, more architectural (Linear-like) */
+  /* Radius — tighter, more architectural */
   --radius: 8px;
 
   /* shadcn mapping (kept for compatibility) */
@@ -105,13 +169,13 @@
   --secondary-foreground: #F7F8F8;
   --muted: #1C1D20;
   --muted-foreground: #8A8F98;
-  --accent: #5E6AD2;
+  --accent: #3E9F70;
   --accent-foreground: #FFFFFF;
   --destructive: #E5484D;
   --input: rgba(255, 255, 255, 0.06);
   --ring: var(--accent);
-  --chart-1: #5E6AD2;
-  --chart-2: #8A8F98;
+  --chart-1: #3E9F70;
+  --chart-2: #7DC499;
   --chart-3: #3EBA8C;
   --chart-4: #D89614;
   --chart-5: #E5484D;
@@ -266,7 +330,7 @@
   border-color: var(--border-strong);
 }
 .glow-hover:active {
-  background-color: rgba(94, 106, 210, 0.18);
+  background-color: var(--accent-soft);
 }
 .glow-hover-gold:hover {
   background-color: var(--accent-soft);
@@ -645,5 +709,1152 @@
   [data-sonner-toaster] [data-sonner-toast] {
     width: calc(100vw - 32px) !important;
     max-width: calc(100vw - 32px) !important;
+  }
+}
+
+/* ============================================================
+   LANDING PAGE UTILITIES — from the landingreaval repo.
+   Scoped under @layer utilities so they have LOWER cascade
+   priority than the unlayered app rules above. This means:
+   • Landing-only classes (.surface, .focus-ring-mint,
+     .text-gradient-mint, .touch-target, .underline-grow, …)
+     render with the landing's intended styling.
+   • Classes that also exist unlayered above (.float-subtle,
+     .gradient-border, .shimmer) keep the app's calmer version.
+   ============================================================ */
+@layer utilities {
+  .font-yekan {
+    font-family: var(--font-yekan);
+    -webkit-font-smoothing: never;
+    font-smooth: never;
+  }
+  .font-inter {
+    font-family: var(--font-inter);
+  }
+  .nums {
+    font-family: var(--font-inter);
+    font-feature-settings: "tnum", "cv01";
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Soft elevated surface like Linear cards — enhanced */
+  .surface {
+    background:
+      linear-gradient(
+        180deg,
+        oklch(1 0 0 / 5%) 0%,
+        oklch(1 0 0 / 2%) 100%
+      ),
+      oklch(0.16 0.006 264);
+    border: 1px solid oklch(1 0 0 / 10%);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 5%) inset,
+      0 20px 50px -24px oklch(0 0 0 / 0.85),
+      0 0 0 1px oklch(1 0 0 / 3%);
+    /* Premium top-edge highlight */
+    border-top: 1px solid oklch(1 0 0 / 14%);
+  }
+
+  .surface-hover {
+    transition: border-color 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .surface-hover:hover {
+    border-color: color-mix(in oklch, var(--mint) 35%, oklch(1 0 0 / 10%));
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 6%) inset,
+      0 28px 70px -32px color-mix(in oklch, var(--mint) 40%, transparent),
+      0 0 0 1px color-mix(in oklch, var(--mint) 15%, transparent);
+    transform: translateY(-3px) scale(1.005);
+  }
+
+  .glow-mint {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--mint) 30%, transparent),
+      0 14px 44px -10px color-mix(in oklch, var(--mint) 50%, transparent),
+      inset 0 1px 0 0 oklch(1 0 0 / 6%);
+  }
+
+  .text-gradient-mint {
+    background: linear-gradient(
+      105deg,
+      oklch(0.98 0.015 150) 0%,
+      oklch(0.84 0.14 158) 45%,
+      oklch(0.74 0.11 172) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-fade {
+    background: linear-gradient(
+      180deg,
+      oklch(0.98 0.004 120) 0%,
+      oklch(0.62 0.01 264) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, oklch(1 0 0 / 4%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(1 0 0 / 4%) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .radial-fade {
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+  }
+
+  .noise {
+    position: relative;
+  }
+  .noise::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Custom thin scrollbar (Linear-like) */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(1 0 0 / 18%) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: oklch(1 0 0 / 14%);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(1 0 0 / 24%);
+  }
+
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+  }
+
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmerBg 2.2s linear infinite;
+  }
+  @keyframes shimmerBg {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .marquee-track {
+    animation: marquee 38s linear infinite;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* Enhanced glow pulse for key elements */
+  .pulse-glow-mint {
+    animation: pulseGlowMint 3s ease-in-out infinite;
+  }
+  @keyframes pulseGlowMint {
+    0%, 100% { box-shadow: 0 0 20px color-mix(in oklch, var(--mint) 20%, transparent); }
+    50% { box-shadow: 0 0 40px color-mix(in oklch, var(--mint) 40%, transparent), 0 0 80px color-mix(in oklch, var(--mint) 15%, transparent); }
+  }
+
+  /* Smooth float animation */
+  .float-subtle {
+    animation: floatSubtle 6s ease-in-out infinite;
+  }
+  @keyframes floatSubtle {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Gradient border animation */
+  .border-gradient-animate {
+    background-size: 300% 300%;
+    animation: borderGradient 8s ease infinite;
+  }
+  @keyframes borderGradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Shimmer text effect — animated gradient sweep */
+  .text-shimmer {
+    background: linear-gradient(
+      100deg,
+      oklch(0.84 0.14 158) 0%,
+      oklch(0.98 0.015 150) 25%,
+      oklch(0.74 0.11 172) 50%,
+      oklch(0.98 0.015 150) 75%,
+      oklch(0.84 0.14 158) 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: textShimmer 5s linear infinite;
+  }
+  @keyframes textShimmer {
+    0% { background-position: 0% center; }
+    100% { background-position: -200% center; }
+  }
+
+  /* Glow border for cards on hover */
+  .glow-border-hover {
+    position: relative;
+    transition: box-shadow 0.4s cubic-bezier(0.16,1,0.3,1), border-color 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .glow-border-hover::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      color-mix(in oklch, var(--mint) 40%, transparent) 50%,
+      transparent 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1);
+    pointer-events: none;
+  }
+  .glow-border-hover:hover::before {
+    opacity: 1;
+  }
+
+  /* Underline grow animation for nav links */
+  .underline-grow {
+    position: relative;
+  }
+  .underline-grow::after {
+    content: "";
+    position: absolute;
+    right: 50%;
+    left: 50%;
+    bottom: -2px;
+    height: 1.5px;
+    background: linear-gradient(to left, var(--mint-bright), var(--mint));
+    border-radius: 999px;
+    transition: right 0.3s cubic-bezier(0.16,1,0.3,1), left 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  .underline-grow:hover::after {
+    right: 8px;
+    left: 8px;
+  }
+
+  /* Aurora background animation */
+  .aurora {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 30%, color-mix(in oklch, var(--mint) 12%, transparent), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 80% 60%, color-mix(in oklch, var(--mint) 8%, transparent), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 50% 80%, color-mix(in oklch, var(--mint-bright) 6%, transparent), transparent 60%);
+    background-size: 200% 200%, 200% 200%, 200% 200%;
+    animation: aurora 18s ease-in-out infinite;
+  }
+  @keyframes aurora {
+    0%, 100% { background-position: 0% 0%, 100% 100%, 50% 50%; }
+    33% { background-position: 50% 50%, 0% 50%, 100% 0%; }
+    66% { background-position: 100% 100%, 50% 0%, 0% 100%; }
+  }
+
+  /* Smooth scale-in for cards */
+  .scale-in-hover {
+    transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .scale-in-hover:hover {
+    transform: translateY(-4px) scale(1.015);
+  }
+
+  /* Glass blur effect */
+  .glass {
+    background: color-mix(in oklch, oklch(0.16 0.006 264) 60%, transparent);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid color-mix(in oklch, oklch(1 0 0) 8%, transparent);
+  }
+
+  /* Conic spin for badges */
+  .conic-spin {
+    animation: conicSpin 8s linear infinite;
+  }
+  @keyframes conicSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Breathe animation for highlights */
+  .breathe {
+    animation: breathe 4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.97); }
+  }
+
+  /* Slide-in reveal */
+  .reveal-up {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: revealUp 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  @keyframes revealUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============ New Premium Utilities ============ */
+
+  /* --- Text Gradient Variants --- */
+
+  /* Brighter mint gradient with wider angle & more vivid stops */
+  .text-gradient-mint-bright {
+    background: linear-gradient(
+      135deg,
+      oklch(0.99 0.02 148) 0%,
+      oklch(0.88 0.18 156) 40%,
+      oklch(0.78 0.14 168) 70%,
+      oklch(0.70 0.11 180) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Cool mint-to-cyan gradient for variety */
+  .text-gradient-cool {
+    background: linear-gradient(
+      110deg,
+      oklch(0.82 0.12 158) 0%,
+      oklch(0.76 0.10 172) 40%,
+      oklch(0.72 0.09 190) 70%,
+      oklch(0.68 0.08 205) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* --- Border & Shadow Utilities --- */
+
+  /* Persistent mint border glow (not hover-only) */
+  .border-glow-mint {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--mint) 25%, transparent),
+      0 0 16px -2px color-mix(in oklch, var(--mint) 20%, transparent),
+      0 0 32px -8px color-mix(in oklch, var(--mint) 10%, transparent);
+  }
+
+  /* Multi-layered shadow system for elevated cards */
+  .shadow-depth {
+    box-shadow:
+      /* Layer 1: ambient — very spread, very subtle */
+      0 24px 80px -12px oklch(0 0 0 / 0.25),
+      /* Layer 2: direct — close, moderate */
+      0 8px 24px -4px oklch(0 0 0 / 0.4),
+      /* Layer 3: contact — very close, sharp */
+      0 2px 6px -1px oklch(0 0 0 / 0.55);
+  }
+
+  /* --- Card Spotlight (mouse-following) --- */
+
+  .card-spotlight {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      320px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      color-mix(in oklch, var(--mint) 10%, transparent),
+      transparent 70%
+    );
+    transition: background 0.15s ease;
+    z-index: 1;
+  }
+
+  /* --- Animation Utilities --- */
+
+  /* Gentle floating animation */
+  .animate-float {
+    animation: animateFloat 6s ease-in-out infinite;
+  }
+  @keyframes animateFloat {
+    0%, 100% { transform: translateY(6px); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Softer pulse — subtle opacity + scale breathing */
+  .animate-pulse-soft {
+    animation: animatePulseSoft 3s ease-in-out infinite;
+  }
+  @keyframes animatePulseSoft {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.98); }
+  }
+
+  /* Gradient shift for animated gradient borders */
+  .animate-gradient-shift {
+    background-size: 300% 300%;
+    animation: animateGradientShift 8s ease infinite;
+  }
+  @keyframes animateGradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* --- Shimmer Border --- */
+
+  .shimmer-border {
+    position: relative;
+    border: 1.5px solid transparent;
+    border-image: conic-gradient(
+      from var(--angle),
+      color-mix(in oklch, var(--mint-bright) 60%, transparent),
+      transparent 30%,
+      transparent 70%,
+      color-mix(in oklch, var(--mint) 40%, transparent)
+    ) 1;
+    animation: shimmerBorderRotate 4s linear infinite;
+  }
+  @keyframes shimmerBorderRotate {
+    to { --angle: 360deg; }
+  }
+
+  /* --- Typewriter Effect --- */
+
+  .typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    border-left: 2px solid var(--mint);
+    animation:
+      typewriterExpand 3s steps(30, end) forwards,
+      typewriterBlink 0.75s step-end infinite;
+  }
+  @keyframes typewriterExpand {
+    from { max-width: 0; }
+    to { max-width: 100%; }
+  }
+  @keyframes typewriterBlink {
+    0%, 100% { border-color: var(--mint); }
+    50% { border-color: transparent; }
+  }
+
+  /* --- Glow Text Mint --- */
+
+  .glow-text-mint {
+    text-shadow:
+      0 0 8px color-mix(in oklch, var(--mint) 35%, transparent),
+      0 0 24px color-mix(in oklch, var(--mint) 15%, transparent);
+  }
+
+  /* --- Mask Utilities --- */
+
+  /* Softer radial fade with wider visible area */
+  .mask-radial-soft {
+    -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 20%, transparent 85%);
+    mask-image: radial-gradient(ellipse 85% 75% at 50% 40%, #000 20%, transparent 85%);
+  }
+
+  /* --- Skeleton Shimmer --- */
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      100deg,
+      oklch(0.19 0.006 264) 0%,
+      oklch(0.22 0.006 264) 40%,
+      oklch(0.19 0.006 264) 80%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmerSweep 1.8s ease-in-out infinite;
+  }
+  @keyframes skeletonShimmerSweep {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* --- Cinematic Film Grain Drift --- */
+  @keyframes cinematicGrainShift {
+    0%   { transform: translate(0, 0); }
+    10%  { transform: translate(-5%, -3%); }
+    20%  { transform: translate(-10%, 2%); }
+    30%  { transform: translate(3%, -8%); }
+    40%  { transform: translate(-3%, 5%); }
+    50%  { transform: translate(-8%, -2%); }
+    60%  { transform: translate(5%, 8%); }
+    70%  { transform: translate(-5%, 3%); }
+    80%  { transform: translate(8%, -5%); }
+    90%  { transform: translate(-3%, 8%); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* --- Corner Sparkle (for premium cards) --- */
+  .corner-sparkle {
+    position: relative;
+  }
+  .corner-sparkle::before,
+  .corner-sparkle::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+    opacity: 0.6;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .corner-sparkle::before {
+    top: 8px;
+    right: 8px;
+    background: radial-gradient(
+      circle at top right,
+      color-mix(in oklch, var(--mint) 60%, transparent) 0%,
+      transparent 70%
+    );
+  }
+  .corner-sparkle::after {
+    bottom: 8px;
+    left: 8px;
+    background: radial-gradient(
+      circle at bottom left,
+      color-mix(in oklch, var(--mint-bright) 40%, transparent) 0%,
+      transparent 70%
+    );
+  }
+  .corner-sparkle:hover::before,
+  .corner-sparkle:hover::after {
+    opacity: 1;
+  }
+
+  /* --- Premium gradient mesh background (for featured cards) --- */
+  .mesh-grad-bg {
+    background-image:
+      radial-gradient(at 20% 20%, color-mix(in oklch, var(--mint) 8%, transparent) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, color-mix(in oklch, var(--mint-bright) 6%, transparent) 0px, transparent 50%),
+      radial-gradient(at 0% 80%, color-mix(in oklch, var(--mint) 5%, transparent) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, color-mix(in oklch, var(--mint-bright) 4%, transparent) 0px, transparent 50%);
+  }
+
+  /* --- Confetti particle base --- */
+  .confetti-particle {
+    position: absolute;
+    width: 8px;
+    height: 12px;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  /* --- Soft elevation for sticky bars --- */
+  .elevate-top {
+    box-shadow:
+      0 -1px 0 0 oklch(1 0 0 / 5%) inset,
+      0 -12px 32px -8px oklch(0 0 0 / 0.4);
+  }
+
+  /* ============ Styling Polish Utilities (Task 8-c) ============ */
+
+  /* --- 3D Text Effect --- */
+  .gradient-text-3d {
+    text-shadow:
+      0 1px 0 color-mix(in oklch, var(--mint) 30%, oklch(0 0 0 / 0.4)),
+      0 2px 0 color-mix(in oklch, var(--mint) 20%, oklch(0 0 0 / 0.3)),
+      0 3px 0 color-mix(in oklch, var(--mint) 10%, oklch(0 0 0 / 0.2)),
+      0 4px 8px oklch(0 0 0 / 0.15),
+      0 0 12px color-mix(in oklch, var(--mint) 25%, transparent);
+  }
+
+  /* --- 3D Card Tilt on Hover --- */
+  .card-3d-tilt {
+    transform-style: preserve-3d;
+    perspective: 800px;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-3d-tilt:hover {
+    transform: perspective(800px) rotateX(2deg) rotateY(-2deg) translateY(-4px);
+  }
+
+  /* --- Shine Sweep Animation --- */
+  .shine-sweep {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine-sweep::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      oklch(1 0 0 / 18%) 50%,
+      transparent 60%
+    );
+    transform: translate3d(-110%, 0, 0);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  .shine-sweep:hover::after {
+    transform: translate3d(110%, 0, 0);
+  }
+
+  /* --- Pulsing Mint Glow --- */
+  .glow-pulse-mint {
+    animation: glowPulseMint 2.5s ease-in-out infinite;
+  }
+  @keyframes glowPulseMint {
+    0%, 100% {
+      box-shadow:
+        0 0 12px color-mix(in oklch, var(--mint) 20%, transparent),
+        0 0 24px color-mix(in oklch, var(--mint) 8%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 20px color-mix(in oklch, var(--mint) 40%, transparent),
+        0 0 48px color-mix(in oklch, var(--mint) 20%, transparent),
+        0 0 80px color-mix(in oklch, var(--mint) 8%, transparent);
+    }
+  }
+
+  /* --- Shimmer Animated Border --- */
+  .border-shimmer {
+    position: relative;
+    border: 1.5px solid transparent;
+    background-clip: padding-box;
+  }
+  .border-shimmer::before {
+    content: "";
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--shimmer-angle, 0deg),
+      color-mix(in oklch, var(--mint-bright) 60%, transparent),
+      transparent 30%,
+      transparent 70%,
+      color-mix(in oklch, var(--mint) 40%, transparent)
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: shimmerBorderSpin 4s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes shimmerBorderSpin {
+    to { --shimmer-angle: 360deg; }
+  }
+
+  /* --- Subtle Dot Pattern Background --- */
+  .dot-pattern {
+    background-image: radial-gradient(
+      circle,
+      oklch(1 0 0 / 8%) 1px,
+      transparent 1px
+    );
+    background-size: 24px 24px;
+  }
+
+  /* --- Animated Gradient Underline --- */
+  .animated-gradient-underline {
+    position: relative;
+    display: inline-block;
+    overflow: visible;
+  }
+  .animated-gradient-underline::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      var(--mint-bright),
+      var(--mint),
+      var(--mint-bright)
+    );
+    background-size: 200% 100%;
+    border-radius: 999px;
+    animation: gradientUnderlineShift 3s ease infinite;
+  }
+  @keyframes gradientUnderlineShift {
+    0%, 100% { background-position: 0% center; }
+    50% { background-position: 100% center; }
+  }
+
+  /* --- Time Badge Pulse --- */
+  .time-badge-pulse {
+    animation: timeBadgePulse 3s ease-in-out infinite;
+  }
+  @keyframes timeBadgePulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--mint) 0%, transparent); }
+    50% { box-shadow: 0 0 0 4px color-mix(in oklch, var(--mint) 15%, transparent); }
+  }
+
+  /* --- Dotted Connector Line --- */
+  .dotted-connector {
+    border-right: 2px dashed oklch(1 0 0 / 10%);
+  }
+  .dotted-connector-ltr {
+    border-left: 2px dashed oklch(1 0 0 / 10%);
+  }
+
+  /* --- Card Hover Parallax --- */
+  .card-hover-parallax {
+    transition: transform 0.15s ease-out;
+  }
+
+  /* --- Flip Card --- */
+  .flip-card-inner {
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-style: preserve-3d;
+  }
+  .flip-card-back {
+    transform: rotateY(180deg);
+    backface-visibility: hidden;
+  }
+  .flip-card-front {
+    backface-visibility: hidden;
+  }
+
+  /* --- Magnetic Glow for inputs --- */
+  .magnetic-glow {
+    position: relative;
+  }
+  .magnetic-glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+      180px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+      color-mix(in oklch, var(--mint) 12%, transparent),
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .magnetic-glow:focus-within::after {
+    opacity: 1;
+  }
+
+  /* --- Animated gradient border for active items --- */
+  .gradient-border-active {
+    position: relative;
+  }
+  .gradient-border-active::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--mint-bright) 50%, transparent),
+      transparent 40%,
+      transparent 60%,
+      color-mix(in oklch, var(--mint) 30%, transparent)
+    );
+    background-size: 300% 300%;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: gradientBorderPulse 4s ease infinite;
+    pointer-events: none;
+  }
+  @keyframes gradientBorderPulse {
+    0%, 100% { background-position: 0% 0%; opacity: 0.6; }
+    50% { background-position: 100% 100%; opacity: 1; }
+  }
+
+  /* --- Mini Bar Chart for Pricing --- */
+  .mini-bar {
+    border-radius: 4px 4px 0 0;
+    transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* --- Tooltip Badge --- */
+  .tooltip-badge-new {
+    background: linear-gradient(135deg, oklch(0.78 0.14 158), oklch(0.72 0.12 172));
+    color: oklch(0.16 0.006 264);
+  }
+  .tooltip-badge-popular {
+    background: linear-gradient(135deg, oklch(0.86 0.17 156), oklch(0.78 0.14 158));
+    color: oklch(0.16 0.006 264);
+  }
+
+  /* ============ Phase 9 — Additional Premium Utilities ============ */
+
+  /* --- Scroll-linked gradient progress for backgrounds --- */
+  .gradient-progress-bg {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklch, var(--mint) 3%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 100% 200%;
+    animation: gradientProgressDrift 10s ease-in-out infinite;
+  }
+  @keyframes gradientProgressDrift {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 0% 100%; }
+  }
+
+  /* --- Chat bubble styles --- */
+  .chat-bubble-bot {
+    background: color-mix(in oklch, oklch(0.18 0.006 264) 80%, transparent);
+    border: 1px solid oklch(1 0 0 / 8%);
+    border-radius: 16px 4px 16px 16px;
+  }
+  .chat-bubble-user {
+    background: color-mix(in oklch, var(--mint) 15%, oklch(0.16 0.006 264));
+    border: 1px solid color-mix(in oklch, var(--mint) 20%, transparent);
+    border-radius: 4px 16px 16px 16px;
+  }
+
+  /* --- Device frame for product preview --- */
+  .device-frame {
+    background: oklch(0.12 0.005 264);
+    border: 1px solid oklch(1 0 0 / 10%);
+    box-shadow:
+      0 40px 120px -20px oklch(0 0 0 / 0.6),
+      0 0 0 1px oklch(1 0 0 / 5%),
+      inset 0 1px 0 0 oklch(1 0 0 / 8%);
+    border-radius: 12px;
+  }
+
+  /* --- Milestone timeline line --- */
+  .timeline-line {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklch, var(--mint) 30%, oklch(1 0 0 / 15%)) 20%,
+      color-mix(in oklch, var(--mint) 40%, oklch(1 0 0 / 15%)) 80%,
+      transparent 100%
+    );
+  }
+
+  /* --- Enhanced focus ring for interactive elements --- */
+  .focus-ring-mint {
+    transition: box-shadow 0.2s ease, outline 0.2s ease;
+  }
+  .focus-ring-mint:focus-visible {
+    outline: 2px solid color-mix(in oklch, var(--mint) 60%, transparent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--mint) 15%, transparent);
+  }
+
+  /* --- Hover lift with subtle shadow --- */
+  .hover-lift {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+               box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -8px oklch(0 0 0 / 0.3);
+  }
+
+  /* --- Text reveal animation for headings --- */
+  .text-reveal {
+    animation: textReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    clip-path: inset(0 100% 0 0);
+  }
+  @keyframes textReveal {
+    to { clip-path: inset(0 0 0 0); }
+  }
+
+  /* --- Smooth background shift for sections --- */
+  .bg-shift {
+    animation: bgShift 15s ease-in-out infinite;
+  }
+  @keyframes bgShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* --- Glassmorphic panel (for chat, product preview, etc) --- */
+  .glass-panel {
+    background: color-mix(in oklch, oklch(0.14 0.005 264) 75%, transparent);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid oklch(1 0 0 / 10%);
+    box-shadow:
+      0 24px 80px -12px oklch(0 0 0 / 0.5),
+      inset 0 1px 0 0 oklch(1 0 0 / 6%);
+  }
+
+  /* --- Responsive touch target minimum 44px --- */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* --- Stagger children animation helper --- */
+  .stagger-children > * {
+    opacity: 0;
+    animation: staggerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2) { animation-delay: 80ms; }
+  .stagger-children > *:nth-child(3) { animation-delay: 160ms; }
+  .stagger-children > *:nth-child(4) { animation-delay: 240ms; }
+  .stagger-children > *:nth-child(5) { animation-delay: 320ms; }
+  .stagger-children > *:nth-child(6) { animation-delay: 400ms; }
+  .stagger-children > *:nth-child(7) { animation-delay: 480ms; }
+  .stagger-children > *:nth-child(8) { animation-delay: 560ms; }
+  @keyframes staggerIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- Orb glow animation for decorative elements --- */
+  .orb-glow {
+    animation: orbGlow 8s ease-in-out infinite;
+  }
+  @keyframes orbGlow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.1); }
+  }
+
+  /* ============ Phase 10 — Premium polish utilities ============ */
+
+  /* Premium elevated card with layered glow — for hero feature cards */
+  .premium-card {
+    background:
+      linear-gradient(
+        180deg,
+        oklch(1 0 0 / 6%) 0%,
+        oklch(1 0 0 / 2%) 100%
+      ),
+      oklch(0.16 0.006 264);
+    border: 1px solid oklch(1 0 0 / 8%);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 6%) inset,
+      0 24px 64px -28px oklch(0 0 0 / 0.9),
+      0 0 0 1px oklch(1 0 0 / 2%);
+    border-top: 1px solid oklch(1 0 0 / 16%);
+    position: relative;
+  }
+  .premium-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--mint) 30%, transparent) 0%,
+      transparent 35%,
+      transparent 65%,
+      color-mix(in oklch, var(--mint-bright) 20%, transparent) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  .premium-card:hover::before {
+    opacity: 1;
+  }
+
+  /* Mint text glow — for highlighted numbers / titles */
+  .text-glow-mint {
+    text-shadow:
+      0 0 20px color-mix(in oklch, var(--mint) 40%, transparent),
+      0 0 40px color-mix(in oklch, var(--mint) 20%, transparent);
+  }
+
+  /* Soft pulse glow for status indicators */
+  .pulse-soft {
+    animation: pulseSoft 2.4s ease-in-out infinite;
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(0.95); }
+  }
+
+  /* Gradient text shift animation for dynamic titles */
+  .gradient-shift {
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease infinite;
+  }
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Subtle grid pattern background */
+  .bg-grid-faint {
+    background-image:
+      linear-gradient(
+        to right,
+        oklch(1 0 0 / 3%) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        oklch(1 0 0 / 3%) 1px,
+        transparent 1px
+      );
+    background-size: 48px 48px;
+  }
+
+  /* Inset glow ring — for active state pills */
+  .inset-glow-ring {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--mint) 30%, transparent),
+      inset 0 0 12px -4px color-mix(in oklch, var(--mint) 25%, transparent),
+      0 0 16px -6px color-mix(in oklch, var(--mint) 35%, transparent);
+  }
+
+  /* Number ticker monospace alignment */
+  .tabular-nums-mint {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "cv01";
+    letter-spacing: -0.02em;
+  }
+
+  /* Premium hover lift with shadow expansion */
+  .hover-lift-premium {
+    transition:
+      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-lift-premium:hover {
+    transform: translateY(-8px) scale(1.015);
+    box-shadow:
+      0 32px 64px -20px oklch(0 0 0 / 0.9),
+      0 0 0 1px color-mix(in oklch, var(--mint) 20%, transparent),
+      0 0 32px -8px color-mix(in oklch, var(--mint) 30%, transparent);
+  }
+
+  /* Conic shimmer ring (for badge achievements) */
+  .conic-shimmer-ring {
+    background: conic-gradient(
+      from var(--angle),
+      var(--mint) 0%,
+      transparent 20%,
+      var(--mint-bright) 40%,
+      transparent 60%,
+      var(--mint) 80%,
+      transparent 100%
+    );
+    animation: rotateAngle 8s linear infinite;
+  }
+  @keyframes rotateAngle {
+    to { --angle: 360deg; }
+  }
+
+  /* Focus ring with mint offset (keyboard nav) */
+  .focus-ring-mint-offset:focus-visible {
+    outline: 2px solid color-mix(in oklch, var(--mint) 80%, transparent);
+    outline-offset: 4px;
+    border-radius: 8px;
+  }
+
+  /* ============ Premium range slider (mint themed) ============ */
+  .range-mint {
+    background: linear-gradient(
+      to left,
+      color-mix(in oklch, var(--mint) 35%, transparent) 0%,
+      color-mix(in oklch, var(--mint) 35%, transparent) var(--range-fill, 50%),
+      oklch(1 0 0 / 8%) var(--range-fill, 50%),
+      oklch(1 0 0 / 8%) 100%
+    );
+    border: 1px solid oklch(1 0 0 / 10%);
+    box-shadow:
+      inset 0 1px 2px oklch(0 0 0 / 0.3),
+      0 0 0 1px oklch(1 0 0 / 4%);
+  }
+  .range-mint::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--mint-bright), var(--mint));
+    border: 2px solid oklch(0.16 0.006 264);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--mint) 50%, transparent),
+      0 4px 12px -2px color-mix(in oklch, var(--mint) 60%, transparent),
+      inset 0 1px 0 0 oklch(1 0 0 / 40%);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .range-mint::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow:
+      0 0 0 2px color-mix(in oklch, var(--mint-bright) 60%, transparent),
+      0 6px 18px -2px color-mix(in oklch, var(--mint-bright) 70%, transparent),
+      inset 0 1px 0 0 oklch(1 0 0 / 40%);
+  }
+  .range-mint::-webkit-slider-thumb:active {
+    transform: scale(1.05);
+  }
+  .range-mint::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--mint-bright), var(--mint));
+    border: 2px solid oklch(0.16 0.006 264);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--mint) 50%, transparent),
+      0 4px 12px -2px color-mix(in oklch, var(--mint) 60%, transparent);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  .range-mint::-moz-range-thumb:hover {
+    transform: scale(1.15);
+  }
+  .range-mint::-moz-range-track {
+    background: transparent;
+    border: none;
   }
 }
