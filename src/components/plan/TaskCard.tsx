@@ -25,6 +25,8 @@ interface TaskCardProps {
   onComplete: (id: string) => void;
   onSkip: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Open the 3-way task action dialog (move to day / move to incompletes / delete). */
+  onAction: (id: string) => void;
   onSettings: (id: string) => void;
   onReset: (id: string) => void; // NEW: undo complete/skip
   onEdit?: (id: string) => void; // edit task details
@@ -38,6 +40,7 @@ export default function TaskCard({
   onComplete,
   onSkip,
   onDelete,
+  onAction,
   onSettings,
   onReset,
   onEdit,
@@ -231,18 +234,9 @@ export default function TaskCard({
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
               </button>
               <button
-                onClick={async () => {
-                  await onSkip(task.id);
-                  toast(getRandomFailureMessage(), {
-                    style: {
-                      background: 'var(--bg-overlay)',
-                      border: '1px solid var(--danger)',
-                      color: 'var(--danger)',
-                    },
-                  });
-                }}
+                onClick={() => onAction(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
-                aria-label="انجام نشد"
+                aria-label="عملیات تسک"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
               </button>
@@ -294,16 +288,11 @@ export default function TaskCard({
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
-              {/* Delete button */}
+              {/* Task action button (opens the 3-way dialog) */}
               <button
-                onClick={async () => {
-                  await onDelete(task.id);
-                  toast('تسک حذف شد', {
-                    style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--foreground-muted)' },
-                  });
-                }}
+                onClick={() => onAction(task.id)}
                 className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
-                aria-label="حذف"
+                aria-label="عملیات تسک"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

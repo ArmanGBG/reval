@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Wand2, Check, X, CalendarDays, Clock, Target, ChevronLeft,
+  Plus, Wand2, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -28,6 +28,7 @@ import { WeeklyPlanner } from './WeeklyPlanner';
 import { PersianCalendar } from './PersianCalendar';
 import { SortableTaskList } from './SortableTaskList';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
+import { TaskActionDialog } from './TaskActionDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import TaskStatsWidget from './TaskStatsWidget';
 
@@ -68,6 +69,55 @@ function PatternButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// ===== Plan Tab Toggle (daily / incompletes) =====
+function PlanTabToggle({
+  tab,
+  onChange,
+  incompleteCount,
+}: {
+  tab: 'daily' | 'incomplete';
+  onChange: (t: 'daily' | 'incomplete') => void;
+  incompleteCount: number;
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+      <button
+        onClick={() => onChange('daily')}
+        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
+          tab === 'daily'
+            ? 'bg-[var(--accent)] text-[var(--bg-deep)]'
+            : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+        }`}
+      >
+        <CalendarDays className="w-3.5 h-3.5" />
+        برنامه روز
+      </button>
+      <button
+        onClick={() => onChange('incomplete')}
+        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
+          tab === 'incomplete'
+            ? 'bg-[var(--warning)] text-[var(--bg-deep)]'
+            : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+        }`}
+      >
+        <Inbox className="w-3.5 h-3.5" />
+        ناقصی‌ها
+        {incompleteCount > 0 && (
+          <span
+            className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
+              tab === 'incomplete'
+                ? 'bg-[var(--bg-deep)]/20 text-[var(--bg-deep)]'
+                : 'bg-[var(--warning)]/20 text-[var(--warning)]'
+            }`}
+          >
+            {toPersianDigits(incompleteCount)}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ===== Main Component =====
 export default function PlanView() {
   const {
@@ -89,12 +139,21 @@ export default function PlanView() {
   const [weeklyPlannerOpen, setWeeklyPlannerOpen] = useState(false);
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
+  const [planTab, setPlanTab] = useState<'daily' | 'incomplete'>('daily');
+  const [actionTaskId, setActionTaskId] = useState<string | null>(null);
 
-  // Filter tasks for current student + selected date
+  // Filter tasks for current student + selected date.
+  // Incomplete drafts (detailsCompleted === false) are excluded from the daily
+  // view — they live in the "ناقصی‌ها" tab until the user fills in their details.
   // Sort: pending first (by order), then completed/skipped at the bottom
   const filteredTasks = useMemo(() => {
     return tasks
-      .filter((t) => t.date === selectedDate && t.studentId === studentId)
+      .filter(
+        (t) =>
+          t.date === selectedDate &&
+          t.studentId === studentId &&
+          t.detailsCompleted !== false
+      )
       .sort((a, b) => {
         // Pending tasks first, then completed/skipped
         const aPending = a.completed === null ? 0 : 1;
@@ -102,7 +161,15 @@ export default function PlanView() {
         if (aPending !== bPending) return aPending - bPending;
         return a.order - b.order;
       });
-  }, [tasks, selectedDate]);
+  }, [tasks, selectedDate, studentId]);
+
+  // Incomplete tasks (detailsCompleted === false) for this student — shown in
+  // the "ناقصی‌ها" tab. Sorted by creation order (most recent first).
+  const incompleteTasks = useMemo(() => {
+    return tasks
+      .filter((t) => t.studentId === studentId && t.detailsCompleted === false)
+      .sort((a, b) => b.order - a.order);
+  }, [tasks, studentId]);
 
   // Dynamic header title
   const headerTitle = useMemo(() => {
@@ -192,6 +259,43 @@ export default function PlanView() {
     [deleteTask]
   );
 
+  // ===== Task action dialog handlers =====
+  const actionTask = useMemo(
+    () => tasks.find((t) => t.id === actionTaskId) ?? null,
+    [tasks, actionTaskId]
+  );
+
+  const handleMoveDate = useCallback(
+    async (taskId: string, newDate: string) => {
+      await updateTask(taskId, { date: newDate, detailsCompleted: true });
+      const d = parseLocalDate(newDate);
+      toast.success(`تسک به ${getPersianWeekdayName(d)} ${formatPersianDate(d)} منتقل شد`, {
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
+      });
+    },
+    [updateTask]
+  );
+
+  const handleMoveToIncomplete = useCallback(
+    async (taskId: string) => {
+      await updateTask(taskId, { detailsCompleted: false });
+      toast('تسک به ناقصی‌ها منتقل شد', {
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
+      });
+    },
+    [updateTask]
+  );
+
+  const handleActionDelete = useCallback(
+    async (taskId: string) => {
+      await deleteTask(taskId);
+      toast('تسک حذف شد', {
+        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--foreground-muted)' },
+      });
+    },
+    [deleteTask]
+  );
+
   const handleReorder = useCallback(
     (reordered: Task[]) => {
       reorderTasks(reordered);
@@ -227,146 +331,81 @@ export default function PlanView() {
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
           <motion.h1
-            key={headerTitle}
+            key={planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl font-bold text-[var(--foreground)]"
           >
-            {headerTitle}
+            {planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
           </motion.h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setWeeklyPlannerOpen(true)}
-              className="icon-btn w-10 h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--accent)]"
-              aria-label="برنامه هفتگی"
-            >
-              <CalendarDays className="w-4.5 h-4.5" />
-            </button>
+            {planTab === 'daily' && (
+              <button
+                onClick={() => setWeeklyPlannerOpen(true)}
+                className="icon-btn w-10 h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--accent)]"
+                aria-label="برنامه هفتگی"
+              >
+                <CalendarDays className="w-4.5 h-4.5" />
+              </button>
+            )}
             <PatternButton onClick={() => setAiModalOpen(true)} />
           </div>
         </div>
-        <p className="text-xs text-[var(--foreground-muted)] mb-3">{daySubtitle}</p>
+        <p className="text-xs text-[var(--foreground-muted)] mb-3">
+          {planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+        </p>
 
-        {/* Task Stats Widget */}
-        <TaskStatsWidget stats={taskStats} />
-
-        {/* Persian Calendar */}
-        <div className="mt-4 mb-5">
-          <PersianCalendar
-            selectedDate={selectedDate}
-            onSelect={setSelectedDate}
-            taskCountByDate={taskCountByDate}
-            completedCountByDate={completedCountByDate}
-          />
+        {/* Plan Tab Toggle */}
+        <div className="mb-4">
+          <PlanTabToggle tab={planTab} onChange={setPlanTab} incompleteCount={incompleteTasks.length} />
         </div>
 
-        {/* Task Cards */}
-        <div className="space-y-3">
-          {filteredTasks.length === 0 ? (
-            <EmptyState onAdd={() => setAddDrawerOpen(true)} />
-          ) : (
-            <SortableTaskList
-              tasks={filteredTasks}
-              onComplete={handleComplete}
-              onSkip={handleSkip}
-              onDelete={handleDeleteTask}
-              onSettings={setSettingsTaskId}
-              onReset={handleReset}
-              onReorder={handleReorder}
-              onEdit={setDetailsTaskId}
-            />
-          )}
-        </div>
-
-        {/* FAB: Add Task */}
-        <motion.button
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setAddDrawerOpen(true)}
-          className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
-          aria-label="اضافه کردن تسک"
-        >
-          <Plus className="w-5 h-5" />
-          <span>تسک جدید</span>
-        </motion.button>
-      </div>
-
-      {/* ===================================================
-          DESKTOP LAYOUT (calendar + task list sidebar)
-          =================================================== */}
-      <div className="hidden md:block">
-        {/* Desktop Header */}
-        <div className="flex items-end justify-between mb-8 pb-6 border-b border-[var(--border)]">
-          <div className="flex flex-col gap-2 min-w-0">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
-              <span>برنامه‌ریزی</span>
-              <ChevronLeft className="w-3 h-3 flip-rtl" />
-              <span className="text-[var(--accent)]">{headerTitle}</span>
-            </div>
-            <motion.h1
-              key={headerTitle}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-3xl md:text-4xl font-bold text-[var(--foreground)]"
-            >
-              {headerTitle}
-            </motion.h1>
-            <p className="text-sm text-[var(--foreground-muted)]">{daySubtitle}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setWeeklyPlannerOpen(true)}
-              className="btn-hover flex items-center gap-2 h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-sm font-medium"
-            >
-              <CalendarDays className="w-4 h-4" />
-              برنامه هفتگی
-            </button>
-            <PatternButton onClick={() => setAiModalOpen(true)} />
-          </div>
-        </div>
-
-        {/* 2-col: calendar sidebar + task list */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ===== Left: Calendar + Add Task ===== */}
-          <aside className="lg:col-span-1 space-y-4">
-            <PersianCalendar
-              selectedDate={selectedDate}
-              onSelect={setSelectedDate}
-              taskCountByDate={taskCountByDate}
-              completedCountByDate={completedCountByDate}
-            />
-
-            {/* Add task CTA */}
-            <div className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4">
-              <button
-                onClick={() => setAddDrawerOpen(true)}
-                className="glow-hover btn-hover flex items-center justify-center gap-2 w-full py-2.5 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-sm min-h-[44px]"
-              >
-                <Plus className="w-4 h-4" />
-                تسک جدید
-              </button>
-              <button
-                onClick={() => setAiModalOpen(true)}
-                className="btn-hover flex items-center justify-center gap-2 w-full py-2.5 mt-2 rounded-[var(--radius)] border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)] font-medium text-sm min-h-[44px]"
-              >
-                <Wand2 className="w-4 h-4" />
-                هوش مصنوعی
-              </button>
-            </div>
-
-            {/* Task Stats Widget (desktop sidebar) */}
+        {planTab === 'daily' ? (
+          <>
+            {/* Task Stats Widget */}
             <TaskStatsWidget stats={taskStats} />
-          </aside>
 
-          {/* ===== Right: Task List ===== */}
-          <div className="lg:col-span-2 space-y-3">
-            {filteredTasks.length === 0 ? (
-              <EmptyState onAdd={() => setAddDrawerOpen(true)} />
+            {/* Persian Calendar */}
+            <div className="mt-4 mb-5">
+              <PersianCalendar
+                selectedDate={selectedDate}
+                onSelect={setSelectedDate}
+                taskCountByDate={taskCountByDate}
+                completedCountByDate={completedCountByDate}
+              />
+            </div>
+
+            {/* Task Cards */}
+            <div className="space-y-3">
+              {filteredTasks.length === 0 ? (
+                <EmptyState onAdd={() => setAddDrawerOpen(true)} />
+              ) : (
+                <SortableTaskList
+                  tasks={filteredTasks}
+                  onComplete={handleComplete}
+                  onSkip={handleSkip}
+                  onDelete={handleDeleteTask}
+                  onAction={setActionTaskId}
+                  onSettings={setSettingsTaskId}
+                  onReset={handleReset}
+                  onReorder={handleReorder}
+                  onEdit={setDetailsTaskId}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          /* Incomplete tasks tab */
+          <div className="space-y-3">
+            {incompleteTasks.length === 0 ? (
+              <IncompleteEmptyState />
             ) : (
               <SortableTaskList
-                tasks={filteredTasks}
+                tasks={incompleteTasks}
                 onComplete={handleComplete}
                 onSkip={handleSkip}
                 onDelete={handleDeleteTask}
+                onAction={setActionTaskId}
                 onSettings={setSettingsTaskId}
                 onReset={handleReset}
                 onReorder={handleReorder}
@@ -374,7 +413,134 @@ export default function PlanView() {
               />
             )}
           </div>
+        )}
+
+        {/* FAB: Add Task (daily tab only) */}
+        {planTab === 'daily' && (
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setAddDrawerOpen(true)}
+            className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
+            aria-label="اضافه کردن تسک"
+          >
+            <Plus className="w-5 h-5" />
+            <span>تسک جدید</span>
+          </motion.button>
+        )}
+      </div>
+
+      {/* ===================================================
+          DESKTOP LAYOUT (calendar + task list sidebar)
+          =================================================== */}
+      <div className="hidden md:block">
+        {/* Desktop Header */}
+        <div className="flex items-end justify-between mb-6 pb-6 border-b border-[var(--border)]">
+          <div className="flex flex-col gap-2 min-w-0">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
+              <span>برنامه‌ریزی</span>
+              <ChevronLeft className="w-3 h-3 flip-rtl" />
+              <span className="text-[var(--accent)]">{planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
+            </div>
+            <motion.h1
+              key={planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl md:text-4xl font-bold text-[var(--foreground)]"
+            >
+              {planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+            </motion.h1>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              {planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <PlanTabToggle tab={planTab} onChange={setPlanTab} incompleteCount={incompleteTasks.length} />
+            {planTab === 'daily' && (
+              <button
+                onClick={() => setWeeklyPlannerOpen(true)}
+                className="btn-hover flex items-center gap-2 h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-sm font-medium"
+              >
+                <CalendarDays className="w-4 h-4" />
+                برنامه هفتگی
+              </button>
+            )}
+            <PatternButton onClick={() => setAiModalOpen(true)} />
+          </div>
         </div>
+
+        {planTab === 'daily' ? (
+          /* 2-col: calendar sidebar + task list */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* ===== Left: Calendar + Add Task ===== */}
+            <aside className="lg:col-span-1 space-y-4">
+              <PersianCalendar
+                selectedDate={selectedDate}
+                onSelect={setSelectedDate}
+                taskCountByDate={taskCountByDate}
+                completedCountByDate={completedCountByDate}
+              />
+
+              {/* Add task CTA */}
+              <div className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4">
+                <button
+                  onClick={() => setAddDrawerOpen(true)}
+                  className="glow-hover btn-hover flex items-center justify-center gap-2 w-full py-2.5 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-sm min-h-[44px]"
+                >
+                  <Plus className="w-4 h-4" />
+                  تسک جدید
+                </button>
+                <button
+                  onClick={() => setAiModalOpen(true)}
+                  className="btn-hover flex items-center justify-center gap-2 w-full py-2.5 mt-2 rounded-[var(--radius)] border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)] font-medium text-sm min-h-[44px]"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  هوش مصنوعی
+                </button>
+              </div>
+
+              {/* Task Stats Widget (desktop sidebar) */}
+              <TaskStatsWidget stats={taskStats} />
+            </aside>
+
+            {/* ===== Right: Task List ===== */}
+            <div className="lg:col-span-2 space-y-3">
+              {filteredTasks.length === 0 ? (
+                <EmptyState onAdd={() => setAddDrawerOpen(true)} />
+              ) : (
+                <SortableTaskList
+                  tasks={filteredTasks}
+                  onComplete={handleComplete}
+                  onSkip={handleSkip}
+                  onDelete={handleDeleteTask}
+                  onAction={setActionTaskId}
+                  onSettings={setSettingsTaskId}
+                  onReset={handleReset}
+                  onReorder={handleReorder}
+                  onEdit={setDetailsTaskId}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Incomplete tasks tab — full width */
+          <div className="max-w-3xl mx-auto space-y-3">
+            {incompleteTasks.length === 0 ? (
+              <IncompleteEmptyState />
+            ) : (
+              <SortableTaskList
+                tasks={incompleteTasks}
+                onComplete={handleComplete}
+                onSkip={handleSkip}
+                onDelete={handleDeleteTask}
+                onAction={setActionTaskId}
+                onSettings={setSettingsTaskId}
+                onReset={handleReset}
+                onReorder={handleReorder}
+                onEdit={setDetailsTaskId}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* ===================================================
@@ -445,6 +611,17 @@ export default function PlanView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ===== Task Action Dialog (move to day / move to incompletes / delete) ===== */}
+      <TaskActionDialog
+        task={actionTask}
+        open={!!actionTaskId}
+        onOpenChange={(open) => !open && setActionTaskId(null)}
+        onMoveDate={handleMoveDate}
+        onMoveToIncomplete={handleMoveToIncomplete}
+        onDelete={handleActionDelete}
+        taskCountByDate={taskCountByDate}
+      />
     </div>
   );
 }
@@ -465,6 +642,21 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <Plus className="w-4 h-4" />
         تسک جدید
       </button>
+    </div>
+  );
+}
+
+// ===== Incomplete Empty State =====
+function IncompleteEmptyState() {
+  return (
+    <div className="surface-1 rounded-2xl p-10 text-center">
+      <div className="w-12 h-12 rounded-2xl bg-[rgba(216,150,20,0.12)] flex items-center justify-center mx-auto mb-3">
+        <Inbox className="w-5 h-5 text-[var(--warning)]" />
+      </div>
+      <p className="text-sm text-[var(--foreground)] font-medium mb-1">تسک ناقصی وجود نداره</p>
+      <p className="text-xs text-[var(--foreground-muted)]">
+        تسک‌هایی که به ناقصی‌ها منتقل می‌کنی اینجا نمایش داده میشن
+      </p>
     </div>
   );
 }

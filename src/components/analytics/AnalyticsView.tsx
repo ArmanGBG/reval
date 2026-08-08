@@ -30,7 +30,7 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import WeeklyGoalCard from '@/components/analytics/WeeklyGoalCard';
-import StudyHeatmap from '@/components/analytics/StudyHeatmap';
+// StudyHeatmap removed per product request — نقشه مطالعه section deleted from both mobile + desktop views.
 import { toast } from 'sonner';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
@@ -330,16 +330,6 @@ export default function AnalyticsView() {
 
         {view === 'نمای کلی' && (
           <>
-            {/* Study Heatmap */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="mb-6"
-            >
-              <StudyHeatmap />
-            </motion.div>
-
             {/* Weekly Study Goal */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -467,16 +457,6 @@ export default function AnalyticsView() {
 
         {view === 'نمای کلی' && (
           <>
-            {/* Study Heatmap */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-              className="mb-8"
-            >
-              <StudyHeatmap />
-            </motion.div>
-
             {/* Weekly Study Goal */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}

@@ -27,6 +27,7 @@ interface SortableTaskListProps {
   onComplete: (id: string) => void;
   onSkip: (id: string) => void;
   onDelete: (id: string) => void;
+  onAction: (id: string) => void;
   onSettings: (id: string) => void;
   onReset: (id: string) => void;
   onReorder: (tasks: Task[]) => void;
@@ -40,6 +41,7 @@ function SortableTaskCard({
   onComplete,
   onSkip,
   onDelete,
+  onAction,
   onSettings,
   onReset,
   onEdit,
@@ -49,6 +51,7 @@ function SortableTaskCard({
   onComplete: (id: string) => void;
   onSkip: (id: string) => void;
   onDelete: (id: string) => void;
+  onAction: (id: string) => void;
   onSettings: (id: string) => void;
   onReset: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -77,6 +80,7 @@ function SortableTaskCard({
         onComplete={onComplete}
         onSkip={onSkip}
         onDelete={onDelete}
+        onAction={onAction}
         onSettings={onSettings}
         onReset={onReset}
         onEdit={onEdit}
@@ -92,6 +96,7 @@ export function SortableTaskList({
   onComplete,
   onSkip,
   onDelete,
+  onAction,
   onSettings,
   onReset,
   onReorder,
@@ -139,6 +144,7 @@ export function SortableTaskList({
                 onComplete={onComplete}
                 onSkip={onSkip}
                 onDelete={onDelete}
+                onAction={onAction}
                 onSettings={onSettings}
                 onReset={onReset}
                 onEdit={onEdit}
