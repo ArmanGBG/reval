@@ -3596,3 +3596,51 @@ Stage Summary:
 - داده‌های مورد نیاز از محیط خود اپ seed شد: ۴۰ تسک تاریکی برای آنالیز + ۱۰ فلش‌کارت لغات ادبیات.
 - اسکریپت seed-history.js به repo اضافه شد (قابل اجرای مجدد، idempotent).
 - کامیت 55e4ceb به github.com/ArmanGBG/reval پوش شد.
+
+---
+Task ID: TASK-ACTION-DIALOG-INCOMPLETES-NO-HEATMAP
+Agent: main (Z.ai Code)
+Task: ۱) کلیک روی ضربدر تسک → دیالوگ ۳ گزینه‌ای (انتقال به روز/ناقصی/حذف) ۲) تب ناقصی‌ها ۳) حذف نقشه مطالعه از گزارش
+
+Work Log:
+- ساخت TaskActionDialog.tsx: دیالوگ ۳ گزینه‌ای با دو مود (menu / move-date):
+  • گزینه ۱: انتقال به روز مشخص — تقویم فارسی در دیالوگ، انتخاب روز → updateTask(date, detailsCompleted=true)
+  • گزینه ۲: انتقال به ناقصی‌ها — updateTask(detailsCompleted=false)
+  • گزینه ۳: حذف کل تسک — deleteTask
+  • انیمیشن framer-motion بین menu و calendar-picker، reset خودکار هنگام باز شدن.
+- ویرایش TaskCard.tsx:
+  • دکمه X (was "انجام نشد" skip) اکنون onAction(task.id) را صدا می‌زند (به‌جای onSkip).
+  • دکمه Trash2 (was delete) هم onAction(task.id) را صدا می‌زند.
+  • prop جدید onAction به TaskCardProps اضافه شد.
+- ویرایش SortableTaskList.tsx: onAction از PlanView به TaskCard عبور داده شد.
+- ویرایش PlanView.tsx:
+  • PlanTabToggle (برنامه روز / ناقصی‌ها) با badge شمارش ناقصی‌ها.
+  • فیلتر detailsCompleted!==false از نمای روزانه (تسک‌های ناقص دیگر در برنامه روز نمی‌آیند).
+  • incompleteTasks useMemo برای تب ناقصی‌ها (detailsCompleted===false).
+  • هندلرهای handleMoveDate / handleMoveToIncomplete / handleActionDelete.
+  • رندر شرطی: تب روزانه = تقویم + آمار + تسک‌ها؛ تب ناقصی‌ها = لیست کامل‌عرض تسک‌های ناقص.
+  • IncompleteEmptyState برای حالت خالی.
+  • TaskActionDialog در shared modals.
+  • هر دو لایوت موبایل و دسکتاپ به‌روز شدند.
+- ویرایش AnalyticsView.tsx:
+  • حذف StudyHeatmap از هر دو نسخه موبایل (خط ۳۳۳) و دسکتاپ (خط ۴۷۰).
+  • حذف import StudyHeatmap.
+  • نقشه مطالعه کلاً از گزارش حذف شد.
+
+Verification Results:
+- Plan view: تب‌های «برنامه روز» و «ناقصی‌ها» با badge نمایش داده می‌شوند ✅
+- کلیک X روی تسک → دیالوگ «با این تسک چی کار کنم؟» با ۳ گزینه باز می‌شود ✅
+- «انتقال به ناقصی‌ها» → تسک به تب ناقصی‌ها منتقل شد (PATCH 200) ✅
+- «انتقال به روز مشخص» → تقویم فارسی در دیالوگ، انتخاب روز ۱۵ → PATCH 200 ✅
+- تب ناقصی‌ها: تسک با دکمه «تکمیل» نمایش داده می‌شود ✅
+- Analytics: نقشه مطالعه (StudyHeatmap) کاملاً حذف شده — نه متن، نه کامپوننت ✅
+- VLM تأیید: دیالوگ، تقویم، تب ناقصی‌ها، و آنالیز بدون heatmap همگی درست ✅
+- lint: ۰ error، ۳ warning پیش‌existing ✅
+- push موفق: f446f23..99921f1 main -> main (IN SYNC) ✅
+
+Stage Summary:
+- ۳ فیچر پیاده‌سازی و تأیید شد:
+  1. دیالوگ ۳ گزینه‌ای تسک (انتقال به روز با تقویم / انتقال به ناقصی‌ها / حذف)
+  2. تب ناقصی‌ها با شمارش زنده و لیست تسک‌های ناقص
+  3. حذف کامل نقشه مطالعه از تب گزارش
+- کامیت 99921f1 به github.com/ArmanGBG/reval پوش شد.
