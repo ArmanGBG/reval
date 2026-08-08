@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion, useInView } from "framer-motion";
 import { CalendarDays, BarChart3, BookOpen, Users } from "lucide-react";
 
@@ -13,6 +14,8 @@ const FEATURES = [
     description:
       "اضافه کردن تسک به صورت روزانه و بازه دلخواه، تعریف‌شده با تمام جزئیات و نیازهای یک دانش‌آموز. هم امتحانات نهایی، هم کنکور!",
     accent: "from-emerald-500 to-mint",
+    screenshot: "/landing-shots/feature-planning.png",
+    screenshotAlt: "نمای برنامه هفتگی روال با تسک‌های روزانه",
   },
   {
     icon: BarChart3,
@@ -20,6 +23,8 @@ const FEATURES = [
     description:
       "آنالیز جامع موارد مطالعه‌شده به صورت روزانه و بازه دلخواه، بر اساس عملکرد خودت. گزارش آماری به تفکیک دروس بگیر!",
     accent: "from-cyan-500 to-mint",
+    screenshot: "/landing-shots/feature-analytics.png",
+    screenshotAlt: "گزارش آماری و نقشه حرارتی مطالعه در روال",
   },
   {
     icon: BookOpen,
@@ -27,6 +32,8 @@ const FEATURES = [
     description:
       "روتین‌های حفظی امتحان نهایی و کنکور رو مرور کن! لغات ادبیات و مطالب کلیدی هر درس، روی نوک انگشتت.",
     accent: "from-violet-500 to-mint",
+    screenshot: "/landing-shots/feature-flashcards.png",
+    screenshotAlt: "فلش‌کارت هوشمند با مرور فاصله‌دار روال",
   },
   {
     icon: Users,
@@ -34,6 +41,8 @@ const FEATURES = [
     description:
       "امکان پایش دانش‌آموزان مختلف به تفکیک پنل، ارائه برنامه، آزمون، و رصد اطلاعات مطالعه دانش‌آموز با بازه دلخواه.",
     accent: "from-amber-500 to-mint",
+    screenshot: "/landing-shots/feature-advisor.png",
+    screenshotAlt: "پنل مشاور روال با توزیع وضعیت دانش‌آموزان",
   },
 ];
 
@@ -53,7 +62,7 @@ function FeatureCard({
       initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
       animate={inView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
       transition={{ duration: 0.7, delay: index * 0.12, ease: easeOut }}
-      className="group relative overflow-hidden rounded-2xl border border-border/40 bg-surface p-6 sm:p-8 transition-all duration-300 hover:border-border/70 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/40 bg-surface transition-all duration-300 hover:border-border/70 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4)]"
     >
       {/* Subtle gradient glow on hover */}
       <div
@@ -63,29 +72,51 @@ function FeatureCard({
         }}
       />
 
-      {/* Icon */}
-      <div className="relative mb-5 inline-flex items-center justify-center rounded-xl border border-border/30 bg-background/50 p-3">
-        <feature.icon className="size-6 text-mint" />
-        <div className="absolute inset-0 rounded-xl bg-mint/[0.04] blur-sm" />
+      {/* Screenshot — browser-frame style preview */}
+      <div className="relative aspect-[16/10] overflow-hidden border-b border-border/40 bg-background/60">
+        {/* Browser chrome dots */}
+        <div className="absolute left-4 top-3 z-20 flex gap-1.5">
+          <span className="size-2.5 rounded-full bg-white/15" />
+          <span className="size-2.5 rounded-full bg-white/15" />
+          <span className="size-2.5 rounded-full bg-white/15" />
+        </div>
+        <Image
+          src={feature.screenshot}
+          alt={feature.screenshotAlt}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
+          className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+        />
+        {/* Subtle top fade for the chrome dots legibility */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b from-background/50 to-transparent" />
       </div>
 
-      {/* Title */}
-      <h3 className="relative mb-3 font-extrabold text-lg leading-snug tracking-tight text-foreground sm:text-xl">
-        {feature.title}
-      </h3>
+      {/* Content */}
+      <div className="relative flex flex-1 flex-col p-6 sm:p-7">
+        {/* Icon */}
+        <div className="relative mb-4 inline-flex items-center justify-center rounded-xl border border-border/30 bg-background/50 p-3 self-start">
+          <feature.icon className="size-6 text-mint" />
+          <div className="absolute inset-0 rounded-xl bg-mint/[0.04] blur-sm" />
+        </div>
 
-      {/* Description */}
-      <p className="relative text-sm leading-relaxed text-muted-foreground/80 sm:text-[0.938rem]">
-        {feature.description}
-      </p>
+        {/* Title */}
+        <h3 className="relative mb-2.5 font-extrabold text-lg leading-snug tracking-tight text-foreground sm:text-xl">
+          {feature.title}
+        </h3>
 
-      {/* Bottom accent line */}
-      <div
-        className="mt-6 h-[2px] w-12 rounded-full opacity-40 transition-all duration-300 group-hover:w-20 group-hover:opacity-70"
-        style={{
-          background: `linear-gradient(to right, var(--mint), transparent)`,
-        }}
-      />
+        {/* Description */}
+        <p className="relative text-sm leading-relaxed text-muted-foreground/80 sm:text-[0.938rem]">
+          {feature.description}
+        </p>
+
+        {/* Bottom accent line */}
+        <div
+          className="mt-auto pt-6 h-[2px] w-12 rounded-full opacity-40 transition-all duration-300 group-hover:w-20 group-hover:opacity-70"
+          style={{
+            background: `linear-gradient(to right, var(--mint), transparent)`,
+          }}
+        />
+      </div>
     </motion.div>
   );
 }
