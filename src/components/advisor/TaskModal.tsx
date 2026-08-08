@@ -140,6 +140,8 @@ export function TaskModal({
         chapterId: selection.chapterId ?? null,
         topicId: selection.topicId ?? null,
         topicModeId: selection.topicModeId ?? null,
+        pageStart: selection.pageStart ?? null,
+        pageEnd: selection.pageEnd ?? null,
         detailsCompleted: true,
       });
       toast.success('وظیفه با موفقیت ویرایش شد');
@@ -165,8 +167,8 @@ export function TaskModal({
         chapterId: selection.chapterId || null,
         topicId: selection.topicId || null,
         topicModeId: selection.topicModeId || null,
-        pageStart: null,
-        pageEnd: null,
+        pageStart: selection.pageStart ?? null,
+        pageEnd: selection.pageEnd ?? null,
         detailsCompleted: false,
       };
       await addTask(newTask);

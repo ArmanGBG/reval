@@ -50,7 +50,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   }, []);
 
   // Can quick-save once subject is selected
-  const canQuickSave = !!selection.subjectId && !!selection.subjectName;
+  const canQuickSave = !!selection.subjectId && !!selection.subjectName && !!selection.chapterId;
 
   // Can full-save once subject + activity + time are set
   const canFullSave = canQuickSave && activities.length > 0 && Number(minutes) > 0;
@@ -76,8 +76,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     chapterId: selection.chapterId ?? null,
     topicId: selection.topicId ?? null,
     topicModeId: selection.topicModeId ?? null,
-    pageStart: null,
-    pageEnd: null,
+    pageStart: selection.pageStart ?? null,
+    pageEnd: selection.pageEnd ?? null,
     detailsCompleted,
   });
 
@@ -192,23 +192,36 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
           {step === 3 && (
             <div className="space-y-5">
               {/* Summary of what was selected */}
-              <div className="flex items-center gap-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] p-3">
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
-                />
-                <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
-                {selection.displayText && (
-                  <>
-                    <span className="text-[var(--border-strong)]">·</span>
-                    <span className="text-xs text-[var(--foreground-muted)] truncate">{selection.displayText}</span>
-                  </>
+              <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
+                  />
+                  <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium mr-auto ${
+                    fieldType === 'کنکور' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                  }`}>
+                    {fieldType}
+                  </span>
+                </div>
+                {selection.topicNames && selection.topicNames.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selection.topicNames.map((name, i) => (
+                      <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20">
+                        {name}
+                      </span>
+                    ))}
+                  </div>
                 )}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium mr-auto ${
-                  fieldType === 'کنکور' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                }`}>
-                  {fieldType}
-                </span>
+                {selection.displayText && (!selection.topicNames || selection.topicNames.length === 0) && (
+                  <p className="text-xs text-[var(--foreground-muted)]">{selection.displayText}</p>
+                )}
+                {selection.pageStart != null && selection.pageEnd != null && (
+                  <p className="text-[10px] text-[var(--foreground-subtle)]">
+                    صفحات {selection.pageStart} تا {selection.pageEnd}
+                  </p>
+                )}
               </div>
 
               {/* Activity types */}

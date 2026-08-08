@@ -36,7 +36,7 @@ function TaskDetailsForm({ task, open, onOpenChange, grade, major, onSave }: {
   const [pageEnd, setPageEnd] = useState(task.pageEnd == null ? '' : String(task.pageEnd));
   const [saving, setSaving] = useState(false);
 
-  const valid = !!selection.subjectName && !!selection.displayText && activities.length > 0 && Number(minutes) > 0;
+  const valid = !!selection.subjectName && (!!selection.displayText || (selection.topicNames && selection.topicNames.length > 0)) && activities.length > 0 && Number(minutes) > 0;
   const submit = async () => {
     if (!valid) return toast.error('مبحث، نوع فعالیت و زمان را کامل کنید');
     setSaving(true);
@@ -46,7 +46,7 @@ function TaskDetailsForm({ task, open, onOpenChange, grade, major, onSave }: {
         subject: selection.subjectName!, subjectColor: selection.subjectColor ?? task.subjectColor,
         topic: selection.displayText!, chapterId: selection.chapterId ?? null,
         topicId: selection.topicId ?? null, topicModeId: selection.topicModeId ?? null,
-        pageStart: pageStart ? Number(pageStart) : null, pageEnd: pageEnd ? Number(pageEnd) : null,
+        pageStart: selection.pageStart ?? (pageStart ? Number(pageStart) : null), pageEnd: selection.pageEnd ?? (pageEnd ? Number(pageEnd) : null),
         activityTypes: activities, targetTimeMinutes: Number(minutes),
         targetTestCount: tests ? Number(tests) : 0, detailsCompleted: true,
       });
