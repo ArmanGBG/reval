@@ -3535,3 +3535,35 @@ Stage Summary:
 - دو سبز هم‌رنگ‌فام: emerald برای دکمه‌های اصلی/active states اپ، sage برای دکمه‌های CTA لندینگ (با متن تیره) و tints/glows.
 - سایر فیچرها (auth, dashboard, advisor, institute, super-admin, tools, analytics, settings) بدون تغییر فانکشن — فقط رنگ اکسنت به سبز تغییر کرد.
 - سرور dev با daemon پایدار اجراست. preview آماده است.
+
+---
+Task ID: GITHUB-PUSH
+Agent: main (Z.ai Code)
+Task: پوش پروژه به گیت‌هاب (github.com/ArmanGBG/reval)
+
+Work Log:
+- بررسی وضعیت git محلی: remoteای تنظیم نشده بود؛ ۳ کامیت sandbox با پیام UUID (تاریخچه نامرتبط با remote).
+- اعتبارسنجی PAT ارائه‌شده توسط کاربر: GET /api/github.com/user → login: ArmanGBB، دسترسی admin+push روی ArmanGBG/reval تأیید شد.
+- افزودن remote origin → https://github.com/ArmanGBG/reval.git (بدون توکن در URL) و fetch origin/main.
+- کشف: remote main در commit 91de1be بود (۳ کامیت فیچر جدید: multi-select topics, unified task flow, curriculum from Excel). بررسی فایل‌های تغییریافته‌ی این ۳ کامیت نشان داد working tree محلی شامل همه‌ی آن‌هاست (یعنی کلون از آخرین state انجام شده بود) → جایگزینی لندینگ + تم سبز روی ۹۱de1be، بدون برگشت فیچرها.
+- برنامه‌ی پوش: به‌جای force-push (که تاریخچه‌ی remote را نابود می‌کرد)، working tree به‌عنوان یک کامیت تمیز روی origin/main نشست:
+  1. git reset origin/main (mixed) — HEAD و index به remote، working tree دست‌نخورده.
+  2. بازگرداندن package-lock.json از origin/main (remote آن را داشت؛ نباید حذف می‌شد).
+  3. بازنویسی .gitignore: پذیرش قواعد اضافی remote (db/*.db, tool-results/, upload/, reval/) + حذف *.png بیش‌ازحد عام (تا assetهای PNG لندینگ track شوند) + افزودن .zscripts/*.pid.
+  4. git add -A — ۱۶۷ فایل stage شد، فایل‌های junk (db/custom.db, tool-results/, .zscripts/dev-daemon.pid) به‌خاطر gitignore جدید به‌صورت خودکار مستثنی شدند.
+  5. commit با پیام توصیفی کامل (لندینگ + تم سبز + daemon + .gitignore).
+  6. push با credential helper یک‌بار مصرف (توکن در env var، هرگز در .git/config ذخیره نشد).
+
+Verification Results:
+- push موفق: 91de1be..013c8b7 main -> main (fast-forward، بدون از دست رفتن تاریخچه).
+- تأیید از API گیت‌هاب: commit 013c8b7 روی remote قابل‌مشاهده است.
+  html_url: https://github.com/ArmanGBG/reval/commit/013c8b7249abc8b9f95b8b49d540302c505f3044
+- local main == remote main (013c8b7249abc8b9f95b8b49d540302c505f3044) → IN SYNC.
+- dev server همچنان زنده (PID 5301, 2h43m uptime, port 3000 listening).
+
+Stage Summary:
+- پروژه با موفقیت به github.com/ArmanGBG/reval پوش شد.
+- فقط یک کامیت تمیز (013c8b7) به‌عنوان fast-forward روی main اضافه شد — تاریخچه‌ی remote کاملاً حفظ شد (۹۱de1be و کامیت‌های قبلی دست‌نخورده).
+- فایل‌های junk (دیتابیس local، tool-results، PID فایل‌ها) به remote پوش نشدند.
+- package-lock.json (که remote داشت) حذف نشد.
+- توکن PAT در هیچ فایل ذخیره نشد؛ remote URL بدون توکن است.
