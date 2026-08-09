@@ -11,7 +11,7 @@ type SectionItem = {
 
 const SECTIONS: SectionItem[] = [
   { id: "top", label: "آغاز" },
-  { id: "features", label: "امکانات" },
+  { id: "features", label: "قابلیت‌ها" },
   { id: "product-preview", label: "محصول" },
   { id: "pricing", label: "قیمت" },
   { id: "trusted-by", label: "اعتماد" },

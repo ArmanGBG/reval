@@ -58,6 +58,8 @@ server.log
 *.log
 db/*.db
 db/*.db-journal
+prisma/*.db
+prisma/*.db-journal
 tool-results/
 upload/
 reval/

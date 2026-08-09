@@ -118,7 +118,16 @@ export async function PATCH(
     data.pageEnd = normalized.pageEnd;
     data.isLastPage = normalized.isLastPage;
 
-    const topic = await db.topic.update({ where: { id: topicId }, data });
+    const topic = await db.$transaction(async (tx) => {
+      const updated = await tx.topic.update({ where: { id: topicId }, data });
+      if (typeof data.title === 'string') {
+        await tx.task.updateMany({
+          where: { topicId },
+          data: { topic: updated.title },
+        });
+      }
+      return updated;
+    });
     return NextResponse.json({ topic });
   } catch (error) {
     console.error('PATCH topic error:', error);

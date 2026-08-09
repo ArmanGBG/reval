@@ -3,28 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 import { useConfettiOnClick } from "./use-confetti";
 
 const NAV = [
-  {
-    label: "امکانات",
-    href: "#features",
-    children: [
-      { label: "برای دانش‌آموزان", desc: "میز کار تمرکز فردی", href: "#features-student" },
-      { label: "برای مشاوران", desc: "مرکز فرماندهی داده‌محور", href: "#features-counselor" },
-    ],
-  },
-  { label: "قیمت محصولات", href: "#pricing" },
+  { label: "قابلیت‌ها", href: "#features" },
   { label: "تیم ما", href: "#team" },
 ];
 
 export function Header() {
   const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-  const [openMenu, setOpenMenu] = React.useState<string | null>(null);
   const onConfetti = useConfettiOnClick(45);
 
   React.useEffect(() => {
@@ -56,7 +47,7 @@ export function Header() {
             : "border-b border-transparent bg-transparent"
         )}
       >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link
             href="#top"
@@ -70,69 +61,18 @@ export function Header() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-1 lg:flex" aria-label="منوی اصلی">
-            {NAV.map((item) =>
-              item.children ? (
-                <div
-                  key={item.label}
-                  className="relative"
-                  onMouseEnter={() => setOpenMenu(item.label)}
-                  onMouseLeave={() => setOpenMenu(null)}
-                >
-                  <button
-                    className="underline-grow flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-white/[0.04] hover:text-foreground"
-                    onClick={() =>
-                      setOpenMenu((v) => (v === item.label ? null : item.label))
-                    }
-                  >
-                    {item.label}
-                    <ChevronDown
-                      className={cn(
-                        "size-3.5 transition-transform duration-300",
-                        openMenu === item.label && "rotate-180"
-                      )}
-                    />
-                  </button>
-                  <AnimatePresence>
-                    {openMenu === item.label && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.97 }}
-                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute right-0 top-full pt-2"
-                      >
-                        <div className="surface w-64 overflow-hidden rounded-2xl p-1.5 shadow-2xl shadow-black/40">
-                          {item.children.map((child) => (
-                            <Link
-                              key={child.label}
-                              href={child.href}
-                              onClick={() => setOpenMenu(null)}
-                              className="block rounded-xl px-3.5 py-3 transition-all duration-200 hover:bg-white/[0.06] group/item"
-                            >
-                              <div className="text-sm font-medium text-foreground group-hover/item:text-mint transition-colors duration-200">
-                                {child.label}
-                              </div>
-                              <div className="mt-0.5 text-xs text-muted-foreground">
-                                {child.desc}
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-white/[0.04] hover:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              )
-            )}
+            {NAV.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-white/[0.04] hover:text-foreground"
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
+
+          <div className="flex-1" />
 
           {/* Actions */}
           <div className="flex items-center gap-2">
@@ -194,25 +134,14 @@ export function Header() {
               </div>
               <nav className="mt-8 flex flex-col gap-1" aria-label="منوی موبایل">
                 {NAV.map((item) => (
-                  <React.Fragment key={item.label}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-white/[0.06] focus-ring-mint"
-                    >
-                      {item.label}
-                    </Link>
-                    {item.children?.map((c) => (
-                      <Link
-                        key={c.label}
-                        href={c.href}
-                        onClick={() => setOpen(false)}
-                        className="touch-target rounded-xl pr-8 py-3 text-sm text-muted-foreground transition-all hover:bg-white/[0.04] hover:text-foreground focus-ring-mint"
-                      >
-                        {c.label}
-                      </Link>
-                    ))}
-                  </React.Fragment>
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-white/[0.06] focus-ring-mint"
+                  >
+                    {item.label}
+                  </Link>
                 ))}
               </nav>
               <div className="mt-auto flex flex-col gap-3">

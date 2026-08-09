@@ -11,29 +11,21 @@ const TEAM = [
     name: "احمدرضا صمیمی",
     role: "CEO & Co-Founder",
     bio: "دانشجوی پزشکی دانشگاه علوم پزشکی تهران",
-    avatar: null, // Will use initials
+    image: "/our team/ahmadreza.webp",
   },
   {
     name: "آرمان قره‌باغی",
     role: "CTO & Co-Founder",
     bio: "دانشجوی دندانپزشکی دانشگاه علوم پزشکی ارومیه",
-    avatar: null,
+    image: "/our team/arman-v2.webp",
   },
   {
     name: "مهدی رحیمی",
     role: "CMO & Co-Founder",
     bio: "دانشجوی پزشکی دانشگاه علوم پزشکی تهران",
-    avatar: null,
+    image: "/our team/mehdi.webp",
   },
 ];
-
-function getInitials(name: string) {
-  // For Persian names, take the first letter of each word
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("");
-}
 
 function TeamCard({
   member,
@@ -51,28 +43,27 @@ function TeamCard({
       initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
       animate={inView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
       transition={{ duration: 0.6, delay: index * 0.1, ease: easeOut }}
-      className="group relative flex flex-col items-center rounded-2xl border border-border/40 bg-surface p-8 text-center transition-all duration-300 hover:border-border/70 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4)]"
+      className="group flex flex-col items-center rounded-2xl border border-border/40 bg-surface p-6 text-center transition-all duration-300 hover:border-border/70 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4)]"
     >
-      {/* Avatar with initials */}
-      <div className="relative mb-5 flex size-20 items-center justify-center rounded-full border-2 border-mint/20 bg-gradient-to-br from-mint/10 to-mint/[0.03]">
-        <span className="font-yekan text-xl font-extrabold text-mint">
-          {getInitials(member.name)}
-        </span>
-        {/* Pulse ring */}
-        <div className="absolute inset-0 rounded-full border border-mint/10 animate-ping opacity-20 [animation-duration:3s]" />
+      <div className="relative mb-5 flex size-28 items-center justify-center overflow-hidden rounded-full border-2 border-mint/20 bg-background/40">
+        <Image
+          src={member.image}
+          alt={member.name}
+          width={112}
+          height={112}
+          priority={index === 0}
+          className="object-cover"
+        />
       </div>
 
-      {/* Name */}
       <h3 className="font-yekan text-lg font-extrabold leading-tight text-foreground">
         {member.name}
       </h3>
 
-      {/* Role badge */}
       <span className="mt-2 inline-block rounded-full border border-mint/15 bg-mint/[0.05] px-3 py-1 text-[11px] font-semibold tracking-wide text-mint">
         {member.role}
       </span>
 
-      {/* Bio */}
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground/70">
         {member.bio}
       </p>

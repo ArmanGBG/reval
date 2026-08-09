@@ -2,26 +2,18 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, Eye, EyeOff, LogIn, Loader2, Shield, GraduationCap, Building2, Crown, BookOpen } from 'lucide-react';
+import { Phone, LogIn, Loader2, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { UserRole } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-// ===== Quick Access Buttons =====
-const QUICK_ACCOUNTS = [
-  { phone: '09121000000', label: 'سوپر ادمین', icon: Crown, color: 'text-gold', tint: 'bg-gold/10 border-gold/20', accentBorder: 'var(--gold)' },
-  { phone: '09121111111', label: 'مدیر آموزشگاه', icon: Building2, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
-  { phone: '09121234567', label: 'مشاور', icon: Shield, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
-  { phone: '09131111111', label: 'دانش‌آموز', icon: GraduationCap, color: 'text-mint', tint: 'bg-mint/10 border-mint/20', accentBorder: 'var(--accent)' },
-];
-
 export default function LoginPage() {
   const { setUserRole, setUser, setOnboardingComplete, setCurrentView } = useAppStore();
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpRequested, setOtpRequested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [shaking, setShaking] = useState(false);
@@ -36,8 +28,8 @@ export default function LoginPage() {
   }, [error]);
 
   const handleLogin = useCallback(async () => {
-    if (!phone || !password) {
-      setError('شماره تلفن و رمز عبور را وارد کنید');
+    if (!phone || !otpRequested || !/^\d{6}$/.test(otp)) {
+      setError('شماره تلفن و کد تایید شش‌رقمی را وارد کنید');
       return;
     }
 
@@ -48,7 +40,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({ phone, otp }),
       });
 
       const data = await res.json();
@@ -108,65 +100,21 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  }, [phone, password, setUserRole, setUser, setOnboardingComplete]);
+  }, [phone, otp, otpRequested, setUserRole, setUser, setOnboardingComplete]);
 
-  const handleQuickLogin = useCallback(async (quickPhone: string) => {
-    setPhone(quickPhone);
-    setPassword('1234');
-
-    // Auto-submit the login immediately so the user doesn't have to click again.
+  const handleRequestOtp = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: quickPhone, password: '1234' }),
-      });
+      const res = await fetch('/api/auth/otp/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, purpose: 'LOGIN' }) });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'خطا در ورود');
-        toast.error(data.error || 'خطا در ورود', {
-          style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
-        });
-        return;
-      }
-      const role = data.user.role as UserRole;
-      setUserRole(role);
-      setUser({
-        id: data.user.id,
-        name: data.user.name,
-        avatar: data.user.avatar,
-        grade: data.user.grade || 'دوازدهم',
-        major: data.user.major || 'تجربی',
-        goal: data.user.goal || 'کنکور',
-        dailyTargetHours: data.user.dailyTargetHours || 6,
-        phone: data.user.phone,
-        assignedAdvisorId: data.user.assignedAdvisorId || null,
-      });
-      setOnboardingComplete(true);
-
-      const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
-      if (role === 'STUDENT') {
-        loadTasksForStudent(data.user.id).catch(() => {});
-        loadExams({ studentId: data.user.id }).catch(() => {});
-      } else if (role === 'ADVISOR') {
-        loadAdvisorStudents(data.user.id).catch(() => {});
-        loadExams({ advisorId: data.user.id }).catch(() => {});
-      }
-
-      toast.success(`خوش آمدی، ${data.user.name}`, {
-        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--success)' },
-      });
-    } catch {
-      setError('خطا در ارتباط با سرور');
-      toast.error('خطا در ارتباط با سرور', {
-        style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [setUserRole, setUser, setOnboardingComplete]);
+      if (!res.ok) throw new Error(data.error || 'ارسال کد انجام نشد');
+      setOtpRequested(true);
+      toast.success(data.testCode ? `کد تست شما: ${data.testCode}` : 'کد تایید ارسال شد');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'ارسال کد انجام نشد');
+    } finally { setLoading(false); }
+  }, [phone]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
@@ -239,26 +187,27 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Password Input */}
+          {/* OTP Input */}
           <div className="space-y-2 mb-5">
-            <label className="text-xs text-muted-foreground font-medium">رمز عبور</label>
-            <div className="relative">
-              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60 pointer-events-none" />
+            <label className="text-xs text-muted-foreground font-medium">کد تایید</label>
+            <div className="flex gap-2">
               <Input
-                type={showPassword ? 'text' : 'password'}
+                type="text"
                 inputMode="numeric"
                 dir="ltr"
-                placeholder="••••"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                className="bg-[var(--bg-overlay)] border-[var(--border-strong)] text-foreground text-right pr-10 pl-10 h-12 focus-visible:border-mint/60 focus-visible:ring-mint/20"
+                placeholder="۱۲۳۴۵۶"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); setError(''); }}
+                className="flex-1 bg-[var(--bg-overlay)] border-[var(--border-strong)] text-foreground text-center tracking-[0.4em] h-12 focus-visible:border-mint/60 focus-visible:ring-mint/20"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                onClick={handleRequestOtp}
+                disabled={loading || phone.length < 10}
+                className="px-3 rounded-lg bg-mint/15 text-mint text-xs disabled:opacity-40"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {otpRequested ? 'ارسال مجدد' : 'ارسال کد'}
               </button>
             </div>
           </div>
@@ -289,48 +238,6 @@ export default function LoginPage() {
               </span>
             )}
           </Button>
-        </motion.div>
-
-        {/* ============ Quick Access ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex-1 h-px bg-[var(--border)]" />
-            <p className="text-[11px] text-muted-foreground">دسترسی سریع به پنل‌ها (حساب‌های آزمایشی)</p>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {QUICK_ACCOUNTS.map((account) => {
-              const Icon = account.icon;
-              const isSuperAdmin = account.phone === '09121000000';
-              return (
-                <button
-                  key={account.phone}
-                  onClick={() => handleQuickLogin(account.phone)}
-                  className={`btn-hover flex items-center gap-2.5 p-3 pr-2.5 rounded-[12px] border ${account.tint} hover:border-[var(--border-strong)] text-right relative overflow-hidden ${isSuperAdmin ? 'ring-1 ring-gold/20' : ''}`}
-                  style={{ borderRightWidth: '3px', borderRightColor: account.accentBorder }}
-                >
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${account.tint}`}>
-                    <Icon className={`w-3.5 h-3.5 ${account.color}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-foreground font-medium">{account.label}</p>
-                    <p className="text-[10px] text-muted-foreground/70 tabular-nums" dir="ltr">{account.phone}</p>
-                  </div>
-                  {isSuperAdmin && (
-                    <span className="absolute top-1 left-1 text-[8px] font-bold text-gold/80 bg-gold/10 px-1 rounded">مدیریت کل</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-[10px] text-muted-foreground/60 text-center mt-3">
-            رمز عبور همه حساب‌ها: <span dir="ltr" className="text-muted-foreground font-mono">1234</span>
-          </p>
         </motion.div>
 
         {/* ============ Sign-up entry ============ */}

@@ -130,7 +130,7 @@ const PARTICLES = [
 
 /* ───────── Shared Text Content (used by both mobile & desktop) ───────── */
 
-function TextContent({ seg, onConfetti }: { seg: Segment; onConfetti: () => void }) {
+function TextContent({ seg, onConfetti }: { seg: Segment; onConfetti: (event: React.MouseEvent<HTMLElement>) => void }) {
   return (
     <AnimatePresence mode="wait">
       {seg.text ? (
@@ -174,7 +174,7 @@ function TextContent({ seg, onConfetti }: { seg: Segment; onConfetti: () => void
                   href="#features"
                   className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-full border border-border/60 bg-background/30 px-7 py-3 text-sm font-medium text-foreground backdrop-blur-lg transition-all duration-300 hover:bg-background/50 hover:border-border focus-ring-mint sm:w-auto sm:py-3.5"
                 >
-                  کاوش امکانات
+                  کاوش قابلیت‌ها
                 </Link>
               </div>
             </motion.div>

@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { generateToken, SESSION_COOKIE_NAME, getSessionCookieOptions } from '@/lib/auth';
+import { normalizeIranianPhone } from '@/lib/phone';
+import { verifyOtp } from '@/lib/otp';
+import { createPublicCode } from '@/lib/public-code';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, password } = body;
+    const phone = normalizeIranianPhone(typeof body.phone === 'string' ? body.phone : '');
+    const otp = typeof body.otp === 'string' ? body.otp.trim() : '';
 
-    if (!phone || !password) {
+    if (!phone || !/^\d{6}$/.test(otp)) {
       return NextResponse.json(
-        { error: 'شماره تلفن و رمز عبور الزامی است' },
+        { error: 'شماره موبایل و کد تایید معتبر الزامی است' },
         { status: 400 }
       );
     }
 
-    const user = await db.user.findUnique({
+    let user = await db.user.findUnique({
       where: { phone },
       include: {
         institute: {
@@ -27,19 +30,42 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!user) {
+    if (!(await verifyOtp(phone, 'LOGIN', otp))) {
       return NextResponse.json(
-        { error: 'کاربری با این شماره تلفن یافت نشد' },
-        { status: 404 }
+        { error: 'کد تایید نامعتبر یا منقضی شده است' },
+        { status: 401 }
       );
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return NextResponse.json(
-        { error: 'رمز عبور اشتباه است' },
-        { status: 401 }
-      );
+    if (!user) {
+      const bootstrapPhone = normalizeIranianPhone(process.env.INITIAL_SUPER_ADMIN_PHONE || '');
+      if (!bootstrapPhone || phone !== bootstrapPhone) {
+        return NextResponse.json({ error: 'کاربری با این شماره تلفن یافت نشد' }, { status: 404 });
+      }
+      user = await db.user.create({
+        data: {
+          phone,
+          name: process.env.INITIAL_SUPER_ADMIN_NAME?.trim() || 'مدیر روال',
+          role: 'SUPER_ADMIN',
+          avatar: '🛡️',
+          publicCode: await createPublicCode('ADV'),
+          phoneVerifiedAt: new Date(),
+          isActive: true,
+        },
+        include: {
+          institute: { select: { id: true, name: true } },
+          assignedAdvisor: { select: { id: true, name: true, avatar: true } },
+        },
+      });
+    } else if (!user.phoneVerifiedAt) {
+      user = await db.user.update({
+        where: { id: user.id },
+        data: { phoneVerifiedAt: new Date() },
+        include: {
+          institute: { select: { id: true, name: true } },
+          assignedAdvisor: { select: { id: true, name: true, avatar: true } },
+        },
+      });
     }
 
     if (!user.isActive) {
@@ -57,7 +83,6 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       user: userWithoutPassword,
-      token,
       message: 'ورود موفقیت‌آمیز بود',
     });
 

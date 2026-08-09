@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { GlobalUserRole, UserAccountStatus } from '@/lib/types';
 import {
@@ -16,6 +17,8 @@ import {
   GraduationCap,
   Shield,
   UserCheck,
+  Plus,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -36,6 +39,22 @@ export default function SuperAdminUsers() {
   const [filterRole, setFilterRole] = useState<'all' | GlobalUserRole>('all');
   const [filterInstitute, setFilterInstitute] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | UserAccountStatus>('all');
+  const [advisorName, setAdvisorName] = useState('');
+  const [advisorPhone, setAdvisorPhone] = useState('');
+  const [creatingAdvisor, setCreatingAdvisor] = useState(false);
+  const [showAdvisorForm, setShowAdvisorForm] = useState(false);
+
+  const createAdvisor = async () => {
+    setCreatingAdvisor(true);
+    try {
+      const res = await fetch('/api/admin/advisors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: advisorName, phone: advisorPhone }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'ساخت مشاور انجام نشد');
+      toast.success(`حساب ${data.advisor.name} ساخته شد. کد: ${data.advisor.publicCode}`);
+      setAdvisorName(''); setAdvisorPhone(''); setShowAdvisorForm(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'ساخت مشاور انجام نشد'); }
+    finally { setCreatingAdvisor(false); }
+  };
 
   const filteredUsers = useMemo(() => {
     let result = [...globalUsers];
@@ -90,7 +109,14 @@ export default function SuperAdminUsers() {
             </p>
           </div>
         </div>
+        <button onClick={() => setShowAdvisorForm((value) => !value)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/15 text-gold border border-gold/25 text-sm font-bold"><Plus className="w-4 h-4" />مشاور جدید</button>
       </header>
+
+      {showAdvisorForm && <div className="surface-1 rounded-2xl p-4 border border-gold/25 space-y-3">
+        <div className="flex items-center justify-between"><h3 className="font-bold">فعال‌سازی پنل مشاور</h3><button onClick={() => setShowAdvisorForm(false)}><X className="w-4 h-4" /></button></div>
+        <div className="grid md:grid-cols-2 gap-3"><input value={advisorName} onChange={(e) => setAdvisorName(e.target.value)} placeholder="نام و نام خانوادگی" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /><input value={advisorPhone} onChange={(e) => setAdvisorPhone(e.target.value)} placeholder="شماره موبایل" dir="ltr" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /></div>
+        <button disabled={creatingAdvisor || !advisorName.trim() || !advisorPhone.trim()} onClick={createAdvisor} className="px-4 py-2 rounded-xl bg-gold text-[var(--bg-deep)] font-bold disabled:opacity-40">{creatingAdvisor ? 'در حال ساخت...' : 'ساخت حساب مشاور'}</button>
+      </div>}
 
       {/* ============ Filter Bar (sticky) ============ */}
       <div className="sticky top-2 z-10 surface-1 rounded-[14px] p-3 md:p-4">

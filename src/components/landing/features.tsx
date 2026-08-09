@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { motion, useInView } from "framer-motion";
-import { CalendarDays, BarChart3, BookOpen, Users } from "lucide-react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+import { CalendarDays, BarChart3, BookOpen, Users, X } from "lucide-react";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
@@ -49,9 +49,11 @@ const FEATURES = [
 function FeatureCard({
   feature,
   index,
+  onImageClick,
 }: {
   feature: (typeof FEATURES)[number];
   index: number;
+  onImageClick?: () => void;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -73,23 +75,27 @@ function FeatureCard({
       />
 
       {/* Screenshot — browser-frame style preview */}
-      <div className="relative aspect-[16/10] overflow-hidden border-b border-border/40 bg-background/60">
-        {/* Browser chrome dots */}
-        <div className="absolute left-4 top-3 z-20 flex gap-1.5">
-          <span className="size-2.5 rounded-full bg-white/15" />
-          <span className="size-2.5 rounded-full bg-white/15" />
-          <span className="size-2.5 rounded-full bg-white/15" />
-        </div>
-        <Image
-          src={feature.screenshot}
-          alt={feature.screenshotAlt}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
-          className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-        />
-        {/* Subtle top fade for the chrome dots legibility */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b from-background/50 to-transparent" />
-      </div>
+        <button
+          type="button"
+          onClick={onImageClick}
+          className="relative aspect-[16/10] overflow-hidden border-b border-border/40 bg-background/60"
+        >
+          {/* Browser chrome dots */}
+          <div className="absolute left-4 top-3 z-20 flex gap-1.5">
+            <span className="size-2.5 rounded-full bg-white/15" />
+            <span className="size-2.5 rounded-full bg-white/15" />
+            <span className="size-2.5 rounded-full bg-white/15" />
+          </div>
+          <Image
+            src={feature.screenshot}
+            alt={feature.screenshotAlt}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
+            className="object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+          />
+          {/* Subtle top fade for the chrome dots legibility */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b from-background/50 to-transparent" />
+        </button>
 
       {/* Content */}
       <div className="relative flex flex-1 flex-col p-6 sm:p-7">
@@ -124,6 +130,7 @@ function FeatureCard({
 export function Features() {
   const headerRef = React.useRef<HTMLDivElement>(null);
   const headerInView = useInView(headerRef, { once: true, margin: "-60px" });
+  const [lightbox, setLightbox] = React.useState<string | null>(null);
 
   return (
     <section id="features" className="relative py-20 sm:py-28 lg:py-36">
@@ -136,21 +143,56 @@ export function Features() {
           transition={{ duration: 0.7, ease: easeOut }}
           className="mb-14 text-center sm:mb-18"
         >
-          <span className="mb-4 inline-block rounded-full border border-mint/20 bg-mint/[0.06] px-4 py-1.5 text-xs font-semibold text-mint">
-            امکانات
-          </span>
           <h2 className="text-balance text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl lg:text-4xl">
-            هر چی که برای <span className="text-gradient-mint">ترقی تحصیلی</span> نیاز داری
+            <span className="text-gradient-mint">روال دقیقا چی کار میکنه؟</span>
           </h2>
         </motion.div>
 
         {/* Feature cards grid */}
         <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:gap-8">
           {FEATURES.map((feature, i) => (
-            <FeatureCard key={i} feature={feature} index={i} />
+            <FeatureCard key={i} feature={feature} index={i} onImageClick={() => setLightbox(feature.screenshot)} />
           ))}
         </div>
       </div>
+
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm"
+            onClick={() => setLightbox(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.25, ease: easeOut }}
+              className="relative mx-4 max-h-[90vh] max-w-6xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={lightbox}
+                alt="بازشوی screenshots"
+                width={1400}
+                height={900}
+                priority
+                className="rounded-2xl border border-white/10 shadow-2xl"
+              />
+              <button
+                onClick={() => setLightbox(null)}
+                className="absolute -top-3 -left-3 flex size-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md transition-colors hover:bg-black/80"
+                aria-label="بستن"
+              >
+                <X className="size-5" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

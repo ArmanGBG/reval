@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
         goal: true,
         dailyTargetHours: true,
         assignedAdvisorId: true,
+        publicCode: true,
         isActive: true,
       },
     });

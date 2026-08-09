@@ -96,7 +96,14 @@ export async function PATCH(
       data.normalizedName = normalizedName;
     }
 
-    const subject = await db.subject.update({ where: { id: subjectId }, data });
+    const subject = await db.$transaction(async (tx) => {
+      const updated = await tx.subject.update({ where: { id: subjectId }, data });
+      await tx.task.updateMany({
+        where: { subjectId },
+        data: { subject: updated.name, subjectColor: updated.color },
+      });
+      return updated;
+    });
     return NextResponse.json({ subject });
   } catch (error) {
     console.error('PATCH subject error:', error);

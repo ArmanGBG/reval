@@ -14,7 +14,7 @@ type SectionShortcut = {
 
 const SECTIONS: SectionShortcut[] = [
   { key: "1", id: "top", label: "آغاز" },
-  { key: "2", id: "features", label: "امکانات" },
+  { key: "2", id: "features", label: "قابلیت‌ها" },
   { key: "3", id: "comparison", label: "مقایسه" },
   { key: "4", id: "pricing", label: "قیمت" },
   { key: "5", id: "day-in-life", label: "روز با روال" },

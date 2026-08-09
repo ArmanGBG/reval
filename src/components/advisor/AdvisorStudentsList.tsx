@@ -12,6 +12,7 @@ import {
 import { GroupExamModal } from './GroupExamModal';
 import { toPersianDigits, computeStudentStatus, STATUS_CONFIG, TREND_CONFIG } from './advisor-helpers';
 import { Skeleton } from '@/components/ui/skeleton';
+import ConnectionManager from '@/components/shared/ConnectionManager';
 
 // ===== Skeleton: Mobile student card =====
 function SkeletonStudentCardMobile() {
@@ -147,6 +148,7 @@ export function AdvisorStudentsList() {
 
   return (
     <div className="space-y-4">
+      <ConnectionManager role="ADVISOR" onChanged={() => user?.id && loadAdvisorStudents(user.id)} />
       {/* Toolbar: search + group exam button */}
       <div className="flex gap-2 items-stretch">
         <div className="relative flex-1">

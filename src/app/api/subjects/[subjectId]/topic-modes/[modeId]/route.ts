@@ -18,7 +18,16 @@ export async function PATCH(
     for (const key of allowed) {
       if (body[key] !== undefined) data[key] = body[key];
     }
-    const topicMode = await db.topicMode.update({ where: { id: modeId }, data });
+    const topicMode = await db.$transaction(async (tx) => {
+      const updated = await tx.topicMode.update({ where: { id: modeId }, data });
+      if (typeof data.title === 'string') {
+        await tx.task.updateMany({
+          where: { topicModeId: modeId },
+          data: { topic: updated.title },
+        });
+      }
+      return updated;
+    });
     return NextResponse.json({ topicMode });
   } catch (error) {
     console.error('PATCH topic-mode error:', error);

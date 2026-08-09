@@ -538,6 +538,7 @@ export default function Dashboard() {
             onComplete={handleComplete}
             onSkip={handleSkip}
             onDelete={handleDelete}
+            onAction={handleComplete}
             onSettings={handlePartialOpen}
             onReset={handleReset}
             onReorder={reorderTasks}

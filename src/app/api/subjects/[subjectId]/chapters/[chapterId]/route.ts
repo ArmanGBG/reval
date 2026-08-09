@@ -140,7 +140,16 @@ export async function PATCH(
       );
     }
 
-    const chapter = await db.chapter.update({ where: { id: chapterId }, data });
+    const chapter = await db.$transaction(async (tx) => {
+      const updated = await tx.chapter.update({ where: { id: chapterId }, data });
+      if (typeof data.title === 'string') {
+        await tx.task.updateMany({
+          where: { chapterId, topicId: null, topicModeId: null },
+          data: { topic: updated.title },
+        });
+      }
+      return updated;
+    });
     return NextResponse.json({ chapter });
   } catch (error) {
     console.error('PATCH chapter error:', error);

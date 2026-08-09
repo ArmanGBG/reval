@@ -17,6 +17,7 @@ export async function proxy(request: NextRequest) {
   if (
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/register' ||
+    pathname === '/api/auth/otp/request' ||
     pathname === '/api/auth/logout'
   ) {
     return NextResponse.next();

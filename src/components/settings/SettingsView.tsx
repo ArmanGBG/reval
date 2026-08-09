@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
+import ConnectionManager from '@/components/shared/ConnectionManager';
 import { Grade, Major, Goal, Ticket } from '@/lib/types';
 import { AVATARS } from '@/lib/constants/mockData';
 import { Switch } from '@/components/ui/switch';
@@ -604,6 +605,7 @@ export default function SettingsView() {
 
         <div className="space-y-6">
           <ProfileSection {...profileProps} />
+          <ConnectionManager role="STUDENT" />
           <GoalsSection {...goalsProps} />
           <ExperienceSection {...experienceProps} />
           <SupportSection {...supportProps} />
@@ -670,6 +672,7 @@ export default function SettingsView() {
                 transition={{ duration: 0.2 }}
               >
                 {activeSection === 'profile' && <ProfileSection {...profileProps} />}
+                {activeSection === 'profile' && <div className="mt-6"><ConnectionManager role="STUDENT" /></div>}
                 {activeSection === 'goals' && <GoalsSection {...goalsProps} />}
                 {activeSection === 'experience' && <ExperienceSection {...experienceProps} />}
                 {activeSection === 'support' && <SupportSection {...supportProps} />}

@@ -138,11 +138,11 @@ function StepPhone({
         </div>
       ) : (
         <div className="w-full space-y-6">
-          <p className="text-muted-foreground text-sm text-center">کد تایید ۴ رقمی ارسال شده رو وارد کن</p>
+          <p className="text-muted-foreground text-sm text-center">کد تایید ۶ رقمی ارسال شده رو وارد کن</p>
 
           <div dir="ltr" className="flex justify-center">
             <InputOTP
-              maxLength={4}
+              maxLength={6}
               value={otp}
               onChange={setOtp}
             >
@@ -161,6 +161,14 @@ function StepPhone({
                 />
                 <InputOTPSlot
                   index={3}
+                  className="h-14 w-14 bg-[var(--bg-overlay)] border-2 border-[var(--border-strong)] rounded-xl text-foreground text-xl font-bold data-[active=true]:border-mint data-[active=true]:ring-mint/30 data-[active=true]:ring-[3px] transition-all"
+                />
+                <InputOTPSlot
+                  index={4}
+                  className="h-14 w-14 bg-[var(--bg-overlay)] border-2 border-[var(--border-strong)] rounded-xl text-foreground text-xl font-bold data-[active=true]:border-mint data-[active=true]:ring-mint/30 data-[active=true]:ring-[3px] transition-all"
+                />
+                <InputOTPSlot
+                  index={5}
                   className="h-14 w-14 bg-[var(--bg-overlay)] border-2 border-[var(--border-strong)] rounded-xl text-foreground text-xl font-bold data-[active=true]:border-mint data-[active=true]:ring-mint/30 data-[active=true]:ring-[3px] transition-all"
                 />
               </InputOTPGroup>
@@ -486,7 +494,7 @@ export default function OnboardingWizard() {
   // We compute `totalSteps` lazily — before a role is selected (step 2) we
   // assume 4 to avoid the dots jumping; once selected, it locks to the real
   // total.
-  const totalSteps: number = role === 'ADVISOR' ? 3 : 4;
+  const totalSteps = 3;
 
   // Use functional updater to avoid stale closure issues
   const goToStep = useCallback((step: number) => {
@@ -496,38 +504,44 @@ export default function OnboardingWizard() {
     });
   }, []);
 
-  // Auto-advance on OTP complete
+  // Continue after the user has entered the six-digit code. The server verifies
+  // and consumes it atomically when the student account is submitted.
   useEffect(() => {
-    if (otp === '1234') {
+    if (/^\d{6}$/.test(otp)) {
       const timer = setTimeout(() => {
+        setRole('STUDENT');
         goToStep(2);
       }, 400);
       return () => clearTimeout(timer);
     }
   }, [otp, goToStep]);
 
-  const handleSendCode = useCallback(() => {
-    if (!showOtp) {
-      if (!/^9\d{9}$/.test(phone)) return;
+  const handleSendCode = useCallback(async () => {
+    if (!/^9\d{9}$/.test(phone)) return;
+    try {
+      const res = await fetch('/api/auth/otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `0${phone}`, purpose: 'SIGNUP' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'ارسال کد انجام نشد');
       setShowOtp(true);
-      toast.info('کد تایید آزمایشی شما: ۱۲۳۴');
-    } else {
-      toast.info('کد تایید آزمایشی شما: ۱۲۳۴');
+      setOtp('');
+      toast.success(data.testCode ? `کد تست شما: ${data.testCode}` : 'کد تایید ارسال شد');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'ارسال کد انجام نشد');
     }
   }, [showOtp, phone]);
 
   const canProceed = useCallback((): boolean => {
     switch (currentStep) {
       case 1:
-        return showOtp && otp === '1234';
+        return showOtp && /^\d{6}$/.test(otp);
       case 2:
-        return role !== '';
-      case 3:
         return name.trim().length > 0 && selectedAvatar !== '';
-      case 4:
-        if (role === 'STUDENT') return grade !== '' && major !== '';
-        if (role === 'INSTITUTE_MANAGER') return instituteName.trim().length > 0;
-        return false; // ADVISOR never reaches step 4
+      case 3:
+        return grade !== '' && major !== '';
       default:
         return false;
     }
@@ -535,9 +549,7 @@ export default function OnboardingWizard() {
 
   const handleNext = useCallback(() => {
     if (!canProceed()) return;
-    // ADVISOR has no step 4 — step 3 is their final step.
-    if (role === 'ADVISOR' && currentStep === 3) return;
-    if (currentStep < 4) {
+    if (currentStep < 3) {
       goToStep(currentStep + 1);
     }
   }, [canProceed, currentStep, role, goToStep]);
@@ -551,8 +563,7 @@ export default function OnboardingWizard() {
   // Whether the current step is the final step (i.e. the CTA should say "شروع کن"
   // instead of "بعدی").
   const isFinalStep = (() => {
-    if (role === 'ADVISOR') return currentStep === 3;
-    return currentStep === 4;
+    return currentStep === 3;
   })();
 
   const handleComplete = useCallback(async () => {
@@ -569,10 +580,9 @@ export default function OnboardingWizard() {
           phone: normalizedPhone,
           name: name.trim(),
           avatar: selectedAvatar,
-          role,
-          ...(role === 'STUDENT' ? { grade, major } : {}),
-          ...(role === 'INSTITUTE_MANAGER' ? { instituteName: instituteName.trim() } : {}),
-          password: '1234',
+          grade,
+          major,
+          otp,
         }),
       });
 
@@ -593,8 +603,8 @@ export default function OnboardingWizard() {
         id: u.id,
         name: u.name,
         avatar: u.avatar,
-        grade: (u.grade as Grade) || (role === 'STUDENT' ? (grade as Grade) : 'دوازدهم'),
-        major: (u.major as Major) || (role === 'STUDENT' ? (major as Major) : 'تجربی'),
+        grade: (u.grade as Grade) || (grade as Grade),
+        major: (u.major as Major) || (major as Major),
         goal: (u.goal as 'کنکور' | 'نهایی' | 'هر دو') || 'کنکور',
         dailyTargetHours: typeof u.dailyTargetHours === 'number' ? u.dailyTargetHours : 6,
         phone: u.phone,
@@ -607,19 +617,9 @@ export default function OnboardingWizard() {
 
       // Kick off background data loads based on role (mirrors LoginPage behaviour).
       const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
-      if (u.role === 'STUDENT') {
-        setCurrentView('dashboard');
-        loadTasksForStudent(realUser.id).catch(() => {});
-        loadExams({ studentId: realUser.id }).catch(() => {});
-      } else if (u.role === 'ADVISOR') {
-        setCurrentView('advisor-dashboard');
-        loadAdvisorStudents(realUser.id).catch(() => {});
-        loadExams({ advisorId: realUser.id }).catch(() => {});
-      } else if (u.role === 'INSTITUTE_MANAGER') {
-        setCurrentView('institute-dashboard');
-      } else {
-        setCurrentView('dashboard');
-      }
+      setCurrentView('dashboard');
+      loadTasksForStudent(realUser.id).catch(() => {});
+      loadExams({ studentId: realUser.id }).catch(() => {});
 
       toast.success(`خوش امدی، ${realUser.name}`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--success)' },
@@ -661,13 +661,6 @@ export default function OnboardingWizard() {
               />
             )}
             {currentStep === 2 && (
-              <StepRole
-                role={role}
-                setRole={setRole}
-                direction={direction}
-              />
-            )}
-            {currentStep === 3 && (
               <StepIdentity
                 name={name}
                 setName={setName}
@@ -676,19 +669,12 @@ export default function OnboardingWizard() {
                 direction={direction}
               />
             )}
-            {currentStep === 4 && role === 'STUDENT' && (
+            {currentStep === 3 && (
               <StepAcademic
                 grade={grade}
                 setGrade={setGrade}
                 major={major}
                 setMajor={setMajor}
-                direction={direction}
-              />
-            )}
-            {currentStep === 4 && role === 'INSTITUTE_MANAGER' && (
-              <StepInstitute
-                instituteName={instituteName}
-                setInstituteName={setInstituteName}
                 direction={direction}
               />
             )}
