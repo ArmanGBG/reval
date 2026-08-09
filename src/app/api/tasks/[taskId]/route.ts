@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, canModifyTask, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
+import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 
 // Helper: parse activityTypes JSON string → array
 function parseTask(task: Record<string, unknown>) {
@@ -89,6 +90,7 @@ export async function PATCH(
       'targetTestCount',
       'actualTestCount',
       'completed',
+      'status',
       'detailsCompleted',
       'date',
       'order',
@@ -134,7 +136,11 @@ export async function PATCH(
     const activityTypes = body.activityTypes ?? (existing.activityTypes ? JSON.parse(existing.activityTypes) : null);
     const targetTimeMinutes = body.targetTimeMinutes ?? existing.targetTimeMinutes;
     const targetTestCount = body.targetTestCount ?? existing.targetTestCount;
-    if (detailsCompleted && (!Array.isArray(activityTypes) || typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0 || typeof targetTestCount !== 'number' || targetTestCount < 0)) {
+    const status = body.status ?? legacyTaskStatus(detailsCompleted, body.completed ?? existing.completed ?? null);
+    if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
+    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed ?? existing.completed ?? null);
+    if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
+    if (status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0 || typeof targetTestCount !== 'number' || targetTestCount < 0)) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
     if ((body.completed === true || body.completed === false) && !detailsCompleted) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
@@ -142,6 +148,7 @@ export async function PATCH(
     data.subject = subject.name;
     data.subjectColor = subject.color;
     data.topic = curriculum.topic;
+    data.status = status;
 
     // If activityTypes is provided, serialize array to JSON string
     if (data.activityTypes !== undefined) {

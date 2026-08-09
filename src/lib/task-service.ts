@@ -20,6 +20,7 @@ export interface CreateTaskPayload {
   targetTestCount?: number | null;
   actualTestCount?: number | null;
   completed?: boolean | null;
+  status?: Task['status'];
   detailsCompleted: boolean;
   date: string;
   order?: number;
@@ -50,6 +51,20 @@ function normalizeTask(raw: Record<string, unknown>): Task {
       activityTypes = [];
     }
   }
+  const status: Task['status'] =
+    raw.status === 'DRAFT' ||
+    raw.status === 'PENDING' ||
+    raw.status === 'COMPLETED' ||
+    raw.status === 'SKIPPED' ||
+    raw.status === 'INCOMPLETE'
+      ? raw.status
+      : raw.detailsCompleted === false
+        ? 'DRAFT'
+        : raw.completed === true
+          ? 'COMPLETED'
+          : raw.completed === false
+            ? 'SKIPPED'
+            : 'PENDING';
   return {
     id: raw.id as string,
     studentId: raw.studentId as string,
@@ -69,6 +84,7 @@ function normalizeTask(raw: Record<string, unknown>): Task {
       raw.actualTestCount === null || raw.actualTestCount === undefined
         ? null
         : (raw.actualTestCount as number),
+    status,
     completed:
       raw.completed === true ? true : raw.completed === false ? false : null,
     detailsCompleted: raw.detailsCompleted !== false,

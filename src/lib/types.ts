@@ -26,6 +26,7 @@ export type Major = 'تجربی' | 'ریاضی' | 'انسانی';
 export type Goal = 'کنکور' | 'نهایی' | 'هر دو';
 export type FieldType = 'کنکور' | 'نهایی';
 export type ActivityType = 'مطالعه' | 'مرور' | 'تست آموزشی' | 'تست سنجشی' | 'کلاس/ویدیو';
+export type TaskStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'SKIPPED' | 'INCOMPLETE';
 
 export interface User {
   id: string;
@@ -52,6 +53,7 @@ export interface Task {
   actualTimeMinutes: number | null;
   targetTestCount: number | null;
   actualTestCount: number | null;
+  status?: TaskStatus;
   completed: boolean | null; // null = pending, true = done, false = skipped
   date: string; // ISO date string
   order: number;

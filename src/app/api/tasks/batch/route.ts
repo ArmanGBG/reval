@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, canCreateTaskForStudent, canModifyTask, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
+import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 
 // Helper: parse activityTypes JSON string → array
 function parseTask(task: Record<string, unknown>) {
@@ -77,7 +78,11 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-      if (t.detailsCompleted && (!Array.isArray(t.activityTypes) || typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes < 0 || typeof t.targetTestCount !== 'number' || t.targetTestCount < 0)) {
+      const status = t.status ?? legacyTaskStatus(t.detailsCompleted, t.completed ?? null);
+      if (!isTaskStatus(status)) return NextResponse.json({ error: `tasks[${i}]: status معتبر نیست` }, { status: 400 });
+      const lifecycleError = validateTaskLifecycle(status, t.detailsCompleted, t.completed ?? null);
+      if (lifecycleError) return NextResponse.json({ error: `tasks[${i}]: ${lifecycleError}` }, { status: 400 });
+      if (status !== 'DRAFT' && (!Array.isArray(t.activityTypes) || t.activityTypes.length === 0 || typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes <= 0 || typeof t.targetTestCount !== 'number' || t.targetTestCount < 0)) {
         return NextResponse.json(
           { error: `tasks[${i}]: جزئیات تکمیل‌شده ناقص است` },
           { status: 400 },
@@ -105,7 +110,8 @@ export async function POST(request: NextRequest) {
       const sessionCreatedById =
         permission.createdBy === 'advisor' ? ctx.userId : null;
       prepared.push({
-        ...t,
+         ...t,
+         status,
         subjectId: subject.id,
         subject: subject.name,
         subjectColor: subject.color,
@@ -137,6 +143,7 @@ export async function POST(request: NextRequest) {
               typeof t.actualTestCount === 'number' ? t.actualTestCount : null,
             completed:
               t.completed === true ? true : t.completed === false ? false : null,
+            status: t.status as never,
             detailsCompleted: t.detailsCompleted as boolean,
             date: t.date as string,
             order: typeof t.order === 'number' ? t.order : 0,
