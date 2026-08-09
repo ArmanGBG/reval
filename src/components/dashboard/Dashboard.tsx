@@ -234,7 +234,7 @@ export default function Dashboard() {
     [tasks, todayISO, studentId]
   );
   const todayCompletedCount = useMemo(
-    () => todayTasks.filter((t) => t.completed === true).length,
+    () => todayTasks.filter((t) => t.status === 'COMPLETED').length,
     [todayTasks]
   );
   const todayTotalMinutes = useMemo(
@@ -254,11 +254,12 @@ export default function Dashboard() {
 
   // ===== Handlers =====
   const handleComplete = useCallback((taskId: string) => {
-    updateTask(taskId, { completed: true });
+    const task = tasks.find((item) => item.id === taskId);
+    updateTask(taskId, { status: 'COMPLETED', completed: true, actualTimeMinutes: task?.actualTimeMinutes ?? task?.targetTimeMinutes ?? 0, actualTestCount: task?.actualTestCount ?? task?.targetTestCount ?? 0 });
     incrementStreak();
     toast.success(getRandomSuccessMessage());
     celebrate('big');
-  }, [updateTask, incrementStreak, celebrate]);
+  }, [tasks, updateTask, incrementStreak, celebrate]);
 
   const handleSkip = useCallback((taskId: string) => {
     updateTask(taskId, { completed: false });
@@ -284,7 +285,7 @@ export default function Dashboard() {
   }, [tasks]);
 
   const handlePartialSave = useCallback((id: string, actualTime: number, actualTests: number) => {
-    updateTask(id, { actualTimeMinutes: actualTime, actualTestCount: actualTests, completed: true });
+    updateTask(id, { actualTimeMinutes: actualTime, actualTestCount: actualTests, status: 'COMPLETED', completed: true });
     incrementStreak();
     setSheetOpen(false);
     toast.success(getRandomSuccessMessage());
@@ -319,7 +320,7 @@ export default function Dashboard() {
     for (const t of todayTasks) {
       const entry = map.get(t.subject) ?? { name: t.subject, color: t.subjectColor || 'var(--accent)', count: 0, completed: 0 };
       entry.count += 1;
-      if (t.completed === true) entry.completed += 1;
+      if (t.status === 'COMPLETED') entry.completed += 1;
       map.set(t.subject, entry);
     }
     return [...map.entries()].map(([name, v]) => ({ name, color: v.color, count: v.count, completed: v.completed }));

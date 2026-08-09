@@ -42,8 +42,8 @@ interface Props {
 function computeSubjectStat(tasks: Task[], subject: string, color: string): SubjectStat {
   const subjectTasks = tasks.filter((t) => t.subject === subject);
   const totalTasks = subjectTasks.length;
-  const completedTasks = subjectTasks.filter((t) => t.completed === true).length;
-  const skippedTasks = subjectTasks.filter((t) => t.completed === false).length;
+  const completedTasks = subjectTasks.filter((t) => t.status === 'COMPLETED').length;
+  const skippedTasks = subjectTasks.filter((t) => t.status === 'SKIPPED').length;
   const targetMinutes = subjectTasks.reduce((s, t) => s + (t.targetTimeMinutes ?? 0), 0);
   const actualMinutes = subjectTasks.reduce((s, t) => s + (t.actualTimeMinutes ?? 0), 0);
   const targetTests = subjectTasks.reduce((s, t) => s + (t.targetTestCount ?? 0), 0);

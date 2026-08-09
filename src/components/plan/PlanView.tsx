@@ -128,7 +128,7 @@ export default function PlanView() {
 
   // Carry untouched tasks forward once their scheduled day has ended.
   useEffect(() => {
-    const today = parseLocalDate(selectedDate);
+    const today = new Date();
     const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     tasks
       .filter((task) => task.studentId === studentId && task.date < todayISO && (task.status === 'PENDING' || (task.status === undefined && task.completed === null)))
@@ -238,9 +238,10 @@ export default function PlanView() {
   // ===== Handlers =====
   const handleComplete = useCallback(
     async (taskId: string) => {
-      await updateTask(taskId, { status: 'COMPLETED', completed: true });
+      const task = tasks.find((item) => item.id === taskId);
+      await updateTask(taskId, { status: 'COMPLETED', completed: true, actualTimeMinutes: task?.actualTimeMinutes ?? task?.targetTimeMinutes ?? 0, actualTestCount: task?.actualTestCount ?? task?.targetTestCount ?? 0 });
     },
-    [updateTask]
+    [tasks, updateTask]
   );
 
   const handleSkip = useCallback(
@@ -276,15 +277,16 @@ export default function PlanView() {
   const handleMoveDate = useCallback(
     async (taskId: string, newDate: string) => {
       const task = tasks.find((item) => item.id === taskId);
-      await updateTask(taskId, task?.createdBy === 'advisor'
-        ? { date: newDate, status: 'INCOMPLETE', completed: null }
+      if (!task) return;
+      await updateTask(taskId, task.status === 'DRAFT'
+        ? { date: newDate }
         : { date: newDate, status: 'INCOMPLETE', detailsCompleted: true, completed: null });
       const d = parseLocalDate(newDate);
       toast.success(`تسک به ${getPersianWeekdayName(d)} ${formatPersianDate(d)} منتقل شد`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
       });
     },
-    [updateTask]
+    [tasks, updateTask]
   );
 
   const handleMoveToIncomplete = useCallback(
@@ -295,7 +297,7 @@ export default function PlanView() {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
       });
     },
-    [updateTask]
+    [tasks, updateTask]
   );
 
   const handleActionDelete = useCallback(

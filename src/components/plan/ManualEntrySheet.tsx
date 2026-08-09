@@ -23,12 +23,14 @@ const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموز
  * User can do a "quick save" after step 2 (subject selected) → creates draft with detailsCompleted=false.
  * Or continue to step 3 and save a complete task with detailsCompleted=true.
  */
-export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit }: {
+export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null }: {
   open: boolean; onOpenChange: (open: boolean) => void; selectedDate: string;
   existingTaskCount: number; onSubmit: (task: Task) => Promise<void> | void;
+  studentId?: string; grade?: string; major?: string; createdBy?: 'student' | 'advisor'; createdById?: string | null;
 }) {
   const { user } = useAppStore();
-  const studentId = useCurrentStudentId();
+  const currentStudentId = useCurrentStudentId();
+  const studentId = studentIdProp ?? currentStudentId;
 
   // === Step state ===
   // 1 = field type, 2 = subject picker, 3 = details (activity/time)
@@ -73,7 +75,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     completed: null,
     date: selectedDate,
     order: existingTaskCount + 1,
-    createdBy: 'student',
+    createdBy,
+    createdById,
     chapterId: selection.chapterId ?? null,
     topicId: selection.topicId ?? null,
     topicModeId: selection.topicModeId ?? null,
@@ -181,8 +184,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
               </div>
               <TaskSubjectPicker
                 fieldType={fieldType}
-                grade={user?.grade ?? 'دوازدهم'}
-                major={user?.major ?? 'تجربی'}
+                 grade={grade ?? user?.grade ?? 'دوازدهم'}
+                 major={major ?? user?.major ?? 'تجربی'}
                 value={selection}
                 onChange={setSelection}
               />

@@ -224,11 +224,12 @@ export default function AnalyticsView() {
   const [fieldFilter, setFieldFilter] = useState<FieldFilter>('همه');
   const [chartTab, setChartTab] = useState<ChartTab>('روند روزانه');
   const [view, setView] = useState<AnalyticsViewName>('نمای کلی');
+  const customRange = useMemo(() => customStart && customEnd ? { start: customStart <= customEnd ? customStart : customEnd, end: customStart <= customEnd ? customEnd : customStart } : null, [customStart, customEnd]);
 
   // ===== Filter tasks once for the selected time + field =====
   const reportTasks = useMemo(
-    () => filterTasksForReport(tasks, timeFilter, fieldFilter, new Date(), customStart && customEnd ? { start: customStart <= customEnd ? customStart : customEnd, end: customStart <= customEnd ? customEnd : customStart } : null),
-    [tasks, timeFilter, fieldFilter, customStart, customEnd],
+    () => filterTasksForReport(tasks, timeFilter, fieldFilter, new Date(), customRange),
+    [tasks, timeFilter, fieldFilter, customRange],
   );
 
   // ===== KPIs from real filtered tasks =====
@@ -242,16 +243,16 @@ export default function AnalyticsView() {
 
   // ===== Chart datasets from real filtered tasks =====
   const dailyTrendData = useMemo(
-    () => buildDailyTrend(reportTasks, timeFilter),
-    [reportTasks, timeFilter],
+    () => buildDailyTrend(reportTasks, timeFilter, new Date(), customRange),
+    [reportTasks, timeFilter, customRange],
   );
   const subjectDistData = useMemo(
     () => buildSubjectDistribution(reportTasks),
     [reportTasks],
   );
   const activityData = useMemo(
-    () => buildActivityBreakdown(reportTasks, timeFilter),
-    [reportTasks, timeFilter],
+    () => buildActivityBreakdown(reportTasks, timeFilter, new Date(), customRange),
+    [reportTasks, timeFilter, customRange],
   );
 
   const pieTotal = subjectDistData.reduce((sum, d) => sum + d.value, 0);
@@ -423,6 +424,7 @@ export default function AnalyticsView() {
                 subjectDistData={subjectDistData}
                 activityData={activityData}
                 hasData={hasData}
+                customRange={customRange}
               />
             </div>
           </>
@@ -496,6 +498,12 @@ export default function AnalyticsView() {
                 <FilterPill active={fieldFilter === 'نهایی'} onClick={() => setFieldFilter('نهایی')}>نهایی</FilterPill>
               </div>
             </div>
+            {timeFilter === 'بازه دلخواه' && (
+              <div className="grid grid-cols-2 gap-3 mb-6 max-w-md" dir="ltr">
+                <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--foreground)]" />
+                <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--foreground)]" />
+              </div>
+            )}
 
             {/* KPI Grid (4-col) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -544,6 +552,7 @@ export default function AnalyticsView() {
                     subjectDistData={subjectDistData}
                     activityData={activityData}
                     hasData={hasData}
+                    customRange={customRange}
                   />
                 </div>
               </div>
@@ -573,7 +582,7 @@ interface SubjectStats {
   chapters: ChapterStats[];
 }
 
-function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: TimeFilter; fieldFilter: FieldFilter }) {
+function SubjectChapterBreakdown({ timeFilter, fieldFilter, customRange }: { timeFilter: TimeFilter; fieldFilter: FieldFilter; customRange?: { start: string; end: string } | null }) {
   const { tasks, user } = useAppStore();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -604,37 +613,8 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
 
   // Filter tasks by date and field
   const filteredTasks = useMemo(() => {
-    const now = new Date();
-    const todayStr = toISODate(now);
-
-    return tasks.filter((task) => {
-       if (task.status === 'DRAFT' || (task.status === undefined && task.detailsCompleted === false)) return false;
-      // Date filter
-      if (timeFilter === 'روزانه') {
-        if (task.date !== todayStr) return false;
-      } else if (timeFilter === 'هفته جاری') {
-        const weekDays = getWeekDays(now);
-        const weekDateStrs = weekDays.map((d) => toISODate(d));
-        if (!weekDateStrs.includes(task.date)) return false;
-      } else if (timeFilter === 'ماهانه') {
-        const j = getTodayJalali();
-        const firstDay = getFirstDayOfJalaliMonth(j.jy, j.jm);
-        const daysInMonth = getDaysInJalaliMonth(j.jy, j.jm);
-        const lastDay = new Date(firstDay);
-        lastDay.setDate(lastDay.getDate() + daysInMonth - 1);
-        const lastDayStr = toISODate(lastDay);
-        const firstDayStr = toISODate(firstDay);
-        if (task.date < firstDayStr || task.date > lastDayStr) return false;
-      }
-      // بازه دلخواه = no date restriction
-
-      // Field filter
-      if (fieldFilter === 'کنکوری' && task.fieldType !== 'کنکور') return false;
-      if (fieldFilter === 'نهایی' && task.fieldType !== 'نهایی') return false;
-
-      return true;
-    });
-  }, [tasks, timeFilter, fieldFilter]);
+    return filterTasksForReport(tasks, timeFilter, fieldFilter, new Date(), customRange);
+  }, [tasks, timeFilter, fieldFilter, customRange]);
 
   // Build subject → chapter stats
   const subjectStats = useMemo((): SubjectStats[] => {
@@ -823,6 +803,7 @@ interface ChartContentProps {
   subjectDistData: Array<{ name: string; value: number; fill: string }>;
   activityData: Array<{ name: string; 'مطالعه': number; 'مرور': number; 'تست_آموزشی': number; 'تست_سنجشی': number; 'کلاس_ویدیو': number }>;
   hasData: boolean;
+  customRange?: { start: string; end: string } | null;
 }
 
 function ChartContent({
@@ -837,6 +818,7 @@ function ChartContent({
   subjectDistData,
   activityData,
   hasData,
+  customRange,
 }: ChartContentProps) {
   // Defer chart rendering until the container actually has non-zero width.
   // During AnimatePresence slide-in transitions the parent has width=0, which
@@ -1011,7 +993,7 @@ function ChartContent({
       )}
 
       {chartTab === 'تفکیک فصول' && (
-        <SubjectChapterBreakdown timeFilter={timeFilter} fieldFilter={fieldFilter} />
+        <SubjectChapterBreakdown timeFilter={timeFilter} fieldFilter={fieldFilter} customRange={customRange} />
       )}
     </div>
   );

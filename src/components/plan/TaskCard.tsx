@@ -231,13 +231,13 @@ export default function TaskCard({
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
               </button>
-              <button
+              {task.createdBy === 'student' && <button
                 onClick={() => onAction(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
                 aria-label="عملیات تسک"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
+              </button>}
               {onEdit && task.createdBy === 'student' && (
                 <button
                   onClick={() => onEdit(task.id)}

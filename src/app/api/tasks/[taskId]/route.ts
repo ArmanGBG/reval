@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canModifyTask, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
+import { requireAuth, canModifyTask, canViewStudentTasks, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 
 // Helper: parse activityTypes JSON string → array
@@ -65,19 +65,17 @@ export async function PATCH(
 
   const { taskId } = await params;
 
-  // Ownership check before any modification
-  const canModify = await canModifyTask(ctx, taskId);
-  if (!canModify) {
-    return NextResponse.json(
-      { error: 'دسترسی به این تسک مجاز نیست' },
-      { status: 403 },
-    );
-  }
-
   try {
     const body = await request.json();
     const existing = await db.task.findUnique({ where: { id: taskId } });
     if (!existing) return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
+    const canModify = await canModifyTask(ctx, taskId);
+    const isStudentLifecycleUpdate = ctx.user.role === 'STUDENT' && ctx.userId === existing.studentId && existing.createdBy === 'advisor';
+    const lifecycleFields = new Set(['status', 'completed', 'actualTimeMinutes', 'actualTestCount']);
+    if (!canModify && (!isStudentLifecycleUpdate || Object.keys(body).some((key) => !lifecycleFields.has(key)))) {
+      return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
+    }
+    if (!(await canViewStudentTasks(ctx, existing.studentId))) return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
 
     // createdBy and createdById are intentionally NOT in the allowed list —
     // they're immutable after creation to prevent spoofing.

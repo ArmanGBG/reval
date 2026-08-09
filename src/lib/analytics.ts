@@ -111,7 +111,7 @@ export interface DailyDatum {
  * - ماهانه: 6 bars, each = 5-day bucket of the current Jalali month
  * - بازه دلخواه: last 14 days, one bar per day (labeled with day-of-month)
  */
-export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date = new Date()): DailyDatum[] {
+export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date = new Date(), customRange?: { start: string; end: string } | null): DailyDatum[] {
   const completed = tasks.filter(isCompletedTask);
 
   if (timeFilter === 'روزانه' || timeFilter === 'هفته جاری') {
@@ -156,7 +156,21 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
     return buckets;
   }
 
-  // بازه دلخواه — last 14 days
+  if (customRange) {
+    const result: DailyDatum[] = [];
+    const cursor = new Date(`${customRange.start}T00:00:00`);
+    const end = new Date(`${customRange.end}T00:00:00`);
+    while (cursor <= end) {
+      const dayStr = toISODate(cursor);
+      const dayTasks = completed.filter((t) => t.date === dayStr);
+      const minutes = dayTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
+      result.push({ day: `${cursor.getDate()}/${cursor.getMonth() + 1}`, hours: Math.round((minutes / 60) * 10) / 10, tests: dayTasks.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0) });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return result;
+  }
+
+  // بازه دلخواه بدون تاریخ — ۱۴ روز اخیر
   const result: DailyDatum[] = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(now);
@@ -223,12 +237,12 @@ const ACTIVITY_KEYS: ActivityType[] = ['مطالعه', 'مرور', 'تست آم�
  * declared activityTypes. This is a reasonable approximation: if a task says
  * it included مطالعه + تست آموزشی, we split the time 50/50 between those two.
  */
-export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, now: Date = new Date()): ActivityDatum[] {
+export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, now: Date = new Date(), customRange?: { start: string; end: string } | null): ActivityDatum[] {
   const completed = tasks.filter(isCompletedTask);
 
   // Reuse the same X-axis logic as buildDailyTrend so the activity chart lines
   // up with the daily trend chart for the same filter.
-  const labels = buildDailyTrend(tasks, timeFilter, now).map((d) => d.day);
+  const labels = buildDailyTrend(tasks, timeFilter, now, customRange).map((d) => d.day);
 
   // Determine which ISO date strings map to each label
   let labelToDates: Map<string, string[]>;
@@ -254,6 +268,14 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
         dates.push(toISODate(date));
       }
       labelToDates.set(label, dates);
+    }
+  } else if (customRange) {
+    labelToDates = new Map();
+    const cursor = new Date(`${customRange.start}T00:00:00`);
+    const end = new Date(`${customRange.end}T00:00:00`);
+    while (cursor <= end) {
+      labelToDates.set(`${cursor.getDate()}/${cursor.getMonth() + 1}`, [toISODate(cursor)]);
+      cursor.setDate(cursor.getDate() + 1);
     }
   } else {
     // بازه دلخواه — last 14 days, label = "day/month"

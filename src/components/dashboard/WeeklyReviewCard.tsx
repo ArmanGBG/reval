@@ -77,8 +77,8 @@ export default function WeeklyReviewCard({ tasks, streakDays }: WeeklyReviewCard
       return d >= weekAgo && d <= today;
     });
 
-    const completed = weekTasks.filter((t) => t.completed === true);
-    const skipped = weekTasks.filter((t) => t.completed === false);
+    const completed = weekTasks.filter((t) => t.status === 'COMPLETED');
+    const skipped = weekTasks.filter((t) => t.status === 'SKIPPED');
     const totalMinutes = completed.reduce(
       (sum, t) => sum + (t.actualTimeMinutes ?? 0),
       0,
