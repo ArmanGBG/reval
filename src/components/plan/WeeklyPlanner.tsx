@@ -179,6 +179,7 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
       actualTimeMinutes: null,
       targetTestCount: null,
       actualTestCount: null,
+      status: 'DRAFT',
       completed: null,
       date: dateStr,
       order: existingCount,
@@ -393,8 +394,8 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
                   const task = tasks.find((t) => t.id === taskId);
                   if (task) {
                      if (!task.detailsCompleted) setEditingTaskId(task.id);
-                     else if (task.completed === null) {
-                      updateTask(taskId, { completed: true });
+                      else if (task.status === 'PENDING' || (task.status === undefined && task.completed === null)) {
+                       updateTask(taskId, { status: 'COMPLETED', completed: true });
                     } else {
                       resetTask(taskId);
                     }
