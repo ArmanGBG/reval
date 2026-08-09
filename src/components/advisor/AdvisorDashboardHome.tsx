@@ -43,7 +43,6 @@ export function AdvisorDashboardHome() {
     return c;
   }, [statuses]);
 
-  const avgScore = safeAvg(s => s.mockExamScore);
   const avgStudy = safeAvg(s => s.studyHoursPerWeek);
   const avgAdherence = safeAvg(s => s.taskCompletionRate);
   const atRiskCount = statusCounts['at-risk'] + statusCounts.critical;
@@ -51,7 +50,7 @@ export function AdvisorDashboardHome() {
   const kpis = [
     { icon: <Users className="w-4 h-4" />, label: 'کل دانش‌آموزان', value: toPersianDigits(students.length), sub: 'تحت نظارت', accent: 'var(--accent)' },
     { icon: <AlertTriangle className="w-4 h-4" />, label: 'نیاز به مداخله', value: toPersianDigits(atRiskCount), sub: 'دانش‌آموز', accent: 'var(--danger)' },
-    { icon: <Target className="w-4 h-4" />, label: 'میانگین نمره', value: toPersianDigits(avgScore), sub: 'آزمون آزمایشی', accent: 'var(--accent)' },
+    { icon: <Clock className="w-4 h-4" />, label: 'میانگین مطالعه', value: toPersianDigits(avgStudy), sub: 'ساعت در هفته', accent: 'var(--accent)' },
     { icon: <UserCheck className="w-4 h-4" />, label: 'میانگین رعایت', value: `${toPersianDigits(avgAdherence)}٪`, sub: 'تکمیل وظایف', accent: 'var(--warning)' },
   ];
 

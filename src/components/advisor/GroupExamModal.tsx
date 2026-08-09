@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
-import { MOCK_STUDENTS, SUBJECTS } from '@/lib/constants/mockData';
+import { SUBJECTS } from '@/lib/constants/mockData';
 import {
   Dialog,
   DialogContent,
@@ -26,10 +26,7 @@ export function GroupExamModal({
   onOpenChange: (open: boolean) => void;
 }) {
   const { addExam, advisorStudents } = useAppStore();
-  // Use real DB students when available; fall back to MOCK_STUDENTS only
-  // if the advisor students list hasn't loaded yet (so the modal isn't empty
-  // during the initial load).
-  const students = advisorStudents.length > 0 ? advisorStudents : MOCK_STUDENTS;
+  const students = advisorStudents;
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');

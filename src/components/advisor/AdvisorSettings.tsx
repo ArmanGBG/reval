@@ -94,12 +94,6 @@ export function AdvisorSettings() {
               </div>
               <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
                 <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
-                  {toPersianDigits(Math.round(realStudents.reduce((a, s) => a + (s.mockExamScore || 0), 0) / (realStudents.length || 1)))}
-                </p>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین نمره</p>
-              </div>
-              <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
-                <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
                   {toPersianDigits(Math.round(realStudents.reduce((a, s) => a + (s.studyHoursPerWeek || 0), 0) / (realStudents.length || 1)))}
                 </p>
                 <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین ساعت</p>

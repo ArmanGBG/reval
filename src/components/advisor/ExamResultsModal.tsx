@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
-import { MOCK_STUDENTS } from '@/lib/constants/mockData';
 import type { Exam } from '@/lib/types';
 import {
   Dialog,
@@ -51,7 +50,7 @@ export function ExamResultsModal({
   onOpenChange,
 }: ExamResultsModalProps) {
   const { advisorStudents, saveExamResults } = useAppStore();
-  const students = advisorStudents.length > 0 ? advisorStudents : MOCK_STUDENTS;
+  const students = advisorStudents;
   const [results, setResults] = useState<ResultInput[]>([]);
   const [saving, setSaving] = useState(false);
 
