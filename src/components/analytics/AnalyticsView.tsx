@@ -219,14 +219,16 @@ function ViewTabToggle({
 export default function AnalyticsView() {
   const { tasks } = useAppStore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('هفته جاری');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [fieldFilter, setFieldFilter] = useState<FieldFilter>('همه');
   const [chartTab, setChartTab] = useState<ChartTab>('روند روزانه');
   const [view, setView] = useState<AnalyticsViewName>('نمای کلی');
 
   // ===== Filter tasks once for the selected time + field =====
   const reportTasks = useMemo(
-    () => filterTasksForReport(tasks, timeFilter, fieldFilter),
-    [tasks, timeFilter, fieldFilter],
+    () => filterTasksForReport(tasks, timeFilter, fieldFilter, new Date(), customStart && customEnd ? { start: customStart <= customEnd ? customStart : customEnd, end: customStart <= customEnd ? customEnd : customStart } : null),
+    [tasks, timeFilter, fieldFilter, customStart, customEnd],
   );
 
   // ===== KPIs from real filtered tasks =====
@@ -366,6 +368,12 @@ export default function AnalyticsView() {
                   </FilterPill>
                 ))}
               </div>
+              {timeFilter === 'بازه دلخواه' && (
+                <div className="grid grid-cols-2 gap-2" dir="ltr">
+                  <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs text-[var(--foreground)]" />
+                  <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs text-[var(--foreground)]" />
+                </div>
+              )}
             </div>
 
             {/* KPI Summary */}
@@ -600,7 +608,7 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
     const todayStr = toISODate(now);
 
     return tasks.filter((task) => {
-      if (task.detailsCompleted === false) return false;
+       if (task.status === 'DRAFT' || (task.status === undefined && task.detailsCompleted === false)) return false;
       // Date filter
       if (timeFilter === 'روزانه') {
         if (task.date !== todayStr) return false;
@@ -651,7 +659,7 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
 
             const targetMinutes = chapterTasks.reduce((sum, t) => sum + (t.targetTimeMinutes ?? 0), 0);
             const actualMinutes = chapterTasks.reduce(
-              (sum, t) => sum + (t.actualTimeMinutes ?? 0),
+              (sum, t) => sum + (t.status === 'COMPLETED' ? (t.actualTimeMinutes ?? 0) : 0),
               0
             );
             const completionRate = targetMinutes > 0 ? Math.min(Math.round((actualMinutes / targetMinutes) * 100), 100) : 0;
@@ -661,7 +669,7 @@ function SubjectChapterBreakdown({ timeFilter, fieldFilter }: { timeFilter: Time
 
         const targetMinutes = subjectTasks.reduce((sum, t) => sum + (t.targetTimeMinutes ?? 0), 0);
         const actualMinutes = subjectTasks.reduce(
-          (sum, t) => sum + (t.actualTimeMinutes ?? 0),
+          (sum, t) => sum + (t.status === 'COMPLETED' ? (t.actualTimeMinutes ?? 0) : 0),
           0
         );
         const completionRate = targetMinutes > 0 ? Math.min(Math.round((actualMinutes / targetMinutes) * 100), 100) : 0;
@@ -1044,6 +1052,7 @@ interface LinkedTask {
   targetTimeMinutes: number | null;
   targetTestCount: number | null;
   completed: boolean | null;
+  status?: 'DRAFT' | 'PENDING' | 'COMPLETED' | 'SKIPPED' | 'INCOMPLETE';
   detailsCompleted: boolean;
   date: string;
   chapterId: string | null;
@@ -1194,7 +1203,7 @@ function ChapterCentricReport() {
   const subjectOptions = useMemo(() => {
     return subjects.map((s) => {
       const subjectTaskCount = tasks.filter(
-        (t) => t.subject === s.name && t.fieldType === (s.isKonkur ? 'کنکور' : 'نهایی') && t.detailsCompleted !== false && t.completed === true,
+        (t) => t.subject === s.name && t.fieldType === (s.isKonkur ? 'کنکور' : 'نهایی') && t.status === 'COMPLETED',
       ).length;
       return { ...s, taskCount: subjectTaskCount };
     });
@@ -1219,7 +1228,7 @@ function ChapterCentricReport() {
     }
 
     const completedTasks = tasks.filter(
-      (t) => t.completed === true && t.detailsCompleted !== false && t.subject === subject.name && t.fieldType === (subject.isKonkur ? 'کنکور' : 'نهایی'),
+      (t) => t.status === 'COMPLETED' && t.subject === subject.name && t.fieldType === (subject.isKonkur ? 'کنکور' : 'نهایی'),
     );
 
     // Build chapter aggregations

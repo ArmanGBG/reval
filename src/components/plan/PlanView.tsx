@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
@@ -125,6 +125,20 @@ export default function PlanView() {
     setSelectedDate,
   } = useAppStore();
   const studentId = useCurrentStudentId();
+
+  // Carry untouched tasks forward once their scheduled day has ended.
+  useEffect(() => {
+    const today = parseLocalDate(selectedDate);
+    const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    tasks
+      .filter((task) => task.studentId === studentId && task.date < todayISO && (task.status === 'PENDING' || (task.status === undefined && task.completed === null)))
+      .forEach((task) => {
+        const date = parseLocalDate(task.date);
+        date.setDate(date.getDate() + 1);
+        const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        updateTask(task.id, { date: nextDate, status: 'INCOMPLETE', completed: null });
+      });
+  }, [tasks, studentId, selectedDate, updateTask]);
 
   // Local state
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
@@ -261,7 +275,10 @@ export default function PlanView() {
 
   const handleMoveDate = useCallback(
     async (taskId: string, newDate: string) => {
-      await updateTask(taskId, { date: newDate });
+      const task = tasks.find((item) => item.id === taskId);
+      await updateTask(taskId, task?.createdBy === 'advisor'
+        ? { date: newDate, status: 'INCOMPLETE', completed: null }
+        : { date: newDate, status: 'INCOMPLETE', detailsCompleted: true, completed: null });
       const d = parseLocalDate(newDate);
       toast.success(`تسک به ${getPersianWeekdayName(d)} ${formatPersianDate(d)} منتقل شد`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
@@ -272,7 +289,8 @@ export default function PlanView() {
 
   const handleMoveToIncomplete = useCallback(
     async (taskId: string) => {
-      await updateTask(taskId, { status: 'INCOMPLETE', detailsCompleted: true, completed: null });
+      const task = tasks.find((item) => item.id === taskId);
+      await updateTask(taskId, { status: 'INCOMPLETE', ...(task?.createdBy === 'student' ? { detailsCompleted: true } : {}), completed: null });
       toast('تسک به ناقصی‌ها منتقل شد', {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
       });
@@ -282,6 +300,11 @@ export default function PlanView() {
 
   const handleActionDelete = useCallback(
     async (taskId: string) => {
+      const task = tasks.find((item) => item.id === taskId);
+      if (task?.createdBy !== 'student') {
+        toast.error('تسک‌های مشاور قابل حذف نیستند');
+        return;
+      }
       await deleteTask(taskId);
       toast('تسک حذف شد', {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--foreground-muted)' },
@@ -385,7 +408,7 @@ export default function PlanView() {
           /* Draft and incomplete tasks tabs */
           <div className="space-y-3">
             {(planTab === 'draft' ? draftTasks : incompleteTasks).length === 0 ? (
-              <IncompleteEmptyState />
+              <IncompleteEmptyState draft={planTab === 'draft'} />
             ) : (
               <SortableTaskList
                 tasks={planTab === 'draft' ? draftTasks : incompleteTasks}
@@ -504,7 +527,7 @@ export default function PlanView() {
           /* Incomplete tasks tab — full width */
           <div className="max-w-3xl mx-auto space-y-3">
             {incompleteTasks.length === 0 ? (
-              <IncompleteEmptyState />
+              <IncompleteEmptyState draft={planTab === 'draft'} />
             ) : (
               <SortableTaskList
                 tasks={incompleteTasks}
@@ -619,15 +642,15 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 // ===== Incomplete Empty State =====
-function IncompleteEmptyState() {
+function IncompleteEmptyState({ draft = false }: { draft?: boolean }) {
   return (
     <div className="surface-1 rounded-2xl p-10 text-center">
       <div className="w-12 h-12 rounded-2xl bg-[rgba(216,150,20,0.12)] flex items-center justify-center mx-auto mb-3">
         <Inbox className="w-5 h-5 text-[var(--warning)]" />
       </div>
-      <p className="text-sm text-[var(--foreground)] font-medium mb-1">تسک ناقصی وجود نداره</p>
+      <p className="text-sm text-[var(--foreground)] font-medium mb-1">{draft ? 'پیش‌نویسی وجود ندارد' : 'تسک ناقصی وجود ندارد'}</p>
       <p className="text-xs text-[var(--foreground-muted)]">
-        تسک‌هایی که به ناقصی‌ها منتقل می‌کنی اینجا نمایش داده میشن
+        {draft ? 'تسک‌هایی که جزئیاتشان را مشخص نکرده‌اید اینجا نمایش داده می‌شوند' : 'تسک‌های انجام‌نشده یا منتقل‌شده به ناقصی‌ها اینجا نمایش داده می‌شوند'}
       </p>
     </div>
   );

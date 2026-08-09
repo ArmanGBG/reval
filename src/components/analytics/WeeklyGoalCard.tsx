@@ -41,11 +41,8 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 // ===== Preset hour options for the editor =====
 const PRESET_HOURS = [15, 20, 25, 30];
 
-// Minutes a task contributed to study time. Falls back to the
-// target time when the student hasn't logged the actual minutes yet,
-// so the ring still reflects planned effort.
 function taskHours(task: Task): number {
-  const minutes = task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0;
+  const minutes = task.actualTimeMinutes ?? 0;
   return minutes / 60;
 }
 
@@ -86,7 +83,7 @@ export default function WeeklyGoalCard() {
     () =>
       tasks.filter(
         (t) =>
-          t.completed === true &&
+          (t.status === 'COMPLETED' || (t.status === undefined && t.completed === true)) &&
           typeof t.date === 'string' &&
           weekDaySet.has(t.date),
       ),

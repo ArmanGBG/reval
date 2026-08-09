@@ -131,14 +131,14 @@ export async function PATCH(
       topicModeId: 'topicModeId' in body ? body.topicModeId : existing.topicModeId,
     });
     if (!curriculum) return NextResponse.json({ error: 'شناسه‌های برنامه درسی با درس انتخابی سازگار نیستند' }, { status: 400 });
-    const detailsCompleted = body.detailsCompleted ?? existing.detailsCompleted;
+    const detailsCompleted = body.detailsCompleted !== undefined ? body.detailsCompleted : existing.detailsCompleted;
     if (typeof detailsCompleted !== 'boolean') return NextResponse.json({ error: 'detailsCompleted باید boolean باشد' }, { status: 400 });
-    const activityTypes = body.activityTypes ?? (existing.activityTypes ? JSON.parse(existing.activityTypes) : null);
-    const targetTimeMinutes = body.targetTimeMinutes ?? existing.targetTimeMinutes;
-    const targetTestCount = body.targetTestCount ?? existing.targetTestCount;
-    const status = body.status ?? legacyTaskStatus(detailsCompleted, body.completed ?? existing.completed ?? null);
+    const activityTypes = body.activityTypes !== undefined ? body.activityTypes : (existing.activityTypes ? JSON.parse(existing.activityTypes) : null);
+    const targetTimeMinutes = body.targetTimeMinutes !== undefined ? body.targetTimeMinutes : existing.targetTimeMinutes;
+    const targetTestCount = body.targetTestCount !== undefined ? body.targetTestCount : existing.targetTestCount;
+    const status = body.status ?? legacyTaskStatus(detailsCompleted, body.completed !== undefined ? body.completed : existing.completed);
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
-    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed ?? existing.completed ?? null);
+    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed !== undefined ? body.completed : existing.completed);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
     if (status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0 || typeof targetTestCount !== 'number' || targetTestCount < 0)) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });

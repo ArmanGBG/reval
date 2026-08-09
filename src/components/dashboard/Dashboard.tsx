@@ -238,7 +238,7 @@ export default function Dashboard() {
     [todayTasks]
   );
   const todayTotalMinutes = useMemo(
-    () => todayTasks.reduce((sum, t) => sum + (t.completed === true ? (t.actualTimeMinutes ?? t.targetTimeMinutes ?? 0) : 0), 0),
+    () => todayTasks.reduce((sum, t) => sum + (t.status === 'COMPLETED' ? (t.actualTimeMinutes ?? 0) : 0), 0),
     [todayTasks]
   );
   const todayProgress = useMemo(() => {

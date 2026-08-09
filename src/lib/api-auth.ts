@@ -188,11 +188,12 @@ export async function canModifyTask(
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    select: { studentId: true },
+    select: { studentId: true, createdBy: true },
   });
 
   if (!task) return false;
 
+  if (ctx.user.role === 'STUDENT') return task.studentId === ctx.userId && task.createdBy === 'student';
   return canViewStudentTasks(ctx, task.studentId);
 }
 

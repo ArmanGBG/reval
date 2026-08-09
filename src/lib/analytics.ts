@@ -56,8 +56,9 @@ export function filterTasksForReport(
   timeFilter: TimeFilter,
   fieldFilter: FieldFilter,
   now: Date = new Date(),
+  customRange?: { start: string; end: string } | null,
 ): Task[] {
-  const range = resolveDateRange(timeFilter, now);
+  const range = timeFilter === 'بازه دلخواه' ? customRange ?? null : resolveDateRange(timeFilter, now);
   return tasks.filter((t) => {
     if (t.status === 'DRAFT' || (t.status === undefined && t.detailsCompleted === false)) return false;
     if (range) {
@@ -325,7 +326,7 @@ export function computeInsights(tasks: Task[]): {
   // Use ALL tasks (not just completed) so we can see skipped ones too
   const subjects = new Map<string, { color: string; minutes: number; total: number; completed: number; skipped: number }>();
   for (const t of tasks) {
-    if (t.detailsCompleted === false) continue;
+    if (t.status === 'DRAFT' || (t.status === undefined && t.detailsCompleted === false)) continue;
     const entry = subjects.get(t.subject) ?? {
       color: t.subjectColor || '#5E6AD2',
       minutes: 0,
@@ -333,11 +334,11 @@ export function computeInsights(tasks: Task[]): {
       completed: 0,
       skipped: 0,
     };
-    if (t.completed === true) {
+    if (isCompletedTask(t)) {
       entry.minutes += t.actualTimeMinutes ?? 0;
       entry.completed += 1;
     }
-    if (t.completed === false) entry.skipped += 1;
+    if (t.status === 'SKIPPED' || (t.status === undefined && t.completed === false)) entry.skipped += 1;
     entry.total += 1;
     subjects.set(t.subject, entry);
   }
@@ -396,5 +397,5 @@ export function computeInsights(tasks: Task[]): {
 // ===== Helpers for chart legend =====
 /** Returns true if there are any completed tasks in the filtered set. */
 export function hasAnyCompletedData(tasks: Task[]): boolean {
-  return tasks.some((t) => t.completed === true);
+  return tasks.some(isCompletedTask);
 }

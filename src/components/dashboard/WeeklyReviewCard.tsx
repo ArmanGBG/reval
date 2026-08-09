@@ -80,7 +80,7 @@ export default function WeeklyReviewCard({ tasks, streakDays }: WeeklyReviewCard
     const completed = weekTasks.filter((t) => t.completed === true);
     const skipped = weekTasks.filter((t) => t.completed === false);
     const totalMinutes = completed.reduce(
-      (sum, t) => sum + (t.actualTimeMinutes ?? t.targetTimeMinutes ?? 0),
+      (sum, t) => sum + (t.actualTimeMinutes ?? 0),
       0,
     );
     const totalTests = completed.reduce(
@@ -104,7 +104,7 @@ export default function WeeklyReviewCard({ tasks, streakDays }: WeeklyReviewCard
           const td = new Date(t.date);
           return td >= d && td < next;
         })
-        .reduce((sum, t) => sum + (t.actualTimeMinutes ?? t.targetTimeMinutes ?? 0), 0);
+        .reduce((sum, t) => sum + (t.actualTimeMinutes ?? 0), 0);
       dayBuckets.push({
         date: d,
         minutes,
@@ -115,7 +115,7 @@ export default function WeeklyReviewCard({ tasks, streakDays }: WeeklyReviewCard
     // Top subject by total minutes
     const subjectMinutes: Record<string, number> = {};
     for (const t of completed) {
-      const m = t.actualTimeMinutes ?? t.targetTimeMinutes ?? 0;
+      const m = t.actualTimeMinutes ?? 0;
       subjectMinutes[t.subject] = (subjectMinutes[t.subject] ?? 0) + m;
     }
     const topSubject = Object.entries(subjectMinutes).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;

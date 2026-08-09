@@ -69,7 +69,7 @@ export default function StudyHeatmap() {
     const dayMinutesMap: Record<string, number> = {};
     for (const task of tasks) {
       if (task.completed !== true) continue;
-      const minutes = task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0;
+      const minutes = task.status === 'COMPLETED' ? (task.actualTimeMinutes ?? 0) : 0;
       if (minutes <= 0) continue;
       const dayKey = task.date.slice(0, 10); // YYYY-MM-DD
       dayMinutesMap[dayKey] = (dayMinutesMap[dayKey] ?? 0) + minutes;
