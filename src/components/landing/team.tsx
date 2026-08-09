@@ -9,20 +9,32 @@ const easeOut = [0.16, 1, 0.3, 1] as const;
 const TEAM = [
   {
     name: "احمدرضا صمیمی",
-    role: "CEO & Co-Founder",
-    bio: "دانشجوی پزشکی دانشگاه علوم پزشکی تهران",
+    role: "هم‌بنیان‌گذار و مدیرعامل",
+    details: [
+      "دانشجوی پزشکی دانشگاه علوم پزشکی تهران",
+      "مدال برنز المپیاد زیست‌شناسی دوره ۲۴",
+      "میکروسکوپ تیم در تصمیم‌گیری‌ها! اون قدر واسه هر کاری عمیق تحقیق میکنه که محاله چیزی در روال سطحی پیش بره؛ خیالتون راحت، مو را از ماست میکشه بیرون!",
+    ],
     image: "/our team/ahmadreza.webp",
   },
   {
     name: "آرمان قره‌باغی",
-    role: "CTO & Co-Founder",
-    bio: "دانشجوی دندانپزشکی دانشگاه علوم پزشکی ارومیه",
+    role: "هم‌بنیان‌گذار و مدیر فنی",
+    details: [
+      "دانشجوی دندانپزشکی دانشگاه علوم پزشکی ارومیه",
+      "دیپلم افتخار المپیاد کارآفرینی وزارت بهداشت دوره ۱۵",
+      "مغز متفکر کدهای سایت ;) بچه‌های دانشگاه صداش میکنن آرمان جی‌پی‌تی! براتون کلی اپدیت باحال درنظر گرفته...",
+    ],
     image: "/our team/arman-v2.webp",
   },
   {
     name: "مهدی رحیمی",
-    role: "CMO & Co-Founder",
-    bio: "دانشجوی پزشکی دانشگاه علوم پزشکی تهران",
+    role: "هم‌بنیان‌گذار و مدیر مارکتینگ",
+    details: [
+      "دانشجوی پزشکی دانشگاه علوم پزشکی تهران",
+      "رتبه ۱۱۳ کنکور تجربی",
+      "با این‌که تو بیوش نوشته «یه مهدی ساده»، اما تو ارتباط گرفتن با شماها یه نابغس! همون Simply Mehdi معروف که اینجا قراره صدای شما در تیم ما باشه!",
+    ],
     image: "/our team/mehdi.webp",
   },
 ];
@@ -64,9 +76,21 @@ function TeamCard({
         {member.role}
       </span>
 
-      <p className="mt-3 text-sm leading-relaxed text-muted-foreground/70">
-        {member.bio}
-      </p>
+      <ul className="mt-4 w-full space-y-2 text-right text-sm leading-relaxed text-muted-foreground/70">
+        {member.details.map((detail) => (
+          <li key={detail} className="flex items-start gap-2">
+            <span className="mt-2 size-1.5 shrink-0 rounded-full bg-mint" />
+            <span>
+              {detail.split("روال").map((part, index, parts) => (
+                <React.Fragment key={`${detail}-${index}`}>
+                  {part}
+                  {index < parts.length - 1 && <span className="text-gradient-mint">روال</span>}
+                </React.Fragment>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
     </motion.div>
   );
 }
@@ -92,8 +116,10 @@ export function Team() {
           <span className="mb-4 inline-block rounded-full border border-mint/20 bg-mint/[0.06] px-4 py-1.5 text-xs font-semibold text-mint">
             تیم ما
           </span>
-          <h2 className="text-balance text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl lg:text-4xl">
-            تیم ما تک‌تک <span className="text-gradient-mint">چالش‌های فعلی</span> شمارو در مسیر کنکور تجربه کرده…
+          <h2 className="text-balance text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl lg:text-4xl">
+            ما هم یک روز از جایگاه فعلی شما شروع کردیم...
+            <br />
+            تک‌تک استرس‌ها، بی‌خوابی‌ها و چالش‌های مسیر کنکور را تجربه کردیم و حالا اینجاییم تا این مسیر رو برای شما هموار کنیم…
           </h2>
         </motion.div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -19,6 +19,7 @@ import {
   UserCheck,
   Plus,
   X,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -34,7 +35,8 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 export default function SuperAdminUsers() {
-  const { globalUsers, updateGlobalUser, platformInstitutes, setCurrentView, setSelectedGlobalUserId } = useAppStore();
+  const { globalUsers, updateGlobalUser, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, setCurrentView, setSelectedGlobalUserId } = useAppStore();
+  useEffect(() => { loadGlobalUsers().catch(() => {}); loadPlatformInstitutes().catch(() => {}); }, [loadGlobalUsers, loadPlatformInstitutes]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | GlobalUserRole>('all');
   const [filterInstitute, setFilterInstitute] = useState<string>('all');
@@ -43,14 +45,14 @@ export default function SuperAdminUsers() {
   const [advisorPhone, setAdvisorPhone] = useState('');
   const [creatingAdvisor, setCreatingAdvisor] = useState(false);
   const [showAdvisorForm, setShowAdvisorForm] = useState(false);
+  const [newRole, setNewRole] = useState<GlobalUserRole>('student');
+  const [newInstituteId, setNewInstituteId] = useState<string>('');
 
   const createAdvisor = async () => {
     setCreatingAdvisor(true);
     try {
-      const res = await fetch('/api/admin/advisors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: advisorName, phone: advisorPhone }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'ساخت مشاور انجام نشد');
-      toast.success(`حساب ${data.advisor.name} ساخته شد. کد: ${data.advisor.publicCode}`);
+      await createGlobalUser({ name: advisorName, phone: advisorPhone, role: newRole, instituteId: newInstituteId || null });
+      toast.success('حساب کاربر در دیتابیس ساخته شد');
       setAdvisorName(''); setAdvisorPhone(''); setShowAdvisorForm(false);
     } catch (error) { toast.error(error instanceof Error ? error.message : 'ساخت مشاور انجام نشد'); }
     finally { setCreatingAdvisor(false); }
@@ -80,7 +82,7 @@ export default function SuperAdminUsers() {
   }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus]);
 
   const toggleUserStatus = (id: string, currentStatus: UserAccountStatus) => {
-    updateGlobalUser(id, { status: currentStatus === 'active' ? 'suspended' : 'active' });
+    updateGlobalUser(id, { status: currentStatus === 'active' ? 'suspended' : 'active' }).catch(() => {});
   };
 
   const handleViewUser = (id: string) => {
@@ -109,13 +111,13 @@ export default function SuperAdminUsers() {
             </p>
           </div>
         </div>
-        <button onClick={() => setShowAdvisorForm((value) => !value)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/15 text-gold border border-gold/25 text-sm font-bold"><Plus className="w-4 h-4" />مشاور جدید</button>
+        <button onClick={() => setShowAdvisorForm((value) => !value)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/15 text-gold border border-gold/25 text-sm font-bold"><Plus className="w-4 h-4" />کاربر جدید</button>
       </header>
 
       {showAdvisorForm && <div className="surface-1 rounded-2xl p-4 border border-gold/25 space-y-3">
-        <div className="flex items-center justify-between"><h3 className="font-bold">فعال‌سازی پنل مشاور</h3><button onClick={() => setShowAdvisorForm(false)}><X className="w-4 h-4" /></button></div>
-        <div className="grid md:grid-cols-2 gap-3"><input value={advisorName} onChange={(e) => setAdvisorName(e.target.value)} placeholder="نام و نام خانوادگی" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /><input value={advisorPhone} onChange={(e) => setAdvisorPhone(e.target.value)} placeholder="شماره موبایل" dir="ltr" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /></div>
-        <button disabled={creatingAdvisor || !advisorName.trim() || !advisorPhone.trim()} onClick={createAdvisor} className="px-4 py-2 rounded-xl bg-gold text-[var(--bg-deep)] font-bold disabled:opacity-40">{creatingAdvisor ? 'در حال ساخت...' : 'ساخت حساب مشاور'}</button>
+        <div className="flex items-center justify-between"><h3 className="font-bold">ایجاد کاربر در دیتابیس</h3><button onClick={() => setShowAdvisorForm(false)}><X className="w-4 h-4" /></button></div>
+        <div className="grid md:grid-cols-2 gap-3"><input value={advisorName} onChange={(e) => setAdvisorName(e.target.value)} placeholder="نام و نام خانوادگی" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /><input value={advisorPhone} onChange={(e) => setAdvisorPhone(e.target.value)} placeholder="شماره موبایل" dir="ltr" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /><select value={newRole} onChange={(e) => setNewRole(e.target.value as GlobalUserRole)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option value="student">دانش‌آموز</option><option value="advisor">مشاور</option></select><select value={newInstituteId} onChange={(e) => setNewInstituteId(e.target.value)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option value="">بدون آموزشگاه</option>{platformInstitutes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <button disabled={creatingAdvisor || !advisorName.trim() || !advisorPhone.trim()} onClick={createAdvisor} className="px-4 py-2 rounded-xl bg-gold text-[var(--bg-deep)] font-bold disabled:opacity-40">{creatingAdvisor ? 'در حال ساخت...' : 'ساخت حساب'}</button>
       </div>}
 
       {/* ============ Filter Bar (sticky) ============ */}
@@ -246,6 +248,7 @@ export default function SuperAdminUsers() {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
+                    <button onClick={() => deleteGlobalUser(user.id).then(() => toast.success('کاربر حذف شد')).catch((error) => toast.error(error.message))} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
                     <button
                       onClick={() => toggleUserStatus(user.id, user.status)}
                       className={`icon-btn p-2 rounded-[8px] border border-transparent ${
@@ -257,6 +260,7 @@ export default function SuperAdminUsers() {
                     >
                       {user.status === 'active' ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     </button>
+                    <button onClick={() => deleteGlobalUser(user.id).catch(() => {})} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               );

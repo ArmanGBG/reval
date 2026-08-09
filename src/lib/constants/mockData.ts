@@ -1,4 +1,4 @@
-import { Task, MusicTrack, Flashcard, Ticket, StudentProfile, InstituteAdvisor, InstituteStudent, PlatformInstitute, GlobalUser, Exam } from '@/lib/types';
+import { Task, MusicTrack, Flashcard, Ticket, StudentProfile, InstituteAdvisor, InstituteStudent, Exam } from '@/lib/types';
 
 // ===== Mock Tasks =====
 export const MOCK_TASKS: Task[] = [
@@ -813,7 +813,8 @@ export const MOCK_INSTITUTE_STUDENTS: InstituteStudent[] = [
   },
 ];
 
-// ===== Mock Platform Institutes (Super Admin) =====
+/* Legacy super-admin mock data removed. */
+/*
 export const MOCK_PLATFORM_INSTITUTES: PlatformInstitute[] = [
   {
     id: 'inst1',
@@ -1150,6 +1151,7 @@ export const MOCK_PLATFORM_ENGAGEMENT = [
   { month: 'بهمن', students: 78, advisors: 22, completionRate: 72 },
   { month: 'اسفند', students: 82, advisors: 24, completionRate: 75 },
 ];
+*/
 
 // ===== Mock Exams =====
 export const MOCK_EXAMS: Exam[] = [

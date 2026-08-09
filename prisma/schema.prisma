@@ -26,6 +26,7 @@ model User {
   publicCode        String    @unique @default(cuid())
   phoneVerifiedAt   DateTime?
   isActive          Boolean   @default(true)
+  deletedAt         DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -114,6 +115,7 @@ model Institute {
   status           String   @default("active") // active, suspended, trial
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
 
   manager User   @relation("InstituteManager", fields: [managerId], references: [id])
   members User[] @relation("InstituteMembers")

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import {
@@ -35,7 +35,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 export default function InstituteDetail() {
-  const { selectedInstituteId, platformInstitutes, globalUsers, setCurrentView } = useAppStore();
+  const { selectedInstituteId, platformInstitutes, globalUsers, loadPlatformInstitutes, loadGlobalUsers, setCurrentView } = useAppStore();
+  useEffect(() => { if (platformInstitutes.length === 0) loadPlatformInstitutes().catch(() => {}); if (globalUsers.length === 0) loadGlobalUsers().catch(() => {}); }, [platformInstitutes.length, globalUsers.length, loadPlatformInstitutes, loadGlobalUsers]);
 
   const institute = useMemo(() =>
     platformInstitutes.find((i) => i.id === selectedInstituteId),
@@ -276,7 +277,6 @@ export default function InstituteDetail() {
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                           <span className="tabular-nums">{toPersianDigits(student.studyHours)} ساعت</span>
-                          <span className="tabular-nums">نمره {toPersianDigits(student.mockExamScore)}</span>
                         </div>
                       </div>
                     </div>
@@ -317,10 +317,6 @@ export default function InstituteDetail() {
                     <div>
                       <p className="text-[10px] text-muted-foreground/70">ساعت</p>
                       <p className="text-xs font-bold text-muted-foreground tabular-nums">{toPersianDigits(student.studyHours)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground/70">نمره</p>
-                      <p className="text-xs font-bold text-foreground tabular-nums">{toPersianDigits(student.mockExamScore)}</p>
                     </div>
                   </div>
                 </div>

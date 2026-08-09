@@ -3,6 +3,10 @@
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'reval-dev-secret-change-in-production';
 
+if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
+  throw new Error('AUTH_SECRET is required in production');
+}
+
 /**
  * Verify a session token using Web Crypto API (Edge runtime — for middleware).
  * Returns { userId } if valid and not expired, null otherwise.

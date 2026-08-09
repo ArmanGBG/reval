@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
-import { MOCK_PLATFORM_ENGAGEMENT } from '@/lib/constants/mockData';
 import {
   Building2,
   Users,
@@ -23,14 +22,15 @@ function toPersianDigits(num: number | string): string {
 }
 
 export default function SuperAdminDashboard() {
-  const { platformInstitutes, globalUsers } = useAppStore();
+  const { platformInstitutes, globalUsers, loadPlatformInstitutes, loadGlobalUsers } = useAppStore();
+  useEffect(() => { loadPlatformInstitutes().catch(() => {}); loadGlobalUsers().catch(() => {}); }, [loadPlatformInstitutes, loadGlobalUsers]);
 
   // Platform-wide KPIs
   const kpis = useMemo(() => {
     const totalInstitutes = platformInstitutes.length;
     const activeInstitutes = platformInstitutes.filter((i) => i.status === 'active').length;
-    const totalStudents = platformInstitutes.reduce((s, i) => s + i.studentCount, 0);
-    const totalAdvisors = platformInstitutes.reduce((s, i) => s + i.advisorCount, 0);
+    const totalStudents = globalUsers.filter((user) => user.role === 'student').length;
+    const totalAdvisors = globalUsers.filter((user) => user.role === 'advisor').length;
     const avgCompletion = totalInstitutes > 0
       ? Math.round(platformInstitutes.reduce((s, i) => s + i.avgCompletionRate, 0) / totalInstitutes)
       : 0;
@@ -70,7 +70,7 @@ export default function SuperAdminDashboard() {
   }, [platformInstitutes]);
 
   // Max value for engagement bars normalization
-  const maxStudents = Math.max(...MOCK_PLATFORM_ENGAGEMENT.map((m) => m.students), 1);
+  const maxStudents = Math.max(kpis.totalStudents, 1);
 
   const kpiCards = [
     {
@@ -193,7 +193,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           <div className="space-y-3">
-            {MOCK_PLATFORM_ENGAGEMENT.map((item, idx) => (
+            {[{ month: 'اکنون', students: kpis.totalStudents, advisors: kpis.totalAdvisors, completionRate: kpis.avgCompletion }].map((item, idx) => (
               <div key={idx} className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground w-10 md:w-12 text-left tabular-nums">{item.month}</span>
                 <div className="flex-1 flex flex-col gap-1">

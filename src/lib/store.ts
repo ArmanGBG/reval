@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
-import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_PLATFORM_INSTITUTES, MOCK_GLOBAL_USERS, MOCK_EXAMS } from '@/lib/constants/mockData';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
+import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
@@ -486,11 +486,16 @@ interface AppState {
 
   // ===== Super Admin State =====
   platformInstitutes: PlatformInstitute[];
-  addPlatformInstitute: (institute: PlatformInstitute) => void;
-  updatePlatformInstitute: (id: string, updates: Partial<PlatformInstitute>) => void;
+  loadPlatformInstitutes: () => Promise<void>;
+  addPlatformInstitute: (institute: Omit<PlatformInstitute, 'id' | 'createdAt' | 'studentCount' | 'advisorCount' | 'avgCompletionRate'>) => Promise<void>;
+  updatePlatformInstitute: (id: string, updates: Partial<PlatformInstitute>) => Promise<void>;
+  deletePlatformInstitute: (id: string) => Promise<void>;
 
   globalUsers: GlobalUser[];
-  updateGlobalUser: (id: string, updates: Partial<GlobalUser>) => void;
+  loadGlobalUsers: () => Promise<void>;
+  createGlobalUser: (input: { name: string; phone: string; role: GlobalUserRole; instituteId?: string | null }) => Promise<void>;
+  updateGlobalUser: (id: string, updates: Partial<GlobalUser>) => Promise<void>;
+  deleteGlobalUser: (id: string) => Promise<void>;
 
   // ===== Exams State =====
   // exams is a cache of exams visible to the current user.
@@ -1064,23 +1069,60 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   // ===== Super Admin State =====
-  platformInstitutes: MOCK_PLATFORM_INSTITUTES,
-  addPlatformInstitute: (institute) =>
-    set((state) => ({ platformInstitutes: [...state.platformInstitutes, institute] })),
-  updatePlatformInstitute: (id, updates) =>
+  platformInstitutes: [],
+  loadPlatformInstitutes: async () => {
+    const res = await fetch('/api/admin/institutes');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'بارگذاری آموزشگاه‌ها ناموفق بود');
+    set({ platformInstitutes: data.institutes });
+  },
+  addPlatformInstitute: async (institute) => {
+    const res = await fetch('/api/admin/institutes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(institute) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'ایجاد آموزشگاه ناموفق بود');
+    set((state) => ({ platformInstitutes: [...state.platformInstitutes, data.institute] }));
+  },
+  updatePlatformInstitute: async (id, updates) => {
+    const res = await fetch(`/api/admin/institutes/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'ویرایش آموزشگاه ناموفق بود');
+    set((state) => ({ platformInstitutes: state.platformInstitutes.map((item) => item.id === id ? data.institute : item) }));
+  },
+  deletePlatformInstitute: async (id) => {
+    const res = await fetch(`/api/admin/institutes/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'حذف آموزشگاه ناموفق بود');
     set((state) => ({
-      platformInstitutes: state.platformInstitutes.map((i) =>
-        i.id === id ? { ...i, ...updates } : i
-      ),
-    })),
+      platformInstitutes: state.platformInstitutes.filter((item) => item.id !== id),
+      globalUsers: state.globalUsers.map((user) => user.instituteId === id ? { ...user, instituteId: null, instituteName: 'بدون آموزشگاه' } : user),
+    }));
+  },
 
-  globalUsers: MOCK_GLOBAL_USERS,
-  updateGlobalUser: (id, updates) =>
-    set((state) => ({
-      globalUsers: state.globalUsers.map((u) =>
-        u.id === id ? { ...u, ...updates } : u
-      ),
-    })),
+  globalUsers: [],
+  loadGlobalUsers: async () => {
+    const res = await fetch('/api/users');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'بارگذاری کاربران ناموفق بود');
+    set({ globalUsers: data.users });
+  },
+  createGlobalUser: async (input) => {
+    const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'ایجاد کاربر ناموفق بود');
+    set((state) => ({ globalUsers: [...state.globalUsers, data.user] }));
+  },
+  updateGlobalUser: async (id, updates) => {
+    const res = await fetch(`/api/users/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'ویرایش کاربر ناموفق بود');
+    set((state) => ({ globalUsers: state.globalUsers.map((item) => item.id === id ? data.user : item) }));
+  },
+  deleteGlobalUser: async (id) => {
+    const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'حذف کاربر ناموفق بود');
+    set((state) => ({ globalUsers: state.globalUsers.filter((item) => item.id !== id) }));
+  },
 
   // ===== Exams State =====
   // Initialize with MOCK_EXAMS so the UI has something to show before the

@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-export async function createPublicCode(prefix: 'STU' | 'ADV'): Promise<string> {
+export async function createPublicCode(prefix: 'STU' | 'ADV' | 'MGR'): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const suffix = Array.from({ length: 6 }, () => ALPHABET[crypto.randomInt(ALPHABET.length)]).join('');
     const code = `${prefix}-${suffix}`;

@@ -26,7 +26,7 @@ export function Footer() {
         >
           <Logo size={26} />
           <p className="text-xs text-muted-foreground/60">
-            © <span className="nums">۱۴۰۴</span> روال — تمام حقوق محفوظ است.
+            © <span className="nums">۱۴۰۵</span> روال — تمام حقوق محفوظ است.
           </p>
         </motion.div>
       </div>

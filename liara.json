@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.liara.ir/liara.json",
+  "platform": "next",
+  "build": {
+    "location": "germany",
+    "path": "."
+  },
+  "start": {
+    "command": "npm run start",
+    "port": 3000
+  }
+}

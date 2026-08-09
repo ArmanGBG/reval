@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { PlatformInstitute, SubscriptionPlan, InstituteStatus } from '@/lib/types';
@@ -17,6 +17,7 @@ import {
   Phone,
   CheckCircle2,
   Ban,
+  Trash2,
   Filter,
 } from 'lucide-react';
 
@@ -39,7 +40,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 export default function SuperAdminInstitutes() {
-  const { platformInstitutes, addPlatformInstitute, updatePlatformInstitute, setCurrentView, setSelectedInstituteId } = useAppStore();
+  const { platformInstitutes, addPlatformInstitute, updatePlatformInstitute, deletePlatformInstitute, loadPlatformInstitutes, setCurrentView, setSelectedInstituteId } = useAppStore();
+  useEffect(() => { loadPlatformInstitutes().catch(() => {}); }, [loadPlatformInstitutes]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | InstituteStatus>('all');
@@ -66,24 +68,19 @@ export default function SuperAdminInstitutes() {
     return result;
   }, [platformInstitutes, searchQuery, filterStatus, filterPlan]);
 
-  const handleAddInstitute = () => {
+  const handleAddInstitute = async () => {
     if (!newName.trim() || !newManagerName.trim()) return;
 
-    const institute: PlatformInstitute = {
-      id: `inst_${Date.now()}`,
+    const institute = {
       name: newName.trim(),
       logoUrl: null,
       managerName: newManagerName.trim(),
       managerPhone: newManagerPhone.trim(),
       subscriptionPlan: newPlan,
-      status: 'trial',
-      studentCount: 0,
-      advisorCount: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-      avgCompletionRate: 0,
+      status: 'trial' as InstituteStatus,
     };
 
-    addPlatformInstitute(institute);
+    await addPlatformInstitute(institute);
     setNewName('');
     setNewManagerName('');
     setNewManagerPhone('');
@@ -93,7 +90,7 @@ export default function SuperAdminInstitutes() {
 
   const toggleInstituteStatus = (id: string, currentStatus: InstituteStatus) => {
     const newStatus: InstituteStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    updatePlatformInstitute(id, { status: newStatus });
+    updatePlatformInstitute(id, { status: newStatus }).catch(() => {});
   };
 
   const handleGodView = (id: string) => {
@@ -246,6 +243,7 @@ export default function SuperAdminInstitutes() {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
+                    <button onClick={() => deletePlatformInstitute(institute.id).catch(() => {})} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف آموزشگاه"><Trash2 className="w-3.5 h-3.5" /></button>
                     <button
                       onClick={() => toggleInstituteStatus(institute.id, institute.status)}
                       className={`icon-btn p-2 rounded-[8px] border border-transparent ${
@@ -313,6 +311,7 @@ export default function SuperAdminInstitutes() {
                   >
                     <Eye className="w-4 h-4" />
                   </button>
+                  <button onClick={() => deletePlatformInstitute(institute.id).catch(() => {})} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]"><Trash2 className="w-4 h-4" /></button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[var(--border)] text-[11px]">

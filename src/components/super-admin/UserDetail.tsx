@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import {
@@ -34,7 +34,8 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 export default function UserDetail() {
-  const { selectedGlobalUserId, globalUsers, updateGlobalUser, setCurrentView } = useAppStore();
+  const { selectedGlobalUserId, globalUsers, updateGlobalUser, loadGlobalUsers, setCurrentView } = useAppStore();
+  useEffect(() => { if (globalUsers.length === 0) loadGlobalUsers().catch(() => {}); }, [globalUsers.length, loadGlobalUsers]);
 
   const user = useMemo(() =>
     globalUsers.find((u) => u.id === selectedGlobalUserId),
@@ -111,7 +112,7 @@ export default function UserDetail() {
                   </div>
                 </div>
                 <button
-                  onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' })}
+                  onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' }).catch(() => {})}
                   className={`btn-hover p-3 rounded-[12px] font-bold text-xs border ${
                     user.status === 'active'
                       ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border-[var(--danger)]/20'
@@ -134,10 +135,6 @@ export default function UserDetail() {
                   <span className="text-xs text-muted-foreground">عضویت: <span className="text-foreground/80 tabular-nums">{toPersianDigits(user.joinDate)}</span></span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                  <span className="text-xs text-muted-foreground">آخرین فعالیت: <span className="text-foreground/80 tabular-nums">{toPersianDigits(user.lastActiveDate)}</span></span>
-                </div>
-                <div className="flex items-center gap-2 min-w-0">
                   <Phone className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                   <span className="text-xs text-muted-foreground tabular-nums" dir="ltr">{user.phone}</span>
                 </div>
@@ -157,13 +154,6 @@ export default function UserDetail() {
               تاریخچه فعالیت
             </h3>
             <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
-                <div className="w-2 h-2 rounded-full bg-[var(--success)] mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-foreground">آخرین فعالیت</p>
-                  <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{toPersianDigits(user.lastActiveDate)}</p>
-                </div>
-              </div>
               <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
                 <div className="w-2 h-2 rounded-full bg-muted-foreground mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -206,11 +196,6 @@ export default function UserDetail() {
                   <Clock className="w-4 h-4 text-[var(--accent)] mx-auto mb-1" />
                   <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(user.studyHours)}</p>
                   <p className="text-[10px] text-muted-foreground">ساعت</p>
-                </div>
-                <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-3 text-center">
-                  <BookOpen className="w-4 h-4 text-[var(--success)] mx-auto mb-1" />
-                  <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(user.mockExamScore)}</p>
-                  <p className="text-[10px] text-muted-foreground">نمره</p>
                 </div>
               </div>
 
@@ -298,7 +283,7 @@ export default function UserDetail() {
               اقدامات مدیریتی
             </h3>
             <button
-              onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' })}
+              onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' }).catch(() => {})}
               className={`btn-hover w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-sm font-bold border ${
                 user.status === 'active'
                   ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border-[var(--danger)]/20'

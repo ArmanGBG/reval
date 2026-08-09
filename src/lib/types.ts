@@ -275,14 +275,12 @@ export interface GlobalUser {
   avatar: string;
   phone: string;
   role: GlobalUserRole;
-  instituteId: string;
+  instituteId: string | null;
   instituteName: string;
   status: UserAccountStatus;
   completionRate: number;
   studyHours: number;
-  mockExamScore: number;
   joinDate: string;
-  lastActiveDate: string;
 }
 
 // ===== Notification Types =====
