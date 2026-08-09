@@ -110,15 +110,6 @@ export interface Ticket {
   createdAt: string;
 }
 
-export interface ParsedTask {
-  subject: string;
-  topic: string | null;
-  target_time_minutes: number;
-  target_test_count: number;
-  field_type: FieldType;
-  activity_types: ActivityType[];
-}
-
 export interface DailyInsight {
   topSubject: string;
   lowestSubject: string;

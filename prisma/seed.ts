@@ -14,10 +14,10 @@ async function main() {
 
   // ===== 1. Create Super Admin =====
   const superAdmin = await prisma.user.upsert({
-    where: { phone: '09121000000' },
-    update: {},
+    where: { phone: '09390712416' },
+    update: { role: 'SUPER_ADMIN', isActive: true },
     create: {
-      phone: '09121000000',
+      phone: '09390712416',
       password: hashPassword('1234'),
       name: 'سوپر ادمین',
       avatar: '👑',
@@ -26,6 +26,20 @@ async function main() {
     },
   });
   console.log('✅ Super Admin:', superAdmin.name, '| phone:', superAdmin.phone);
+
+  const secondSuperAdmin = await prisma.user.upsert({
+    where: { phone: '09396517673' },
+    update: { role: 'SUPER_ADMIN', isActive: true },
+    create: {
+      phone: '09396517673',
+      password: hashPassword('1234'),
+      name: 'سوپر ادمین دوم',
+      avatar: '👑',
+      role: 'SUPER_ADMIN',
+      dailyTargetHours: 0,
+    },
+  });
+  console.log('✅ Super Admin:', secondSuperAdmin.name, '| phone:', secondSuperAdmin.phone);
 
   // ===== 2. Create Institute Manager =====
   const manager = await prisma.user.upsert({
@@ -354,7 +368,8 @@ async function main() {
   console.log('┌─────────────────────┬───────────────┬────────┐');
   console.log('│ Role                │ Phone         │ Pass   │');
   console.log('├─────────────────────┼───────────────┼────────┤');
-  console.log('│ 👑 سوپر ادمین       │ 09121000000   │ 1234   │');
+  console.log('│ 👑 سوپر ادمین       │ 09390712416   │ OTP    │');
+  console.log('│ 👑 سوپر ادمین دوم   │ 09396517673   │ OTP    │');
   console.log('│ 👨‍💼 مدیر آموزشگاه    │ 09121111111   │ 1234   │');
   console.log('│ 👨‍🏫 مشاور (محمدی)   │ 09121234567   │ 1234   │');
   console.log('│ 👩‍🏫 مشاور (احمدی)   │ 09129876543   │ 1234   │');

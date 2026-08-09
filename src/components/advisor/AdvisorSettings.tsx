@@ -1,7 +1,6 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
-import { MOCK_STUDENTS } from '@/lib/constants/mockData';
 import {
   Shield,
   Activity,
@@ -10,10 +9,19 @@ import {
 } from 'lucide-react';
 import { Card, SectionHeader } from './advisor-ui';
 import { toPersianDigits, computeStudentStatus } from './advisor-helpers';
+import { useEffect } from 'react';
 
 // ===== Advisor Settings =====
 export function AdvisorSettings() {
-  const { hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders } = useAppStore();
+  const { hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders, advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
+
+  const realStudents = advisorStudents;
+
+  useEffect(() => {
+    if (user?.id && realStudents.length === 0 && !advisorStudentsLoading) {
+      loadAdvisorStudents(user.id).catch(() => {});
+    }
+  }, [user?.id, realStudents.length, advisorStudentsLoading, loadAdvisorStudents]);
 
   return (
     <div className="space-y-4 md:space-y-5" dir="rtl">
@@ -71,31 +79,31 @@ export function AdvisorSettings() {
         <Card className="md:col-span-1">
           <SectionHeader icon={<Sparkles className="w-4 h-4" />} title="خلاصه فعالیت" />
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
-              <p className="text-2xl font-black text-[var(--accent)] tabular-nums">{toPersianDigits(MOCK_STUDENTS.length)}</p>
-              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">دانش‌آموز فعال</p>
-            </div>
-            <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
-              <p className="text-2xl font-black text-[var(--warning)] tabular-nums">
-                {toPersianDigits(MOCK_STUDENTS.filter(s => {
-                  const st = computeStudentStatus(s);
-                  return st === 'at-risk' || st === 'critical';
-                }).length)}
-              </p>
-              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">نیازمند مداخله</p>
-            </div>
-            <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
-              <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
-                {toPersianDigits(Math.round(MOCK_STUDENTS.reduce((a, s) => a + s.mockExamScore, 0) / MOCK_STUDENTS.length))}
-              </p>
-              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین نمره</p>
-            </div>
-            <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
-              <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
-                {toPersianDigits(Math.round(MOCK_STUDENTS.reduce((a, s) => a + s.studyHoursPerWeek, 0) / MOCK_STUDENTS.length))}
-              </p>
-              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین ساعت</p>
-            </div>
+              <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
+                <p className="text-2xl font-black text-[var(--accent)] tabular-nums">{toPersianDigits(realStudents.length)}</p>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">دانش‌آموز فعال</p>
+              </div>
+              <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
+                <p className="text-2xl font-black text-[var(--warning)] tabular-nums">
+                  {toPersianDigits(realStudents.filter(s => {
+                    const st = computeStudentStatus(s);
+                    return st === 'at-risk' || st === 'critical';
+                  }).length)}
+                </p>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">نیازمند مداخله</p>
+              </div>
+              <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
+                <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
+                  {toPersianDigits(Math.round(realStudents.reduce((a, s) => a + (s.mockExamScore || 0), 0) / (realStudents.length || 1)))}
+                </p>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین نمره</p>
+              </div>
+              <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">
+                <p className="text-2xl font-black text-[var(--accent)] tabular-nums">
+                  {toPersianDigits(Math.round(realStudents.reduce((a, s) => a + (s.studyHoursPerWeek || 0), 0) / (realStudents.length || 1)))}
+                </p>
+                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">میانگین ساعت</p>
+              </div>
           </div>
         </Card>
       </div>

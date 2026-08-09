@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Wand2, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
+  Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -23,7 +23,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import ManualEntrySheet from './ManualEntrySheet';
-import AiEntryModal from './AiEntryModal';
 import { WeeklyPlanner } from './WeeklyPlanner';
 import { PersianCalendar } from './PersianCalendar';
 import { SortableTaskList } from './SortableTaskList';
@@ -53,19 +52,6 @@ function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTes
         </>
       )}
     </div>
-  );
-}
-
-// ===== Pattern Button (shared) =====
-function PatternButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="btn-hover nav-item-hover text-sm text-[var(--accent)] font-medium px-3 py-2 rounded-[var(--radius)] border border-[var(--accent)]/30 hover:bg-[var(--accent-soft)] min-h-[40px] flex items-center gap-1.5"
-    >
-      <CalendarDays className="w-4 h-4" />
-      <span>الگو</span>
-    </button>
   );
 }
 
@@ -123,7 +109,6 @@ export default function PlanView() {
   const {
     tasks,
     addTask,
-    addTasks,
     updateTask,
     deleteTask,
     resetTask,
@@ -135,7 +120,6 @@ export default function PlanView() {
 
   // Local state
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
-  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [weeklyPlannerOpen, setWeeklyPlannerOpen] = useState(false);
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
@@ -310,12 +294,6 @@ export default function PlanView() {
     [addTask]
   );
 
-  const handleAIConfirm = useCallback(
-    (newTasks: Task[]) => {
-      addTasks(newTasks);
-    },
-    [addTasks]
-  );
 
   const handleSettingsSave = useCallback(() => {
     if (!settingsTaskId) return;
@@ -348,7 +326,6 @@ export default function PlanView() {
                 <CalendarDays className="w-4.5 h-4.5" />
               </button>
             )}
-            <PatternButton onClick={() => setAiModalOpen(true)} />
           </div>
         </div>
         <p className="text-xs text-[var(--foreground-muted)] mb-3">
@@ -464,7 +441,6 @@ export default function PlanView() {
                 برنامه هفتگی
               </button>
             )}
-            <PatternButton onClick={() => setAiModalOpen(true)} />
           </div>
         </div>
 
@@ -488,13 +464,6 @@ export default function PlanView() {
                 >
                   <Plus className="w-4 h-4" />
                   تسک جدید
-                </button>
-                <button
-                  onClick={() => setAiModalOpen(true)}
-                  className="btn-hover flex items-center justify-center gap-2 w-full py-2.5 mt-2 rounded-[var(--radius)] border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)] font-medium text-sm min-h-[44px]"
-                >
-                  <Wand2 className="w-4 h-4" />
-                  هوش مصنوعی
                 </button>
               </div>
 
@@ -554,13 +523,6 @@ export default function PlanView() {
         onSubmit={handleManualSubmit}
       />
 
-      <AiEntryModal
-        open={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        selectedDate={selectedDate}
-        existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === studentId).length}
-        onConfirm={handleAIConfirm}
-      />
 
       <WeeklyPlanner
         open={weeklyPlannerOpen}

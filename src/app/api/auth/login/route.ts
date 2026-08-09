@@ -37,9 +37,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const bootstrapPhones = (process.env.INITIAL_SUPER_ADMIN_PHONES || process.env.INITIAL_SUPER_ADMIN_PHONE || '')
+      .split(',')
+      .map((value) => normalizeIranianPhone(value.trim()))
+      .filter((value): value is string => Boolean(value));
+    const isBootstrapSuperAdmin = bootstrapPhones.includes(phone);
+
     if (!user) {
-      const bootstrapPhone = normalizeIranianPhone(process.env.INITIAL_SUPER_ADMIN_PHONE || '');
-      if (!bootstrapPhone || phone !== bootstrapPhone) {
+      if (!isBootstrapSuperAdmin) {
         return NextResponse.json({ error: 'کاربری با این شماره تلفن یافت نشد' }, { status: 404 });
       }
       user = await db.user.create({
@@ -52,6 +57,15 @@ export async function POST(request: NextRequest) {
           phoneVerifiedAt: new Date(),
           isActive: true,
         },
+        include: {
+          institute: { select: { id: true, name: true } },
+          assignedAdvisor: { select: { id: true, name: true, avatar: true } },
+        },
+      });
+    } else if (isBootstrapSuperAdmin && (user.role !== 'SUPER_ADMIN' || !user.phoneVerifiedAt)) {
+      user = await db.user.update({
+        where: { id: user.id },
+        data: { role: 'SUPER_ADMIN', phoneVerifiedAt: user.phoneVerifiedAt ?? new Date(), isActive: true },
         include: {
           institute: { select: { id: true, name: true } },
           assignedAdvisor: { select: { id: true, name: true, avatar: true } },
