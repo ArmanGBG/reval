@@ -35,6 +35,7 @@ import { ExamResultsModal } from './ExamResultsModal';
 import { Card, SectionHeader, MetricBar, MiniRadar } from './advisor-ui';
 import { toPersianDigits, computeStudentStatus, computeRisks, computeAnalyses, STATUS_CONFIG, MOOD_CONFIG, EXAM_STATUS_CONFIG } from './advisor-helpers';
 import { formatPersianDateFromISO } from '@/lib/persian-date';
+import { computeKpis, filterReportTasks } from '@/lib/reporting/task-report-service';
 
 // ===== ADVISOR VIEW 3: Student Detail =====
 export function AdvisorStudentDetail() {
@@ -70,6 +71,7 @@ export function AdvisorStudentDetail() {
     tasks.filter(t => t.studentId === selectedStudentId),
     [tasks, selectedStudentId]
   );
+  const taskReport = useMemo(() => computeKpis(filterReportTasks(studentTasks, 'هفته جاری', 'همه')), [studentTasks]);
 
   const studentExams = useMemo(() =>
     exams.filter(e => e.studentIds.includes(selectedStudentId ?? '')),
@@ -99,12 +101,10 @@ export function AdvisorStudentDetail() {
     );
   }
 
-  const scoreDiff = student.mockExamScore - student.previousMockScore;
   const profileKpis = [
-    { label: 'نمره آزمون', value: toPersianDigits(student.mockExamScore), sub: `${scoreDiff >= 0 ? '+' : ''}${toPersianDigits(scoreDiff)}`, accent: scoreDiff >= 0 ? 'var(--accent)' : 'var(--danger)' },
-    { label: 'ساعت مطالعه', value: toPersianDigits(student.studyHoursPerWeek), sub: `از ${toPersianDigits(student.studyHoursTarget)}`, accent: 'var(--accent)' },
-    { label: 'حضور', value: `${toPersianDigits(student.attendanceRate)}٪`, sub: 'در کلاس', accent: 'var(--accent)' },
-    { label: 'تکمیل وظایف', value: `${toPersianDigits(student.taskCompletionRate)}٪`, sub: 'این هفته', accent: 'var(--accent)' },
+    { label: 'ساعت مطالعه', value: toPersianDigits(Math.round(taskReport.totalHours * 10) / 10), sub: 'واقعی این هفته', accent: 'var(--accent)' },
+    { label: 'تعداد تست', value: toPersianDigits(taskReport.totalTests), sub: 'واقعی این هفته', accent: 'var(--accent)' },
+    { label: 'تکمیل وظایف', value: `${toPersianDigits(taskReport.adherenceRate)}٪`, sub: 'این هفته', accent: 'var(--accent)' },
   ];
 
   const moodAccent = student.mood === 'critical' ? 'var(--danger)' : student.mood === 'poor' ? 'var(--warning)' : student.mood === 'fair' ? 'var(--warning)' : 'var(--accent)';

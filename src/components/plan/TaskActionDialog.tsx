@@ -35,7 +35,7 @@ interface TaskActionDialogProps {
  *
  *   1. انتقال به روز مشخص — pick a day from the Persian calendar; the task
  *      moves to that day and shows up in its daily plan.
- *   2. انتقال به ناقصی‌ها — marks detailsCompleted=false so the task leaves
+   *   2. انتقال به ناقصی‌ها — changes lifecycle status to INCOMPLETE
  *      the daily plan and appears in the "ناقصی‌ها" tab for later completion.
  *   3. حذف کل تسک — permanently deletes the task.
  */

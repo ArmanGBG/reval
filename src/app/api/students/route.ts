@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/api-auth';
+import { getWeekDays, toISODate } from '@/lib/persian-date';
 
 // GET /api/students
 // Returns real students from the DB.
@@ -48,6 +49,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const weekDays = getWeekDays(new Date());
+  const weekStart = toISODate(weekDays[0]);
+  const weekEnd = toISODate(weekDays[6]);
   const users = await db.user.findMany({
     where,
     orderBy: { name: 'asc' },
@@ -63,10 +67,17 @@ export async function GET(request: NextRequest) {
       assignedAdvisorId: true,
       instituteId: true,
       createdAt: true,
+      tasks: {
+        where: { date: { gte: weekStart, lte: weekEnd }, status: { not: 'DRAFT' } },
+        select: { status: true, actualTimeMinutes: true },
+      },
     },
   });
 
-  const students = users.map((u) => ({
+  const students = users.map((u) => {
+    const completedTasks = u.tasks.filter((task) => task.status === 'COMPLETED');
+    const actualMinutes = completedTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
+    return ({
     id: u.id,
     name: u.name,
     avatar: u.avatar,
@@ -81,7 +92,13 @@ export async function GET(request: NextRequest) {
     assignedAdvisorId: u.assignedAdvisorId,
     instituteId: u.instituteId,
     createdAt: u.createdAt.toISOString(),
-  }));
+    reportSummary: {
+      studyHoursThisWeek: Math.round((actualMinutes / 60) * 10) / 10,
+      taskCompletionRate: u.tasks.length > 0 ? Math.round((completedTasks.length / u.tasks.length) * 100) : 0,
+      incompleteCount: u.tasks.filter((task) => task.status === 'INCOMPLETE').length,
+    },
+  });
+  });
 
   return NextResponse.json({ students });
 }

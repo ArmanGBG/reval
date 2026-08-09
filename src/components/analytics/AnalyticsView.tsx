@@ -19,7 +19,7 @@ import {
   buildActivityBreakdown,
   computeInsights,
   hasAnyCompletedData,
-} from '@/lib/analytics';
+} from '@/lib/reporting/task-report-service';
 import { Subject, Chapter } from '@/lib/subjects-types';
 import { toISODate, getWeekDays, getTodayJalali, getFirstDayOfJalaliMonth, getDaysInJalaliMonth, formatPersianDate } from '@/lib/persian-date';
 import { Skeleton } from '@/components/ui/skeleton';

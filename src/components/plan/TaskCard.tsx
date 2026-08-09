@@ -49,6 +49,8 @@ export default function TaskCard({
   const isCompleted = task.completed === true;
   const isSkipped = task.completed === false;
   const isPending = task.completed === null;
+  const isDraft = task.status === 'DRAFT';
+  const isIncomplete = task.status === 'INCOMPLETE';
 
   // Accent border classes based on status
   // Pending tasks use the subject color so students can visually scan by subject.
@@ -156,7 +158,8 @@ export default function TaskCard({
               </span>
             </div>
 
-            {!task.detailsCompleted && <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">نیازمند تکمیل</button>}
+            {isDraft && <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس · تکمیل جزئیات</button>}
+            {isIncomplete && <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">ناقص</span>}
             {task.detailsCompleted && task.topic && <p className="text-[var(--foreground-muted)] text-xs md:text-sm mb-2 line-clamp-2">{task.topic}</p>}
 
             {/* Activity Chips */}

@@ -16,6 +16,8 @@ import {
   getDaysInJalaliMonth,
 } from '@/lib/persian-date';
 
+const isCompletedTask = (task: Task) => task.status === 'COMPLETED' || (task.status === undefined && task.completed === true);
+
 // ===== Filter types (mirror AnalyticsView's local types) =====
 export type TimeFilter = 'روزانه' | 'هفته جاری' | 'ماهانه' | 'بازه دلخواه';
 export type FieldFilter = 'همه' | 'کنکوری' | 'نهایی';
@@ -57,7 +59,7 @@ export function filterTasksForReport(
 ): Task[] {
   const range = resolveDateRange(timeFilter, now);
   return tasks.filter((t) => {
-    if (t.detailsCompleted === false) return false;
+    if (t.status === 'DRAFT' || (t.status === undefined && t.detailsCompleted === false)) return false;
     if (range) {
       if (t.date < range.start || t.date > range.end) return false;
     }
@@ -81,7 +83,7 @@ export interface KpiTotals {
 
 export function computeKpiTotals(tasks: Task[]): KpiTotals {
   // Only completed tasks contribute actual time/tests
-  const completed = tasks.filter((t) => t.completed === true);
+  const completed = tasks.filter(isCompletedTask);
   const totalMinutes = completed.reduce((sum, t) => sum + (t.actualTimeMinutes ?? 0), 0);
   const totalHours = totalMinutes / 60;
   const totalTests = completed.reduce((sum, t) => sum + (t.actualTestCount ?? 0), 0);
@@ -109,7 +111,7 @@ export interface DailyDatum {
  * - بازه دلخواه: last 14 days, one bar per day (labeled with day-of-month)
  */
 export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date = new Date()): DailyDatum[] {
-  const completed = tasks.filter((t) => t.completed === true);
+  const completed = tasks.filter(isCompletedTask);
 
   if (timeFilter === 'روزانه' || timeFilter === 'هفته جاری') {
     // 7 bars by weekday
@@ -180,7 +182,7 @@ export interface SubjectDatum {
  * Subjects with 0 hours are excluded so the pie isn't cluttered.
  */
 export function buildSubjectDistribution(tasks: Task[]): SubjectDatum[] {
-  const completed = tasks.filter((t) => t.completed === true);
+  const completed = tasks.filter(isCompletedTask);
   const bySubject = new Map<string, { minutes: number; color: string }>();
   for (const t of completed) {
     const entry = bySubject.get(t.subject) ?? { minutes: 0, color: t.subjectColor || '#5E6AD2' };
@@ -221,7 +223,7 @@ const ACTIVITY_KEYS: ActivityType[] = ['مطالعه', 'مرور', 'تست آم�
  * it included مطالعه + تست آموزشی, we split the time 50/50 between those two.
  */
 export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, now: Date = new Date()): ActivityDatum[] {
-  const completed = tasks.filter((t) => t.completed === true);
+  const completed = tasks.filter(isCompletedTask);
 
   // Reuse the same X-axis logic as buildDailyTrend so the activity chart lines
   // up with the daily trend chart for the same filter.

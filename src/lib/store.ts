@@ -550,6 +550,11 @@ function buildStudentProfile(row: {
   major: string | null;
   goal: string | null;
   dailyTargetHours: number;
+  reportSummary?: {
+    studyHoursThisWeek: number;
+    taskCompletionRate: number;
+    incompleteCount: number;
+  };
 }): StudentProfile {
   return {
     id: row.id,
@@ -558,7 +563,7 @@ function buildStudentProfile(row: {
     grade: (row.grade || '') as StudentProfile['grade'],
     major: (row.major || '') as StudentProfile['major'],
     goal: (row.goal || '') as StudentProfile['goal'],
-    studyHoursPerWeek: 0,
+    studyHoursPerWeek: row.reportSummary?.studyHoursThisWeek ?? 0,
     studyHoursTarget: row.dailyTargetHours * 7,
     studyHoursTrend: 'stable',
     mockExamScore: 0,
@@ -566,7 +571,7 @@ function buildStudentProfile(row: {
     konkurPercentile: 0,
     schoolGrades: {},
     attendanceRate: 0,
-    taskCompletionRate: 0,
+    taskCompletionRate: row.reportSummary?.taskCompletionRate ?? 0,
     pomodoroSessionsPerWeek: 0,
     flashcardsMastered: 0,
     flashcardsTotal: 0,

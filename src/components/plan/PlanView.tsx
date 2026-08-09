@@ -59,10 +59,12 @@ function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTes
 function PlanTabToggle({
   tab,
   onChange,
+  draftCount,
   incompleteCount,
 }: {
-  tab: 'daily' | 'incomplete';
-  onChange: (t: 'daily' | 'incomplete') => void;
+  tab: 'daily' | 'draft' | 'incomplete';
+  onChange: (t: 'daily' | 'draft' | 'incomplete') => void;
+  draftCount: number;
   incompleteCount: number;
 }) {
   return (
@@ -77,6 +79,12 @@ function PlanTabToggle({
       >
         <CalendarDays className="w-3.5 h-3.5" />
         برنامه روز
+      </button>
+      <button
+        onClick={() => onChange('draft')}
+        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${tab === 'draft' ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+      >
+        پیش‌نویس‌ها{draftCount > 0 ? ` ${toPersianDigits(draftCount)}` : ''}
       </button>
       <button
         onClick={() => onChange('incomplete')}
@@ -123,7 +131,7 @@ export default function PlanView() {
   const [weeklyPlannerOpen, setWeeklyPlannerOpen] = useState(false);
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
-  const [planTab, setPlanTab] = useState<'daily' | 'incomplete'>('daily');
+  const [planTab, setPlanTab] = useState<'daily' | 'draft' | 'incomplete'>('daily');
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
 
   // Filter tasks for current student + selected date.
@@ -136,7 +144,7 @@ export default function PlanView() {
         (t) =>
           t.date === selectedDate &&
           t.studentId === studentId &&
-          t.detailsCompleted !== false
+          (t.status === 'PENDING' || t.status === 'COMPLETED' || t.status === 'SKIPPED' || (t.status === undefined && t.detailsCompleted !== false))
       )
       .sort((a, b) => {
         // Pending tasks first, then completed/skipped
@@ -151,9 +159,11 @@ export default function PlanView() {
   // the "ناقصی‌ها" tab. Sorted by creation order (most recent first).
   const incompleteTasks = useMemo(() => {
     return tasks
-      .filter((t) => t.studentId === studentId && t.detailsCompleted === false)
+      .filter((t) => t.studentId === studentId && t.status === 'INCOMPLETE')
       .sort((a, b) => b.order - a.order);
   }, [tasks, studentId]);
+
+  const draftTasks = useMemo(() => tasks.filter((t) => t.studentId === studentId && t.status === 'DRAFT'), [tasks, studentId]);
 
   // Dynamic header title
   const headerTitle = useMemo(() => {
@@ -214,14 +224,14 @@ export default function PlanView() {
   // ===== Handlers =====
   const handleComplete = useCallback(
     async (taskId: string) => {
-      await updateTask(taskId, { completed: true });
+      await updateTask(taskId, { status: 'COMPLETED', completed: true });
     },
     [updateTask]
   );
 
   const handleSkip = useCallback(
     async (taskId: string) => {
-      await updateTask(taskId, { completed: false });
+      await updateTask(taskId, { status: 'SKIPPED', completed: false });
     },
     [updateTask]
   );
@@ -251,7 +261,7 @@ export default function PlanView() {
 
   const handleMoveDate = useCallback(
     async (taskId: string, newDate: string) => {
-      await updateTask(taskId, { date: newDate, detailsCompleted: true });
+      await updateTask(taskId, { date: newDate });
       const d = parseLocalDate(newDate);
       toast.success(`تسک به ${getPersianWeekdayName(d)} ${formatPersianDate(d)} منتقل شد`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
@@ -262,7 +272,7 @@ export default function PlanView() {
 
   const handleMoveToIncomplete = useCallback(
     async (taskId: string) => {
-      await updateTask(taskId, { detailsCompleted: false });
+      await updateTask(taskId, { status: 'INCOMPLETE', detailsCompleted: true, completed: null });
       toast('تسک به ناقصی‌ها منتقل شد', {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
       });
@@ -334,7 +344,7 @@ export default function PlanView() {
 
         {/* Plan Tab Toggle */}
         <div className="mb-4">
-          <PlanTabToggle tab={planTab} onChange={setPlanTab} incompleteCount={incompleteTasks.length} />
+          <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={draftTasks.length} incompleteCount={incompleteTasks.length} />
         </div>
 
         {planTab === 'daily' ? (
@@ -372,13 +382,13 @@ export default function PlanView() {
             </div>
           </>
         ) : (
-          /* Incomplete tasks tab */
+          /* Draft and incomplete tasks tabs */
           <div className="space-y-3">
-            {incompleteTasks.length === 0 ? (
+            {(planTab === 'draft' ? draftTasks : incompleteTasks).length === 0 ? (
               <IncompleteEmptyState />
             ) : (
               <SortableTaskList
-                tasks={incompleteTasks}
+                tasks={planTab === 'draft' ? draftTasks : incompleteTasks}
                 onComplete={handleComplete}
                 onSkip={handleSkip}
                 onDelete={handleDeleteTask}
@@ -416,7 +426,7 @@ export default function PlanView() {
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
               <span>برنامه‌ریزی</span>
               <ChevronLeft className="w-3 h-3 flip-rtl" />
-              <span className="text-[var(--accent)]">{planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
+              <span className="text-[var(--accent)]">{planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
             </div>
             <motion.h1
               key={planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
@@ -424,14 +434,14 @@ export default function PlanView() {
               animate={{ opacity: 1, y: 0 }}
               className="text-3xl md:text-4xl font-bold text-[var(--foreground)]"
             >
-              {planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+              {planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
             </motion.h1>
             <p className="text-sm text-[var(--foreground-muted)]">
-              {planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+              {planTab === 'draft' ? 'پیش‌نویس‌های نیازمند تکمیل جزئیات' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <PlanTabToggle tab={planTab} onChange={setPlanTab} incompleteCount={incompleteTasks.length} />
+            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={draftTasks.length} incompleteCount={incompleteTasks.length} />
             {planTab === 'daily' && (
               <button
                 onClick={() => setWeeklyPlannerOpen(true)}
