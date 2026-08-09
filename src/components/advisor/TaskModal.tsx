@@ -143,6 +143,8 @@ export function TaskModal({
         pageStart: selection.pageStart ?? null,
         pageEnd: selection.pageEnd ?? null,
         detailsCompleted: true,
+        status: 'PENDING',
+        completed: null,
       });
       toast.success('وظیفه با موفقیت ویرایش شد');
     } else {
@@ -159,6 +161,7 @@ export function TaskModal({
         actualTimeMinutes: null,
         targetTestCount: null,
         actualTestCount: null,
+        status: 'DRAFT',
         completed: null,
         date,
         order: 0,

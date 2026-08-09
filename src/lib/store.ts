@@ -733,6 +733,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       actualTimeMinutes: task.actualTimeMinutes,
       targetTestCount: task.targetTestCount,
       actualTestCount: task.actualTestCount,
+      status: task.status,
       completed: task.completed,
       detailsCompleted: task.detailsCompleted ?? false,
       date: task.date,
@@ -776,6 +777,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       actualTimeMinutes: task.actualTimeMinutes,
       targetTestCount: task.targetTestCount,
       actualTestCount: task.actualTestCount,
+      status: task.status,
       completed: task.completed,
       detailsCompleted: task.detailsCompleted ?? false,
       date: task.date,
@@ -861,6 +863,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   resetTask: async (id) => {
     await get().updateTask(id, {
+      status: 'PENDING',
       completed: null,
       actualTimeMinutes: null,
       actualTestCount: null,

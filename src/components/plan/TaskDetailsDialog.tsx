@@ -48,7 +48,7 @@ function TaskDetailsForm({ task, open, onOpenChange, grade, major, onSave }: {
         topicId: selection.topicId ?? null, topicModeId: selection.topicModeId ?? null,
         pageStart: selection.pageStart ?? (pageStart ? Number(pageStart) : null), pageEnd: selection.pageEnd ?? (pageEnd ? Number(pageEnd) : null),
         activityTypes: activities, targetTimeMinutes: Number(minutes),
-        targetTestCount: tests ? Number(tests) : 0, detailsCompleted: true,
+        targetTestCount: tests ? Number(tests) : 0, detailsCompleted: true, status: 'PENDING', completed: null,
       });
       toast.success('جزئیات تسک ذخیره شد');
       onOpenChange(false);

@@ -69,6 +69,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     actualTimeMinutes: null,
     targetTestCount: detailsCompleted ? (tests ? Number(tests) : 0) : null,
     actualTestCount: null,
+    status: detailsCompleted ? 'PENDING' : 'DRAFT',
     completed: null,
     date: selectedDate,
     order: existingTaskCount + 1,
