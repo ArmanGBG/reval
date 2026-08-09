@@ -277,6 +277,7 @@ export default function AnalyticsView() {
     'مرور': 'var(--chart-2)',
     'تست_آموزشی': 'var(--chart-3)',
     'تست_سنجشی': 'var(--chart-5)',
+    'کلاس_ویدیو': 'var(--chart-4)',
   };
 
   const ACTIVITY_LABELS: Record<string, string> = {
@@ -284,6 +285,7 @@ export default function AnalyticsView() {
     'مرور': 'مرور',
     'تست_آموزشی': 'تست آموزشی',
     'تست_سنجشی': 'تست سنجشی',
+    'کلاس_ویدیو': 'کلاس/ویدیو',
   };
 
   function renderPieLegend(payload: Array<{ value: string; color: string }>) {
@@ -811,7 +813,7 @@ interface ChartContentProps {
   renderPieLegend: (payload: Array<{ value: string; color: string }>) => React.ReactNode;
   dailyTrendData: Array<{ day: string; hours: number; tests: number }>;
   subjectDistData: Array<{ name: string; value: number; fill: string }>;
-  activityData: Array<{ name: string; 'مطالعه': number; 'مرور': number; 'تست_آموزشی': number; 'تست_سنجشی': number }>;
+  activityData: Array<{ name: string; 'مطالعه': number; 'مرور': number; 'تست_آموزشی': number; 'تست_سنجشی': number; 'کلاس_ویدیو': number }>;
   hasData: boolean;
 }
 
@@ -979,6 +981,7 @@ function ChartContent({
                 <Bar dataKey="مرور" name="مرور" stackId="a" fill="var(--chart-2)" />
                 <Bar dataKey="تست_آموزشی" name="تست آموزشی" stackId="a" fill="var(--chart-3)" />
                 <Bar dataKey="تست_سنجشی" name="تست سنجشی" stackId="a" fill="var(--chart-5)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="کلاس_ویدیو" name="کلاس/ویدیو" stackId="a" fill="var(--chart-4)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             ) : (

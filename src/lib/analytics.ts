@@ -208,9 +208,10 @@ export interface ActivityDatum {
   مرور: number;
   تست_آموزشی: number;
   تست_سنجشی: number;
+  کلاس_ویدیو: number;
 }
 
-const ACTIVITY_KEYS: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+const ACTIVITY_KEYS: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 /**
  * Build the "نوع فعالیت" stacked-bar dataset.
@@ -274,6 +275,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
       مرور: 0,
       تست_آموزشی: 0,
       تست_سنجشی: 0,
+      کلاس_ویدیو: 0,
     };
     for (const t of dayTasks) {
       const minutes = t.actualTimeMinutes ?? 0;
@@ -285,6 +287,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
         else if (a === 'تست سنجشی') datum.تست_سنجشی += per;
         else if (a === 'مطالعه') datum.مطالعه += per;
         else if (a === 'مرور') datum.مرور += per;
+        else if (a === 'کلاس/ویدیو') datum.کلاس_ویدیو += per;
       }
     }
     // Round each bucket to integer minutes (chart displays whole minutes)
@@ -292,6 +295,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
     datum.مرور = Math.round(datum.مرور);
     datum.تست_آموزشی = Math.round(datum.تست_آموزشی);
     datum.تست_سنجشی = Math.round(datum.تست_سنجشی);
+    datum.کلاس_ویدیو = Math.round(datum.کلاس_ویدیو);
     return datum;
   });
 }

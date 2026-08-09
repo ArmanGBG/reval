@@ -10,7 +10,7 @@ import { useCurrentStudentId } from '@/lib/student-utils';
 import { AuthError } from '@/lib/api-client';
 import { ChevronLeft, Save, ArrowLeft } from 'lucide-react';
 
-const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 /**
  * Unified task creation flow — all steps in one bottom sheet.

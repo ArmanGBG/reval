@@ -56,7 +56,7 @@ interface JalaliYMD {
   jd: number;
 }
 
-const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 // ============================================================
 // Main Component — reads REAL tasks from store, immediate sync

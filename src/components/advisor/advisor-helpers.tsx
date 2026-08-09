@@ -147,4 +147,4 @@ export const EXAM_STATUS_CONFIG: Record<ExamStatus, { label: string; color: stri
   completed: { label: 'برگزار شده', color: 'text-[var(--accent)]', bg: 'bg-[var(--accent-soft)]' },
 };
 
-export const ALL_ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+export const ALL_ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];

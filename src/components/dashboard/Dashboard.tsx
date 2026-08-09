@@ -564,7 +564,7 @@ export default function Dashboard() {
 // ============================================================
 // Edit Task Details Modal (copied from WeeklyPlanner)
 // ============================================================
-const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 function EditTaskModal({
   task,

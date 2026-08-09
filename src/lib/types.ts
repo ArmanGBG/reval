@@ -25,7 +25,7 @@ export type Grade = 'دهم' | 'یازدهم' | 'دوازدهم' | 'پشت کن�
 export type Major = 'تجربی' | 'ریاضی' | 'انسانی';
 export type Goal = 'کنکور' | 'نهایی' | 'هر دو';
 export type FieldType = 'کنکور' | 'نهایی';
-export type ActivityType = 'مطالعه' | 'مرور' | 'تست آموزشی' | 'تست سنجشی';
+export type ActivityType = 'مطالعه' | 'مرور' | 'تست آموزشی' | 'تست سنجشی' | 'کلاس/ویدیو';
 
 export interface User {
   id: string;

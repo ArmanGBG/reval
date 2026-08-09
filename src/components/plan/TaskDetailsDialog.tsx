@@ -6,7 +6,7 @@ import { ActivityType, Task } from '@/lib/types';
 import { TaskSelection, TaskSubjectPicker } from '@/components/shared/TaskSubjectPicker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
-const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
+const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSave }: {
   task: Task | null;
