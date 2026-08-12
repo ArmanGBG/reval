@@ -9,8 +9,16 @@ if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
   throw new Error('AUTH_SECRET is required in production');
 }
 
-// Token expiry: 24 hours in seconds
-const TOKEN_EXPIRY_SECONDS = 86400;
+// Session lifetime is configurable in production. Accounts themselves are
+// permanent DB records; only the signed browser session expires. Keep users
+// signed in for one year by default, while allowing Liara to override it with
+// AUTH_SESSION_DAYS (accepted range: 1..3650 days).
+const DEFAULT_SESSION_DAYS = 365;
+const configuredSessionDays = Number.parseInt(process.env.AUTH_SESSION_DAYS || '', 10);
+const SESSION_DAYS = Number.isFinite(configuredSessionDays)
+  ? Math.min(3650, Math.max(1, configuredSessionDays))
+  : DEFAULT_SESSION_DAYS;
+const TOKEN_EXPIRY_SECONDS = SESSION_DAYS * 24 * 60 * 60;
 
 /**
  * Generate a signed session token for a given userId.

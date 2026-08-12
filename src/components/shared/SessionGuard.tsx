@@ -21,7 +21,7 @@ import { registerUnauthHandler, resetUnauthState } from '@/lib/api-client';
 const REVALIDATE_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
 export default function SessionGuard() {
-  const { logout, onboardingComplete } = useAppStore();
+  const { logout, onboardingComplete, setCurrentView } = useAppStore();
   const revalidatingRef = useRef(false);
 
   // Register the global 401 handler once.
@@ -37,19 +37,16 @@ export default function SessionGuard() {
         },
       });
 
-      // Clear auth state + localStorage, then force a clean reload to login.
+      // Clear only session/UI auth state. The permanent user record remains in
+      // PostgreSQL and the returning user only needs to log in again.
       clearAuthStorage();
       logout();
+      setCurrentView('login');
       resetUnauthState();
-
-      // Hard reload after a short delay so the toast is visible.
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 800);
     };
 
     registerUnauthHandler(handleUnauth);
-  }, [logout]);
+  }, [logout, setCurrentView]);
 
   // Re-validate the session on window focus + periodically.
   useEffect(() => {
@@ -65,12 +62,12 @@ export default function SessionGuard() {
           // Session expired — the global handler will fire for API calls,
           // but /api/auth/me is called with raw fetch (not apiFetch), so we
           // handle it explicitly here.
+          const wasLoggedIn = useAppStore.getState().onboardingComplete;
           clearAuthStorage();
           logout();
+          setCurrentView('login');
           resetUnauthState();
-          // Only reload if we're not already on the landing/login page.
-          const store = useAppStore.getState();
-          if (store.onboardingComplete) {
+          if (wasLoggedIn) {
             toast.info('نشست شما منقضی شده است. لطفاً دوباره وارد شوید.', {
               duration: 3000,
               style: {
@@ -79,9 +76,6 @@ export default function SessionGuard() {
                 color: 'var(--warning)',
               },
             });
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 800);
           }
         }
       } catch {
@@ -100,7 +94,7 @@ export default function SessionGuard() {
       window.removeEventListener('focus', onFocus);
       window.clearInterval(interval);
     };
-  }, [onboardingComplete, logout]);
+  }, [onboardingComplete, logout, setCurrentView]);
 
   // This component renders nothing — it's a side-effect guard.
   return null;

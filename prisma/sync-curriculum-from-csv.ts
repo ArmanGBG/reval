@@ -142,7 +142,7 @@ async function main() {
       await tx.task.updateMany({ where: { subjectId: subject.id }, data: { subject: current.name, subjectColor: current.color } });
     }
     return { createdSubjects, updatedSubjects, createdGradeSubjects, createdChapters, updatedChapters, createdTopics, updatedTopics };
-  });
+  }, { maxWait: 10_000, timeout: 1_800_000 });
   console.log('Non-destructive curriculum sync completed:', result);
 }
 
