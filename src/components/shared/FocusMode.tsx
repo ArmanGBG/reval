@@ -80,7 +80,7 @@ export default function FocusMode({ children }: FocusModeProps) {
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--border-strong)] bg-[var(--bg-elevated)]/80 backdrop-blur-md shadow-lg">
               <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
               <span className="text-xs font-medium text-[var(--foreground-muted)]">
-                {currentView === 'tools' ? 'تمرکز · پومودورو' : currentView === 'plan' ? 'تمرکز · برنامه' : 'حالت تمرکز'}
+                {currentView === 'tools' ? 'تمرکز · ابزارها' : currentView === 'plan' ? 'تمرکز · برنامه' : 'حالت تمرکز'}
               </span>
             </div>
             <button

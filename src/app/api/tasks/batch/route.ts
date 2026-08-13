@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, canCreateTaskForStudent, canModifyTask, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
-
-// Helper: parse activityTypes JSON string → array
-function parseTask(task: Record<string, unknown>) {
-  if (typeof task.activityTypes === 'string') {
-    try {
-      task.activityTypes = JSON.parse(task.activityTypes);
-    } catch {
-      task.activityTypes = [];
-    }
-  }
-  return task;
-}
+import { parseTaskResponse, taskTopicInclude } from '@/lib/task-api';
 
 // POST /api/tasks/batch
 // Create multiple tasks at once (for AI plan parser results).
@@ -116,6 +105,7 @@ export async function POST(request: NextRequest) {
         subject: subject.name,
         subjectColor: subject.color,
         topic: curriculum.topic,
+        topicIds: curriculum.topicIds,
         createdBy: sessionCreatedBy,
         createdById: sessionCreatedById,
       });
@@ -155,12 +145,14 @@ export async function POST(request: NextRequest) {
               typeof t.topicModeId === 'string' ? t.topicModeId : null,
             pageStart: typeof t.pageStart === 'number' ? t.pageStart : null,
             pageEnd: typeof t.pageEnd === 'number' ? t.pageEnd : null,
+            topics: { create: Array.isArray(t.topicIds) ? t.topicIds.map((topicId) => ({ topicId: topicId as string })) : [] },
           },
+          include: taskTopicInclude,
         }),
       ),
     );
 
-    const parsed = created.map((t) => parseTask({ ...t }));
+    const parsed = created.map((t) => parseTaskResponse({ ...t }));
 
     return NextResponse.json({ tasks: parsed }, { status: 201 });
   } catch (error) {
@@ -228,7 +220,7 @@ export async function PATCH(request: NextRequest) {
       ),
     );
 
-    const parsed = updated.map((t) => parseTask({ ...t }));
+    const parsed = updated.map((t) => parseTaskResponse({ ...t }));
 
     return NextResponse.json({ tasks: parsed });
   } catch (error) {

@@ -184,7 +184,7 @@ async function main() {
       name: 'محمد حسینی',
       avatar: '🐯',
       role: 'STUDENT',
-      grade: 'پشت کنکوری',
+      grade: 'فارغ‌التحصیل',
       major: 'تجربی',
       goal: 'کنکور',
       dailyTargetHours: 10,

@@ -9,7 +9,7 @@ import Dashboard from '@/components/dashboard/Dashboard';
 import PlanView from '@/components/plan/PlanView';
 import ToolsHub from '@/components/tools/ToolsHub';
 import AdvisorPanel from '@/components/advisor/AdvisorDashboard';
-import AnalyticsView from '@/components/analytics/AnalyticsView';
+import AnalyticsView from '@/components/analytics/MinimalAnalyticsView';
 import SettingsView from '@/components/settings/SettingsView';
 import InstituteDashboard from '@/components/institute/InstituteDashboard';
 import InstituteAdvisors from '@/components/institute/InstituteAdvisors';
@@ -110,6 +110,16 @@ export default function Home() {
     }
   }, [hydrateAuth, logout, setCurrentView, setOnboardingComplete, setUser, setUserRole]);
 
+  useEffect(() => {
+    const syncPublicViewFromHistory = () => {
+      if (useAppStore.getState().onboardingComplete) return;
+      const hash = window.location.hash;
+      setCurrentView(hash === '#login' ? 'login' : hash === '#signup' ? 'onboarding' : 'landing');
+    };
+    window.addEventListener('popstate', syncPublicViewFromHistory);
+    return () => window.removeEventListener('popstate', syncPublicViewFromHistory);
+  }, [setCurrentView]);
+
   // Not logged in yet → show login / landing / onboarding (no chrome)
   const isLoggedIn = onboardingComplete && userRole !== undefined;
 
@@ -123,9 +133,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg-deep)]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-mint/15 border border-mint/25 flex items-center justify-center shadow-lg shadow-mint/10">
-            <span className="text-2xl">📚</span>
-          </div>
+          <div className="h-1 w-20 overflow-hidden rounded-full bg-white/10"><div className="h-full w-1/2 animate-[shimmer_1.2s_ease-in-out_infinite] rounded-full bg-mint" /></div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <div className="w-4 h-4 rounded-full border-2 border-mint/30 border-t-mint animate-spin" />
             <span className="text-sm">در حال بارگذاری…</span>

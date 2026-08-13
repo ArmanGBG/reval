@@ -30,7 +30,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   critical: { label: 'بحرانی', color: 'text-[var(--danger)]', bg: 'bg-[var(--danger)]/15', dot: 'bg-[var(--danger)]' },
 };
 
-const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
+const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل'];
 const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
 
 export default function InstituteStudents() {

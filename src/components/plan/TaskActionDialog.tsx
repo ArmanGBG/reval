@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, Inbox, Trash2, ChevronLeft, Check } from 'lucide-react';
+import { CalendarDays, Inbox, Trash2, ChevronLeft, Check, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,9 +21,9 @@ interface TaskActionDialogProps {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMoveDate: (taskId: string, newDate: string) => void;
-  onMoveToIncomplete: (taskId: string) => void;
-  onDelete: (taskId: string) => void;
+  onMoveDate: (taskId: string, newDate: string) => Promise<void>;
+  onMoveToIncomplete: (taskId: string) => Promise<void>;
+  onDelete: (taskId: string) => Promise<void>;
   /** task counts per date — passed to the calendar for indicators */
   taskCountByDate?: Record<string, number>;
 }
@@ -50,12 +50,17 @@ export function TaskActionDialog({
 }: TaskActionDialogProps) {
   const [mode, setMode] = useState<ActionMode>('menu');
   const [pickedDate, setPickedDate] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const isStudentTask = task?.createdBy === 'student';
 
   // Reset to the menu whenever the dialog re-opens or the task changes.
   useEffect(() => {
     if (open) {
       setMode('menu');
       setPickedDate(task?.date ?? '');
+      setSubmitting(false);
+      setError('');
     }
   }, [open, task?.id]);
 
@@ -65,22 +70,33 @@ export function TaskActionDialog({
 
   const handlePickMoveDate = () => setMode('move-date');
 
-  const handleConfirmMoveDate = () => {
+  const runAction = async (action: () => Promise<void>) => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await action();
+      handleClose();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'انجام عملیات ناموفق بود');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmMoveDate = async () => {
     if (!task || !pickedDate) return;
-    onMoveDate(task.id, pickedDate);
-    handleClose();
+    await runAction(() => onMoveDate(task.id, pickedDate));
   };
 
-  const handleMoveToIncomplete = () => {
+  const handleMoveToIncomplete = async () => {
     if (!task) return;
-    onMoveToIncomplete(task.id);
-    handleClose();
+    await runAction(() => onMoveToIncomplete(task.id));
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!task) return;
-    onDelete(task.id);
-    handleClose();
+    if (!window.confirm('این پیش‌نویس برای همیشه حذف شود؟')) return;
+    await runAction(() => onDelete(task.id));
   };
 
   const pickedDateLabel = pickedDate
@@ -110,9 +126,9 @@ export function TaskActionDialog({
               transition={{ duration: 0.2 }}
               className="space-y-2.5 py-1"
             >
-              {/* Option 1: Move to a specific day */}
-              <button
+              {isStudentTask && task?.status !== 'DRAFT' && <button
                 onClick={handlePickMoveDate}
+                disabled={submitting}
                 className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)] transition-all text-right min-h-[56px]"
               >
                 <div className="w-10 h-10 rounded-lg bg-[var(--accent-soft)] flex items-center justify-center shrink-0">
@@ -123,11 +139,12 @@ export function TaskActionDialog({
                   <div className="text-xs text-[var(--foreground-muted)] mt-0.5">با انتخاب روز از تقویم، تسک در اون روز نمایش داده میشه</div>
                 </div>
                 <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl group-hover:text-[var(--accent)] transition-colors" />
-              </button>
+              </button>}
 
               {/* Option 2: Move to incompletes */}
-              <button
+              {task?.status !== 'DRAFT' && <button
                 onClick={handleMoveToIncomplete}
+                disabled={submitting}
                 className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--warning)]/40 hover:bg-[rgba(216,150,20,0.08)] transition-all text-right min-h-[56px]"
               >
                 <div className="w-10 h-10 rounded-lg bg-[rgba(216,150,20,0.12)] flex items-center justify-center shrink-0">
@@ -138,11 +155,11 @@ export function TaskActionDialog({
                   <div className="text-xs text-[var(--foreground-muted)] mt-0.5">برای تکمیل بعدی به تب ناقصی‌ها منتقل میشه</div>
                 </div>
                 <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl group-hover:text-[var(--warning)] transition-colors" />
-              </button>
+              </button>}
 
-              {/* Option 3: Delete */}
-              <button
+              {isStudentTask && <button
                 onClick={handleDelete}
+                disabled={submitting}
                 className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--danger)]/40 hover:bg-[rgba(229,72,77,0.08)] transition-all text-right min-h-[56px]"
               >
                 <div className="w-10 h-10 rounded-lg bg-[rgba(229,72,77,0.12)] flex items-center justify-center shrink-0">
@@ -153,7 +170,7 @@ export function TaskActionDialog({
                   <div className="text-xs text-[var(--foreground-muted)] mt-0.5">تسک برای همیشه حذف میشه</div>
                 </div>
                 <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl group-hover:text-[var(--danger)] transition-colors" />
-              </button>
+              </button>}
             </motion.div>
           ) : (
             <motion.div
@@ -191,21 +208,24 @@ export function TaskActionDialog({
                 </button>
                 <button
                   onClick={handleConfirmMoveDate}
-                  disabled={!pickedDate}
+                   disabled={!pickedDate || submitting}
                   className="btn-hover glow-hover flex-1 h-10 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  <Check className="w-4 h-4" />
-                  انتقال
+                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                   انتقال
                 </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
+        {error && <p role="alert" className="rounded-lg border border-[var(--danger)]/30 bg-[rgba(229,72,77,0.08)] px-3 py-2 text-xs text-[var(--danger)]">{error}</p>}
+
         {mode === 'menu' && (
           <div className="pt-3 mt-1 border-t border-[var(--border)]">
             <button
               onClick={handleClose}
+              disabled={submitting}
               className="btn-hover w-full h-10 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-sm font-medium"
             >
               انصراف

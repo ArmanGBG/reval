@@ -5,7 +5,6 @@ import { useAppStore } from '@/lib/store';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import BottomNav from './BottomNav';
 import SidebarNav from './SidebarNav';
-import MusicPlayer from './MusicPlayer';
 import KeyboardShortcutsHelp from './KeyboardShortcutsHelp';
 import CelebrationOverlay from './CelebrationOverlay';
 import CommandPalette from './CommandPalette';
@@ -54,7 +53,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const showBottomNav = !isDetailPage && !focusMode;
   const showSidebar = !isDetailPage && !focusMode; // detail pages + focus hide sidebar
-  const showMusicPlayer = userRole === 'STUDENT' && !isDetailPage && !focusMode;
   const isStudent = userRole === 'STUDENT';
 
   return (
@@ -81,9 +79,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom nav */}
       {showBottomNav && <BottomNav />}
-
-      {/* Student music player (floating) */}
-      {showMusicPlayer && <MusicPlayer />}
 
       {/* Focus mode overlay — when active, the page chrome above is hidden
           and the student sees a distraction-free view of the current page. */}

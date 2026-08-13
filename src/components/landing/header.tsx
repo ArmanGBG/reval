@@ -14,16 +14,8 @@ const NAV = [
 ];
 
 export function Header() {
-  const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const onConfetti = useConfettiOnClick(45);
-
-  React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   React.useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -39,14 +31,7 @@ export function Header() {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="fixed inset-x-0 top-0 z-50"
     >
-      <div
-        className={cn(
-          "mx-auto transition-all duration-500 ease-out",
-          scrolled
-            ? "border-b border-border/60 bg-background/75 backdrop-blur-2xl shadow-[0_8px_40px_-12px_oklch(0_0_0/0.3)]"
-            : "border-b border-transparent bg-transparent"
-        )}
-      >
+      <div className="mx-auto border-b border-border/50 bg-background/70 backdrop-blur-2xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link

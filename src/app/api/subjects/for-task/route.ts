@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   const fieldType = searchParams.get('fieldType'); // "کنکور" | "نهایی"
   const grade = searchParams.get('grade'); // e.g. "دوازدهم"
   const major = searchParams.get('major'); // e.g. "تجربی"
+  const allGrades = searchParams.get('allGrades') === 'true';
 
   if (!fieldType || !grade || !major) {
     return NextResponse.json(
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
   // For نهایی → return ALL active subjects (no isKonkur filter).
   // Filter by grade + major via GradeSubject pivot.
-  const gradeFilter = fieldType === 'کنکور'
+  const gradeFilter = fieldType === 'کنکور' || allGrades
     ? { major, isActive: true }
     : { grade, major, isActive: true };
   where.grades = { some: gradeFilter };

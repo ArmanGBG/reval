@@ -19,7 +19,7 @@ import { createPublicCode } from '@/lib/public-code';
 //   phone            string  required (Iranian mobile, digits only)
 //   name             string  required
 //   avatar           string  optional (emoji, defaults to 🦊)
-//   grade            string  optional (دهم | یازدهم | دوازدهم | پشت کنکوری) — STUDENT only
+//   grade            string  optional (دهم | یازدهم | دوازدهم | فارغ‌التحصیل) — STUDENT only
 //   major            string  optional (تجربی | ریاضی | انسانی) — STUDENT only
 //   goal             string  optional (کنکور | نهایی | هر دو)
 //   dailyTargetHours number  optional (default 6) — STUDENT only
@@ -69,44 +69,24 @@ export async function POST(request: NextRequest) {
 
     const normalizedPhone = normalizeIranianPhone(phone);
     if (!normalizedPhone) return NextResponse.json({ error: 'شماره موبایل نامعتبر است' }, { status: 400 });
+    const existing = await db.user.findUnique({
+      where: { phone: normalizedPhone },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'این شماره قبلاً ثبت شده است. وارد حساب خود شوید', code: 'ACCOUNT_EXISTS' },
+        { status: 409 },
+      );
+    }
+
     const otp = typeof body.otp === 'string' ? body.otp.trim() : '';
     if (!/^\d{6}$/.test(otp) || !(await verifyOtp(normalizedPhone, 'SIGNUP', otp))) {
       return NextResponse.json({ error: 'کد تایید نامعتبر یا منقضی شده است' }, { status: 401 });
     }
 
-    const existing = await db.user.findUnique({
-      where: { phone: normalizedPhone },
+    const user = await db.user.create({
+      data: { phone: normalizedPhone, name, avatar, role, publicCode: await createPublicCode('STU'), grade: grade || 'دوازدهم', major: major || 'تجربی', goal: goal || 'کنکور', dailyTargetHours, isActive: true, phoneVerifiedAt: new Date() },
     });
-
-    let user;
-    if (existing) {
-      if (existing.role !== 'STUDENT') return NextResponse.json({ error: 'این شماره متعلق به حساب دیگری است' }, { status: 409 });
-      if (!existing.isActive) {
-        return NextResponse.json(
-          { error: 'حساب شما غیرفعال شده است' },
-          { status: 403 },
-        );
-      }
-      // Refresh profile fields from the onboarding wizard (non-destructive: only
-      // overwrite fields the wizard actually collected).
-      user = await db.user.update({
-        where: { id: existing.id },
-        data: {
-          name,
-          avatar,
-          ...(grade ? { grade } : {}),
-          ...(major ? { major } : {}),
-          ...(goal ? { goal } : {}),
-          dailyTargetHours,
-          phoneVerifiedAt: existing.phoneVerifiedAt || new Date(),
-        },
-      });
-    } else {
-      // Brand-new account.
-      user = await db.user.create({
-        data: { phone: normalizedPhone, name, avatar, role, publicCode: await createPublicCode('STU'), grade: grade || 'دوازدهم', major: major || 'تجربی', goal: goal || 'کنکور', dailyTargetHours, isActive: true, phoneVerifiedAt: new Date() },
-      });
-    }
 
     // Strip password before returning.
     const { password: _, ...userWithoutPassword } = user;

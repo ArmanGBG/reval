@@ -21,6 +21,7 @@ import {
   hasAnyCompletedData,
 } from '@/lib/reporting/task-report-service';
 import { Subject, Chapter } from '@/lib/subjects-types';
+import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import { toISODate, getWeekDays, getTodayJalali, getFirstDayOfJalaliMonth, getDaysInJalaliMonth, formatPersianDate } from '@/lib/persian-date';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -219,12 +220,10 @@ function ViewTabToggle({
 export default function AnalyticsView() {
   const { tasks } = useAppStore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('هفته جاری');
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
   const [fieldFilter, setFieldFilter] = useState<FieldFilter>('همه');
   const [chartTab, setChartTab] = useState<ChartTab>('روند روزانه');
   const [view, setView] = useState<AnalyticsViewName>('نمای کلی');
-  const customRange = useMemo(() => customStart && customEnd ? { start: customStart <= customEnd ? customStart : customEnd, end: customStart <= customEnd ? customEnd : customStart } : null, [customStart, customEnd]);
 
   // ===== Filter tasks once for the selected time + field =====
   const reportTasks = useMemo(
@@ -312,10 +311,7 @@ export default function AnalyticsView() {
       <div className="md:hidden max-w-md mx-auto px-4 pt-6 pb-24">
         {/* Header */}
         <div className="flex items-center justify-between gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-[var(--accent)]" />
-            <h1 className="text-2xl font-bold text-[var(--foreground)]">گزارش‌ها</h1>
-          </div>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">گزارش‌ها</h1>
           <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('reval-export-data'));
@@ -370,10 +366,7 @@ export default function AnalyticsView() {
                 ))}
               </div>
               {timeFilter === 'بازه دلخواه' && (
-                <div className="grid grid-cols-2 gap-2" dir="ltr">
-                  <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs text-[var(--foreground)]" />
-                  <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs text-[var(--foreground)]" />
-                </div>
+                <PersianDateRangePicker value={customRange} onChange={setCustomRange} />
               )}
             </div>
 
@@ -386,10 +379,7 @@ export default function AnalyticsView() {
 
             {/* Smart Insights */}
             <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-4 h-4 text-[var(--accent)]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">بینش‌های هوشمند</h2>
-              </div>
+              <h2 className="text-sm font-bold text-[var(--foreground)] mb-3">بینش‌های هوشمند</h2>
               <div className="grid grid-cols-2 gap-3">
                 {insightCards.map((card, idx) => (
                   <InsightCard key={card.title} {...card} index={idx} />
@@ -499,10 +489,7 @@ export default function AnalyticsView() {
               </div>
             </div>
             {timeFilter === 'بازه دلخواه' && (
-              <div className="grid grid-cols-2 gap-3 mb-6 max-w-md" dir="ltr">
-                <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--foreground)]" />
-                <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-sm text-[var(--foreground)]" />
-              </div>
+              <div className="mb-6 max-w-md"><PersianDateRangePicker value={customRange} onChange={setCustomRange} /></div>
             )}
 
             {/* KPI Grid (4-col) */}
@@ -516,10 +503,7 @@ export default function AnalyticsView() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Insights column */}
               <aside className="lg:col-span-1 space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="w-4 h-4 text-[var(--accent)]" />
-                  <h2 className="text-sm font-bold text-[var(--foreground)]">بینش‌های هوشمند</h2>
-                </div>
+                <h2 className="text-sm font-bold text-[var(--foreground)] mb-1">بینش‌های هوشمند</h2>
                 {insightCards.map((card, idx) => (
                   <InsightCard key={card.title} {...card} index={idx} />
                 ))}
@@ -1027,6 +1011,7 @@ function ChartContent({
 
 interface LinkedTask {
   id: string;
+  subjectId: string | null;
   subject: string;
   subjectColor: string;
   topic: string | null;
@@ -1039,6 +1024,7 @@ interface LinkedTask {
   date: string;
   chapterId: string | null;
   topicId: string | null;
+  topicIds: string[];
   topicModeId: string | null;
 }
 
@@ -1148,15 +1134,28 @@ function ChapterCentricReport() {
       try {
         const grade = user.grade || 'دوازدهم';
         const major = user.major || 'تجربی';
-        const [subsRes, tasksRes] = await Promise.all([
-          fetch(`/api/subjects?include=tree&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
+        const [konkurRes, finalRes, tasksRes] = await Promise.all([
+          fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('کنکور')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
+          fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('نهایی')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
           fetch(`/api/tasks?studentId=${user.id}`),
         ]);
-        if (!subsRes.ok || !tasksRes.ok) throw new Error('fetch failed');
-        const subsData = await subsRes.json();
+        if (!konkurRes.ok || !finalRes.ok || !tasksRes.ok) throw new Error('fetch failed');
+        const konkurData = await konkurRes.json();
+        const finalData = await finalRes.json();
         const tasksData = await tasksRes.json();
         if (cancelled) return;
-        const subs: SubjectTreeNode[] = (subsData.subjects || []).map((s: SubjectTreeNode) => ({
+        const subjectMap = new Map<string, SubjectTreeNode>();
+        for (const source of [...(konkurData.subjects || []), ...(finalData.subjects || [])] as SubjectTreeNode[]) {
+          const current = subjectMap.get(source.id);
+          if (!current) {
+            subjectMap.set(source.id, { ...source, grades: source.grades || [], topicModes: source.topicModes || [] });
+            continue;
+          }
+          const grades = new Map(current.grades.map((item) => [item.id, item]));
+          for (const gradeItem of source.grades || []) grades.set(gradeItem.id, gradeItem);
+          subjectMap.set(source.id, { ...current, grades: [...grades.values()] });
+        }
+        const subs: SubjectTreeNode[] = [...subjectMap.values()].map((s) => ({
           id: s.id,
           name: s.name,
           color: s.color,
@@ -1185,7 +1184,7 @@ function ChapterCentricReport() {
   const subjectOptions = useMemo(() => {
     return subjects.map((s) => {
       const subjectTaskCount = tasks.filter(
-        (t) => t.subject === s.name && t.fieldType === (s.isKonkur ? 'کنکور' : 'نهایی') && t.status === 'COMPLETED',
+        (t) => (t.subjectId === s.id || (!t.subjectId && t.subject === s.name)) && t.status === 'COMPLETED',
       ).length;
       return { ...s, taskCount: subjectTaskCount };
     });
@@ -1197,45 +1196,39 @@ function ChapterCentricReport() {
     const subject = subjects.find((s) => s.id === selectedSubjectId);
     if (!subject) return null;
 
-    // Find the GradeSubject matching the student's grade + major. The API
-    // returns ALL active grades for the subject (the `?grade=&major=` query
-    // filters subjects, but doesn't filter the nested grades[] include).
-    const userGrade = user?.grade || 'دوازدهم';
-    const userMajor = user?.major || 'تجربی';
-    const gs = subject.grades.find(
-      (g) => g.grade === userGrade && g.major === userMajor,
-    );
-    if (!gs) {
+    const gradeSubjects = subject.grades;
+    if (gradeSubjects.length === 0) {
       return { subject, chapters: [], topicModes: [] };
     }
 
     const completedTasks = tasks.filter(
-      (t) => t.status === 'COMPLETED' && t.subject === subject.name && t.fieldType === (subject.isKonkur ? 'کنکور' : 'نهایی'),
+      (t) => t.status === 'COMPLETED' && (t.subjectId === subject.id || (!t.subjectId && t.subject === subject.name)),
     );
 
     // Build chapter aggregations
-    const chapters: ChapterAgg[] = gs.chapters.map((ch) => {
+    const chapters: ChapterAgg[] = gradeSubjects.flatMap((gradeSubject) => gradeSubject.chapters).map((ch) => {
+      const chapterTasks = completedTasks.filter((task) => task.chapterId === ch.id);
       const topicAggs: TopicAgg[] = ch.topics.map((tp) => {
-        const tpTasks = completedTasks.filter((t) => t.topicId === tp.id);
+        const tpTasks = chapterTasks.filter((task) => (task.topicIds?.length ? task.topicIds : task.topicId ? [task.topicId] : []).includes(tp.id));
         return {
           id: tp.id,
           title: tp.title,
           topicNo: tp.topicNo,
-          totalMinutes: tpTasks.reduce((s, t) => s + (t.targetTimeMinutes ?? 0), 0),
-          totalTests: tpTasks.reduce((s, t) => s + (t.targetTestCount ?? 0), 0),
+          totalMinutes: tpTasks.reduce((sum, task) => sum + (task.targetTimeMinutes ?? 0) / Math.max(1, task.topicIds?.length || (task.topicId ? 1 : 0)), 0),
+          totalTests: tpTasks.reduce((sum, task) => sum + (task.targetTestCount ?? 0) / Math.max(1, task.topicIds?.length || (task.topicId ? 1 : 0)), 0),
           hasCompleted: tpTasks.length > 0,
         };
       });
 
       // Chapter-level tasks (chapterId set, no topicId) = "خوانش جامع"
       const chapterOnlyTasks = completedTasks.filter(
-        (t) => t.chapterId === ch.id && !t.topicId,
+        (t) => t.chapterId === ch.id && !(t.topicIds?.length || t.topicId),
       );
       const chapterLevelMinutes = chapterOnlyTasks.reduce((s, t) => s + (t.targetTimeMinutes ?? 0), 0);
       const chapterLevelTests = chapterOnlyTasks.reduce((s, t) => s + (t.targetTestCount ?? 0), 0);
 
-      const topicMinutes = topicAggs.reduce((s, t) => s + t.totalMinutes, 0);
-      const topicTests = topicAggs.reduce((s, t) => s + t.totalTests, 0);
+      const totalMinutes = chapterTasks.reduce((sum, task) => sum + (task.targetTimeMinutes ?? 0), 0);
+      const totalTests = chapterTasks.reduce((sum, task) => sum + (task.targetTestCount ?? 0), 0);
 
       const totalTopics = ch.topics.length;
       const coveredTopics = topicAggs.filter((t) => t.hasCompleted).length;
@@ -1248,8 +1241,8 @@ function ChapterCentricReport() {
         chapterLevelMinutes,
         chapterLevelTests,
         topics: topicAggs,
-        totalMinutes: chapterLevelMinutes + topicMinutes,
-        totalTests: chapterLevelTests + topicTests,
+        totalMinutes,
+        totalTests,
         coveragePct,
         coveredTopicCount: coveredTopics,
       };

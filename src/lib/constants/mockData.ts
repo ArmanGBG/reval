@@ -1,4 +1,4 @@
-import { Task, MusicTrack, Flashcard, Ticket, StudentProfile, InstituteAdvisor, InstituteStudent, Exam } from '@/lib/types';
+import { Task, Flashcard, Ticket, StudentProfile, InstituteAdvisor, InstituteStudent, Exam } from '@/lib/types';
 
 // ===== Mock Tasks =====
 export const MOCK_TASKS: Task[] = [
@@ -175,58 +175,6 @@ export const MOCK_TASKS: Task[] = [
   },
 ];
 
-// ===== Mock Music Tracks =====
-export const MOCK_TRACKS: MusicTrack[] = [
-  {
-    id: '1',
-    title: 'Lofi Study Beats',
-    artist: 'ChillHop',
-    duration: '3:45',
-    url: '/audio/lofi-1.mp3',
-    cover: '🎵',
-  },
-  {
-    id: '2',
-    title: 'Rain & Focus',
-    artist: 'Ambient Sounds',
-    duration: '4:20',
-    url: '/audio/rain-1.mp3',
-    cover: '🌧️',
-  },
-  {
-    id: '3',
-    title: 'Deep Work Flow',
-    artist: 'Brain.fm',
-    duration: '5:10',
-    url: '/audio/deep-work.mp3',
-    cover: '🧠',
-  },
-  {
-    id: '4',
-    title: 'Night Study Session',
-    artist: 'Lofi Girl',
-    duration: '3:30',
-    url: '/audio/night-study.mp3',
-    cover: '🌙',
-  },
-  {
-    id: '5',
-    title: 'Calm Piano',
-    artist: 'Relaxing Music',
-    duration: '4:00',
-    url: '/audio/piano.mp3',
-    cover: '🎹',
-  },
-  {
-    id: '6',
-    title: 'Nature & Focus',
-    artist: 'Forest Sounds',
-    duration: '6:15',
-    url: '/audio/nature.mp3',
-    cover: '🌿',
-  },
-];
-
 // ===== Mock Flashcards =====
 export const MOCK_FLASHCARDS: Flashcard[] = [
   {
@@ -332,8 +280,8 @@ export const MOCK_TICKETS: Ticket[] = [
   {
     id: '1',
     topic: 'مشکل فنی',
-    subject: 'تایمر پومودورو کار نمی‌کنه',
-    message: 'وقتی دکمه شروع رو می‌زنم، تایمر شروع نمی‌شه',
+    subject: 'ثبت زمان مطالعه کار نمی‌کنه',
+    message: 'وقتی زمان مطالعه رو ثبت می‌کنم ذخیره نمی‌شه',
     status: 'answered',
     createdAt: '2025-01-15',
   },
@@ -497,7 +445,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     id: 's4',
     name: 'محمد حسینی',
     avatar: '🐯',
-    grade: 'پشت کنکوری',
+    grade: 'فارغ‌التحصیل',
     major: 'تجربی',
     goal: 'کنکور',
     studyHoursPerWeek: 45,
@@ -515,7 +463,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     mood: 'excellent',
     motivationLevel: 9,
     stressLevel: 4,
-    advisorNotes: 'عملکرد عالی و مداوم. پشت کنکوری مصمم. فقط استرس کنکور را مدیریت کند. در ادبیات و عربی جا برای رشد دارد.',
+    advisorNotes: 'عملکرد عالی و مداوم. فارغ‌التحصیل مصمم. فقط استرس کنکور را مدیریت کند. در ادبیات و عربی جا برای رشد دارد.',
     lastSessionDate: '2025-01-20',
     weeksUntilExam: 14,
   },
@@ -718,7 +666,7 @@ export const MOCK_INSTITUTE_STUDENTS: InstituteStudent[] = [
     name: 'محمد حسینی',
     phone: '09134444444',
     avatar: '🐯',
-    grade: 'پشت کنکوری',
+    grade: 'فارغ‌التحصیل',
     major: 'تجربی',
     assignedAdvisorId: 'adv1',
     weeklyCompletionRate: 94,

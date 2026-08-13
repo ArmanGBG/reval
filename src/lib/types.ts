@@ -21,7 +21,7 @@ export type TopView = 'landing' | 'onboarding' | 'login';
 // Unified view name
 export type ViewName = TopView | StudentView | AdvisorView | InstituteManagerView | SuperAdminView;
 
-export type Grade = 'دهم' | 'یازدهم' | 'دوازدهم' | 'پشت کنکوری';
+export type Grade = 'دهم' | 'یازدهم' | 'دوازدهم' | 'فارغ‌التحصیل';
 export type Major = 'تجربی' | 'ریاضی' | 'انسانی';
 export type Goal = 'کنکور' | 'نهایی' | 'هر دو';
 export type FieldType = 'کنکور' | 'نهایی';
@@ -63,6 +63,8 @@ export interface Task {
   // to auto-populate the text subject/subjectColor/topic fields from the DB.
   chapterId?: string | null;
   topicId?: string | null;
+  topicIds?: string[];
+  topics?: Array<{ id: string; title: string; topicNo: number; chapterId: string }>;
   topicModeId?: string | null;
   pageStart?: number | null;
   pageEnd?: number | null;
@@ -92,15 +94,6 @@ export interface Flashcard {
   reviewCount?: number;
   // Total number of times the student forgot this card (quality < 3).
   lapseCount?: number;
-}
-
-export interface MusicTrack {
-  id: string;
-  title: string;
-  artist: string;
-  duration: string;
-  url: string;
-  cover: string;
 }
 
 export interface Ticket {

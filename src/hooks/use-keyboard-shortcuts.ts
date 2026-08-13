@@ -123,17 +123,6 @@ export function useKeyboardShortcuts(): void {
         }
       }
 
-      // ----- Space → toggle Pomodoro (only on Tools page with Pomodoro open) -----
-      if (e.code === 'Space' || e.key === ' ') {
-        const pomodoroActive =
-          isStudent && currentView === 'tools' && currentTool === 'pomodoro';
-        if (pomodoroActive) {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent('pomodoro-toggle'));
-        }
-        return;
-      }
-
       // ----- Digits 1..5 → student views -----
       if (isStudent) {
         const match = DIGIT_RE.exec(e.code);
@@ -148,5 +137,5 @@ export function useKeyboardShortcuts(): void {
 
     window.addEventListener('keydown', handler, { passive: false });
     return () => window.removeEventListener('keydown', handler);
-  }, [userRole, onboardingComplete, currentView, currentTool, setCurrentView, toggleFocusMode]);
+  }, [userRole, onboardingComplete, currentView, setCurrentView, toggleFocusMode]);
 }

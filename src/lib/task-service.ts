@@ -28,6 +28,7 @@ export interface CreateTaskPayload {
   createdById?: string | null;
   chapterId?: string | null;
   topicId?: string | null;
+  topicIds?: string[];
   topicModeId?: string | null;
   pageStart?: number | null;
   pageEnd?: number | null;
@@ -94,6 +95,16 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     createdById: (raw.createdById as string | null) ?? null,
     chapterId: (raw.chapterId as string | null) ?? null,
     topicId: (raw.topicId as string | null) ?? null,
+    topicIds: Array.isArray(raw.topicIds)
+      ? raw.topicIds.filter((id): id is string => typeof id === 'string')
+      : typeof raw.topicId === 'string' ? [raw.topicId] : [],
+    topics: Array.isArray(raw.topics)
+      ? raw.topics.filter((topic): topic is { id: string; title: string; topicNo: number; chapterId: string } => {
+          if (!topic || typeof topic !== 'object') return false;
+          const value = topic as Record<string, unknown>;
+          return typeof value.id === 'string' && typeof value.title === 'string' && typeof value.topicNo === 'number' && typeof value.chapterId === 'string';
+        })
+      : [],
     topicModeId: (raw.topicModeId as string | null) ?? null,
     pageStart: (raw.pageStart as number | null) ?? null,
     pageEnd: (raw.pageEnd as number | null) ?? null,

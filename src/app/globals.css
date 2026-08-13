@@ -438,33 +438,6 @@
    ANIMATIONS — functional ones kept; glow animations neutralized
    ============================================================ */
 
-/* Breathing animation (wellness tool — keep) */
-@keyframes breathe-in {
-  0% { transform: scale(0.6); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
-}
-@keyframes breathe-hold {
-  0%, 100% { transform: scale(1); opacity: 1; }
-}
-@keyframes breathe-out {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.6); opacity: 0.5; }
-}
-.animate-breathe-in { animation: breathe-in 4s ease-in-out forwards; }
-.animate-breathe-hold { animation: breathe-hold 4s ease-in-out forwards; }
-.animate-breathe-out { animation: breathe-out 6s ease-in-out forwards; }
-
-/* Equalizer animation (music player — keep) */
-@keyframes eq-bar {
-  0%, 100% { height: 4px; }
-  50% { height: 16px; }
-}
-.eq-bar { animation: eq-bar 0.8s ease-in-out infinite; }
-.eq-bar:nth-child(2) { animation-delay: 0.2s; }
-.eq-bar:nth-child(3) { animation-delay: 0.4s; }
-.eq-bar:nth-child(4) { animation-delay: 0.1s; }
-.eq-bar:nth-child(5) { animation-delay: 0.3s; }
-
 /* Former pulse-glow — now a subtle opacity pulse (no colored shadow) */
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; }

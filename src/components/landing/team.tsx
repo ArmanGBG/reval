@@ -55,7 +55,9 @@ function TeamCard({
       initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
       animate={inView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
       transition={{ duration: 0.6, delay: index * 0.1, ease: easeOut }}
-      className="group flex flex-col items-center rounded-2xl border border-border/40 bg-surface p-6 text-center transition-all duration-300 hover:border-border/70 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4)]"
+      whileHover={{ y: -6, rotateX: 1.5, rotateY: index % 2 === 0 ? -1.5 : 1.5, scale: 1.01 }}
+      style={{ transformPerspective: 900, transformStyle: "preserve-3d" }}
+      className="glass-panel group flex flex-col items-center rounded-2xl border border-white/[0.07] bg-background/55 p-6 text-center transition-colors duration-300 hover:border-mint/25 hover:shadow-[0_24px_70px_-34px_var(--mint)]"
     >
       <div className="relative mb-5 flex size-28 items-center justify-center overflow-hidden rounded-full border-2 border-mint/20 bg-background/40">
         <Image

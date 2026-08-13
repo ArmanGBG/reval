@@ -8,14 +8,15 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { useAppStore } from '@/lib/store';
 import { AVATARS } from '@/lib/constants/mockData';
 import type { Grade, Major, User, UserRole } from '@/lib/types';
+import { isIranianMobileInput, numericInput } from '@/lib/phone';
 
 // ===== Constants =====
-const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
+const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل'];
 const GRADE_LABELS: Record<Grade, string> = {
   'دهم': 'پایه دهم',
   'یازدهم': 'پایه یازدهم',
   'دوازدهم': 'پایه دوازدهم',
-  'پشت کنکوری': 'پشت کنکوری',
+  'فارغ‌التحصیل': 'فارغ‌التحصیل',
 };
 // Only three majors — معارف removed per product decision.
 const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
@@ -87,7 +88,7 @@ function StepPhone({
   onSendCode: () => void;
   direction: number;
 }) {
-  const isValidPhone = /^9\d{9}$/.test(phone);
+  const isValidPhone = isIranianMobileInput(phone);
 
   return (
     <motion.div
@@ -109,20 +110,17 @@ function StepPhone({
 
       {!showOtp ? (
         <div className="w-full space-y-6">
-          <div className="flex gap-2" dir="ltr">
-            <div className="flex items-center justify-center bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-3 h-12 text-muted-foreground text-sm shrink-0 min-w-[64px]">
-              +98
-            </div>
+          <div dir="ltr">
             <input
               type="tel"
+              inputMode="numeric"
               value={phone}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '');
-                if (val.length <= 10) setPhone(val);
-              }}
-              placeholder="9123456789"
-              className="flex-1 h-12 bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-4 text-foreground text-left placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-mint/50 focus:border-mint/50 transition-all"
-              maxLength={10}
+              onChange={(e) => setPhone(numericInput(e.target.value, 11))}
+              placeholder="09123456789"
+              className="w-full h-12 bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-4 text-foreground text-left placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-mint/50 focus:border-mint/50 transition-all"
+              maxLength={11}
+              pattern="09[0-9]{9}"
+              autoComplete="tel-national"
             />
           </div>
 
@@ -144,7 +142,7 @@ function StepPhone({
             <InputOTP
               maxLength={6}
               value={otp}
-              onChange={setOtp}
+              onChange={(value) => setOtp(numericInput(value, 6))}
             >
               <InputOTPGroup className="gap-3">
                 <InputOTPSlot
@@ -459,6 +457,10 @@ function StepInstitute({
 // ===== Main Wizard Component =====
 export default function OnboardingWizard() {
   const { setUser, setOnboardingComplete, setCurrentView, setUserRole } = useAppStore();
+  const navigatePublic = useCallback((view: 'landing' | 'login', hash = '') => {
+    window.history.pushState({ revalView: view }, '', `${window.location.pathname}${hash}`);
+    setCurrentView(view);
+  }, [setCurrentView]);
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
@@ -517,14 +519,20 @@ export default function OnboardingWizard() {
   }, [otp, goToStep]);
 
   const handleSendCode = useCallback(async () => {
-    if (!/^9\d{9}$/.test(phone)) return;
+    if (!isIranianMobileInput(phone)) return;
     try {
       const res = await fetch('/api/auth/otp/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: `0${phone}`, purpose: 'SIGNUP' }),
+        body: JSON.stringify({ phone, purpose: 'SIGNUP' }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.code === 'ACCOUNT_EXISTS') {
+        toast.info('این شماره قبلاً ثبت شده؛ وارد حساب خود شوید');
+        window.history.pushState({ revalView: 'login' }, '', `${window.location.pathname}#login`);
+        setCurrentView('login');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'ارسال کد انجام نشد');
       setShowOtp(true);
       setOtp('');
@@ -532,7 +540,7 @@ export default function OnboardingWizard() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'ارسال کد انجام نشد');
     }
-  }, [showOtp, phone]);
+  }, [phone, setCurrentView]);
 
   const canProceed = useCallback((): boolean => {
     switch (currentStep) {
@@ -572,7 +580,7 @@ export default function OnboardingWizard() {
     setSubmitting(true);
     try {
       // Persist the account server-side and obtain a signed session cookie.
-      const normalizedPhone = phone.startsWith('0') ? phone : `0${phone}`;
+      const normalizedPhone = phone;
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -730,7 +738,7 @@ export default function OnboardingWizard() {
             حساب داری؟{' '}
             <button
               type="button"
-              onClick={() => setCurrentView('login')}
+              onClick={() => navigatePublic('login', '#login')}
               className="text-mint hover:text-[var(--accent-hover)] font-semibold transition-colors underline-offset-4 hover:underline"
             >
               وارد شو

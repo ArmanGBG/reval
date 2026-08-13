@@ -170,15 +170,15 @@ export function getRelativeDayLabel(date: Date): string {
   return getPersianWeekdayName(date);
 }
 
-// Convert minutes to hours (e.g., 90 -> "۱.۵ ساعت", 60 -> "۱ ساعت")
+// Format a minute duration without losing the remaining minutes.
 export function minutesToHoursLabel(minutes: number): string {
-  if (minutes < 60) return `${toPersianDigits(minutes)} دقیقه`;
-  const hours = minutes / 60;
-  const wholeHours = Math.floor(hours);
-  const fraction = hours - wholeHours;
-  if (fraction === 0) return `${toPersianDigits(wholeHours)} ساعت`;
-  const decimalPart = fraction === 0.5 ? '۱/۲' : toPersianDigits(Math.round(fraction * 10) / 10);
-  return `${toPersianDigits(wholeHours)}.${decimalPart} ساعت`;
+  const totalMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  if (hours === 0) return `${toPersianDigits(remainingMinutes)} دقیقه`;
+  if (remainingMinutes === 0) return `${toPersianDigits(hours)} ساعت`;
+  return `${toPersianDigits(hours)} ساعت و ${toPersianDigits(remainingMinutes)} دقیقه`;
 }
 
 // Convert minutes to hours number (for stats)

@@ -16,7 +16,7 @@
  *   - TopicMode belongs to Subject. Biology topic modes were intentionally
  *     removed in task 9 → NOT recreated here.
  *
- * Valid grades:  دهم | یازدهم | دوازدهم  (no پشت کنکوری)
+ * Valid grades:  دهم | یازدهم | دوازدهم  (no فارغ‌التحصیل)
  * Valid majors:  تجربی | ریاضی | انسانی  (no همه)
  *
  * Run: bun run prisma/seed-subjects.ts

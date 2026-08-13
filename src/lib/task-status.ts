@@ -2,6 +2,8 @@ import type { TaskStatus } from '@/lib/types';
 
 export const TASK_STATUSES: TaskStatus[] = ['DRAFT', 'PENDING', 'COMPLETED', 'SKIPPED', 'INCOMPLETE'];
 
+export const STUDENT_ADVISOR_TASK_PATCH_FIELDS = ['status', 'completed', 'actualTimeMinutes', 'actualTestCount'] as const;
+
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === 'string' && TASK_STATUSES.includes(value as TaskStatus);
 }
@@ -24,4 +26,21 @@ export function validateTaskLifecycle(
   if (status === 'SKIPPED' && (!detailsCompleted || completed !== false)) return 'SKIPPED باید جزئیات کامل و نتیجه false داشته باشد';
   if (status === 'INCOMPLETE' && (!detailsCompleted || completed !== null)) return 'INCOMPLETE باید جزئیات کامل و نتیجه خالی داشته باشد';
   return null;
+}
+
+export function canMoveTaskToDate(status: TaskStatus): boolean {
+  return status === 'PENDING' || status === 'INCOMPLETE';
+}
+
+export function moveTaskToDateTransition(date: string) {
+  return { date, status: 'PENDING' as const, completed: null };
+}
+
+export function moveTaskToIncompleteTransition() {
+  return { status: 'INCOMPLETE' as const, completed: null };
+}
+
+export function isStudentAdvisorTaskPatch(body: Record<string, unknown>): boolean {
+  const allowed = new Set<string>(STUDENT_ADVISOR_TASK_PATCH_FIELDS);
+  return Object.keys(body).length > 0 && Object.keys(body).every((key) => allowed.has(key));
 }

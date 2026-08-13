@@ -32,7 +32,7 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 
-const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'پشت کنکوری'];
+const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل'];
 const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
 const GOALS: Goal[] = ['کنکور', 'نهایی', 'هر دو'];
 const TICKET_TOPICS = ['مشکل فنی', 'پیشنهاد', 'سوال', 'شکایت'] as const;
@@ -597,9 +597,8 @@ export default function SettingsView() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 mb-6"
+          className="mb-6"
         >
-          <SettingsIcon className="w-6 h-6 text-[var(--accent)]" />
           <h1 className="text-2xl font-bold text-[var(--foreground)]">تنظیمات</h1>
         </motion.div>
 

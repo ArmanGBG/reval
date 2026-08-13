@@ -49,7 +49,7 @@ const TIMELINE: TimelineStep[] = [
     period: "morning",
     icon: BookOpen,
     title: "مطالعه عمیق",
-    desc: "تمرکز عمیق روی درس اصلی روز. تایمر پومودورو و حذف حواس‌پرتی‌ها فعال می‌شوند.",
+    desc: "تمرکز عمیق روی درس اصلی روز و حذف حواس‌پرتی‌های محیطی.",
     tag: "تمرکز ۹۰ دقیقه",
     tagColor: "mint",
     emoji: "📖",

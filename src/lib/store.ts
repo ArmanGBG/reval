@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, MusicTrack, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
-import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_TRACKS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_EXAMS } from '@/lib/constants/mockData';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
+import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
@@ -424,14 +424,6 @@ interface AppState {
   selectedDate: string;
   setSelectedDate: (date: string) => void;
 
-  // Music
-  tracks: MusicTrack[];
-  currentTrack: MusicTrack | null;
-  isPlaying: boolean;
-  setCurrentTrack: (track: MusicTrack | null) => void;
-  setIsPlaying: (playing: boolean) => void;
-  togglePlay: () => void;
-
   // Flashcards
   flashcards: Flashcard[];
   addFlashcard: (card: Flashcard) => void;
@@ -455,15 +447,6 @@ interface AppState {
   focusMode: boolean;
   setFocusMode: (on: boolean) => void;
   toggleFocusMode: () => void;
-
-  // Pomodoro
-  pomodoroTime: number;
-  pomodoroRunning: boolean;
-  pomodoroMode: 'work' | 'break';
-  setPomodoroTime: (time: number) => void;
-  setPomodoroRunning: (running: boolean) => void;
-  setPomodoroMode: (mode: 'work' | 'break') => void;
-  resetPomodoro: () => void;
 
   // App Settings
   hapticFeedback: boolean;
@@ -752,6 +735,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdById: task.createdById ?? null,
       chapterId: task.chapterId ?? null,
       topicId: task.topicId ?? null,
+      topicIds: task.topicIds ?? [],
       topicModeId: task.topicModeId ?? null,
       pageStart: task.pageStart ?? null,
       pageEnd: task.pageEnd ?? null,
@@ -796,6 +780,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdById: task.createdById ?? null,
       chapterId: task.chapterId ?? null,
       topicId: task.topicId ?? null,
+      topicIds: task.topicIds ?? [],
       topicModeId: task.topicModeId ?? null,
       pageStart: task.pageStart ?? null,
       pageEnd: task.pageEnd ?? null,
@@ -948,14 +933,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   })(),
   setSelectedDate: (date) => set({ selectedDate: date }),
 
-  // Music
-  tracks: MOCK_TRACKS,
-  currentTrack: null,
-  isPlaying: false,
-  setCurrentTrack: (track) => set({ currentTrack: track, isPlaying: track !== null }),
-  setIsPlaying: (playing) => set({ isPlaying: playing }),
-  togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-
   // Flashcards — hydrate from localStorage if available, else MOCK_FLASHCARDS.
   // Every card is guaranteed to have SRS fields (interval/repetition/easeFactor/dueDate).
   flashcards: (typeof window !== 'undefined'
@@ -1016,15 +993,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   focusMode: false,
   setFocusMode: (on) => set({ focusMode: on }),
   toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
-
-  // Pomodoro
-  pomodoroTime: 25 * 60,
-  pomodoroRunning: false,
-  pomodoroMode: 'work',
-  setPomodoroTime: (time) => set({ pomodoroTime: time }),
-  setPomodoroRunning: (running) => set({ pomodoroRunning: running }),
-  setPomodoroMode: (mode) => set({ pomodoroMode: mode }),
-  resetPomodoro: () => set({ pomodoroTime: 25 * 60, pomodoroRunning: false, pomodoroMode: 'work' }),
 
   // App Settings
   hapticFeedback: true,

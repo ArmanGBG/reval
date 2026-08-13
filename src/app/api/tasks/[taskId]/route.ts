@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, canModifyTask, canViewStudentTasks, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
-import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
-
-// Helper: parse activityTypes JSON string → array
-function parseTask(task: Record<string, unknown>) {
-  if (typeof task.activityTypes === 'string') {
-    try {
-      task.activityTypes = JSON.parse(task.activityTypes);
-    } catch {
-      task.activityTypes = [];
-    }
-  }
-  return task;
-}
+import { isStudentAdvisorTaskPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
+import { parseTaskResponse, taskPatchData, taskTopicInclude } from '@/lib/task-api';
 
 // GET /api/tasks/[taskId] — Get a single task
 // Authorization: caller must be able to view the task's student (owner,
@@ -29,6 +18,7 @@ export async function GET(
 
   const task = await db.task.findUnique({
     where: { id: taskId },
+    include: taskTopicInclude,
   });
 
   if (!task) {
@@ -44,7 +34,7 @@ export async function GET(
     );
   }
 
-  const parsed = parseTask({ ...task });
+  const parsed = parseTaskResponse({ ...task });
   return NextResponse.json({ task: parsed });
 }
 
@@ -67,12 +57,11 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const existing = await db.task.findUnique({ where: { id: taskId } });
+    const existing = await db.task.findUnique({ where: { id: taskId }, include: taskTopicInclude });
     if (!existing) return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
     const canModify = await canModifyTask(ctx, taskId);
     const isStudentLifecycleUpdate = ctx.user.role === 'STUDENT' && ctx.userId === existing.studentId && existing.createdBy === 'advisor';
-    const lifecycleFields = new Set(['status', 'completed', 'actualTimeMinutes', 'actualTestCount']);
-    if (!canModify && (!isStudentLifecycleUpdate || Object.keys(body).some((key) => !lifecycleFields.has(key)))) {
+    if (!canModify && (!isStudentLifecycleUpdate || !isStudentAdvisorTaskPatch(body))) {
       return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
     }
     if (!(await canViewStudentTasks(ctx, existing.studentId))) return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
@@ -99,13 +88,7 @@ export async function PATCH(
       'pageEnd',
     ];
 
-    const data: Record<string, unknown> = {};
-
-    for (const key of allowed) {
-      if (body[key] !== undefined) {
-        data[key] = body[key];
-      }
-    }
+    const data = taskPatchData(body, allowed);
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(
@@ -126,12 +109,21 @@ export async function PATCH(
       subjectId,
       chapterId: 'chapterId' in body ? body.chapterId : existing.chapterId,
       topicId: 'topicId' in body ? body.topicId : existing.topicId,
+      topicIds: 'topicIds' in body ? body.topicIds : existing.topics.map((item) => item.topicId),
       topicModeId: 'topicModeId' in body ? body.topicModeId : existing.topicModeId,
     });
     if (!curriculum) return NextResponse.json({ error: 'شناسه‌های برنامه درسی با درس انتخابی سازگار نیستند' }, { status: 400 });
     const detailsCompleted = body.detailsCompleted !== undefined ? body.detailsCompleted : existing.detailsCompleted;
     if (typeof detailsCompleted !== 'boolean') return NextResponse.json({ error: 'detailsCompleted باید boolean باشد' }, { status: 400 });
-    const activityTypes = body.activityTypes !== undefined ? body.activityTypes : (existing.activityTypes ? JSON.parse(existing.activityTypes) : null);
+    let existingActivityTypes: unknown = null;
+    if (existing.activityTypes) {
+      try {
+        existingActivityTypes = JSON.parse(existing.activityTypes);
+      } catch {
+        existingActivityTypes = null;
+      }
+    }
+    const activityTypes = body.activityTypes !== undefined ? body.activityTypes : existingActivityTypes;
     const targetTimeMinutes = body.targetTimeMinutes !== undefined ? body.targetTimeMinutes : existing.targetTimeMinutes;
     const targetTestCount = body.targetTestCount !== undefined ? body.targetTestCount : existing.targetTestCount;
     const status = body.status ?? legacyTaskStatus(detailsCompleted, body.completed !== undefined ? body.completed : existing.completed);
@@ -147,6 +139,7 @@ export async function PATCH(
     data.subjectColor = subject.color;
     data.topic = curriculum.topic;
     data.status = status;
+    if ('topicIds' in body) data.topics = { deleteMany: {}, create: curriculum.topicIds.map((topicId) => ({ topicId })) };
 
     // If activityTypes is provided, serialize array to JSON string
     if (data.activityTypes !== undefined) {
@@ -191,9 +184,10 @@ export async function PATCH(
     const task = await db.task.update({
       where: { id: taskId },
       data,
+      include: taskTopicInclude,
     });
 
-    const parsed = parseTask({ ...task });
+    const parsed = parseTaskResponse({ ...task });
     return NextResponse.json({ task: parsed });
   } catch (error) {
     console.error('PATCH /api/tasks/[taskId] error:', error);

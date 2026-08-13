@@ -35,6 +35,7 @@ import {
 } from '@/lib/persian-date';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
+import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 
 // ===== Types =====
 interface WeekdayPlan {
@@ -47,6 +48,8 @@ interface WeeklyPlannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type QuickSubject = Subject & { resolvedFieldType: FieldType };
 
 type RangeMode = 'week' | 'custom';
 
@@ -65,11 +68,8 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
   const { user, tasks, addTask, updateTask, deleteTask, resetTask } = useAppStore();
   const studentId = useCurrentStudentId();
 
-  // Field type for adding new subjects
-  const [fieldType, setFieldType] = useState<FieldType>('کنکور');
-
   // Available subjects
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<QuickSubject[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
 
   // Which day's "add subject" picker is open
@@ -87,14 +87,6 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
   // Custom range dates (as Date objects)
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
-
-  // Which date field is being picked ('start' | 'end' | null)
-  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
-
-  // Calendar navigation for the picker (Jalali month/year)
-  const todayJalali = useMemo(() => getTodayJalali(), []);
-  const [pickerJY, setPickerJY] = useState(todayJalali.jy);
-  const [pickerJM, setPickerJM] = useState(todayJalali.jm);
 
   // Get the days to display based on mode
   const displayDays = useMemo(() => {
@@ -141,17 +133,23 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
   }, [displayDays, tasks, user]);
 
   // ===== Fetch subjects =====
-  const fetchSubjects = useCallback(async (ft: FieldType) => {
+  const fetchSubjects = useCallback(async () => {
     setSubjectsLoading(true);
     try {
       const grade = user?.grade || 'دوازدهم';
       const major = user?.major || 'تجربی';
-      const res = await fetch(
-        `/api/subjects/for-task?fieldType=${encodeURIComponent(ft)}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setSubjects(data.subjects || []);
+      const [konkurRes, finalRes] = await Promise.all([
+        fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('کنکور')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
+        fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('نهایی')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
+      ]);
+      const konkurData = await konkurRes.json();
+      const finalData = await finalRes.json();
+      if (!konkurRes.ok || !finalRes.ok) throw new Error(konkurData.error || finalData.error);
+      const resolved = new Map<string, QuickSubject>();
+      const preferFinal = user?.goal === 'نهایی';
+      for (const subject of (preferFinal ? finalData.subjects : konkurData.subjects) || []) resolved.set(subject.id, { ...subject, resolvedFieldType: preferFinal ? 'نهایی' : 'کنکور' });
+      for (const subject of (preferFinal ? konkurData.subjects : finalData.subjects) || []) if (!resolved.has(subject.id)) resolved.set(subject.id, { ...subject, resolvedFieldType: preferFinal ? 'کنکور' : 'نهایی' });
+      setSubjects([...resolved.values()]);
     } catch {
       setSubjects([]);
     } finally {
@@ -160,11 +158,11 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
   }, [user]);
 
   useEffect(() => {
-    if (open) fetchSubjects(fieldType);
-  }, [open, fieldType, fetchSubjects]);
+    if (open) fetchSubjects();
+  }, [open, fetchSubjects]);
 
   // ===== Add subject to a day (IMMEDIATE — creates real task) =====
-  const addSubjectToDay = async (dateStr: string, subject: Subject) => {
+  const addSubjectToDay = async (dateStr: string, subject: QuickSubject) => {
     const existingCount = tasks.filter((t) => t.date === dateStr && t.studentId === (studentId)).length;
     const newTask: Task = {
       id: crypto.randomUUID(),
@@ -173,7 +171,7 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
       subjectId: subject.id,
       subjectColor: subject.color,
       topic: null,
-      fieldType,
+      fieldType: subject.resolvedFieldType,
       activityTypes: null,
       targetTimeMinutes: null,
       actualTimeMinutes: null,
@@ -245,23 +243,8 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
           </div>
         </div>
 
-        {/* ===== Field type selector + Range mode selector ===== */}
+        {/* ===== Range mode selector ===== */}
         <div className="px-5 py-3 border-b border-[var(--border)] shrink-0 flex flex-wrap items-center gap-3">
-          <div className="flex gap-1 bg-[var(--bg-overlay)] rounded-xl p-1">
-            {(['کنکور', 'نهایی'] as FieldType[]).map((ft) => (
-              <button
-                key={ft}
-                onClick={() => setFieldType(ft)}
-                className={`btn-hover flex-1 h-8 min-w-[4rem] rounded-lg text-xs font-semibold ${
-                  fieldType === ft
-                    ? 'bg-[var(--accent)] text-[var(--bg-deep)]'
-                    : 'text-[var(--foreground-muted)]'
-                }`}
-              >
-                {ft}
-              </button>
-            ))}
-          </div>
           <div className="flex gap-1 bg-[var(--bg-overlay)] rounded-xl p-1">
             {([
               { key: 'week' as RangeMode, label: 'هفتگی' },
@@ -294,83 +277,13 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
         {/* ===== Custom range picker ===== */}
         {rangeMode === 'custom' && (
           <div className="px-5 py-3 border-b border-[var(--border)] shrink-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Start date button */}
-              <button
-                onClick={() => setPickerTarget('start')}
-                className={`btn-hover h-9 px-4 rounded-xl border text-xs font-medium flex items-center gap-2 ${
-                  pickerTarget === 'start'
-                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                    : 'border-[var(--border)] text-[var(--foreground-muted)] bg-[var(--bg-elevated)]'
-                }`}
-              >
-                <span className="text-[var(--foreground-subtle)]">از</span>
-                <span className="font-bold text-[var(--foreground)]">
-                  {customStartDate ? formatPersianDate(customStartDate) : 'انتخاب تاریخ'}
-                </span>
-              </button>
-
-              <span className="text-[var(--foreground-subtle)] text-xs">تا</span>
-
-              {/* End date button */}
-              <button
-                onClick={() => setPickerTarget('end')}
-                className={`btn-hover h-9 px-4 rounded-xl border text-xs font-medium flex items-center gap-2 ${
-                  pickerTarget === 'end'
-                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                    : 'border-[var(--border)] text-[var(--foreground-muted)] bg-[var(--bg-elevated)]'
-                }`}
-              >
-                <span className="text-[var(--foreground-subtle)]">تا</span>
-                <span className="font-bold text-[var(--foreground)]">
-                  {customEndDate ? formatPersianDate(customEndDate) : 'انتخاب تاریخ'}
-                </span>
-              </button>
-
-              {/* Day count badge */}
-              {customStartDate && customEndDate && (
-                <span className="text-[10px] px-2 py-1 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] font-bold">
-                  {toPersianDigits(displayDays.length)} روز
-                </span>
-              )}
-            </div>
-
-            {/* Inline mini calendar */}
-            {pickerTarget && (
-              <MiniMonthCalendar
-                jy={pickerJY}
-                jm={pickerJM}
-                startDate={customStartDate}
-                endDate={customEndDate}
-                pickerTarget={pickerTarget}
-                onPrevMonth={() => {
-                  if (pickerJM === 1) {
-                    setPickerJM(12);
-                    setPickerJY((y) => y - 1);
-                  } else {
-                    setPickerJM((m) => m - 1);
-                  }
-                }}
-                onNextMonth={() => {
-                  if (pickerJM === 12) {
-                    setPickerJM(1);
-                    setPickerJY((y) => y + 1);
-                  } else {
-                    setPickerJM((m) => m + 1);
-                  }
-                }}
-                onDayClick={(date) => {
-                  if (pickerTarget === 'start') {
-                    setCustomStartDate(date);
-                    // Auto-switch to picking end date
-                    setPickerTarget('end');
-                  } else {
-                    setCustomEndDate(date);
-                    setPickerTarget(null);
-                  }
-                }}
-              />
-            )}
+            <PersianDateRangePicker
+              value={customStartDate && customEndDate ? { start: toISODate(customStartDate), end: toISODate(customEndDate) } : null}
+              onChange={(range) => {
+                setCustomStartDate(range ? new Date(`${range.start}T00:00:00`) : null);
+                setCustomEndDate(range ? new Date(`${range.end}T00:00:00`) : null);
+              }}
+            />
           </div>
         )}
 
@@ -589,10 +502,10 @@ function AddSubjectModal({
 }: {
   dayLabel: string;
   dateLabel: string;
-  subjects: Subject[];
+  subjects: QuickSubject[];
   loading: boolean;
   onClose: () => void;
-  onSelect: (subject: Subject) => void;
+  onSelect: (subject: QuickSubject) => void;
 }) {
   return (
     <Dialog open onOpenChange={onClose}>

@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { Task } from '@/lib/types';
 import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constants/feedbackMessages';
 import { toPersianDigits, minutesToHoursLabel } from '@/lib/persian-date';
+import { formatTaskCurriculum } from '@/lib/task-summary';
+import { FieldTypeBadge } from '@/components/shared/FieldTypeBadge';
 
 // ===== Animation Variants =====
 const cardVariants: Variants = {
@@ -50,6 +52,7 @@ export default function TaskCard({
   const isPending = task.completed === null;
   const isDraft = task.status === 'DRAFT';
   const isIncomplete = task.status === 'INCOMPLETE';
+  const curriculumSummary = formatTaskCurriculum(task);
 
   // Accent border classes based on status
   // Pending tasks use the subject color so students can visually scan by subject.
@@ -137,15 +140,7 @@ export default function TaskCard({
               <span className="text-[var(--foreground)] font-bold text-sm md:text-base truncate">
                 {task.subject}
               </span>
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
-                  task.fieldType === 'کنکور'
-                    ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                    : 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                }`}
-              >
-                {task.fieldType}
-              </span>
+              <FieldTypeBadge value={task.fieldType} />
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
                   task.createdBy === 'advisor'
@@ -159,7 +154,7 @@ export default function TaskCard({
 
             {isDraft && <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس · تکمیل جزئیات</button>}
             {isIncomplete && <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">ناقص</span>}
-            {task.detailsCompleted && task.topic && <p className="text-[var(--foreground-muted)] text-xs md:text-sm mb-2 line-clamp-2">{task.topic}</p>}
+            {curriculumSummary && <p className="text-[var(--foreground-muted)] text-xs md:text-sm mb-2 line-clamp-2">{curriculumSummary}</p>}
 
             {/* Activity Chips */}
             {task.detailsCompleted && <div className="flex flex-wrap gap-1.5 mb-2">
@@ -213,7 +208,18 @@ export default function TaskCard({
 
         {/* ===== Action Buttons (left side in RTL) ===== */}
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          {isPending && task.detailsCompleted ? (
+          {isDraft ? (
+            <div className="flex items-center gap-2">
+              {onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
+              <button
+                type="button"
+                onClick={(event) => { event.preventDefault(); event.stopPropagation(); onAction(task.id); }}
+                className="px-3 h-10 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger)] text-xs font-bold transition-colors hover:bg-[var(--danger)]/15"
+              >
+                حذف تسک
+              </button>
+            </div>
+          ) : isPending && task.detailsCompleted ? (
             <>
               <button
                 onClick={async () => {
@@ -231,13 +237,13 @@ export default function TaskCard({
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
               </button>
-              {task.createdBy === 'student' && <button
+              <button
                 onClick={() => onAction(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
                 aria-label="عملیات تسک"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
-              </button>}
+              </button>
               {onEdit && task.createdBy === 'student' && (
                 <button
                   onClick={() => onEdit(task.id)}
@@ -287,13 +293,13 @@ export default function TaskCard({
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
               {/* Task action button (opens the 3-way dialog) */}
-              <button
+              {task.createdBy === 'student' && <button
                 onClick={() => onAction(task.id)}
                 className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
                 aria-label="عملیات تسک"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              </button>}
             </div>
           ) : onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button> : null}
         </div>

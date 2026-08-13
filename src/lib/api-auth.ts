@@ -276,17 +276,24 @@ export async function getEligibleTaskSubject(studentId: string, subjectId: strin
   });
 }
 
-export async function validateTaskCurriculum(input: { subjectId: string; chapterId?: string | null; topicId?: string | null; topicModeId?: string | null }) {
+export async function validateTaskCurriculum(input: { subjectId: string; chapterId?: string | null; topicId?: string | null; topicIds?: string[] | null; topicModeId?: string | null }) {
+  if (input.topicIds != null && !Array.isArray(input.topicIds)) return null;
+  if (input.topicIds?.some((id) => typeof id !== 'string' || !id)) return null;
+  const topicIds = [...new Set(input.topicIds?.length ? input.topicIds : input.topicId ? [input.topicId] : [])];
   const [chapter, topic, mode] = await Promise.all([
     input.chapterId ? db.chapter.findUnique({ where: { id: input.chapterId }, select: { id: true, title: true, gradeSubject: { select: { subjectId: true } } } }) : null,
-    input.topicId ? db.topic.findUnique({ where: { id: input.topicId }, select: { title: true, chapterId: true, chapter: { select: { gradeSubject: { select: { subjectId: true } } } } } }) : null,
+    topicIds.length ? db.topic.findMany({ where: { id: { in: topicIds } }, select: { id: true, title: true, topicNo: true, chapterId: true, chapter: { select: { gradeSubject: { select: { subjectId: true } } } } }, orderBy: { topicNo: 'asc' } }) : [],
     input.topicModeId ? db.topicMode.findUnique({ where: { id: input.topicModeId }, select: { title: true, subjectId: true } }) : null,
   ]);
   if (input.chapterId && (!chapter || chapter.gradeSubject.subjectId !== input.subjectId)) return null;
-  if (input.topicId && (!topic || topic.chapter.gradeSubject.subjectId !== input.subjectId)) return null;
+  if (topic.length !== topicIds.length || topic.some((item) => item.chapter.gradeSubject.subjectId !== input.subjectId)) return null;
   if (input.topicModeId && (!mode || mode.subjectId !== input.subjectId)) return null;
-  if (chapter && topic && topic.chapterId !== chapter.id) return null;
-  return { topic: topic?.title ?? chapter?.title ?? mode?.title ?? null };
+  if (chapter && topic.some((item) => item.chapterId !== chapter.id)) return null;
+  if (mode && topic.length) return null;
+  const topicSummary = topic.length
+    ? [chapter?.title, ...topic.map((item) => item.title)].filter(Boolean).join(' · ')
+    : chapter?.title ?? mode?.title ?? null;
+  return { topic: topicSummary, topicIds, topics: topic.map(({ chapter: _chapter, ...item }) => item) };
 }
 
 export function isValidTaskPageRange(start: unknown, end: unknown) {

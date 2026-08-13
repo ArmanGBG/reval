@@ -45,15 +45,6 @@ const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
   { text: 'دانش‌آموزی که از اشتباهاتش درس می‌گیرد، از دانش‌آموزی که هرگز اشتباه نمی‌کند جلوتر است.' },
 ];
 
-// ===== Time-of-day greeting icon =====
-function getTimeOfDayGreeting(): { emoji: string; text: string } {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return { emoji: '🌅', text: 'صبح بخیر' };
-  if (hour >= 12 && hour < 17) return { emoji: '☀️', text: 'ظهر بخیر' };
-  if (hour >= 17 && hour < 21) return { emoji: '🌆', text: 'عصر بخیر' };
-  return { emoji: '🌙', text: 'شب بخیر' };
-}
-
 // ===== Motivational Quote Card =====
 const BOOKMARKS_KEY = 'reval:bookmarked-quotes:v1';
 
@@ -214,7 +205,7 @@ function MotivationalQuoteCard() {
 
 
 export default function Dashboard() {
-  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, streakDays, streakFreezes, incrementStreak } = useAppStore();
+  const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, incrementStreak } = useAppStore();
   const studentId = useCurrentStudentId();
   const { celebrate } = useCelebration();
   const [partialTask, setPartialTask] = useState<Task | null>(null);
@@ -230,7 +221,7 @@ export default function Dashboard() {
   // ===== Today's tasks (clean home — today only, no date-range clutter) =====
   const todayISO = toISODate(new Date());
   const todayTasks = useMemo(
-    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId),
+    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId && t.status !== 'DRAFT'),
     [tasks, todayISO, studentId]
   );
   const todayCompletedCount = useMemo(
@@ -250,7 +241,6 @@ export default function Dashboard() {
   // ===== Labels =====
   const userName = user?.name ?? 'رفیق';
   const greeting = getGreeting(userName);
-  const timeOfDay = getTimeOfDayGreeting();
 
   // ===== Handlers =====
   const handleComplete = useCallback((taskId: string) => {
@@ -332,10 +322,7 @@ export default function Dashboard() {
       {/* ===== Header ===== */}
       <div className="mb-5 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl md:text-2xl font-bold text-[var(--foreground)] flex items-center gap-2">
-            <span className="text-2xl">{timeOfDay.emoji}</span>
-            <span>{greeting}</span>
-          </h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[var(--foreground)]">{greeting}</h1>
           <p className="text-xs text-[var(--foreground-muted)] mt-1">
             {getPersianWeekdayName(new Date())} · {formatPersianDate(new Date())}
           </p>
@@ -351,16 +338,15 @@ export default function Dashboard() {
       {/* ===== Motivational Quote Card (kept per user request) ===== */}
       <MotivationalQuoteCard />
 
-      {/* ===== Compact Today Summary + Streak strip (single slim row) ===== */}
+      {/* ===== Compact Today Summary ===== */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="flex items-center gap-3 mb-5 rounded-[var(--radius-lg)] border border-[var(--border)] overflow-hidden"
+        className="mb-5 rounded-[var(--radius-lg)] border border-[var(--border)] overflow-hidden"
         style={{ backgroundColor: 'var(--bg-elevated)' }}
       >
-        {/* Today's completion (left, grows) */}
-        <div className="flex-1 min-w-0 px-4 py-3 flex items-center gap-3">
+        <div className="min-w-0 px-4 py-3 flex items-center gap-3">
           {/* Mini circular ring */}
           <div className="shrink-0 relative w-12 h-12">
             <svg viewBox="0 0 48 48" className="w-12 h-12 -rotate-90">
@@ -391,40 +377,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Divider */}
-        <span className="w-px h-9 bg-[var(--border)]" />
-
-        {/* Streak (right, compact) */}
-        <div className="px-4 py-3 flex items-center gap-2 shrink-0" title={streakDays > 0 ? `${toPersianDigits(streakDays)} روز متوالی` : 'شروع کن'}>
-          <motion.span
-            className="text-xl leading-none"
-            animate={streakDays > 0 ? { scale: [1, 1.12, 1] } : {}}
-            transition={streakDays > 0 ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : {}}
-          >
-            {streakDays >= 7 ? '🔥🔥' : streakDays > 0 ? '🔥' : '💤'}
-          </motion.span>
-          <div className="flex flex-col items-start leading-none">
-            <span
-              className="text-base font-bold tabular-nums"
-              style={{ color: streakDays > 0 ? 'var(--gold)' : 'var(--foreground-muted)' }}
-            >
-              {toPersianDigits(streakDays)}
-            </span>
-            <span className="text-[9px] text-[var(--foreground-muted)] mt-0.5">
-              {streakDays > 0 ? 'روز زنجیر' : 'شروع'}
-            </span>
-          </div>
-          {/* Streak Freeze indicator */}
-          {streakFreezes > 0 && (
-            <span
-              className="flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded-full bg-[rgba(99,179,237,0.1)] border border-[rgba(99,179,237,0.25)]"
-              title={`${toPersianDigits(streakFreezes)} یخ‌کننده`}
-            >
-              <span className="text-[10px] leading-none">❄️</span>
-              <span className="text-[9px] font-bold tabular-nums text-[#7DD3FC]">{toPersianDigits(streakFreezes)}</span>
-            </span>
-          )}
-        </div>
       </motion.div>
 
       {/* ===== Subject legend / quick filter (only when 2+ subjects) ===== */}

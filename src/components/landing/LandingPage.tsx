@@ -7,9 +7,7 @@ import { Hero } from './hero';
 import { Features } from './features';
 import { Team } from './team';
 import { Footer } from './footer';
-import { BackToTop } from './back-to-top';
-import { LoadingScreen } from './loading-screen';
-import { InteractiveParticles } from './interactive-particles';
+import { FloatingLines } from './floating-lines';
 
 // ===== Main Landing Page Component =====
 // Composes the landing sections from the landingreaval repo and bridges the
@@ -32,12 +30,9 @@ export default function LandingPage() {
       '#signup': 'onboarding',
     };
 
-    const goTo = (view: 'login' | 'onboarding') => {
+    const goTo = (view: 'login' | 'onboarding', hash: string) => {
+      window.history.pushState({ revalView: view }, '', `${window.location.pathname}${hash}`);
       setCurrentView(view);
-      // Clear any hash so back-navigation doesn't retrigger.
-      if (window.location.hash) {
-        history.replaceState(null, '', window.location.pathname);
-      }
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -49,14 +44,14 @@ export default function LandingPage() {
       if (hash && hash in AUTH_HASHES) {
         e.preventDefault();
         e.stopPropagation();
-        goTo(AUTH_HASHES[hash]);
+        goTo(AUTH_HASHES[hash], hash);
       }
     };
 
     const handleHash = () => {
       const hash = window.location.hash;
       if (hash in AUTH_HASHES) {
-        goTo(AUTH_HASHES[hash]);
+        setCurrentView(AUTH_HASHES[hash]);
       }
     };
 
@@ -74,9 +69,10 @@ export default function LandingPage() {
 
   return (
     <>
-      <LoadingScreen />
-      <div className="relative flex min-h-screen flex-col bg-background noise font-yekan">
-        <InteractiveParticles className="pointer-events-none fixed inset-0 z-0" />
+      <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-background noise font-yekan">
+        <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />
+        <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
+        <FloatingLines />
 
         <Header />
 
@@ -86,7 +82,6 @@ export default function LandingPage() {
           <Team />
         </main>
         <Footer />
-        <BackToTop />
       </div>
     </>
   );

@@ -5,16 +5,11 @@ import { useAppStore } from '@/lib/store';
 import { Flashcard } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Music, Brain, Timer, Calculator, Heart, X,
+  Brain, Calculator, X,
   Plus, ImagePlus, ChevronLeft, ChevronRight,
   ChevronDown, Sparkles, RotateCcw, Calendar, Zap, Flame,
-  PenLine,
 } from 'lucide-react';
-import PomodoroTimer from './PomodoroTimer';
-import StudyMusicPlayer from './StudyMusicPlayer';
 import GradeCalculator from './GradeCalculator';
-import BreathingExercise from './BreathingExercise';
-import ActiveSummary from './ActiveSummary';
 import { toast } from 'sonner';
 import {
   scheduleNextReview,
@@ -27,28 +22,10 @@ import {
 // ===== Tool Definitions =====
 const TOOLS = [
   {
-    id: 'music',
-    title: 'موزیک تمرکز',
-    description: 'تمرکزتو با موسیقی بالا ببر',
-    icon: Music,
-    color: 'var(--accent)',
-    gradientFrom: 'var(--accent)',
-    gradientTo: 'var(--accent)',
-  },
-  {
     id: 'flashcards',
     title: 'فلش‌کارت هوشمند',
     description: 'یادگیری فعال با فلش‌کارت',
     icon: Brain,
-    color: 'var(--accent)',
-    gradientFrom: 'var(--accent)',
-    gradientTo: 'var(--accent)',
-  },
-  {
-    id: 'pomodoro',
-    title: 'پومودورو',
-    description: 'مدیریت زمان مطالعه',
-    icon: Timer,
     color: 'var(--accent)',
     gradientFrom: 'var(--accent)',
     gradientTo: 'var(--accent)',
@@ -62,25 +39,8 @@ const TOOLS = [
     gradientFrom: 'var(--accent)',
     gradientTo: 'var(--accent)',
   },
-  {
-    id: 'breathing',
-    title: 'اورژانس استرس',
-    description: 'تنفس عمیق و آرامش',
-    icon: Heart,
-    color: 'var(--accent)',
-    gradientFrom: 'var(--accent)',
-    gradientTo: 'var(--accent)',
-  },
-  {
-    id: 'summary',
-    title: 'خلاصه‌نویس فعال',
-    description: 'یادت پایدارتر می‌شه',
-    icon: PenLine,
-    color: 'var(--accent)',
-    gradientFrom: 'var(--accent)',
-    gradientTo: 'var(--accent)',
-  },
 ];
+const TOOL_IDS = new Set(TOOLS.map((tool) => tool.id));
 
 // ===== Main Component =====
 export default function ToolsHub() {
@@ -88,8 +48,13 @@ export default function ToolsHub() {
   const [activeTool, setActiveTool] = useState<string | null>(currentTool);
 
   useEffect(() => {
+    if (currentTool && !TOOL_IDS.has(currentTool)) {
+      setActiveTool(null);
+      setCurrentTool(null);
+      return;
+    }
     setActiveTool(currentTool);
-  }, [currentTool]);
+  }, [currentTool, setCurrentTool]);
 
   const handleToolSelect = useCallback(
     (toolId: string) => {
@@ -179,7 +144,7 @@ export default function ToolsHub() {
 
       {/* ===== DESKTOP LAYOUT (4-col grid + side panel) ===== */}
       <div className="hidden md:block">
-        <div className="flex items-end justify-between mb-8 pb-6 border-b border-[var(--border)]">
+        <div className="mb-8 pb-6 border-b border-[var(--border)]">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
               <span>ابزارها</span>
@@ -189,7 +154,6 @@ export default function ToolsHub() {
             <h1 className="text-3xl md:text-4xl font-bold text-[var(--foreground)]">ابزارهای مطالعه</h1>
             <p className="text-sm text-[var(--foreground-muted)]">ابزارهایی که روالت رو راحت‌تر می‌کنن</p>
           </div>
-          <Sparkles className="w-8 h-8 text-[var(--accent)] opacity-50" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -266,20 +230,7 @@ export default function ToolsHub() {
             >
               {/* Modal Header */}
               <div className="sticky top-0 z-10 flex items-center justify-between p-4 md:p-5 surface-2 border-b border-[var(--border)]">
-                <div className="flex items-center gap-2.5">
-                  {activeToolObj && (() => {
-                    const HeaderIcon = activeToolObj.icon;
-                    return (
-                      <div
-                        className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center"
-                        style={{
-                          background: 'var(--accent-soft)',
-                        }}
-                      >
-                        <HeaderIcon className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-                      </div>
-                    );
-                  })()}
+                <div>
                   <h2 className="text-base md:text-lg font-bold text-[var(--foreground)]">
                     {activeToolObj?.title}
                   </h2>
@@ -294,12 +245,8 @@ export default function ToolsHub() {
 
               {/* Modal Body */}
               <div className="p-4 md:p-5">
-                {activeTool === 'music' && <StudyMusicPlayer />}
                 {activeTool === 'flashcards' && <FlashcardsTool />}
-                {activeTool === 'pomodoro' && <PomodoroTimer />}
                 {activeTool === 'calculator' && <GradeCalculator />}
-                {activeTool === 'breathing' && <BreathingExercise />}
-                {activeTool === 'summary' && <ActiveSummary />}
               </div>
             </motion.div>
           </motion.div>
@@ -309,10 +256,7 @@ export default function ToolsHub() {
   );
 }
 
-// ===== Tool 1: Study Music (Focus Music) =====
-// Implemented in ./StudyMusicPlayer — Web Audio API ambient sound generator.
-
-// ===== Tool 2: Smart Flashcards =====
+// ===== Smart Flashcards =====
 const SUBJECT_COLORS: Record<string, string> = {
   'ریاضی': 'var(--accent)',
   'فیزیک': 'var(--accent)',
@@ -903,10 +847,5 @@ function FlashcardsTool() {
   );
 }
 
-// ===== Tool 3: Pomodoro is implemented in ./PomodoroTimer =====
-
-// ===== Tool 4: Konkur Grade Calculator =====
-// Implemented in ./GradeCalculator — Tajrobi/Riazi weighted-average tool.
-
-// ===== Tool 5: Breathing / Anti-Stress =====
-// Implemented in ./BreathingExercise — Guided breathing exercise with 3 techniques.
+// ===== Percentage Calculator =====
+// Implemented in ./GradeCalculator.

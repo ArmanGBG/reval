@@ -53,9 +53,14 @@ describe('minutesToHoursLabel', () => {
     expect(minutesToHoursLabel(120)).toBe('۲ ساعت');
   });
 
-  it('returns fractional hours for non-multiples', () => {
-    // 90 minutes = 1.5 hours, displayed as ۱/۲ in Persian
-    expect(minutesToHoursLabel(90)).toBe('۱.۱/۲ ساعت');
+  it('returns exact hours and remaining minutes for non-multiples', () => {
+    expect(minutesToHoursLabel(90)).toBe('۱ ساعت و ۳۰ دقیقه');
+    expect(minutesToHoursLabel(100)).toBe('۱ ساعت و ۴۰ دقیقه');
+  });
+
+  it('rounds fractional input minutes and clamps negative values', () => {
+    expect(minutesToHoursLabel(90.6)).toBe('۱ ساعت و ۳۱ دقیقه');
+    expect(minutesToHoursLabel(-15)).toBe('۰ دقیقه');
   });
 });
 

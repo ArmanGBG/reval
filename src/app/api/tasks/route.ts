@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, canViewStudentTasks, canCreateTaskForStudent, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
-
-function parseTask(task: Record<string, unknown>) {
-  if (typeof task.activityTypes === 'string') {
-    try { task.activityTypes = JSON.parse(task.activityTypes); } catch { task.activityTypes = null; }
-  }
-  return task;
-}
+import { parseTaskResponse, taskTopicInclude } from '@/lib/task-api';
 
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requireAuth(request);
@@ -21,8 +15,8 @@ export async function GET(request: NextRequest) {
   const [date, startDate, endDate] = [params.get('date'), params.get('startDate'), params.get('endDate')];
   if (date) where.date = date;
   else if (startDate || endDate) where.date = { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) };
-  const tasks = await db.task.findMany({ where, orderBy: { order: 'asc' } });
-  return NextResponse.json({ tasks: tasks.map((task) => parseTask({ ...task })) });
+  const tasks = await db.task.findMany({ where, orderBy: { order: 'asc' }, include: taskTopicInclude });
+  return NextResponse.json({ tasks: tasks.map((task) => parseTaskResponse({ ...task })) });
 }
 
 export async function POST(request: NextRequest) {
@@ -59,8 +53,9 @@ export async function POST(request: NextRequest) {
       date: body.date, order: body.order, createdBy: permission.createdBy, createdById: permission.createdBy === 'advisor' ? ctx.userId : null,
       chapterId: typeof body.chapterId === 'string' ? body.chapterId : null, topicId: typeof body.topicId === 'string' ? body.topicId : null,
       topicModeId: typeof body.topicModeId === 'string' ? body.topicModeId : null, pageStart: typeof body.pageStart === 'number' ? body.pageStart : null, pageEnd: typeof body.pageEnd === 'number' ? body.pageEnd : null,
-    } });
-    return NextResponse.json({ task: parseTask({ ...task }) }, { status: 201 });
+      topics: { create: curriculum.topicIds.map((topicId) => ({ topicId })) },
+    }, include: taskTopicInclude });
+    return NextResponse.json({ task: parseTaskResponse({ ...task }) }, { status: 201 });
   } catch (cause) {
     console.error('POST /api/tasks error:', cause);
     return NextResponse.json({ error: 'خطا در ایجاد وظیفه' }, { status: 500 });

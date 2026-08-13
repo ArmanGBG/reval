@@ -30,6 +30,7 @@ import { TaskDetailsDialog } from './TaskDetailsDialog';
 import { TaskActionDialog } from './TaskActionDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import TaskStatsWidget from './TaskStatsWidget';
+import { canMoveTaskToDate, moveTaskToDateTransition, moveTaskToIncompleteTransition } from '@/lib/task-status';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -133,10 +134,7 @@ export default function PlanView() {
     tasks
       .filter((task) => task.studentId === studentId && task.date < todayISO && (task.status === 'PENDING' || (task.status === undefined && task.completed === null)))
       .forEach((task) => {
-        const date = parseLocalDate(task.date);
-        date.setDate(date.getDate() + 1);
-        const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        updateTask(task.id, { date: nextDate, status: 'INCOMPLETE', completed: null });
+        updateTask(task.id, moveTaskToIncompleteTransition());
       });
   }, [tasks, studentId, selectedDate, updateTask]);
 
@@ -178,6 +176,7 @@ export default function PlanView() {
   }, [tasks, studentId]);
 
   const draftTasks = useMemo(() => tasks.filter((t) => t.studentId === studentId && t.status === 'DRAFT'), [tasks, studentId]);
+  const secondaryTabTasks = planTab === 'draft' ? draftTasks : incompleteTasks;
 
   // Dynamic header title
   const headerTitle = useMemo(() => {
@@ -278,9 +277,9 @@ export default function PlanView() {
     async (taskId: string, newDate: string) => {
       const task = tasks.find((item) => item.id === taskId);
       if (!task) return;
-      await updateTask(taskId, task.status === 'DRAFT'
-        ? { date: newDate }
-        : { date: newDate, status: 'INCOMPLETE', detailsCompleted: true, completed: null });
+      if (task.createdBy !== 'student') throw new Error('انتقال روز برای تسک مشاور مجاز نیست');
+      if (!task.status || !canMoveTaskToDate(task.status)) throw new Error('فقط تسک فعال یا ناقص قابل برنامه‌ریزی مجدد است');
+      await updateTask(taskId, moveTaskToDateTransition(newDate));
       const d = parseLocalDate(newDate);
       toast.success(`تسک به ${getPersianWeekdayName(d)} ${formatPersianDate(d)} منتقل شد`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
@@ -292,7 +291,9 @@ export default function PlanView() {
   const handleMoveToIncomplete = useCallback(
     async (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
-      await updateTask(taskId, { status: 'INCOMPLETE', ...(task?.createdBy === 'student' ? { detailsCompleted: true } : {}), completed: null });
+      if (!task) throw new Error('تسک یافت نشد');
+      if (task.status === 'DRAFT' || !task.detailsCompleted) throw new Error('ابتدا جزئیات پیش‌نویس را تکمیل کنید');
+      await updateTask(taskId, moveTaskToIncompleteTransition());
       toast('تسک به ناقصی‌ها منتقل شد', {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
       });
@@ -312,7 +313,7 @@ export default function PlanView() {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--foreground-muted)' },
       });
     },
-    [deleteTask]
+    [deleteTask, tasks]
   );
 
   const handleReorder = useCallback(
@@ -323,9 +324,7 @@ export default function PlanView() {
   );
 
   const handleManualSubmit = useCallback(
-    (task: Task) => {
-      addTask(task);
-    },
+    (task: Task) => addTask(task),
     [addTask]
   );
 
@@ -390,7 +389,7 @@ export default function PlanView() {
             {/* Task Cards */}
             <div className="space-y-3">
               {filteredTasks.length === 0 ? (
-                <EmptyState onAdd={() => setAddDrawerOpen(true)} />
+                <EmptyState />
               ) : (
                 <SortableTaskList
                   tasks={filteredTasks}
@@ -409,11 +408,11 @@ export default function PlanView() {
         ) : (
           /* Draft and incomplete tasks tabs */
           <div className="space-y-3">
-            {(planTab === 'draft' ? draftTasks : incompleteTasks).length === 0 ? (
+            {secondaryTabTasks.length === 0 ? (
               <IncompleteEmptyState draft={planTab === 'draft'} />
             ) : (
               <SortableTaskList
-                tasks={planTab === 'draft' ? draftTasks : incompleteTasks}
+                tasks={secondaryTabTasks}
                 onComplete={handleComplete}
                 onSkip={handleSkip}
                 onDelete={handleDeleteTask}
@@ -509,7 +508,7 @@ export default function PlanView() {
             {/* ===== Right: Task List ===== */}
             <div className="lg:col-span-2 space-y-3">
               {filteredTasks.length === 0 ? (
-                <EmptyState onAdd={() => setAddDrawerOpen(true)} />
+                <EmptyState />
               ) : (
                 <SortableTaskList
                   tasks={filteredTasks}
@@ -526,13 +525,13 @@ export default function PlanView() {
             </div>
           </div>
         ) : (
-          /* Incomplete tasks tab — full width */
+          /* Draft or incomplete tasks tab — full width */
           <div className="max-w-3xl mx-auto space-y-3">
-            {incompleteTasks.length === 0 ? (
+            {secondaryTabTasks.length === 0 ? (
               <IncompleteEmptyState draft={planTab === 'draft'} />
             ) : (
               <SortableTaskList
-                tasks={incompleteTasks}
+                tasks={secondaryTabTasks}
                 onComplete={handleComplete}
                 onSkip={handleSkip}
                 onDelete={handleDeleteTask}
@@ -556,6 +555,7 @@ export default function PlanView() {
         selectedDate={selectedDate}
         existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === studentId).length}
         onSubmit={handleManualSubmit}
+        onSaved={(task) => { if (task.status === 'DRAFT') setPlanTab('draft'); }}
       />
 
 
@@ -624,21 +624,14 @@ export default function PlanView() {
 }
 
 // ===== Empty State =====
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState() {
   return (
     <div className="surface-1 rounded-2xl p-10 text-center">
       <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center mx-auto mb-3">
         <Plus className="w-5 h-5 text-[var(--accent)]" />
       </div>
       <p className="text-sm text-[var(--foreground)] font-medium mb-1">برنامه‌ای برای این روز ثبت نشده</p>
-      <p className="text-xs text-[var(--foreground-muted)] mb-4">یک تسک جدید اضافه کنید یا از برنامه هفتگی استفاده کنید</p>
-      <button
-        onClick={onAdd}
-        className="btn-hover glow-hover inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-sm"
-      >
-        <Plus className="w-4 h-4" />
-        تسک جدید
-      </button>
+      <p className="text-xs text-[var(--foreground-muted)]">از دکمه تسک جدید یا برنامه هفتگی استفاده کنید</p>
     </div>
   );
 }

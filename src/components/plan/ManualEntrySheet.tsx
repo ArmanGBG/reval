@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { FieldType, ActivityType, Task } from '@/lib/types';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
@@ -9,6 +9,7 @@ import { useAppStore } from '@/lib/store';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { AuthError } from '@/lib/api-client';
 import { ChevronLeft, Save, ArrowLeft } from 'lucide-react';
+import { FieldTypeBadge, FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 
 const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
@@ -23,10 +24,12 @@ const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموز
  * User can do a "quick save" after step 2 (subject selected) → creates draft with detailsCompleted=false.
  * Or continue to step 3 and save a complete task with detailsCompleted=true.
  */
-export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null }: {
+export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null }: {
   open: boolean; onOpenChange: (open: boolean) => void; selectedDate: string;
   existingTaskCount: number; onSubmit: (task: Task) => Promise<void> | void;
   studentId?: string; grade?: string; major?: string; createdBy?: 'student' | 'advisor'; createdById?: string | null;
+  mode?: 'create' | 'complete-draft'; initialTask?: Task | null;
+  onSaved?: (task: Task) => void;
 }) {
   const { user } = useAppStore();
   const currentStudentId = useCurrentStudentId();
@@ -34,22 +37,37 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
 
   // === Step state ===
   // 1 = field type, 2 = subject picker, 3 = details (activity/time)
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [fieldType, setFieldType] = useState<FieldType>('کنکور');
-  const [selection, setSelection] = useState<TaskSelection>({});
-  const [activities, setActivities] = useState<ActivityType[]>([]);
-  const [minutes, setMinutes] = useState('');
-  const [tests, setTests] = useState('');
+  const [step, setStep] = useState<1 | 2 | 3>(mode === 'complete-draft' ? 2 : 1);
+  const initialSelection = useCallback((): TaskSelection => initialTask ? ({
+    subjectId: initialTask.subjectId ?? undefined,
+    subjectName: initialTask.subject,
+    subjectColor: initialTask.subjectColor,
+    chapterId: initialTask.chapterId ?? undefined,
+    topicId: initialTask.topicId ?? undefined,
+    topicIds: initialTask.topicIds ?? (initialTask.topicId ? [initialTask.topicId] : []),
+    topicNames: initialTask.topics?.map((topic) => `گفتار ${topic.topicNo}: ${topic.title}`),
+    topicModeId: initialTask.topicModeId ?? undefined,
+    displayText: initialTask.topic ?? undefined,
+    pageStart: initialTask.pageStart ?? undefined,
+    pageEnd: initialTask.pageEnd ?? undefined,
+  }) : ({}), [initialTask]);
+  const [fieldType, setFieldType] = useState<FieldType>(initialTask?.fieldType ?? 'کنکور');
+  const [selection, setSelection] = useState<TaskSelection>(initialSelection);
+  const [activities, setActivities] = useState<ActivityType[]>(initialTask?.activityTypes ?? []);
+  const [minutes, setMinutes] = useState(initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes));
+  const [tests, setTests] = useState(initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount));
   const [saving, setSaving] = useState(false);
 
   const reset = useCallback(() => {
-    setStep(1);
-    setFieldType('کنکور');
-    setSelection({});
-    setActivities([]);
-    setMinutes('');
-    setTests('');
-  }, []);
+    setStep(mode === 'complete-draft' ? 2 : 1);
+    setFieldType(initialTask?.fieldType ?? 'کنکور');
+    setSelection(initialSelection());
+    setActivities(initialTask?.activityTypes ?? []);
+    setMinutes(initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes));
+    setTests(initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount));
+  }, [initialTask, initialSelection, mode]);
+
+  useEffect(() => { if (open) reset(); }, [open, reset]);
 
   // Can quick-save once subject is selected
   const canQuickSave = !!selection.subjectId && !!selection.subjectName && !!selection.chapterId;
@@ -59,7 +77,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
 
   // Build task object from current state
   const buildTask = (detailsCompleted: boolean): Task => ({
-    id: crypto.randomUUID(),
+    id: initialTask?.id ?? crypto.randomUUID(),
     studentId,
     subjectId: selection.subjectId!,
     subject: selection.subjectName!,
@@ -73,12 +91,13 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     actualTestCount: null,
     status: detailsCompleted ? 'PENDING' : 'DRAFT',
     completed: null,
-    date: selectedDate,
-    order: existingTaskCount + 1,
-    createdBy,
-    createdById,
+    date: initialTask?.date ?? selectedDate,
+    order: initialTask?.order ?? existingTaskCount + 1,
+    createdBy: initialTask?.createdBy ?? createdBy,
+    createdById: initialTask?.createdById ?? createdById,
     chapterId: selection.chapterId ?? null,
     topicId: selection.topicId ?? null,
+    topicIds: selection.topicIds ?? [],
     topicModeId: selection.topicModeId ?? null,
     pageStart: selection.pageStart ?? null,
     pageEnd: selection.pageEnd ?? null,
@@ -88,7 +107,9 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   const doSave = async (detailsCompleted: boolean) => {
     setSaving(true);
     try {
-      await onSubmit(buildTask(detailsCompleted));
+      const task = buildTask(detailsCompleted);
+      await onSubmit(task);
+      onSaved?.(task);
       if (detailsCompleted) {
         toast.success('تسک ثبت شد');
       } else {
@@ -106,6 +127,14 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePrevious = () => {
+    if (step === 2 && selection.subjectId) {
+      setSelection({});
+      return;
+    }
+    setStep((current) => (current - 1) as 1 | 2 | 3);
   };
 
   // Step labels
@@ -134,7 +163,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
             </div>
             {step > 1 && (
               <button
-                onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}
+                onClick={handlePrevious}
                 className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -157,11 +186,10 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                     onClick={() => { setFieldType(ft); setSelection({}); }}
                     className={`flex-1 py-4 rounded-xl border text-center transition-all ${
                       fieldType === ft
-                        ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)] font-bold scale-[1.02]'
+                        ? `${FIELD_TYPE_STYLES[ft].selected} font-bold scale-[1.02]`
                         : 'border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)]'
                     }`}
                   >
-                    <span className="text-lg font-bold">{ft === 'کنکور' ? '🎯' : '📋'}</span>
                     <span className="block text-sm mt-1">{ft}</span>
                   </button>
                 ))}
@@ -174,15 +202,10 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
             <div className="space-y-3">
               {/* Field type badge */}
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${
-                  fieldType === 'کنکور'
-                    ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                    : 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                }`}>
-                  {fieldType}
-                </span>
+                <FieldTypeBadge value={fieldType} />
               </div>
               <TaskSubjectPicker
+                key={`${fieldType}:${selection.subjectId ?? 'subjects'}`}
                 fieldType={fieldType}
                  grade={grade ?? user?.grade ?? 'دوازدهم'}
                  major={major ?? user?.major ?? 'تجربی'}
@@ -203,11 +226,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                     style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
                   />
                   <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium mr-auto ${
-                    fieldType === 'کنکور' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                  }`}>
-                    {fieldType}
-                  </span>
+                  <FieldTypeBadge value={fieldType} className="mr-auto" />
                 </div>
                 {selection.topicNames && selection.topicNames.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -302,7 +321,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                 <ChevronLeft className="w-4 h-4" />
               </button>
               {/* Secondary: quick save as draft */}
-              {canQuickSave && (
+               {mode === 'create' && canQuickSave && (
                 <button
                   disabled={saving}
                   onClick={() => doSave(false)}
@@ -321,7 +340,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
               onClick={() => doSave(true)}
               className="w-full h-11 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold disabled:opacity-40"
             >
-              {saving ? 'در حال ثبت...' : 'ثبت تسک'}
+              {saving ? 'در حال ثبت...' : mode === 'complete-draft' ? 'ذخیره و تکمیل جزئیات' : 'ثبت تسک'}
             </button>
           )}
         </DrawerFooter>

@@ -70,7 +70,7 @@ export function computeAnalyses(students: StudentProfile[]): StudentAnalysis[] {
 
     const psychologicalAssessment = '';
 
-    if (student.studyHoursTrend === 'down') interventions.push(`بازنگری برنامه: کاهش حجم و افزایش کیفیت - تکنیک پومودورو`);
+    if (student.studyHoursTrend === 'down') interventions.push('بازنگری برنامه: کاهش حجم و افزایش کیفیت جلسات مطالعه');
     if (student.taskCompletionRate < 50) interventions.push(`شروع با وظایف کوچک‌تر: تقسیم هر وظیفه به ${toPersianDigits(3)} بخش`);
 
     return { studentId: student.id, strengths, weaknesses, psychologicalAssessment, interventions };

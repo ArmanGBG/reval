@@ -17,7 +17,7 @@ model User {
   name              String
   avatar            String    @default("🦊")
   role              String    @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
-  grade             String? // دهم, یازدهم, دوازدهم, پشت کنکوری
+  grade             String? // دهم, یازدهم, دوازدهم, فارغ‌التحصیل
   major             String? // تجربی, ریاضی, انسانی
   goal              String? // کنکور, نهایی, هر دو
   dailyTargetHours  Int       @default(6)
@@ -166,6 +166,18 @@ model Task {
   chapter    Chapter?   @relation(fields: [chapterId], references: [id])
   topicRef   Topic?     @relation(fields: [topicId], references: [id])
   topicMode  TopicMode? @relation(fields: [topicModeId], references: [id])
+  topics     TaskTopic[]
+}
+
+model TaskTopic {
+  taskId  String
+  topicId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, topicId])
+  @@index([topicId])
 }
 
 // ===== Exam =====
@@ -300,6 +312,7 @@ model Topic {
 
   chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   tasks   Task[]
+  taskTopics TaskTopic[]
 
   @@unique([chapterId, topicNo])
 }

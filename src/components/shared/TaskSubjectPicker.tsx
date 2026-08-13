@@ -308,7 +308,6 @@ export function TaskSubjectPicker({
   const handleBackFromChapter = () => {
     setSelectedChapter(null); setSelectedTopicIds([]);
     setPageRangeStart(''); setPageRangeEnd('');
-    if (selectedSubject) onChange({ subjectId: selectedSubject.id, subjectName: selectedSubject.name, subjectColor: selectedSubject.color });
   };
   const handleToggleTopic = (tp: ApiTopic) => {
     if (!selectedChapter) return;
@@ -327,6 +326,20 @@ export function TaskSubjectPicker({
     setSelectedTopicIds([]); setPageRangeStart(''); setPageRangeEnd('');
     emitSelection(selectedChapter, [], undefined, undefined);
   };
+
+  useEffect(() => {
+    if (!selectedSubject || !value.chapterId || selectedChapter?.id === value.chapterId) return;
+    for (const gradeOption of selectedSubject.grades ?? []) {
+      const chapter = gradeOption.chapters?.find((item) => item.id === value.chapterId);
+      if (!chapter) continue;
+      setSelectedGrade(gradeOption.grade);
+      setSelectedChapter(chapter);
+      setSelectedTopicIds(value.topicIds ?? (value.topicId ? [value.topicId] : []));
+      setPageRangeStart(value.pageStart ? String(value.pageStart) : '');
+      setPageRangeEnd(value.pageEnd ? String(value.pageEnd) : '');
+      break;
+    }
+  }, [selectedSubject, selectedChapter?.id, value.chapterId, value.topicId, value.topicIds, value.pageStart, value.pageEnd]);
 
   if (loading && subjects.length === 0) {
     return (<div className="space-y-3" dir="rtl"><div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)] mb-2"><BookOpen className="w-3.5 h-3.5" /><span>در حال بارگذاری دروس...</span></div><div className="grid grid-cols-2 gap-2">{[0,1,2,3].map((i) => (<Skeleton key={i} className="h-14 rounded-xl bg-[var(--bg-overlay)]" />))}</div></div>);

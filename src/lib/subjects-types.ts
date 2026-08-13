@@ -94,7 +94,7 @@ export interface Subject {
 
 // ===== Constants =====
 // Valid subject-grade values (the user-facing Grade type in lib/types.ts
-// still includes "پشت کنکوری" for user profiles, but GradeSubject.grade
+// also includes "فارغ‌التحصیل" for user profiles, but GradeSubject.grade
 // is restricted to the three below per the API).
 export const GRADES = ['دهم', 'یازدهم', 'دوازدهم'] as const;
 export const MAJORS = ['تجربی', 'ریاضی', 'انسانی'] as const;

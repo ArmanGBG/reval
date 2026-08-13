@@ -15,10 +15,7 @@ import {
   BookOpen,
   ClipboardList,
   Plus,
-  Play,
-  Music,
   Brain,
-  Wind,
   Calculator,
   Download,
   LogOut,
@@ -316,26 +313,6 @@ function buildCommands(args: {
   if (role === 'STUDENT') {
     cmds.push(
       {
-        id: 'tool-pomodoro',
-        label: 'پومودورو',
-        hint: 'تایمر تمرکز ۲۵ دقیقه',
-        keywords: 'pomodoro timer focus تایمر',
-        icon: Play,
-        accent: 'accent',
-        section: 'tools',
-        run: () => openTool('pomodoro'),
-      },
-      {
-        id: 'tool-music',
-        label: 'موزیک تمرکز',
-        hint: 'صداهای آرامش‌بخش',
-        keywords: 'music موزیک sound',
-        icon: Music,
-        accent: 'cyan',
-        section: 'tools',
-        run: () => openTool('music'),
-      },
-      {
         id: 'tool-flashcards',
         label: 'فلشکارت',
         hint: 'مرور فلشکارت‌ها',
@@ -353,17 +330,7 @@ function buildCommands(args: {
         icon: Calculator,
         accent: 'violet',
         section: 'tools',
-        run: () => openTool('grade-calculator'),
-      },
-      {
-        id: 'tool-breathing',
-        label: 'اورژانس استرس',
-        hint: 'تنفس عمیق و آرامش',
-        keywords: 'breathing stress تنفس',
-        icon: Wind,
-        accent: 'pink',
-        section: 'tools',
-        run: () => openTool('breathing'),
+        run: () => openTool('calculator'),
       },
     );
   }

@@ -3,13 +3,13 @@
 import * as React from "react";
 import Image from "next/image";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { CalendarDays, BarChart3, BookOpen, Users, X } from "lucide-react";
+import { X } from "lucide-react";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
 
 const FEATURES = [
   {
-    icon: CalendarDays,
+    number: "۰۱",
     title: "برنامه‌ریزی هوشمند",
     description:
       "اضافه کردن تسک به صورت روزانه و بازه دلخواه، تعریف‌شده با تمام جزئیات و نیازهای یک دانش‌آموز. هم امتحانات نهایی، هم کنکور!",
@@ -18,7 +18,7 @@ const FEATURES = [
     screenshotAlt: "نمای برنامه هفتگی روال با تسک‌های روزانه",
   },
   {
-    icon: BarChart3,
+    number: "۰۲",
     title: "آنالیز جامع عملکرد",
     description:
       "آنالیز جامع موارد مطالعه‌شده به صورت روزانه و بازه دلخواه، بر اساس عملکرد خودت. گزارش آماری به تفکیک دروس بگیر!",
@@ -27,7 +27,7 @@ const FEATURES = [
     screenshotAlt: "گزارش آماری و نقشه حرارتی مطالعه در روال",
   },
   {
-    icon: BookOpen,
+    number: "۰۳",
     title: "روتین‌های حفظی",
     description:
       "روتین‌های حفظی امتحان نهایی و کنکور رو مرور کن! لغات ادبیات و مطالب کلیدی هر درس، روی نوک انگشتت.",
@@ -36,7 +36,7 @@ const FEATURES = [
     screenshotAlt: "فلش‌کارت هوشمند با مرور فاصله‌دار روال",
   },
   {
-    icon: Users,
+    number: "۰۴",
     title: "ویژه مشاوران",
     description:
       "امکان پایش دانش‌آموزان مختلف به تفکیک پنل، ارائه برنامه، آزمون، و رصد اطلاعات مطالعه دانش‌آموز با بازه دلخواه.",
@@ -64,7 +64,10 @@ function FeatureCard({
       initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
       animate={inView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
       transition={{ duration: 0.7, delay: index * 0.12, ease: easeOut }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/40 bg-surface transition-all duration-300 hover:border-border/70 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4)]"
+      whileHover={{ y: -7, rotateX: 1.5, rotateY: index % 2 === 0 ? -1.5 : 1.5, scale: 1.008 }}
+      whileTap={{ scale: 0.995 }}
+      style={{ transformPerspective: 1000, transformStyle: "preserve-3d" }}
+      className="glass-panel group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-background/55 transition-colors duration-300 hover:border-mint/25 hover:shadow-[0_24px_70px_-32px_var(--mint)]"
     >
       {/* Subtle gradient glow on hover */}
       <div
@@ -79,6 +82,7 @@ function FeatureCard({
           type="button"
           onClick={onImageClick}
           className="relative aspect-[16/10] overflow-hidden border-b border-border/40 bg-background/60"
+          style={{ transform: "translateZ(24px)" }}
         >
           {/* Browser chrome dots */}
           <div className="absolute left-4 top-3 z-20 flex gap-1.5">
@@ -98,11 +102,10 @@ function FeatureCard({
         </button>
 
       {/* Content */}
-      <div className="relative flex flex-1 flex-col p-6 sm:p-7">
+      <div className="relative flex flex-1 flex-col p-6 sm:p-7" style={{ transform: "translateZ(16px)" }}>
         {/* Icon */}
-        <div className="relative mb-4 inline-flex items-center justify-center rounded-xl border border-border/30 bg-background/50 p-3 self-start">
-          <feature.icon className="size-6 text-mint" />
-          <div className="absolute inset-0 rounded-xl bg-mint/[0.04] blur-sm" />
+        <div className="relative mb-4 inline-flex h-9 min-w-9 items-center justify-center self-start border-b border-mint/40 font-mono text-xs font-black text-mint">
+          {feature.number}
         </div>
 
         {/* Title */}
@@ -133,7 +136,8 @@ export function Features() {
   const [lightbox, setLightbox] = React.useState<string | null>(null);
 
   return (
-    <section id="features" className="relative py-20 sm:py-28 lg:py-36">
+    <section id="features" className="relative overflow-hidden py-20 sm:py-28 lg:py-36">
+      <div className="aurora pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
       <div className="mx-auto max-w-6xl px-5 sm:px-8 lg:px-12">
         {/* Section header */}
         <motion.div
