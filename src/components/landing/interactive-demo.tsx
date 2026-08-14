@@ -9,10 +9,13 @@ import TaskCard from "@/components/plan/TaskCard";
 import { TaskActionDialog } from "@/components/plan/TaskActionDialog";
 import MinimalAnalyticsView from "@/components/analytics/MinimalAnalyticsView";
 import { getRandomFailureMessage } from "@/lib/constants/feedbackMessages";
+import { toISODate } from "@/lib/persian-date";
 import type { Task } from "@/lib/types";
 import styles from "./interactive-demo.module.css";
 
-const DEMO_DATE = new Date().toISOString().slice(0, 10);
+// Keep the demo task on the same local calendar day used by the analytics
+// helpers; UTC serialization can move it to yesterday in Tehran.
+const DEMO_DATE = toISODate(new Date());
 
 const INITIAL_TASKS: Task[] = [
   {
