@@ -6,16 +6,15 @@ import {
   validatePageRange,
   normalizePageRange,
   findOverlap,
-  validateIsLastPageOnlyLast,
   validateTopicWithinChapter,
   type RangeEntry,
 } from '@/lib/validators/page-range';
 
 // PATCH /api/subjects/:subjectId/chapters/:chapterId/topics/:topicId
-// Body: { title?, topicNo?, pageStart?, pageEnd?, isLastPage?, sortOrder?, isActive? }
+// Body: { title?, topicNo?, pageStart?, pageEnd?, sortOrder?, isActive? }
 //
-// Validation: same as POST — topicNo integer>=1, page range valid, within
-// chapter range, no overlaps with siblings, only one isLastPage per chapter.
+// Validation: same as POST — topicNo integer>=0, page range valid, within
+// chapter range, and no overlaps with siblings.
 // Ownership: chapter must belong to subject in path (bug 9 + 10).
 export async function PATCH(
   request: NextRequest,
@@ -27,6 +26,9 @@ export async function PATCH(
   const { subjectId, chapterId, topicId } = await params;
   try {
     const body = await request.json();
+    if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim())) {
+      return NextResponse.json({ error: 'عنوان گفتار باید متن غیرخالی باشد' }, { status: 400 });
+    }
 
     // Ownership check: chapter must belong to subject in path (bug 9 + 10)
     const chapter = await verifyChapterOwnershipWithTopics(subjectId, chapterId);
@@ -36,7 +38,7 @@ export async function PATCH(
 
     // Validate topicNo (if provided)
     if (body.topicNo !== undefined) {
-      const noErr = validateSequenceNumber(body.topicNo, 'شماره گفتار');
+      const noErr = validateSequenceNumber(body.topicNo, 'شماره گفتار', 0);
       if (noErr) {
         return NextResponse.json({ error: noErr.message }, { status: 400 });
       }
@@ -51,13 +53,11 @@ export async function PATCH(
     // Merge page fields with existing
     const mergedPageStart = body.pageStart !== undefined ? body.pageStart : existing.pageStart;
     const mergedPageEnd = body.pageEnd !== undefined ? body.pageEnd : existing.pageEnd;
-    const mergedIsLastPage = body.isLastPage !== undefined ? body.isLastPage : existing.isLastPage;
 
     // Validate merged range
     const pageErr = validatePageRange({
       pageStart: mergedPageStart,
       pageEnd: mergedPageEnd,
-      isLastPage: mergedIsLastPage,
     });
     if (pageErr) {
       return NextResponse.json({ error: pageErr.message }, { status: 400 });
@@ -66,7 +66,6 @@ export async function PATCH(
     const normalized = normalizePageRange({
       pageStart: mergedPageStart,
       pageEnd: mergedPageEnd,
-      isLastPage: mergedIsLastPage,
     });
 
     const withinErr = validateTopicWithinChapter(normalized, chapter as RangeEntry);
@@ -74,10 +73,10 @@ export async function PATCH(
       return NextResponse.json({ error: withinErr.message }, { status: 400 });
     }
 
-    // Fetch siblings for overlap + isLastPage checks (exclude self)
+    // Fetch siblings for overlap checks (exclude self)
     const siblings = await db.topic.findMany({
       where: { chapterId, isActive: true, id: { not: topicId } },
-      select: { id: true, pageStart: true, pageEnd: true, isLastPage: true },
+      select: { id: true, pageStart: true, pageEnd: true },
     });
 
     // Overlap check
@@ -86,7 +85,6 @@ export async function PATCH(
         id: topicId,
         pageStart: normalized.pageStart,
         pageEnd: normalized.pageEnd,
-        isLastPage: normalized.isLastPage,
       };
       const overlap = findOverlap(candidate, siblings as RangeEntry[]);
       if (overlap) {
@@ -97,26 +95,21 @@ export async function PATCH(
       }
     }
 
-    // isLastPage uniqueness
-    if (normalized.isLastPage) {
-      const isLastErr = validateIsLastPageOnlyLast(
-        { id: topicId, pageStart: normalized.pageStart, pageEnd: normalized.pageEnd, isLastPage: true },
-        siblings as RangeEntry[],
-      );
-      if (isLastErr) {
-        return NextResponse.json({ error: isLastErr.message }, { status: 400 });
-      }
-    }
-
     // Build update data
     const data: Record<string, unknown> = {};
     const allowed = ['title', 'topicNo', 'sortOrder', 'isActive'];
     for (const key of allowed) {
       if (body[key] !== undefined) data[key] = body[key];
     }
+    if (typeof data.title === 'string') data.title = data.title.trim();
+    if (data.sortOrder !== undefined && (!Number.isInteger(data.sortOrder) || (data.sortOrder as number) < 0)) {
+      return NextResponse.json({ error: 'ترتیب باید عدد صحیح نامنفی باشد' }, { status: 400 });
+    }
+    if (data.isActive !== undefined && typeof data.isActive !== 'boolean') {
+      return NextResponse.json({ error: 'isActive باید boolean باشد' }, { status: 400 });
+    }
     data.pageStart = normalized.pageStart;
     data.pageEnd = normalized.pageEnd;
-    data.isLastPage = normalized.isLastPage;
 
     const topic = await db.$transaction(async (tx) => {
       const updated = await tx.topic.update({ where: { id: topicId }, data });

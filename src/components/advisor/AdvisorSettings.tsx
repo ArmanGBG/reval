@@ -3,7 +3,6 @@
 import { useAppStore } from '@/lib/store';
 import {
   Shield,
-  Activity,
   Sparkles,
   FileText,
 } from 'lucide-react';
@@ -13,7 +12,7 @@ import { useEffect } from 'react';
 
 // ===== Advisor Settings =====
 export function AdvisorSettings() {
-  const { hapticFeedback, notificationReminders, setHapticFeedback, setNotificationReminders, advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
+  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
 
   const realStudents = advisorStudents;
 
@@ -36,47 +35,8 @@ export function AdvisorSettings() {
         </div>
       </div>
 
-      {/* Two-column layout on desktop, stacked on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* App Settings */}
-        <Card className="md:col-span-1">
-          <SectionHeader icon={<Activity className="w-4 h-4" />} title="تنظیمات اپلیکیشن" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between min-h-[52px] py-2 border-b border-[var(--border)] last:border-0">
-              <div>
-                <p className="text-[var(--foreground)] text-sm font-medium">بازخورد لرزشی</p>
-                <p className="text-[var(--foreground-muted)] text-[11px] mt-0.5">لرزش هنگام تعامل</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hapticFeedback}
-                  onChange={(e) => setHapticFeedback(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[var(--bg-overlay)] border border-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)]"></div>
-              </label>
-            </div>
-            <div className="flex items-center justify-between min-h-[52px] py-2 border-b border-[var(--border)] last:border-0">
-              <div>
-                <p className="text-[var(--foreground)] text-sm font-medium">یادآوری اعلان‌ها</p>
-                <p className="text-[var(--foreground-muted)] text-[11px] mt-0.5">اعلان برای برنامه مطالعه</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notificationReminders}
-                  onChange={(e) => setNotificationReminders(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-[var(--bg-overlay)] border border-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)] peer-checked:border-[var(--accent)]"></div>
-              </label>
-            </div>
-          </div>
-        </Card>
-
-        {/* Quick stats card */}
-        <Card className="md:col-span-1">
+      <div>
+        <Card>
           <SectionHeader icon={<Sparkles className="w-4 h-4" />} title="خلاصه فعالیت" />
           <div className="grid grid-cols-2 gap-3">
               <div className="bg-[var(--bg-overlay)]/60 rounded-lg p-3 border border-[var(--border)]">

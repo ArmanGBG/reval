@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useConfettiOnClick } from "./use-confetti";
 
 const NAV = [
-  { label: "قابلیت‌ها", href: "#features" },
+  { label: "دموی محصول", href: "#features" },
   { label: "تیم ما", href: "#team" },
 ];
 

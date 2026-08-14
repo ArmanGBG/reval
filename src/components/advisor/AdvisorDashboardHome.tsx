@@ -125,7 +125,6 @@ export function AdvisorDashboardHome() {
           <SectionHeader
             icon={<Clock className="w-4.5 h-4.5" />}
             title="ساعت مطالعه هفتگی"
-            action={<span className="text-[11px] text-[var(--foreground-muted)]">هدف: <span className="text-[var(--foreground)] font-medium">۵۰ ساعت</span></span>}
           />
           <div className="space-y-2.5 max-h-72 overflow-y-auto custom-scrollbar pr-1">
             {students.map(student => (
@@ -133,14 +132,8 @@ export function AdvisorDashboardHome() {
                 key={student.id}
                 label={student.name.split(' ')[0]}
                 value={student.studyHoursPerWeek}
-                max={50}
-                color={
-                  student.studyHoursPerWeek >= student.studyHoursTarget
-                    ? 'var(--accent)'
-                    : student.studyHoursPerWeek >= student.studyHoursTarget * 0.7
-                      ? 'var(--warning)'
-                      : 'var(--danger)'
-                }
+                max={Math.max(10, ...students.map((item) => item.studyHoursPerWeek))}
+                color="var(--accent)"
               />
             ))}
           </div>

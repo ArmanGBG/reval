@@ -23,7 +23,6 @@ export type ViewName = TopView | StudentView | AdvisorView | InstituteManagerVie
 
 export type Grade = 'دهم' | 'یازدهم' | 'دوازدهم' | 'فارغ‌التحصیل';
 export type Major = 'تجربی' | 'ریاضی' | 'انسانی';
-export type Goal = 'کنکور' | 'نهایی' | 'هر دو';
 export type FieldType = 'کنکور' | 'نهایی';
 export type ActivityType = 'مطالعه' | 'مرور' | 'تست آموزشی' | 'تست سنجشی' | 'کلاس/ویدیو';
 export type TaskStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'SKIPPED' | 'INCOMPLETE';
@@ -34,8 +33,6 @@ export interface User {
   avatar: string;
   grade: Grade;
   major: Major;
-  goal: Goal;
-  dailyTargetHours: number;
   phone: string;
   assignedAdvisorId: string | null;
 }
@@ -59,6 +56,10 @@ export interface Task {
   order: number;
   createdBy: 'student' | 'advisor'; // who created this task
   createdById?: string | null; // the advisor/user ID who created it (if createdBy='advisor')
+  teacherClassName?: string | null;
+  sessionNumber?: string | null;
+  bookName?: string | null;
+  testDescription?: string | null;
   // Linked curriculum IDs (Task 12-a schema). When set, the API uses these
   // to auto-populate the text subject/subjectColor/topic fields from the DB.
   chapterId?: string | null;
@@ -66,6 +67,9 @@ export interface Task {
   topicIds?: string[];
   topics?: Array<{ id: string; title: string; topicNo: number; chapterId: string }>;
   topicModeId?: string | null;
+  curriculumMode?: 'BOOK' | 'THEMATIC' | null;
+  topicModeSubtopicIds?: string[];
+  topicModeSubtopics?: Array<{ id: string; title: string; subtopicNo: number; topicModeId: string }>;
   pageStart?: number | null;
   pageEnd?: number | null;
   detailsCompleted?: boolean;
@@ -135,11 +139,8 @@ export interface StudentProfile {
   avatar: string;
   grade: Grade;
   major: Major;
-  goal: Goal;
-
   // Study metrics
   studyHoursPerWeek: number;
-  studyHoursTarget: number;
   studyHoursTrend: TrendDirection;
 
   // Performance
@@ -278,14 +279,7 @@ export interface GlobalUser {
 
 // ===== Notification Types =====
 
-export type NotificationType =
-  | 'upcoming-exam'
-  | 'task-reminder'
-  | 'streak-warning'
-  | 'streak-milestone'
-  | 'weekly-goal'
-  | 'flashcard-review'
-  | 'message';
+export type NotificationType = 'message';
 
 export interface Notification {
   id: string;

@@ -9,12 +9,20 @@
 import type { Task, FieldType, ActivityType } from '@/lib/types';
 import {
   PERSIAN_WEEKDAYS,
+  PERSIAN_MONTHS,
+  toPersianDigits,
+  toJalali,
   toISODate,
   getWeekDays,
   getTodayJalali,
   getFirstDayOfJalaliMonth,
   getDaysInJalaliMonth,
 } from '@/lib/persian-date';
+
+function jalaliDayLabel(date: Date): string {
+  const jalali = toJalali(date);
+  return `${toPersianDigits(jalali.jd)} ${PERSIAN_MONTHS[jalali.jm - 1]}`;
+}
 
 const isCompletedTask = (task: Task) => task.status === 'COMPLETED' || (task.status === undefined && task.completed === true);
 
@@ -148,7 +156,7 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
       const minutes = bucketTasks.reduce((s, t) => s + (t.actualTimeMinutes ?? 0), 0);
       const tests = bucketTasks.reduce((s, t) => s + (t.actualTestCount ?? 0), 0);
       buckets.push({
-        day: `${startDay}-${endDay}`,
+        day: `${toPersianDigits(startDay)}–${toPersianDigits(endDay)}`,
         hours: Math.round((minutes / 60) * 10) / 10,
         tests,
       });
@@ -164,7 +172,7 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
       const dayStr = toISODate(cursor);
       const dayTasks = completed.filter((t) => t.date === dayStr);
       const minutes = dayTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
-      result.push({ day: `${cursor.getDate()}/${cursor.getMonth() + 1}`, hours: Math.round((minutes / 60) * 10) / 10, tests: dayTasks.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0) });
+       result.push({ day: jalaliDayLabel(cursor), hours: Math.round((minutes / 60) * 10) / 10, tests: dayTasks.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0) });
       cursor.setDate(cursor.getDate() + 1);
     }
     return result;
@@ -179,7 +187,7 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
     const dayTasks = completed.filter((t) => t.date === dayStr);
     const minutes = dayTasks.reduce((s, t) => s + (t.actualTimeMinutes ?? 0), 0);
     const tests = dayTasks.reduce((s, t) => s + (t.actualTestCount ?? 0), 0);
-    const dayLabel = `${d.getDate()}/${d.getMonth() + 1}`;
+    const dayLabel = jalaliDayLabel(d);
     result.push({ day: dayLabel, hours: Math.round((minutes / 60) * 10) / 10, tests });
   }
   return result;
@@ -260,7 +268,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
       const startDay = b * bucketSize + 1;
       const endDay = Math.min(startDay + bucketSize - 1, daysInMonth);
       if (startDay > daysInMonth) break;
-      const label = `${startDay}-${endDay}`;
+      const label = `${toPersianDigits(startDay)}–${toPersianDigits(endDay)}`;
       const dates: string[] = [];
       for (let d = startDay; d <= endDay; d++) {
         const date = new Date(first);
@@ -274,7 +282,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
     const cursor = new Date(`${customRange.start}T00:00:00`);
     const end = new Date(`${customRange.end}T00:00:00`);
     while (cursor <= end) {
-      labelToDates.set(`${cursor.getDate()}/${cursor.getMonth() + 1}`, [toISODate(cursor)]);
+      labelToDates.set(jalaliDayLabel(cursor), [toISODate(cursor)]);
       cursor.setDate(cursor.getDate() + 1);
     }
   } else {
@@ -283,7 +291,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
     for (let i = 13; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const label = `${d.getDate()}/${d.getMonth() + 1}`;
+      const label = jalaliDayLabel(d);
       const arr = labelToDates.get(label) ?? [];
       arr.push(toISODate(d));
       labelToDates.set(label, arr);

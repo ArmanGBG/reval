@@ -1,157 +1,111 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
-import Link from "next/link";
 import {
   AnimatePresence,
   motion,
-  useMotionValue,
   useMotionValueEvent,
+  useReducedMotion,
   useScroll,
-  useSpring,
-  useTransform,
 } from "framer-motion";
 
-const spring = { stiffness: 90, damping: 22, mass: 0.8 };
-
 export function Hero() {
-  const [messageStep, setMessageStep] = React.useState<0 | 1>(0);
   const heroRef = React.useRef<HTMLElement>(null);
-  const pointerX = useMotionValue(0);
-  const pointerY = useMotionValue(0);
-  const smoothX = useSpring(pointerX, spring);
-  const smoothY = useSpring(pointerY, spring);
-  const rotateY = useTransform(smoothX, [-0.5, 0.5], [-4, 4]);
-  const rotateX = useTransform(smoothY, [-0.5, 0.5], [3, -3]);
-  const cardX = useTransform(smoothX, [-0.5, 0.5], [-12, 12]);
-  const cardY = useTransform(smoothY, [-0.5, 0.5], [-8, 8]);
+  const [step, setStep] = React.useState(0);
+  const [compactScroll, setCompactScroll] = React.useState(false);
+  const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end end"],
   });
 
-  useMotionValueEvent(scrollYProgress, "change", (progress) => {
-    setMessageStep(progress >= 0.22 ? 1 : 0);
-  });
+  React.useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const sync = () => setCompactScroll(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
-  const onPointerMove = (event: React.PointerEvent<HTMLElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    pointerX.set((event.clientX - rect.left) / rect.width - 0.5);
-    pointerY.set((event.clientY - rect.top) / rect.height - 0.5);
-  };
+  useMotionValueEvent(scrollYProgress, "change", (progress) => {
+    const firstBoundary = compactScroll ? 0.18 : 0.25;
+    const secondBoundary = compactScroll ? 0.42 : 0.52;
+    setStep(progress < firstBoundary ? 0 : progress < secondBoundary ? 1 : 2);
+  });
 
   return (
     <section
       id="top"
       ref={heroRef}
-      className="relative h-[175svh] border-b border-border/50"
+      className="relative h-[240svh] border-b border-border/50 sm:h-[360svh]"
       aria-labelledby="hero-title"
     >
-      <div
-        onPointerMove={onPointerMove}
-        onPointerLeave={() => { pointerX.set(0); pointerY.set(0); }}
-        className="sticky top-0 h-[100svh] overflow-hidden pt-20"
-      >
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 grid-bg opacity-[0.16]" />
+      <div className="sticky top-0 flex h-[100svh] items-center overflow-hidden pt-16">
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute inset-0 grid-bg opacity-[0.14]" />
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-mint/50 to-transparent" />
-          <motion.div
-            style={{ x: cardX, y: cardY }}
-            className="absolute left-[12%] top-[18%] h-64 w-64 rounded-full bg-mint/[0.06] blur-[100px]"
-          />
-          <div className="absolute bottom-0 right-0 h-80 w-80 bg-mint/[0.035] blur-[120px]" />
+          <div className="absolute inset-x-[12%] top-1/2 h-px bg-gradient-to-l from-transparent via-white/[0.05] to-transparent" />
         </div>
 
-        <div className="relative mx-auto grid min-h-[calc(100svh-5rem)] max-w-7xl items-center gap-10 px-5 pb-12 pt-8 lg:grid-cols-[0.88fr_1.12fr] lg:px-8 lg:pb-16 lg:pt-10">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-          className="relative z-20 -translate-y-6 py-5 text-right sm:-translate-y-8"
-        >
-          <div className="flex min-h-[13rem] items-center sm:min-h-[15rem]">
+        <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center px-5 pb-16 text-center sm:px-8">
+          <div className="flex min-h-[20rem] w-full items-center justify-center sm:min-h-[24rem]">
             <AnimatePresence mode="wait" initial={false}>
-              {messageStep === 0 ? (
-                <motion.div
-                  key="problem"
-                  initial={{ opacity: 0, y: 16, filter: "blur(5px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -12, filter: "blur(5px)" }}
-                  transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-                  className="max-w-xl"
+              <motion.div
+                key={step}
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 22, filter: "blur(8px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -22, filter: "blur(8px)" }}
+                transition={{ duration: reduceMotion ? 0.12 : 0.62, ease: [0.16, 1, 0.3, 1] }}
+                className="mx-auto max-w-4xl"
+              >
+                <h1
+                  id="hero-title"
+                  className="text-balance text-4xl font-black leading-[1.35] text-foreground sm:text-5xl lg:text-7xl"
                 >
-                  <h1 id="hero-title" className="text-balance text-3xl font-black leading-[1.35] text-foreground sm:text-4xl lg:text-[2.85rem]">
-                    تو <span className="text-[#ef7777] [text-shadow:0_0_22px_rgba(239,119,119,0.28)]">بن‌بست</span> برنامه‌ریزی و <span className="text-[#ef7777] [text-shadow:0_0_22px_rgba(239,119,119,0.28)]">آنالیز</span> شخصی گیر کردی؟
-                  </h1>
-                  <p className="mt-5 max-w-lg text-sm font-normal leading-7 text-muted-foreground sm:text-[15px]">
-                    سنجش زمان مطالعه هر درس و نوع فعالیت‌ها، کمک می‌کند دقیق‌تر تصمیم بگیری و مسیر کنکور را با اطمینان بیشتری ادامه بدهی.
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="solution"
-                  initial={{ opacity: 0, y: 16, filter: "blur(5px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -12, filter: "blur(5px)" }}
-                  transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-                  className="max-w-xl"
-                >
-                  <h1 className="text-balance text-3xl font-black leading-[1.35] text-foreground sm:text-4xl lg:text-[2.85rem]">
-                    ما اینجاییم همه‌چی بیفته رو <span className="text-mint [text-shadow:0_0_24px_color-mix(in_oklch,var(--mint)_32%,transparent)]">روال</span>.
-                  </h1>
-                  <p className="mt-5 max-w-lg text-sm font-normal leading-7 text-muted-foreground sm:text-[15px]">
-                    برنامه‌ریزی، ثبت عملکرد و تحلیل مطالعه در یک مسیر ساده؛ تا هر روز بدانی کجایی و قدم بعدی چیست.
-                  </p>
-                </motion.div>
-              )}
+                  {step === 0 ? (
+                    <>
+                      تو <span className="text-[var(--danger)]">بن بست</span> برنامه‌ریزی و <span className="text-mint">آنالیز</span> دقیق گیر کردی؟
+                    </>
+                  ) : step === 1 ? (
+                    <>
+                      نمی‌تونی مشاور <span className="text-mint">مناسب</span> خودت رو پیدا کنی؟
+                    </>
+                  ) : (
+                    <>
+                      ما اینجاییم همه چی بیفته رو{" "}
+                      <span className="text-mint">روال</span>!
+                    </>
+                  )}
+                </h1>
+
+                {step === 2 && (
+                  <motion.p
+                    initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: reduceMotion ? 0.12 : 0.55, delay: reduceMotion ? 0 : 0.18 }}
+                    className="mx-auto mt-7 max-w-3xl text-sm font-normal leading-8 text-muted-foreground sm:text-base"
+                  >
+                    با روال، درس خوندنت از گیجی درمیاد! خیلی راحت می‌بینی برای هر درس چقدر تست زدی، چقدر کلاس رفتی و کجای کاری. تازه، ما یه مشاور کاردرستِ مخصوص خودت پیدا می‌کنیم که مستقیم تو خود اپلیکیشن بهت وصل می‌شه تا زحمت برنامه‌ریزی رو بکشه و قدم به قدم همراهت باشه.
+                  </motion.p>
+                )}
+              </motion.div>
             </AnimatePresence>
           </div>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="#signup" className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-mint px-6 text-sm font-bold text-[#06120c] shadow-[0_14px_42px_-12px_var(--mint)] transition-all hover:brightness-110 hover:shadow-[0_18px_50px_-10px_var(--mint-bright)] focus-ring-mint">
-              ساخت حساب رایگان
-              <span className="text-base leading-none transition-transform group-hover:-translate-x-1">←</span>
-            </Link>
-            <Link href="#login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-border/80 bg-background/40 px-6 text-sm font-semibold text-foreground backdrop-blur-xl transition-colors hover:border-mint/30 hover:bg-mint/[0.05] focus-ring-mint">
-              ورود به حساب
-            </Link>
-          </div>
-
-        </motion.div>
-
-        <div className="relative z-10 min-h-[390px] sm:min-h-[500px] lg:min-h-[570px]" style={{ perspective: 1200 }}>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-            style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-            className="glass-panel border-glow-mint absolute inset-x-2 top-8 overflow-hidden rounded-2xl border border-mint/20 bg-[var(--bg-elevated)]/80 shadow-[0_36px_100px_-36px_rgba(0,0,0,0.85)] sm:inset-x-8 lg:inset-x-4"
+          <div
+            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-muted-foreground/75"
+            aria-label="برای ادامه اسکرول کنید"
           >
-            <motion.div
+            <span className="whitespace-nowrap text-[10px] font-medium">اسکرول کن</span>
+            <motion.span
+              animate={reduceMotion ? undefined : { y: [0, 6, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              className="flex h-8 w-5 items-start justify-center rounded-full border border-mint/50 p-1"
               aria-hidden="true"
-              className="pointer-events-none absolute -inset-px z-20 rounded-2xl border border-mint/20"
-              animate={{ opacity: [0.35, 0.8, 0.35] }}
-              transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <div className="flex h-10 items-center gap-1.5 border-b border-border/70 bg-background/70 px-4">
-              <span className="size-2 rounded-full bg-mint/70" />
-              <span className="size-2 rounded-full bg-white/20" />
-              <span className="size-2 rounded-full bg-white/10" />
-              <span className="mr-auto text-[9px] text-muted-foreground">داشبورد امروز</span>
-            </div>
-            <Image
-              src="/landing-shots/feature-planning.png"
-              alt="نمای برنامه‌ریزی روزانه روال"
-              width={1280}
-              height={820}
-              priority
-              className="h-auto w-full object-cover object-top"
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
-          </motion.div>
-
-        </div>
+            >
+              <span className="h-1.5 w-1 rounded-full bg-mint" />
+            </motion.span>
+          </div>
         </div>
       </div>
     </section>

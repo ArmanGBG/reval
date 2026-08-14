@@ -6,7 +6,6 @@
 export interface PageRangeFields {
   pageStart: number | null | undefined;
   pageEnd: number | null | undefined;
-  isLastPage: boolean | undefined;
 }
 
 export interface ValidationError {
@@ -19,11 +18,12 @@ export interface ValidationError {
 /**
  * Validate chapterNo / topicNo:
  *   - must be an integer (no floats)
- *   - must be >= 1
+ *   - must be >= the configured minimum (0 for book prefaces, 1 otherwise)
  */
 export function validateSequenceNumber(
   value: unknown,
   field: string,
+  minimum = 1,
 ): ValidationError | null {
   if (value === undefined || value === null) return null; // optional in PATCH
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -32,25 +32,28 @@ export function validateSequenceNumber(
   if (!Number.isInteger(value)) {
     return { field, message: `${field} باید عدد صحیح باشد` };
   }
-  if (value < 1) {
-    return { field, message: `${field} باید حداقل ۱ باشد` };
+  if (value < minimum) {
+    return { field, message: `${field} باید حداقل ${minimum === 0 ? '۰' : '۱'} باشد` };
   }
   return null;
 }
 
 /**
- * Validate page range fields (pageStart, pageEnd, isLastPage).
+ * Validate a bounded page range. Both values may be empty for an unmapped row.
  * Rules:
- *   - pageStart: integer >= 1 (or null/undefined for "no page info")
- *   - pageEnd: integer >= pageStart (or null if isLastPage=true)
- *   - isLastPage=true => pageEnd must be null/undefined (cleared)
- *   - isLastPage=true requires pageStart to be set
- *   - pageEnd without pageStart is invalid
+ *   - pageStart/pageEnd: positive integers when mapped
+ *   - pageStart/pageEnd must either both be set or both be empty
  */
 export function validatePageRange(
   fields: PageRangeFields,
 ): ValidationError | null {
-  const { pageStart, pageEnd, isLastPage } = fields;
+  const { pageStart, pageEnd } = fields;
+
+  const hasStart = pageStart !== undefined && pageStart !== null;
+  const hasEnd = pageEnd !== undefined && pageEnd !== null;
+  if (hasStart !== hasEnd) {
+    return { field: hasStart ? 'pageEnd' : 'pageStart', message: 'صفحه شروع و پایان باید با هم وارد شوند' };
+  }
 
   // pageStart validation (if provided)
   if (pageStart !== undefined && pageStart !== null) {
@@ -76,15 +79,8 @@ export function validatePageRange(
     if (pageEnd < 1) {
       return { field: 'pageEnd', message: 'صفحه پایان باید حداقل ۱ باشد' };
     }
-    // pageEnd requires pageStart
-    if (pageStart === null || pageStart === undefined) {
-      return {
-        field: 'pageEnd',
-        message: 'صفحه پایان بدون صفحه شروع مجاز نیست',
-      };
-    }
     // pageEnd >= pageStart
-    if (pageEnd < pageStart) {
+    if (pageStart !== null && pageStart !== undefined && pageEnd < pageStart) {
       return {
         field: 'pageEnd',
         message: 'صفحه پایان نمی‌تواند کمتر از صفحه شروع باشد',
@@ -92,43 +88,24 @@ export function validatePageRange(
     }
   }
 
-  // isLastPage validation
-  if (isLastPage === true) {
-    // isLastPage requires pageStart
-    if (pageStart === null || pageStart === undefined) {
-      return {
-        field: 'isLastPage',
-        message: 'گزینه «تا پایان کتاب» نیاز به صفحه شروع دارد',
-      };
-    }
-    // isLastPage=true => pageEnd should be null (we'll clear it in the route)
-    // (this is a warning, not a hard error — the route will clear pageEnd)
-  }
-
   return null;
 }
 
 /**
- * Normalize page range fields: if isLastPage=true, clear pageEnd.
- * Returns a new object with the corrected fields.
+ * Normalize page range fields.
  */
 export function normalizePageRange(fields: PageRangeFields): {
   pageStart: number | null;
   pageEnd: number | null;
-  isLastPage: boolean;
 } {
-  const isLast = fields.isLastPage === true;
   return {
     pageStart:
       typeof fields.pageStart === 'number' && Number.isFinite(fields.pageStart)
         ? fields.pageStart
         : null,
-    pageEnd: isLast
-      ? null
-      : typeof fields.pageEnd === 'number' && Number.isFinite(fields.pageEnd)
+    pageEnd: typeof fields.pageEnd === 'number' && Number.isFinite(fields.pageEnd)
         ? fields.pageEnd
         : null,
-    isLastPage: isLast,
   };
 }
 
@@ -138,13 +115,11 @@ export interface RangeEntry {
   id: string;
   pageStart: number | null;
   pageEnd: number | null;
-  isLastPage: boolean;
 }
 
 /**
  * Check if a candidate page range overlaps with any existing range.
  *
- * A range is "open-ended" if isLastPage=true (extends to infinity).
  * Two ranges overlap if their [pageStart, pageEnd] intervals intersect.
  *
  * @param candidate - the new/updated range being validated
@@ -158,9 +133,11 @@ export function findOverlap(
   existing: RangeEntry[],
   excludeId?: string,
 ): RangeEntry | null {
-  if (candidate.pageStart === null) return null; // no range to check
+  if (candidate.pageStart === null || candidate.pageEnd === null) return null;
 
-  const others = existing.filter((e) => e.id !== excludeId && e.pageStart !== null);
+  const others = existing.filter(
+    (entry) => entry.id !== excludeId && entry.pageStart !== null && entry.pageEnd !== null,
+  );
 
   for (const other of others) {
     if (rangesOverlap(candidate, other)) {
@@ -173,9 +150,9 @@ export function findOverlap(
 function rangesOverlap(a: RangeEntry, b: RangeEntry): boolean {
   if (a.pageStart === null || b.pageStart === null) return false;
 
-  // a's end (infinity if isLastPage, else pageEnd or pageStart if pageEnd null)
-  const aEnd = a.isLastPage ? Infinity : (a.pageEnd ?? a.pageStart);
-  const bEnd = b.isLastPage ? Infinity : (b.pageEnd ?? b.pageStart);
+  if (a.pageEnd === null || b.pageEnd === null) return false;
+  const aEnd = a.pageEnd;
+  const bEnd = b.pageEnd;
 
   // a's start must be > b's end OR b's start must be > a's end for NO overlap
   // Overlap if: a.start <= b.end AND b.start <= a.end
@@ -186,18 +163,24 @@ function rangesOverlap(a: RangeEntry, b: RangeEntry): boolean {
  * Validate that a topic's page range is within its parent chapter's range.
  *
  * Rules:
- *   - If chapter has no pageStart (null), topics can have any range (or none)
- *   - If topic has no pageStart (null), it's fine (no range constraint)
+ *   - An unmapped topic has no containment constraint
+ *   - A mapped topic requires a mapped chapter
  *   - Otherwise: topic.pageStart >= chapter.pageStart
- *   - And: topic.pageEnd <= chapter.pageEnd (or chapter.isLastPage → topic can extend)
- *   - If topic.isLastPage, only topic.pageStart >= chapter.pageStart matters
+ *   - And: topic.pageEnd <= chapter.pageEnd
  */
 export function validateTopicWithinChapter(
   topic: PageRangeFields,
   chapter: RangeEntry,
 ): ValidationError | null {
-  if (topic.pageStart === undefined || topic.pageStart === null) return null;
-  if (chapter.pageStart === null) return null; // chapter has no range
+  if (topic.pageStart === undefined || topic.pageStart === null || topic.pageEnd == null) {
+    return null;
+  }
+  if (chapter.pageStart === null || chapter.pageEnd === null) {
+    return {
+      field: 'pageStart',
+      message: 'برای ثبت بازه گفتار، ابتدا بازه صفحات فصل را وارد کنید',
+    };
+  }
 
   // Topic start must be >= chapter start
   if (topic.pageStart < chapter.pageStart) {
@@ -207,51 +190,12 @@ export function validateTopicWithinChapter(
     };
   }
 
-  // If topic is not last page, its end must be <= chapter end
-  if (topic.isLastPage !== true) {
-    const chapterEnd = chapter.isLastPage ? Infinity : chapter.pageEnd;
-    if (chapterEnd !== null && chapterEnd !== Infinity) {
-      const topicEnd = topic.pageEnd ?? topic.pageStart;
-      if (topicEnd > chapterEnd) {
-        return {
-          field: 'pageEnd',
-          message: `پایان گفتار (${topicEnd}) نمی‌تواند بعد از پایان فصل (${chapterEnd}) باشد`,
-        };
-      }
-    }
-  }
-
-  return null;
-}
-
-/**
- * Check if only the last entry (by chapterNo/topicNo) in a set may have
- * isLastPage=true.
- */
-export function validateIsLastPageOnlyLast(
-  candidate: RangeEntry,
-  existing: RangeEntry[],
-  excludeId?: string,
-): ValidationError | null {
-  if (!candidate.isLastPage) return null;
-
-  const others = existing
-    .filter((e) => e.id !== excludeId)
-    .filter((e) => e.isLastPage);
-
-  // If any OTHER entry has isLastPage=true, that's a conflict (only one allowed)
-  if (others.length > 0) {
+  if (topic.pageEnd > chapter.pageEnd) {
     return {
-      field: 'isLastPage',
-      message: 'فقط آخرین فصل/گفتار می‌تواند «تا پایان کتاب» باشد',
+      field: 'pageEnd',
+      message: `پایان گفتار (${topic.pageEnd}) نمی‌تواند بعد از پایان فصل (${chapter.pageEnd}) باشد`,
     };
   }
-
-  // Also: isLastPage should only be on the highest-numbered entry.
-  // We check this by seeing if the candidate is NOT the last by sequence.
-  // (The route should pass entries sorted by chapterNo/topicNo.)
-  // For simplicity, we let the route enforce the "last only" rule and
-  // this function just checks the "only one" rule.
 
   return null;
 }

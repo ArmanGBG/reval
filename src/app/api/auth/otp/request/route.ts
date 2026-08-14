@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeIranianPhone } from '@/lib/phone';
 import { requestOtp } from '@/lib/otp';
-import { isSmsSandbox } from '@/lib/sms-ir';
+import { isSmsSandbox } from '@/lib/sms';
 import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -27,7 +27,10 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === 'OTP_COOLDOWN') {
       return NextResponse.json({ error: 'لطفاً برای ارسال مجدد کمی صبر کنید' }, { status: 429 });
     }
-    if (error instanceof Error && error.message === 'SMS_IR_NOT_CONFIGURED') {
+    if (
+      error instanceof Error &&
+      ['SMS_IR_NOT_CONFIGURED', 'ARTA_SMS_NOT_CONFIGURED', 'SMS_PROVIDER_INVALID'].includes(error.message)
+    ) {
       return NextResponse.json({ error: 'سرویس پیامک هنوز تنظیم نشده است' }, { status: 503 });
     }
     console.error('OTP request error:', error);

@@ -19,8 +19,6 @@ model User {
   role              String    @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
   grade             String? // دهم, یازدهم, دوازدهم, فارغ‌التحصیل
   major             String? // تجربی, ریاضی, انسانی
-  goal              String? // کنکور, نهایی, هر دو
-  dailyTargetHours  Int       @default(6)
   instituteId       String?
   assignedAdvisorId String?
   publicCode        String    @unique @default(cuid())
@@ -107,14 +105,14 @@ model MessageRead {
 
 // ===== Institute =====
 model Institute {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   name             String
   logoUrl          String?
-  managerId        String   @unique
-  subscriptionPlan String   @default("free") // free, basic, pro, enterprise
-  status           String   @default("active") // active, suspended, trial
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  managerId        String    @unique
+  subscriptionPlan String    @default("free") // free, basic, pro, enterprise
+  status           String    @default("active") // active, suspended, trial
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
 
   manager User   @relation("InstituteManager", fields: [managerId], references: [id])
@@ -131,8 +129,13 @@ enum TaskStatus {
   INCOMPLETE
 }
 
+enum CurriculumMode {
+  BOOK
+  THEMATIC
+}
+
 model Task {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   studentId         String
   subjectId         String
   subject           String
@@ -144,29 +147,37 @@ model Task {
   actualTimeMinutes Int?
   targetTestCount   Int?
   actualTestCount   Int?
-  status            TaskStatus @default(PENDING)
+  status            TaskStatus      @default(PENDING)
   completed         Boolean? // null = pending, true = done, false = skipped
-  detailsCompleted  Boolean  @default(true)
+  detailsCompleted  Boolean         @default(true)
   date              String // ISO date string
   order             Int
   createdBy         String // "student" or "advisor"
   createdById       String?
+  // Class/Video details
+  teacherClassName  String?
+  sessionNumber     String?
+  // Educational Test details
+  bookName          String?
+  testDescription   String?
   // FK links to curriculum structure (all optional — task may reference chapter, topic, or topic mode)
   chapterId         String?
   topicId           String?
   topicModeId       String?
+  curriculumMode    CurriculumMode? // null for legacy/draft tasks without curriculum details
   pageStart         Int?
   pageEnd           Int?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  student    User       @relation(fields: [studentId], references: [id])
-  subjectRef Subject    @relation(fields: [subjectId], references: [id])
-  creator    User?      @relation("TaskCreator", fields: [createdById], references: [id])
-  chapter    Chapter?   @relation(fields: [chapterId], references: [id])
-  topicRef   Topic?     @relation(fields: [topicId], references: [id])
-  topicMode  TopicMode? @relation(fields: [topicModeId], references: [id])
-  topics     TaskTopic[]
+  student            User                    @relation(fields: [studentId], references: [id])
+  subjectRef         Subject                 @relation(fields: [subjectId], references: [id])
+  creator            User?                   @relation("TaskCreator", fields: [createdById], references: [id])
+  chapter            Chapter?                @relation(fields: [chapterId], references: [id])
+  topicRef           Topic?                  @relation(fields: [topicId], references: [id])
+  topicMode          TopicMode?              @relation(fields: [topicModeId], references: [id])
+  topics             TaskTopic[]
+  topicModeSubtopics TaskTopicModeSubtopic[]
 }
 
 model TaskTopic {
@@ -239,16 +250,12 @@ model Subject {
   color          String   @default("#3EB489")
   icon           String? // emoji or lucide icon name
   sortOrder      Int      @default(0)
-  // isKonkur: whether this subject is tested in konkur.
-  // When a student creates a کنکور task, only subjects with isKonkur=true are shown.
-  isKonkur       Boolean  @default(false)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  grades     GradeSubject[]
-  topicModes TopicMode[]
-  tasks      Task[]
+  grades GradeSubject[]
+  tasks  Task[]
 }
 
 // ===== Grade-Subject Pivot =====
@@ -262,10 +269,13 @@ model GradeSubject {
   grade     String // دهم | یازدهم | دوازدهم
   major     String // تجربی | ریاضی | انسانی
   sortOrder Int     @default(0)
+  isKonkur  Boolean @default(false)
+  isFinal   Boolean @default(false)
   isActive  Boolean @default(true)
 
-  subject  Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  chapters Chapter[]
+  subject    Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  chapters   Chapter[]
+  topicModes TopicMode[]
 
   @@unique([subjectId, grade, major])
 }
@@ -278,10 +288,9 @@ model Chapter {
   id             String   @id @default(cuid())
   gradeSubjectId String
   title          String // e.g. "دنیای زنده"
-  chapterNo      Int // sequential within gradeSubject
+  chapterNo      Int // non-negative within gradeSubject; 0 is reserved for a book preface
   pageStart      Int? // شماره صفحه شروع
   pageEnd        Int? // شماره صفحه پایان
-  isLastPage     Boolean  @default(false) // "تا پایان کتاب" — any page >= pageStart matches
   sortOrder      Int      @default(0)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -298,42 +307,81 @@ model Chapter {
 // Child of a Chapter. Optional — chapters without topics are "whole chapter" selections.
 // Page ranges enable auto page→topic lookup.
 model Topic {
-  id         String   @id @default(cuid())
-  chapterId  String
-  title      String // e.g. "زیست‌شناسی چیست؟"
-  topicNo    Int // sequential within chapter
-  pageStart  Int? // شماره صفحه شروع
-  pageEnd    Int? // شماره صفحه پایان
-  isLastPage Boolean  @default(false) // "تا پایان کتاب"
-  sortOrder  Int      @default(0)
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  chapterId String
+  title     String // e.g. "زیست‌شناسی چیست؟"
+  topicNo   Int // non-negative within chapter; 0 is reserved for a book preface
+  pageStart Int? // شماره صفحه شروع
+  pageEnd   Int? // شماره صفحه پایان
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  tasks   Task[]
+  chapter    Chapter     @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  tasks      Task[]
   taskTopics TaskTopic[]
 
   @@unique([chapterId, topicNo])
 }
 
 // ===== TopicMode (حالت مبحثی) =====
-// The thematic / integrated konkur view for a subject.
+// The thematic / integrated view for one subject/grade/major offering.
 // e.g. زیست‌شناسی → "زیست سلولی و مولکولی", "ژنتیک و تقسیم یاخته", ...
 // When a student selects "مبحثی" mode, they pick from this list instead of chapters.
 model TopicMode {
+  id             String   @id @default(cuid())
+  gradeSubjectId String
+  title          String // e.g. "زیست سلولی و مولکولی"
+  description    String? // optional long description
+  modeNo         Int // sequential within GradeSubject
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  gradeSubject GradeSubject        @relation(fields: [gradeSubjectId], references: [id], onDelete: Cascade)
+  subtopics    TopicModeSubtopic[]
+  tasks        Task[]
+
+  @@unique([gradeSubjectId, modeNo])
+}
+
+model TopicModeSubtopic {
   id          String   @id @default(cuid())
-  subjectId   String
-  title       String // e.g. "زیست سلولی و مولکولی"
-  description String? // optional long description
-  modeNo      Int // sequential within subject
+  topicModeId String
+  title       String
+  subtopicNo  Int
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  tasks   Task[]
+  topicMode TopicMode               @relation(fields: [topicModeId], references: [id], onDelete: Cascade)
+  tasks     TaskTopicModeSubtopic[]
 
-  @@unique([subjectId, modeNo])
+  @@unique([topicModeId, subtopicNo])
+}
+
+model TaskTopicModeSubtopic {
+  taskId              String
+  topicModeSubtopicId String
+
+  task     Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  subtopic TopicModeSubtopic @relation(fields: [topicModeSubtopicId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, topicModeSubtopicId])
+  @@index([topicModeSubtopicId])
+}
+
+model TaskDetailSuggestion {
+  id        String   @id @default(cuid())
+  studentId String
+  subjectId String
+  type      String // 'teacherClass' | 'book'
+  value     String
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, subjectId, type, value])
+  @@index([studentId, subjectId, type])
 }

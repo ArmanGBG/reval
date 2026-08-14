@@ -3,16 +3,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Pencil, LogOut, HelpCircle, MessageSquarePlus, ChevronLeft,
-  User, Target, Settings as SettingsIcon, LifeBuoy, Info,
+  Pencil, LogOut, MessageSquarePlus, ChevronLeft,
+  User, LifeBuoy, Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import ConnectionManager from '@/components/shared/ConnectionManager';
-import { Grade, Major, Goal, Ticket } from '@/lib/types';
-import { AVATARS } from '@/lib/constants/mockData';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { Grade, Major, Ticket } from '@/lib/types';
+import { AVATARS } from '@/lib/constants/avatars';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -34,7 +32,6 @@ import {
 
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل'];
 const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
-const GOALS: Goal[] = ['کنکور', 'نهایی', 'هر دو'];
 const TICKET_TOPICS = ['مشکل فنی', 'پیشنهاد', 'سوال', 'شکایت'] as const;
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -44,11 +41,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 // ===== Section config for desktop nav =====
-type SectionId = 'profile' | 'goals' | 'experience' | 'support' | 'about';
+type SectionId = 'profile' | 'support' | 'about';
 const SECTIONS: { id: SectionId; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'پروفایل و هویت', icon: User },
-  { id: 'goals', label: 'اهداف', icon: Target },
-  { id: 'experience', label: 'تنظیمات اپلیکیشن', icon: SettingsIcon },
   { id: 'support', label: 'پشتیبانی', icon: LifeBuoy },
   { id: 'about', label: 'درباره اپ', icon: Info },
 ];
@@ -210,102 +205,12 @@ function ProfileSection({
   );
 }
 
-// ===== Goals Section =====
-function GoalsSection({
-  dailyTarget, setDailyTarget,
-  selectedGoal, setSelectedGoal,
-  onSave,
-}: {
-  dailyTarget: number;
-  setDailyTarget: (v: number) => void;
-  selectedGoal: Goal;
-  setSelectedGoal: (v: Goal) => void;
-  onSave: () => void;
-}) {
-  const toPersianNum = (n: number) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)]);
-
-  return (
-    <SectionCard id="goals" title="اهداف" icon={Target}>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-[var(--foreground-muted)] text-sm">هدف مطالعه روزانه</Label>
-          <span className="text-[var(--accent)] font-bold text-lg tabular-nums">{toPersianNum(dailyTarget)} ساعت</span>
-        </div>
-        <Slider
-          value={[dailyTarget]}
-          onValueChange={(val) => setDailyTarget(val[0])}
-          min={4}
-          max={12}
-          step={1}
-          className="w-full"
-        />
-        <div className="flex justify-between text-xs text-[var(--foreground-muted)]">
-          <span>۴ ساعت</span>
-          <span>۱۲ ساعت</span>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-[var(--foreground-muted)] text-sm">هدف اصلی</Label>
-        <div className="flex flex-wrap gap-2">
-          {GOALS.map((goal) => (
-            <SelectPill key={goal} active={selectedGoal === goal} onClick={() => setSelectedGoal(goal)}>
-              {goal}
-            </SelectPill>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={onSave}
-        className="btn-hover glow-hover w-full bg-[var(--accent)] text-[var(--bg-deep)] font-bold py-3 rounded-[var(--radius)] min-h-[44px] hover:bg-[var(--accent-hover)]"
-      >
-        ذخیره
-      </button>
-    </SectionCard>
-  );
-}
-
-// ===== App Experience Section =====
-function ExperienceSection({
-  hapticFeedback, setHapticFeedback,
-  notificationReminders, setNotificationReminders,
-}: {
-  hapticFeedback: boolean;
-  setHapticFeedback: (v: boolean) => void;
-  notificationReminders: boolean;
-  setNotificationReminders: (v: boolean) => void;
-}) {
-  return (
-    <SectionCard id="experience" title="تنظیمات اپلیکیشن" icon={SettingsIcon}>
-      <div className="flex items-center justify-between min-h-[44px]">
-        <div>
-          <p className="text-[var(--foreground)] text-sm font-medium">بازخورد لرزشی</p>
-          <p className="text-[var(--foreground-muted)] text-xs mt-0.5">لرزش هنگام تعامل</p>
-        </div>
-        <Switch checked={hapticFeedback} onCheckedChange={setHapticFeedback} />
-      </div>
-
-      <div className="h-px bg-[var(--border)]" />
-
-      <div className="flex items-center justify-between min-h-[44px]">
-        <div>
-          <p className="text-[var(--foreground)] text-sm font-medium">یادآوری اعلان‌ها</p>
-          <p className="text-[var(--foreground-muted)] text-xs mt-0.5">اعلان برای برنامه مطالعه</p>
-        </div>
-        <Switch checked={notificationReminders} onCheckedChange={setNotificationReminders} />
-      </div>
-    </SectionCard>
-  );
-}
-
 // ===== Support Section =====
 function SupportSection({
-  tickets, onNewTicket, onFAQ, onLogout,
+  tickets, onNewTicket, onLogout,
 }: {
   tickets: Ticket[];
   onNewTicket: () => void;
-  onFAQ: () => void;
   onLogout: () => void;
 }) {
   return (
@@ -349,14 +254,6 @@ function SupportSection({
           ))}
         </Accordion>
       )}
-
-      <button
-        onClick={onFAQ}
-        className="btn-hover nav-item-hover w-full flex items-center justify-center gap-2 text-[var(--foreground-muted)] text-sm py-3 rounded-[var(--radius)] min-h-[44px] hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.03)]"
-      >
-        <HelpCircle className="w-4 h-4" />
-        سوالات متداول
-      </button>
 
       <button
         onClick={onLogout}
@@ -473,10 +370,6 @@ export default function SettingsView() {
   const {
     user,
     updateUser,
-    hapticFeedback,
-    notificationReminders,
-    setHapticFeedback,
-    setNotificationReminders,
     tickets,
     addTicket,
   } = useAppStore();
@@ -487,10 +380,6 @@ export default function SettingsView() {
   const [selectedGrade, setSelectedGrade] = useState<Grade>(user?.grade || 'یازدهم');
   const [selectedMajor, setSelectedMajor] = useState<Major>(user?.major || 'تجربی');
   const [showAvatarGrid, setShowAvatarGrid] = useState(false);
-
-  // Goals state
-  const [dailyTarget, setDailyTarget] = useState(user?.dailyTargetHours || 6);
-  const [selectedGoal, setSelectedGoal] = useState<Goal>(user?.goal || 'کنکور');
 
   // Ticket drawer state
   const [ticketDrawerOpen, setTicketDrawerOpen] = useState(false);
@@ -509,14 +398,6 @@ export default function SettingsView() {
       major: selectedMajor,
     });
     toast.success('تغییرات ذخیره شد');
-  };
-
-  const handleSaveGoals = () => {
-    updateUser({
-      dailyTargetHours: dailyTarget,
-      goal: selectedGoal,
-    });
-    toast.success('اهداف ذخیره شد');
   };
 
   const handleSubmitTicket = () => {
@@ -551,10 +432,6 @@ export default function SettingsView() {
     }
   };
 
-  const handleFAQ = () => {
-    toast('سوالات متداول به زودی اضافه می‌شود');
-  };
-
   // Shared props for sections
   const profileProps = {
     displayName, setDisplayName,
@@ -564,19 +441,9 @@ export default function SettingsView() {
     showAvatarGrid, setShowAvatarGrid,
     onSave: handleSaveProfile,
   };
-  const goalsProps = {
-    dailyTarget, setDailyTarget,
-    selectedGoal, setSelectedGoal,
-    onSave: handleSaveGoals,
-  };
-  const experienceProps = {
-    hapticFeedback, setHapticFeedback,
-    notificationReminders, setNotificationReminders,
-  };
   const supportProps = {
     tickets,
     onNewTicket: () => setTicketDrawerOpen(true),
-    onFAQ: handleFAQ,
     onLogout: handleLogout,
   };
   const ticketDrawerProps = {
@@ -605,8 +472,6 @@ export default function SettingsView() {
         <div className="space-y-6">
           <ProfileSection {...profileProps} />
           <ConnectionManager role="STUDENT" />
-          <GoalsSection {...goalsProps} />
-          <ExperienceSection {...experienceProps} />
           <SupportSection {...supportProps} />
           <AboutSection />
         </div>
@@ -672,8 +537,6 @@ export default function SettingsView() {
               >
                 {activeSection === 'profile' && <ProfileSection {...profileProps} />}
                 {activeSection === 'profile' && <div className="mt-6"><ConnectionManager role="STUDENT" /></div>}
-                {activeSection === 'goals' && <GoalsSection {...goalsProps} />}
-                {activeSection === 'experience' && <ExperienceSection {...experienceProps} />}
                 {activeSection === 'support' && <SupportSection {...supportProps} />}
                 {activeSection === 'about' && <AboutSection />}
               </motion.div>

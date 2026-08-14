@@ -1,0 +1,7 @@
+.taskDemo :global(button[aria-label="ثبت بخشی"]) {
+  display: none;
+}
+
+:global(.landingAnalyticsDemo) > div > div:nth-child(2) {
+  display: none;
+}

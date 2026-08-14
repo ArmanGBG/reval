@@ -6,7 +6,7 @@ import {
   validatePageRange,
   normalizePageRange,
   findOverlap,
-  validateIsLastPageOnlyLast,
+  validateTopicWithinChapter,
   type RangeEntry,
 } from '@/lib/validators/page-range';
 
@@ -28,7 +28,7 @@ export async function GET(
   const chapters = await db.chapter.findMany({
     where: {
       isActive: true,
-      gradeSubject: { subjectId },
+      gradeSubject: { subjectId, isActive: true },
       ...(gradeSubjectId ? { gradeSubjectId } : {}),
     },
     orderBy: [{ chapterNo: 'asc' }],
@@ -44,16 +44,14 @@ export async function GET(
 }
 
 // POST /api/subjects/:subjectId/chapters
-// Body: { gradeSubjectId, title, chapterNo?, pageStart?, pageEnd?, isLastPage? }
+// Body: { gradeSubjectId, title, chapterNo?, pageStart?, pageEnd? }
 // The gradeSubjectId must belong to the subject in the path.
 //
 // Validation (API is the source of truth):
-//   - chapterNo: integer >= 1 (if provided)
-//   - pageStart: integer >= 1 (or null)
-//   - pageEnd: integer >= pageStart (or null if isLastPage)
-//   - isLastPage=true => pageEnd cleared
+//   - chapterNo: integer >= 0 (if provided; 0 is reserved for book prefaces)
+//   - pageStart/pageEnd: both positive integers or both null/unset
+//   - pageEnd >= pageStart
 //   - No overlapping chapter ranges within the same gradeSubject
-//   - Only one chapter per gradeSubject may have isLastPage=true
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ subjectId: string }> },
@@ -64,9 +62,9 @@ export async function POST(
   const { subjectId } = await params;
   try {
     const body = await request.json();
-    const { gradeSubjectId, title, chapterNo, pageStart, pageEnd, isLastPage } = body;
+    const { gradeSubjectId, title, chapterNo, pageStart, pageEnd } = body;
 
-    if (!gradeSubjectId || !title) {
+    if (typeof gradeSubjectId !== 'string' || !gradeSubjectId || typeof title !== 'string' || !title.trim()) {
       return NextResponse.json(
         { error: 'شناسه پایه-درس و عنوان فصل الزامی است' },
         { status: 400 },
@@ -77,7 +75,7 @@ export async function POST(
     const gradeSubject = await db.gradeSubject.findUnique({
       where: { id: gradeSubjectId },
     });
-    if (!gradeSubject || gradeSubject.subjectId !== subjectId) {
+    if (!gradeSubject || gradeSubject.subjectId !== subjectId || !gradeSubject.isActive) {
       return NextResponse.json(
         { error: 'پایه-درس متعلق به این درس نیست' },
         { status: 404 },
@@ -86,20 +84,19 @@ export async function POST(
 
     // Validate chapterNo (if provided)
     if (chapterNo !== undefined) {
-      const noErr = validateSequenceNumber(chapterNo, 'شماره فصل');
+      const noErr = validateSequenceNumber(chapterNo, 'شماره فصل', 0);
       if (noErr) {
         return NextResponse.json({ error: noErr.message }, { status: 400 });
       }
     }
 
     // Validate page range fields
-    const pageErr = validatePageRange({ pageStart, pageEnd, isLastPage });
+    const pageErr = validatePageRange({ pageStart, pageEnd });
     if (pageErr) {
       return NextResponse.json({ error: pageErr.message }, { status: 400 });
     }
 
-    // Normalize page range (clears pageEnd if isLastPage)
-    const normalized = normalizePageRange({ pageStart, pageEnd, isLastPage });
+    const normalized = normalizePageRange({ pageStart, pageEnd });
 
     // Determine next chapterNo if not provided — only count ACTIVE chapters
     // (bug 11: soft-deleted chapters shouldn't inflate the next number)
@@ -125,10 +122,10 @@ export async function POST(
           { status: 409 },
         );
       }
-      // Fetch active siblings for overlap + isLastPage checks (exclude the reactivating one)
+      // Fetch active siblings for overlap checks (exclude the reactivating one)
       const activeSiblings = await db.chapter.findMany({
         where: { gradeSubjectId, isActive: true, id: { not: existingChapter.id } },
-        select: { id: true, pageStart: true, pageEnd: true, isLastPage: true },
+        select: { id: true, pageStart: true, pageEnd: true },
       });
       // Overlap check
       if (normalized.pageStart !== null) {
@@ -136,7 +133,6 @@ export async function POST(
           id: existingChapter.id,
           pageStart: normalized.pageStart,
           pageEnd: normalized.pageEnd,
-          isLastPage: normalized.isLastPage,
         };
         const overlap = findOverlap(candidate, activeSiblings as RangeEntry[]);
         if (overlap) {
@@ -146,13 +142,21 @@ export async function POST(
           );
         }
       }
-      if (normalized.isLastPage) {
-        const isLastErr = validateIsLastPageOnlyLast(
-          { id: existingChapter.id, pageStart: normalized.pageStart, pageEnd: normalized.pageEnd, isLastPage: true },
-          activeSiblings as RangeEntry[],
-        );
-        if (isLastErr) {
-          return NextResponse.json({ error: isLastErr.message }, { status: 400 });
+      const activeTopics = await db.topic.findMany({
+        where: { chapterId: existingChapter.id, isActive: true },
+        select: { id: true, pageStart: true, pageEnd: true },
+      });
+      for (const topic of activeTopics) {
+        const withinErr = validateTopicWithinChapter(topic, {
+          id: existingChapter.id,
+          pageStart: normalized.pageStart,
+          pageEnd: normalized.pageEnd,
+        });
+        if (withinErr) {
+          return NextResponse.json(
+            { error: `بازه صفحات فصل با گفتارهای آن سازگار نیست: ${withinErr.message}` },
+            { status: 400 },
+          );
         }
       }
       // Reactivate
@@ -160,20 +164,19 @@ export async function POST(
         where: { id: existingChapter.id },
         data: {
           isActive: true,
-          title,
+          title: title.trim(),
           pageStart: normalized.pageStart,
           pageEnd: normalized.pageEnd,
-          isLastPage: normalized.isLastPage,
         },
         include: { topics: true },
       });
       return NextResponse.json({ chapter: reactivated, reactivated: true });
     }
 
-    // Fetch existing active chapters for overlap + isLastPage checks
+    // Fetch existing active chapters for overlap checks
     const existingChapters = await db.chapter.findMany({
       where: { gradeSubjectId, isActive: true },
-      select: { id: true, pageStart: true, pageEnd: true, isLastPage: true, chapterNo: true },
+      select: { id: true, pageStart: true, pageEnd: true, chapterNo: true },
     });
 
     // Overlap check (only if this chapter has a pageStart)
@@ -182,7 +185,6 @@ export async function POST(
         id: 'new', // placeholder for new chapter
         pageStart: normalized.pageStart,
         pageEnd: normalized.pageEnd,
-        isLastPage: normalized.isLastPage,
       };
       const overlap = findOverlap(candidate, existingChapters as RangeEntry[]);
       if (overlap) {
@@ -193,25 +195,13 @@ export async function POST(
       }
     }
 
-    // isLastPage uniqueness check (only one per gradeSubject)
-    if (normalized.isLastPage) {
-      const isLastErr = validateIsLastPageOnlyLast(
-        { id: 'new', pageStart: normalized.pageStart, pageEnd: normalized.pageEnd, isLastPage: true },
-        existingChapters as RangeEntry[],
-      );
-      if (isLastErr) {
-        return NextResponse.json({ error: isLastErr.message }, { status: 400 });
-      }
-    }
-
     const chapter = await db.chapter.create({
       data: {
         gradeSubjectId,
-        title,
+        title: title.trim(),
         chapterNo: nextNo,
         pageStart: normalized.pageStart,
         pageEnd: normalized.pageEnd,
-        isLastPage: normalized.isLastPage,
         sortOrder: nextNo,
       },
       include: { topics: true },

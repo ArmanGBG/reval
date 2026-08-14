@@ -6,8 +6,9 @@ import { normalizeSubjectName } from '@/lib/validators/normalize';
 // GET /api/subjects
 // Optional query params:
 //   ?grade=دهم&major=تجربی   → filter by GradeSubject
-//   ?include=tree            → include grades → chapters → topics, plus topicModes
-//   ?isKonkur=true|false     → filter by konkur status
+//   ?include=tree            → include grades → chapters → topics → topicModes → subtopics
+//   ?isKonkur=true|false     → filter GradeSubject eligibility
+//   ?isFinal=true|false      → filter GradeSubject eligibility
 //
 // Authorization: any authenticated user can view subjects (read-only).
 export async function GET(request: NextRequest) {
@@ -19,16 +20,32 @@ export async function GET(request: NextRequest) {
   const major = searchParams.get('major');
   const includeTree = searchParams.get('include') === 'tree';
   const isKonkurParam = searchParams.get('isKonkur');
+  const isFinalParam = searchParams.get('isFinal');
+
+  if (isKonkurParam !== null && isKonkurParam !== 'true' && isKonkurParam !== 'false') {
+    return NextResponse.json({ error: 'isKonkur باید true یا false باشد' }, { status: 400 });
+  }
+  if (isFinalParam !== null && isFinalParam !== 'true' && isFinalParam !== 'false') {
+    return NextResponse.json({ error: 'isFinal باید true یا false باشد' }, { status: 400 });
+  }
 
   const where: Record<string, unknown> = { isActive: true };
-  if (isKonkurParam === 'true') where.isKonkur = true;
-  if (isKonkurParam === 'false') where.isKonkur = false;
-  if (grade || major) {
+  const gradeEligibility = {
+    ...(isKonkurParam === 'true' ? { isKonkur: true } : {}),
+    ...(isKonkurParam === 'false' ? { isKonkur: false } : {}),
+    ...(isFinalParam === 'true' ? { isFinal: true } : {}),
+    ...(isFinalParam === 'false' ? { isFinal: false } : {}),
+  };
+  const gradeScope = {
+    ...(grade ? { grade } : {}),
+    ...(major ? { major } : {}),
+    ...gradeEligibility,
+  };
+  if (grade || major || isKonkurParam !== null || isFinalParam !== null) {
     where.grades = {
       some: {
-        ...(grade ? { grade } : {}),
-        ...(major ? { major } : {}),
         isActive: true,
+        ...gradeScope,
       },
     };
   }
@@ -39,7 +56,7 @@ export async function GET(request: NextRequest) {
     include: includeTree
       ? {
           grades: {
-            where: { isActive: true },
+            where: { isActive: true, ...gradeScope },
             orderBy: { sortOrder: 'asc' },
             include: {
               chapters: {
@@ -52,15 +69,18 @@ export async function GET(request: NextRequest) {
                   },
                 },
               },
+              topicModes: {
+                where: { isActive: true },
+                orderBy: { modeNo: 'asc' },
+                include: {
+                  subtopics: { where: { isActive: true }, orderBy: { subtopicNo: 'asc' } },
+                },
+              },
             },
-          },
-          topicModes: {
-            where: { isActive: true },
-            orderBy: { modeNo: 'asc' },
           },
         }
       : {
-          grades: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } },
+          grades: { where: { isActive: true, ...gradeScope }, orderBy: { sortOrder: 'asc' } },
         },
   });
 
@@ -68,7 +88,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/subjects
-// Body: { name, color?, icon?, isKonkur?, sortOrder? }
+// Body: { name, color?, icon?, sortOrder? }
 // Authorization: SUPER_ADMIN only.
 //
 // Reactivation behavior: if a subject with the same name exists but is
@@ -81,10 +101,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, color, icon, isKonkur, sortOrder } = body;
+    const { name, color, icon, sortOrder } = body;
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'نام درس الزامی است' }, { status: 400 });
+    }
+    if (color !== undefined && typeof color !== 'string') {
+      return NextResponse.json({ error: 'رنگ درس باید متن باشد' }, { status: 400 });
+    }
+    if (icon !== undefined && icon !== null && typeof icon !== 'string') {
+      return NextResponse.json({ error: 'آیکن درس باید متن یا null باشد' }, { status: 400 });
+    }
+    if (sortOrder !== undefined && (!Number.isInteger(sortOrder) || sortOrder < 0)) {
+      return NextResponse.json({ error: 'ترتیب درس باید عدد صحیح نامنفی باشد' }, { status: 400 });
     }
 
     // Normalize the name (Persian Yeh/Kaf, spaces, etc.) for deduplication.
@@ -120,7 +149,6 @@ export async function POST(request: NextRequest) {
           normalizedName,
           color: color || existing.color,
           icon: icon !== undefined ? icon : existing.icon,
-          isKonkur: typeof isKonkur === 'boolean' ? isKonkur : existing.isKonkur,
           sortOrder: typeof sortOrder === 'number' ? sortOrder : existing.sortOrder,
         },
       });
@@ -133,7 +161,6 @@ export async function POST(request: NextRequest) {
         normalizedName,
         color: color || '#3EB489',
         icon: icon || null,
-        isKonkur: Boolean(isKonkur),
         sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
       },
     });

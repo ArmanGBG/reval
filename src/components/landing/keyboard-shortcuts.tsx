@@ -14,19 +14,15 @@ type SectionShortcut = {
 
 const SECTIONS: SectionShortcut[] = [
   { key: "1", id: "top", label: "آغاز" },
-  { key: "2", id: "features", label: "قابلیت‌ها" },
-  { key: "3", id: "comparison", label: "مقایسه" },
-  { key: "4", id: "pricing", label: "قیمت" },
-  { key: "5", id: "day-in-life", label: "روز با روال" },
-  { key: "6", id: "team", label: "تیم" },
-  { key: "7", id: "faq", label: "سوالات" },
+  { key: "2", id: "features", label: "دموی محصول" },
+  { key: "3", id: "team", label: "تیم" },
 ];
 
 /**
  * Global keyboard shortcuts for power users.
  *
  * Keys:
- *   1-6  — Jump to each section (smooth scroll)
+ *   1-3  — Jump to each section (smooth scroll)
  *   ?    — Toggle this help overlay
  *   Home — Scroll to top
  *   End  — Scroll to bottom
@@ -100,7 +96,7 @@ export function KeyboardShortcuts() {
         return;
       }
 
-      // Number keys 1-6 for sections
+      // Number keys 1-3 for sections
       const section = SECTIONS.find((s) => s.key === e.key);
       if (section) {
         e.preventDefault();

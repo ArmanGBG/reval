@@ -1,8 +1,7 @@
 // ===== Task Service =====
 // Single source of truth for all task API operations.
 // The Zustand store calls these functions and keeps a local cache for UI.
-// The DB (via /api/tasks) is the canonical data store — never read tasks
-// from MOCK_TASKS for display; always go through this service.
+// The DB (via /api/tasks) is the canonical data store for displayed tasks.
 
 import { Task } from '@/lib/types';
 import { apiFetch, parseError } from '@/lib/api-client';
@@ -30,8 +29,14 @@ export interface CreateTaskPayload {
   topicId?: string | null;
   topicIds?: string[];
   topicModeId?: string | null;
+  curriculumMode?: Task['curriculumMode'];
+  topicModeSubtopicIds?: string[];
   pageStart?: number | null;
   pageEnd?: number | null;
+  teacherClassName?: string | null;
+  sessionNumber?: string | null;
+  bookName?: string | null;
+  testDescription?: string | null;
 }
 
 export type UpdateTaskPayload = Omit<Partial<CreateTaskPayload>, 'subjectId'> & {
@@ -106,8 +111,23 @@ function normalizeTask(raw: Record<string, unknown>): Task {
         })
       : [],
     topicModeId: (raw.topicModeId as string | null) ?? null,
+    curriculumMode: raw.curriculumMode === 'BOOK' || raw.curriculumMode === 'THEMATIC' ? raw.curriculumMode : null,
+    topicModeSubtopicIds: Array.isArray(raw.topicModeSubtopicIds)
+      ? raw.topicModeSubtopicIds.filter((id): id is string => typeof id === 'string')
+      : [],
+    topicModeSubtopics: Array.isArray(raw.topicModeSubtopics)
+      ? raw.topicModeSubtopics.filter((subtopic): subtopic is { id: string; title: string; subtopicNo: number; topicModeId: string } => {
+          if (!subtopic || typeof subtopic !== 'object') return false;
+          const value = subtopic as Record<string, unknown>;
+          return typeof value.id === 'string' && typeof value.title === 'string' && typeof value.subtopicNo === 'number' && typeof value.topicModeId === 'string';
+        })
+      : [],
     pageStart: (raw.pageStart as number | null) ?? null,
     pageEnd: (raw.pageEnd as number | null) ?? null,
+    teacherClassName: (raw.teacherClassName as string | null) ?? null,
+    sessionNumber: (raw.sessionNumber as string | null) ?? null,
+    bookName: (raw.bookName as string | null) ?? null,
+    testDescription: (raw.testDescription as string | null) ?? null,
   };
 }
 

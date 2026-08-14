@@ -538,14 +538,19 @@ function EditTaskModal({
   const [selection, setSelection] = useState<TaskSelection>(
     task.topic && task.topic !== 'عمومی'
       ? {
+          subjectId: task.subjectId ?? undefined,
           subjectName: task.subject,
           subjectColor: task.subjectColor,
           displayText: task.topic,
           chapterId: task.chapterId ?? undefined,
           topicId: task.topicId ?? undefined,
+          topicIds: task.topicIds ?? [],
           topicModeId: task.topicModeId ?? undefined,
+          curriculumMode: task.curriculumMode ?? undefined,
+          topicModeSubtopicIds: task.topicModeSubtopicIds ?? [],
         }
       : {
+          subjectId: task.subjectId ?? undefined,
           subjectName: task.subject,
           subjectColor: task.subjectColor,
         },
@@ -557,15 +562,21 @@ function EditTaskModal({
     (next: TaskSelection) => {
       setSelection(next);
       onUpdate({
+        subjectId: next.subjectId ?? task.subjectId ?? null,
         topic: next.displayText || 'عمومی',
         subject: next.subjectName || task.subject,
         subjectColor: next.subjectColor || task.subjectColor,
         chapterId: next.chapterId ?? null,
         topicId: next.topicId ?? null,
+        topicIds: next.topicIds ?? [],
         topicModeId: next.topicModeId ?? null,
+        curriculumMode: next.curriculumMode ?? null,
+        topicModeSubtopicIds: next.topicModeSubtopicIds ?? [],
+        pageStart: next.pageStart ?? null,
+        pageEnd: next.pageEnd ?? null,
       });
     },
-    [onUpdate, task.subject, task.subjectColor],
+    [onUpdate, task.subjectId, task.subject, task.subjectColor],
   );
 
   return (

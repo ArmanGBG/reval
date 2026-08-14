@@ -11,21 +11,8 @@ type SectionItem = {
 
 const SECTIONS: SectionItem[] = [
   { id: "top", label: "آغاز" },
-  { id: "features", label: "قابلیت‌ها" },
-  { id: "product-preview", label: "محصول" },
-  { id: "pricing", label: "قیمت" },
-  { id: "trusted-by", label: "اعتماد" },
-  { id: "comparison", label: "مقایسه" },
-  { id: "how-it-works", label: "نحوه کار" },
-  { id: "onboarding", label: "شروع" },
-  { id: "day-in-life", label: "روز با روال" },
-  { id: "milestones", label: "مسیر" },
-  { id: "achievements", label: "دستاوردها" },
-  { id: "calculator", label: "محاسبه" },
+  { id: "features", label: "دموی محصول" },
   { id: "team", label: "تیم" },
-  { id: "blog", label: "بلاگ" },
-  { id: "faq", label: "سوالات" },
-  { id: "testimonials", label: "نظرات" },
 ];
 
 /**

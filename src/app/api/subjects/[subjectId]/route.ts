@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from '@/lib/api-auth';
 import { normalizeSubjectName } from '@/lib/validators/normalize';
 
 // GET /api/subjects/:subjectId  — single subject with full tree
-// (grades → chapters → topics, plus topicModes)
+// (grades → chapters → topics → topicModes → subtopics)
 // Authorization: any authenticated user.
 export async function GET(
   request: NextRequest,
@@ -14,8 +14,8 @@ export async function GET(
   if (authError) return authError;
 
   const { subjectId } = await params;
-  const subject = await db.subject.findUnique({
-    where: { id: subjectId },
+  const subject = await db.subject.findFirst({
+    where: { id: subjectId, isActive: true },
     include: {
       grades: {
         where: { isActive: true },
@@ -31,11 +31,14 @@ export async function GET(
               },
             },
           },
+          topicModes: {
+            where: { isActive: true },
+            orderBy: { modeNo: 'asc' },
+            include: {
+              subtopics: { where: { isActive: true }, orderBy: { subtopicNo: 'asc' } },
+            },
+          },
         },
-      },
-      topicModes: {
-        where: { isActive: true },
-        orderBy: { modeNo: 'asc' },
       },
     },
   });
@@ -48,7 +51,7 @@ export async function GET(
 }
 
 // PATCH /api/subjects/:subjectId
-// Body: { name?, color?, icon?, isKonkur?, isActive?, sortOrder? }
+// Body: { name?, color?, icon?, isActive?, sortOrder? }
 // Authorization: SUPER_ADMIN only.
 export async function PATCH(
   request: NextRequest,
@@ -60,7 +63,7 @@ export async function PATCH(
   const { subjectId } = await params;
   try {
     const body = await request.json();
-    const allowed = ['name', 'color', 'icon', 'isKonkur', 'isActive', 'sortOrder'];
+    const allowed = ['name', 'color', 'icon', 'isActive', 'sortOrder'];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (body[key] !== undefined) data[key] = body[key];
@@ -71,6 +74,18 @@ export async function PATCH(
         { error: 'هیچ فیلدی برای به‌روزرسانی ارسال نشده' },
         { status: 400 },
       );
+    }
+    if (data.color !== undefined && typeof data.color !== 'string') {
+      return NextResponse.json({ error: 'رنگ درس باید متن باشد' }, { status: 400 });
+    }
+    if (data.icon !== undefined && data.icon !== null && typeof data.icon !== 'string') {
+      return NextResponse.json({ error: 'آیکن درس باید متن یا null باشد' }, { status: 400 });
+    }
+    if (data.isActive !== undefined && typeof data.isActive !== 'boolean') {
+      return NextResponse.json({ error: 'isActive باید boolean باشد' }, { status: 400 });
+    }
+    if (data.sortOrder !== undefined && (!Number.isInteger(data.sortOrder) || (data.sortOrder as number) < 0)) {
+      return NextResponse.json({ error: 'ترتیب درس باید عدد صحیح نامنفی باشد' }, { status: 400 });
     }
 
     // If renaming, normalize + ensure uniqueness by normalizedName

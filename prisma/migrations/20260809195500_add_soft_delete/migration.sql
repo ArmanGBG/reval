@@ -1,2 +1,0 @@
-ALTER TABLE "User" ADD COLUMN "deletedAt" TIMESTAMP(3);
-ALTER TABLE "Institute" ADD COLUMN "deletedAt" TIMESTAMP(3);

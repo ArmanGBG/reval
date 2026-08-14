@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canCreateTaskForStudent, canModifyTask, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
+import { requireAuth, canCreateTaskForStudent, canModifyTask, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskTopicInclude } from '@/lib/task-api';
 
@@ -61,12 +61,6 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-      if (!isValidTaskPageRange(t.pageStart, t.pageEnd)) {
-        return NextResponse.json(
-          { error: `tasks[${i}]: بازه صفحه معتبر نیست` },
-          { status: 400 },
-        );
-      }
       const status = t.status ?? legacyTaskStatus(t.detailsCompleted, t.completed ?? null);
       if (!isTaskStatus(status)) return NextResponse.json({ error: `tasks[${i}]: status معتبر نیست` }, { status: 400 });
       const lifecycleError = validateTaskLifecycle(status, t.detailsCompleted, t.completed ?? null);
@@ -84,30 +78,36 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-      const subject = await getEligibleTaskSubject(t.studentId, t.subjectId, t.fieldType);
-      if (!subject) {
-        return NextResponse.json(
-          { error: `tasks[${i}]: درس برای دانش‌آموز مجاز نیست` },
-          { status: 400 },
-        );
-      }
-      const curriculum = await validateTaskCurriculum(t);
-      if (!curriculum) return NextResponse.json({ error: `tasks[${i}]: شناسه‌های برنامه درسی ناسازگارند` }, { status: 400 });
+      const curriculum = await validateTaskCurriculum({ ...t, studentId: t.studentId, subjectId: t.subjectId, fieldType: t.fieldType });
+      if (!curriculum) return NextResponse.json({ error: `tasks[${i}]: ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست` }, { status: 400 });
 
       // Derive createdBy/createdById from session (not body) to prevent spoofing.
       const sessionCreatedBy = permission.createdBy;
       const sessionCreatedById =
         permission.createdBy === 'advisor' ? ctx.userId : null;
+      const hasClassVideo = Array.isArray(t.activityTypes) && t.activityTypes.includes('کلاس/ویدیو');
+      const hasTestDetails = Array.isArray(t.activityTypes) && (t.activityTypes.includes('تست آموزشی') || t.activityTypes.includes('تست سنجشی'));
       prepared.push({
          ...t,
-         status,
-        subjectId: subject.id,
-        subject: subject.name,
-        subjectColor: subject.color,
+        status,
+        subjectId: curriculum.subject.id,
+        subject: curriculum.subject.name,
+        subjectColor: curriculum.subject.color,
         topic: curriculum.topic,
         topicIds: curriculum.topicIds,
+        topicModeSubtopicIds: curriculum.subtopicIds,
+        curriculumMode: curriculum.mode,
+        chapterId: curriculum.chapterId,
+        topicId: curriculum.topicId,
+        topicModeId: curriculum.topicModeId,
+        pageStart: curriculum.pageStart,
+        pageEnd: curriculum.pageEnd,
         createdBy: sessionCreatedBy,
         createdById: sessionCreatedById,
+        teacherClassName: hasClassVideo && typeof t.teacherClassName === 'string' ? t.teacherClassName.trim() || null : null,
+        sessionNumber: hasClassVideo && typeof t.sessionNumber === 'string' ? t.sessionNumber.trim() || null : null,
+        bookName: hasTestDetails && typeof t.bookName === 'string' ? t.bookName.trim() || null : null,
+        testDescription: hasTestDetails && typeof t.testDescription === 'string' ? t.testDescription.trim() || null : null,
       });
     }
 
@@ -143,14 +143,36 @@ export async function POST(request: NextRequest) {
             topicId: typeof t.topicId === 'string' ? t.topicId : null,
             topicModeId:
               typeof t.topicModeId === 'string' ? t.topicModeId : null,
+            curriculumMode: t.curriculumMode as 'BOOK' | 'THEMATIC',
             pageStart: typeof t.pageStart === 'number' ? t.pageStart : null,
             pageEnd: typeof t.pageEnd === 'number' ? t.pageEnd : null,
+            teacherClassName: (t.teacherClassName as string | null) ?? null,
+            sessionNumber: (t.sessionNumber as string | null) ?? null,
+            bookName: (t.bookName as string | null) ?? null,
+            testDescription: (t.testDescription as string | null) ?? null,
             topics: { create: Array.isArray(t.topicIds) ? t.topicIds.map((topicId) => ({ topicId: topicId as string })) : [] },
+            topicModeSubtopics: { create: Array.isArray(t.topicModeSubtopicIds) ? t.topicModeSubtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId: topicModeSubtopicId as string })) : [] },
           },
           include: taskTopicInclude,
         }),
       ),
     );
+
+    const suggestions = prepared.flatMap((t) => {
+      const values: Array<{ studentId: string; subjectId: string; type: string; value: string }> = [];
+      if (typeof t.teacherClassName === 'string' && t.teacherClassName.trim()) {
+        values.push({ studentId: t.studentId as string, subjectId: t.subjectId as string, type: 'teacherClass', value: t.teacherClassName.trim() });
+      }
+      if (typeof t.bookName === 'string' && t.bookName.trim()) {
+        values.push({ studentId: t.studentId as string, subjectId: t.subjectId as string, type: 'book', value: t.bookName.trim() });
+      }
+      return values;
+    });
+    await Promise.all(suggestions.map((suggestion) => db.taskDetailSuggestion.upsert({
+      where: { studentId_subjectId_type_value: suggestion },
+      create: suggestion,
+      update: { createdAt: new Date() },
+    }))).catch((error) => console.error('Saving batch task suggestions failed:', error));
 
     const parsed = created.map((t) => parseTaskResponse({ ...t }));
 

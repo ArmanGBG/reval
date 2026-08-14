@@ -21,8 +21,6 @@ import { createPublicCode } from '@/lib/public-code';
 //   avatar           string  optional (emoji, defaults to 🦊)
 //   grade            string  optional (دهم | یازدهم | دوازدهم | فارغ‌التحصیل) — STUDENT only
 //   major            string  optional (تجربی | ریاضی | انسانی) — STUDENT only
-//   goal             string  optional (کنکور | نهایی | هر دو)
-//   dailyTargetHours number  optional (default 6) — STUDENT only
 //   otp              string  required, six digits verified server-side
 //
 // Returns: { user, token, message } and sets the `reval-session` httpOnly cookie.
@@ -35,11 +33,6 @@ export async function POST(request: NextRequest) {
     const avatar = typeof body.avatar === 'string' && body.avatar ? body.avatar : '🦊';
     const grade = typeof body.grade === 'string' ? body.grade : null;
     const major = typeof body.major === 'string' ? body.major : null;
-    const goal = typeof body.goal === 'string' ? body.goal : null;
-    const dailyTargetHours =
-      typeof body.dailyTargetHours === 'number' && body.dailyTargetHours > 0
-        ? Math.min(Math.floor(body.dailyTargetHours), 16)
-        : 6;
     const role = 'STUDENT' as const;
 
     if (!phone) {
@@ -85,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await db.user.create({
-      data: { phone: normalizedPhone, name, avatar, role, publicCode: await createPublicCode('STU'), grade: grade || 'دوازدهم', major: major || 'تجربی', goal: goal || 'کنکور', dailyTargetHours, isActive: true, phoneVerifiedAt: new Date() },
+      data: { phone: normalizedPhone, name, avatar, role, publicCode: await createPublicCode('STU'), grade: grade || 'دوازدهم', major: major || 'تجربی', isActive: true, phoneVerifiedAt: new Date() },
     });
 
     // Strip password before returning.

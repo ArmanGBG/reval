@@ -14,6 +14,8 @@ export async function GET(
   if (authError) return authError;
 
   const { subjectId } = await params;
+  const subject = await db.subject.findFirst({ where: { id: subjectId, isActive: true }, select: { id: true } });
+  if (!subject) return NextResponse.json({ error: 'درس یافت نشد' }, { status: 404 });
   const grades = await db.gradeSubject.findMany({
     where: { subjectId, isActive: true },
     orderBy: { sortOrder: 'asc' },
@@ -22,7 +24,7 @@ export async function GET(
 }
 
 // POST /api/subjects/:subjectId/grades
-// Body: { grade, major, sortOrder? }
+// Body: { grade, major, sortOrder?, isKonkur?, isFinal? }
 // Validates grade ∈ {دهم, یازدهم, دوازدهم} and major ∈ {تجربی, ریاضی, انسانی}.
 export async function POST(
   request: NextRequest,
@@ -34,7 +36,7 @@ export async function POST(
   const { subjectId } = await params;
   try {
     const body = await request.json();
-    const { grade, major, sortOrder } = body;
+    const { grade, major, sortOrder, isKonkur, isFinal } = body;
     if (!grade || !major) {
       return NextResponse.json(
         { error: 'پایه و رشته الزامی است' },
@@ -53,9 +55,18 @@ export async function POST(
         { status: 400 },
       );
     }
+    if (typeof isKonkur !== 'boolean' || typeof isFinal !== 'boolean') {
+      return NextResponse.json({ error: 'isKonkur و isFinal باید boolean باشند' }, { status: 400 });
+    }
+    if (!isKonkur && !isFinal) {
+      return NextResponse.json({ error: 'حداقل یکی از وضعیت‌های کنکور یا نهایی باید فعال باشد' }, { status: 400 });
+    }
+    if (sortOrder !== undefined && (!Number.isInteger(sortOrder) || sortOrder < 0)) {
+      return NextResponse.json({ error: 'ترتیب باید عدد صحیح نامنفی باشد' }, { status: 400 });
+    }
 
     // Verify subject exists
-    const subject = await db.subject.findUnique({ where: { id: subjectId } });
+    const subject = await db.subject.findFirst({ where: { id: subjectId, isActive: true } });
     if (!subject) {
       return NextResponse.json({ error: 'درس یافت نشد' }, { status: 404 });
     }
@@ -78,6 +89,8 @@ export async function POST(
         data: {
           isActive: true,
           sortOrder: typeof sortOrder === 'number' ? sortOrder : existing.sortOrder,
+          isKonkur,
+          isFinal,
         },
       });
       return NextResponse.json({ gradeSubject: reactivated, reactivated: true });
@@ -89,6 +102,8 @@ export async function POST(
         grade,
         major,
         sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
+        isKonkur,
+        isFinal,
       },
     });
     return NextResponse.json({ gradeSubject }, { status: 201 });

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Header } from './header';
 import { Hero } from './hero';
-import { Features } from './features';
+import { InteractiveDemo } from './interactive-demo';
 import { Team } from './team';
 import { Footer } from './footer';
 import { FloatingLines } from './floating-lines';
@@ -69,7 +69,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-background noise font-yekan">
+      <div className="relative isolate flex min-h-screen flex-col overflow-x-clip bg-background noise font-yekan">
         <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />
         <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
         <FloatingLines />
@@ -78,7 +78,7 @@ export default function LandingPage() {
 
         <main className="relative z-10 flex-1">
           <Hero />
-          <Features />
+          <InteractiveDemo />
           <Team />
         </main>
         <Footer />

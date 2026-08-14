@@ -111,7 +111,6 @@ export default function DataExportHelper() {
               name: user.name,
               grade: user.grade,
               major: user.major,
-              goal: user.goal,
             }
           : null,
         stats: {

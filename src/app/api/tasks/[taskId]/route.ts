@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canModifyTask, canViewStudentTasks, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
-import { isStudentAdvisorTaskPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
+import { requireAuth, canModifyTask, canViewStudentTasks, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
+import { isAdvisorMoveTaskPatch, isAdvisorPlanTaskPatch, isStudentAdvisorTaskPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskPatchData, taskTopicInclude } from '@/lib/task-api';
 
 // GET /api/tasks/[taskId] — Get a single task
@@ -26,7 +26,7 @@ export async function GET(
   }
 
   // Ownership check
-  const allowed = await canModifyTask(ctx, taskId);
+  const allowed = await canViewStudentTasks(ctx, task.studentId);
   if (!allowed) {
     return NextResponse.json(
       { error: 'دسترسی به این تسک مجاز نیست' },
@@ -65,6 +65,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
     }
     if (!(await canViewStudentTasks(ctx, existing.studentId))) return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
+    if (ctx.user.role === 'ADVISOR') {
+      const planPatch = isAdvisorPlanTaskPatch(body);
+      const movePatch = isAdvisorMoveTaskPatch(body) && (existing.status === 'PENDING' || existing.status === 'INCOMPLETE');
+      if ((!planPatch && !movePatch) || (planPatch && (existing.status === 'COMPLETED' || existing.status === 'SKIPPED'))) {
+        return NextResponse.json({ error: 'مشاور فقط می‌تواند برنامه تسک‌های فعال ساخته‌شده توسط خودش را ویرایش کند' }, { status: 403 });
+      }
+    }
 
     // createdBy and createdById are intentionally NOT in the allowed list —
     // they're immutable after creation to prevent spoofing.
@@ -84,13 +91,27 @@ export async function PATCH(
       'chapterId',
       'topicId',
       'topicModeId',
+      'curriculumMode',
       'pageStart',
       'pageEnd',
+      'teacherClassName',
+      'sessionNumber',
+      'bookName',
+      'testDescription',
     ];
 
     const data = taskPatchData(body, allowed);
 
-    if (Object.keys(data).length === 0) {
+    for (const field of ['teacherClassName', 'sessionNumber', 'bookName', 'testDescription'] as const) {
+      if (field in body) {
+        if (body[field] !== null && typeof body[field] !== 'string') {
+          return NextResponse.json({ error: `${field} باید متن یا null باشد` }, { status: 400 });
+        }
+        data[field] = typeof body[field] === 'string' ? body[field].trim() || null : null;
+      }
+    }
+
+    if (Object.keys(data).length === 0 && !('topicIds' in body) && !('topicModeSubtopicIds' in body)) {
       return NextResponse.json(
         { error: 'هیچ فیلدی برای به‌روزرسانی ارسال نشده' },
         { status: 400 },
@@ -100,19 +121,36 @@ export async function PATCH(
     const fieldType = body.fieldType ?? existing.fieldType;
     const subjectId = body.subjectId ?? existing.subjectId;
     if (!isTaskFieldType(fieldType) || typeof subjectId !== 'string') return NextResponse.json({ error: 'subjectId یا fieldType معتبر نیست' }, { status: 400 });
-    const subject = await getEligibleTaskSubject(existing.studentId, subjectId, fieldType);
-    if (!subject) return NextResponse.json({ error: 'درس برای دانش‌آموز مجاز نیست' }, { status: 400 });
-    const pageStart = 'pageStart' in body ? body.pageStart : existing.pageStart;
-    const pageEnd = 'pageEnd' in body ? body.pageEnd : existing.pageEnd;
-    if (!isValidTaskPageRange(pageStart, pageEnd)) return NextResponse.json({ error: 'بازه صفحه معتبر نیست' }, { status: 400 });
+    const curriculumMode = 'curriculumMode' in body ? body.curriculumMode : existing.curriculumMode;
+    const isBook = curriculumMode === 'BOOK';
+    const isThematic = curriculumMode === 'THEMATIC';
+    const chapterChanged = 'chapterId' in body && body.chapterId !== existing.chapterId;
+    const topicIds = 'topicIds' in body
+      ? body.topicIds
+      : chapterChanged
+        ? []
+        : existing.topics.map((item) => item.topicId);
+    const topicId = 'topicId' in body
+      ? body.topicId
+      : 'topicIds' in body
+        ? Array.isArray(body.topicIds) ? body.topicIds[0] ?? null : null
+        : chapterChanged
+          ? null
+          : existing.topicId;
     const curriculum = await validateTaskCurriculum({
+      studentId: existing.studentId,
       subjectId,
-      chapterId: 'chapterId' in body ? body.chapterId : existing.chapterId,
-      topicId: 'topicId' in body ? body.topicId : existing.topicId,
-      topicIds: 'topicIds' in body ? body.topicIds : existing.topics.map((item) => item.topicId),
-      topicModeId: 'topicModeId' in body ? body.topicModeId : existing.topicModeId,
+      fieldType,
+      curriculumMode,
+      chapterId: 'chapterId' in body ? body.chapterId : isBook ? existing.chapterId : null,
+      topicId: isBook ? topicId : null,
+      topicIds: isBook ? topicIds : [],
+      topicModeId: 'topicModeId' in body ? body.topicModeId : isThematic ? existing.topicModeId : null,
+      topicModeSubtopicIds: 'topicModeSubtopicIds' in body ? body.topicModeSubtopicIds : isThematic ? existing.topicModeSubtopics.map((item) => item.topicModeSubtopicId) : [],
+      pageStart: 'pageStart' in body ? body.pageStart : isBook ? existing.pageStart : null,
+      pageEnd: 'pageEnd' in body ? body.pageEnd : isBook ? existing.pageEnd : null,
     });
-    if (!curriculum) return NextResponse.json({ error: 'شناسه‌های برنامه درسی با درس انتخابی سازگار نیستند' }, { status: 400 });
+    if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
     const detailsCompleted = body.detailsCompleted !== undefined ? body.detailsCompleted : existing.detailsCompleted;
     if (typeof detailsCompleted !== 'boolean') return NextResponse.json({ error: 'detailsCompleted باید boolean باشد' }, { status: 400 });
     let existingActivityTypes: unknown = null;
@@ -134,12 +172,37 @@ export async function PATCH(
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
     if ((body.completed === true || body.completed === false) && !detailsCompleted) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
-    data.subjectId = subject.id;
-    data.subject = subject.name;
-    data.subjectColor = subject.color;
+    if (status === 'COMPLETED') {
+      if (body.actualTimeMinutes === undefined && existing.actualTimeMinutes === null) {
+        data.actualTimeMinutes = targetTimeMinutes;
+      }
+      if (body.actualTestCount === undefined && existing.actualTestCount === null) {
+        data.actualTestCount = targetTestCount;
+      }
+    }
+    data.subjectId = curriculum.subject.id;
+    data.subject = curriculum.subject.name;
+    data.subjectColor = curriculum.subject.color;
     data.topic = curriculum.topic;
     data.status = status;
-    if ('topicIds' in body) data.topics = { deleteMany: {}, create: curriculum.topicIds.map((topicId) => ({ topicId })) };
+    data.curriculumMode = curriculum.mode;
+    data.chapterId = curriculum.chapterId;
+    data.topicId = curriculum.topicId;
+    data.topicModeId = curriculum.topicModeId;
+    data.pageStart = curriculum.pageStart;
+    data.pageEnd = curriculum.pageEnd;
+    data.topics = { deleteMany: {}, create: curriculum.topicIds.map((topicId) => ({ topicId })) };
+    data.topicModeSubtopics = { deleteMany: {}, create: curriculum.subtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId })) };
+    const hasClassVideo = Array.isArray(activityTypes) && activityTypes.includes('کلاس/ویدیو');
+    const hasTestDetails = Array.isArray(activityTypes) && (activityTypes.includes('تست آموزشی') || activityTypes.includes('تست سنجشی'));
+    if (!hasClassVideo) {
+      data.teacherClassName = null;
+      data.sessionNumber = null;
+    }
+    if (!hasTestDetails) {
+      data.bookName = null;
+      data.testDescription = null;
+    }
 
     // If activityTypes is provided, serialize array to JSON string
     if (data.activityTypes !== undefined) {
@@ -186,6 +249,56 @@ export async function PATCH(
       data,
       include: taskTopicInclude,
     });
+
+    // Save suggestions for teacher/class name and book name if they were updated
+    const suggestionPromises: Promise<void>[] = [];
+    if (hasClassVideo && 'teacherClassName' in body && typeof body.teacherClassName === 'string' && body.teacherClassName.trim() !== '') {
+      suggestionPromises.push(
+        db.taskDetailSuggestion.upsert({
+          where: {
+            studentId_subjectId_type_value: {
+              studentId: existing.studentId,
+              subjectId: curriculum.subject.id,
+              type: 'teacherClass',
+              value: body.teacherClassName.trim(),
+            },
+          },
+          create: {
+            studentId: existing.studentId,
+            subjectId: curriculum.subject.id,
+            type: 'teacherClass',
+            value: body.teacherClassName.trim(),
+          },
+          update: {
+            createdAt: new Date(),
+          },
+        }).then(() => {})
+      );
+    }
+    if (hasTestDetails && 'bookName' in body && typeof body.bookName === 'string' && body.bookName.trim() !== '') {
+      suggestionPromises.push(
+        db.taskDetailSuggestion.upsert({
+          where: {
+            studentId_subjectId_type_value: {
+              studentId: existing.studentId,
+              subjectId: curriculum.subject.id,
+              type: 'book',
+              value: body.bookName.trim(),
+            },
+          },
+          create: {
+            studentId: existing.studentId,
+            subjectId: curriculum.subject.id,
+            type: 'book',
+            value: body.bookName.trim(),
+          },
+          update: {
+            createdAt: new Date(),
+          },
+        }).then(() => {})
+      );
+    }
+    await Promise.all(suggestionPromises).catch((error) => console.error('Saving task suggestions failed:', error));
 
     const parsed = parseTaskResponse({ ...task });
     return NextResponse.json({ task: parsed });

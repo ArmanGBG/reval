@@ -4,13 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
-  Sparkles,
-  ClipboardCheck,
-  ListTodo,
-  Flame,
-  Trophy,
-  Target,
-  Brain,
   Mail,
   CheckCheck,
 } from 'lucide-react';
@@ -20,12 +13,6 @@ import { toPersianDigits } from '@/lib/persian-date';
 
 // ===== Icon mapping =====
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  ClipboardCheck,
-  ListTodo,
-  Flame,
-  Trophy,
-  Target,
-  Brain,
   Mail,
 };
 
@@ -228,13 +215,13 @@ export default function NotificationCenter() {
               /* Empty state */
               <div className="flex flex-col items-center justify-center py-10 px-4">
                 <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center mb-3">
-                  <Sparkles className="w-6 h-6 text-[var(--accent)]" />
+                  <Mail className="w-6 h-6 text-[var(--accent)]" />
                 </div>
                 <p className="text-sm font-medium text-[var(--foreground)]">
-                  اعلانی جدید نیست 🎉
+                  پیام جدیدی نیست
                 </p>
                 <p className="text-xs text-[var(--foreground-muted)] mt-1">
-                  همه‌چیز روبراهه!
+                  پیام‌های مشاور و مدیریت اینجا نمایش داده می‌شوند
                 </p>
               </div>
             ) : (

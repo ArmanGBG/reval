@@ -25,7 +25,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Subject, Chapter } from '@/lib/subjects-types';
 
 // ============================================================
@@ -56,7 +55,6 @@ interface ChapterRow {
   title: string;
   pageStart: string; // string for input binding, parsed on save
   pageEnd: string;
-  isLastPage: boolean;
   dirty: boolean; // has unsaved changes
   saving: boolean;
   saved: boolean; // recently saved (for visual feedback)
@@ -69,7 +67,6 @@ interface TopicRow {
   title: string;
   pageStart: string;
   pageEnd: string;
-  isLastPage: boolean;
   dirty: boolean;
   saving: boolean;
   saved: boolean;
@@ -80,6 +77,7 @@ interface CurriculumWizardProps {
   /** Pre-select grade & jump to chapters on mount (from grade completion overview) */
   initialGrade?: Grade;
   initialMajor?: Major;
+  onRefresh?: () => void | Promise<void>;
 }
 
 const STEPS = [
@@ -92,7 +90,7 @@ const STEPS = [
 // ============================================================
 // Main Component
 // ============================================================
-export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: CurriculumWizardProps) {
+export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefresh }: CurriculumWizardProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(
     initialGrade && initialMajor ? 4 : 1,
   );
@@ -207,10 +205,11 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
         const res = await fetch(`/api/subjects/${subjId}/grades`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ grade: g, major: m }),
+          body: JSON.stringify({ grade: g, major: m, isKonkur: true, isFinal: true }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'خطا در ایجاد پایه برای درس');
+        await onRefresh?.();
         return data.gradeSubject.id as string;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'خطا در ایجاد پایه برای درس';
@@ -220,7 +219,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
         setGradeSubjectLoading(false);
       }
     },
-    [findExistingGradeSubject],
+    [findExistingGradeSubject, onRefresh],
   );
 
   // ============================================================
@@ -245,7 +244,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
             title: c.title,
             pageStart: c.pageStart != null ? String(c.pageStart) : '',
             pageEnd: c.pageEnd != null ? String(c.pageEnd) : '',
-            isLastPage: c.isLastPage,
             dirty: false,
             saving: false,
             saved: false,
@@ -263,7 +261,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
                 title: t.title,
                 pageStart: t.pageStart != null ? String(t.pageStart) : '',
                 pageEnd: t.pageEnd != null ? String(t.pageEnd) : '',
-                isLastPage: t.isLastPage,
                 dirty: false,
                 saving: false,
                 saved: false,
@@ -320,7 +317,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
           name: newSubjectName.trim(),
           color: '#5E6AD2',
           icon: '📚',
-          isKonkur: true,
           sortOrder: 0,
         }),
       });
@@ -328,9 +324,9 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
       if (!res.ok) throw new Error(data.error || 'خطا در ایجاد درس');
       toast.success(`درس «${data.subject.name}» ایجاد شد`);
       // Refresh subjects list and select the new one
-      await fetchSubjects();
+      const refreshedSubjects = await fetchSubjects();
       setNewSubjectName('');
-      handleSelectSubject(data.subject.id);
+      handleSelectSubject(data.subject.id, refreshedSubjects);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'خطا در ایجاد درس';
       toast.error(msg);
@@ -368,7 +364,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount
 
   // ============================================================
@@ -408,7 +403,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
         title: '',
         pageStart: '',
         pageEnd: '',
-        isLastPage: false,
         dirty: false,
         saving: false,
         saved: false,
@@ -452,12 +446,21 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
       toast.error('عنوان فصل الزامی است');
       return;
     }
-    if (!row.pageStart && !row.isLastPage) {
-      toast.error('صفحه شروع الزامی است');
+    if (!Number.isInteger(row.chapterNo) || row.chapterNo < 0) {
+      toast.error('شماره فصل باید عدد صحیح نامنفی باشد');
       return;
     }
-    if (!row.isLastPage && !row.pageEnd) {
-      toast.error('صفحه پایان الزامی است (یا «تا پایان کتاب» را فعال کنید)');
+    if (Boolean(row.pageStart) !== Boolean(row.pageEnd)) {
+      toast.error('صفحه شروع و پایان باید هر دو وارد شوند یا هر دو خالی باشند');
+      return;
+    }
+    if (row.pageStart && Number(row.pageStart) > Number(row.pageEnd)) {
+      toast.error('صفحه پایان باید بزرگ‌تر یا مساوی صفحه شروع باشد');
+      return;
+    }
+    if ((row.pageStart && (!Number.isInteger(Number(row.pageStart)) || Number(row.pageStart) < 1)) ||
+        (row.pageEnd && (!Number.isInteger(Number(row.pageEnd)) || Number(row.pageEnd) < 1))) {
+      toast.error('شماره صفحات باید عدد صحیح مثبت باشند');
       return;
     }
 
@@ -469,8 +472,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
         title: row.title.trim(),
         chapterNo: row.chapterNo,
         pageStart: row.pageStart ? Number(row.pageStart) : null,
-        pageEnd: row.isLastPage ? null : row.pageEnd ? Number(row.pageEnd) : null,
-        isLastPage: row.isLastPage,
+        pageEnd: row.pageEnd ? Number(row.pageEnd) : null,
       };
 
       let res: Response;
@@ -514,6 +516,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
           prev.map((c, i) => (i === idx ? { ...c, saved: false } : c)),
         );
       }, 1500);
+      await onRefresh?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'خطا در ذخیره فصل';
       toast.error(msg);
@@ -536,6 +539,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
           throw new Error(data.error || 'خطا در حذف فصل');
         }
         toast.success('فصل حذف شد');
+        await onRefresh?.();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'خطا در حذف فصل';
         toast.error(msg);
@@ -582,7 +586,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
             title: '',
             pageStart: '',
             pageEnd: '',
-            isLastPage: false,
             dirty: false,
             saving: false,
             saved: false,
@@ -638,12 +641,21 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
       toast.error('عنوان گفتار الزامی است');
       return;
     }
-    if (!row.pageStart && !row.isLastPage) {
-      toast.error('صفحه شروع الزامی است');
+    if (!Number.isInteger(row.topicNo) || row.topicNo < 0) {
+      toast.error('شماره گفتار باید عدد صحیح نامنفی باشد');
       return;
     }
-    if (!row.isLastPage && !row.pageEnd) {
-      toast.error('صفحه پایان الزامی است');
+    if (Boolean(row.pageStart) !== Boolean(row.pageEnd)) {
+      toast.error('صفحه شروع و پایان باید هر دو وارد شوند یا هر دو خالی باشند');
+      return;
+    }
+    if (row.pageStart && Number(row.pageStart) > Number(row.pageEnd)) {
+      toast.error('صفحه پایان باید بزرگ‌تر یا مساوی صفحه شروع باشد');
+      return;
+    }
+    if ((row.pageStart && (!Number.isInteger(Number(row.pageStart)) || Number(row.pageStart) < 1)) ||
+        (row.pageEnd && (!Number.isInteger(Number(row.pageEnd)) || Number(row.pageEnd) < 1))) {
+      toast.error('شماره صفحات باید عدد صحیح مثبت باشند');
       return;
     }
 
@@ -659,8 +671,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
         title: row.title.trim(),
         topicNo: row.topicNo,
         pageStart: row.pageStart ? Number(row.pageStart) : null,
-        pageEnd: row.isLastPage ? null : row.pageEnd ? Number(row.pageEnd) : null,
-        isLastPage: row.isLastPage,
+        pageEnd: row.pageEnd ? Number(row.pageEnd) : null,
       };
 
       let res: Response;
@@ -708,6 +719,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
           ),
         }));
       }, 1500);
+      await onRefresh?.();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'خطا در ذخیره گفتار';
       toast.error(msg);
@@ -736,6 +748,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
           throw new Error(data.error || 'خطا در حذف گفتار');
         }
         toast.success('گفتار حذف شد');
+        await onRefresh?.();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'خطا در حذف گفتار';
         toast.error(msg);
@@ -979,9 +992,6 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-sm font-bold text-[var(--foreground)] truncate">{s.name}</h4>
-                              {s.isKonkur && (
-                                <span className="text-[10px] font-semibold text-[var(--gold)]">کنکور</span>
-                              )}
                             </div>
                           </div>
                           {isAlreadyDefined && (
@@ -1035,7 +1045,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
                   </button>
                 </div>
                 <p className="text-[10px] text-[var(--foreground-subtle)] mt-2 leading-relaxed">
-                  درس جدید با رنگ و آیکون پیش‌فرض و وضعیت کنکورِ فعال ایجاد می‌شود. می‌توانید بعداً از تب «تنظیمات درس» آن را ویرایش کنید.
+                  درس جدید با رنگ و آیکون پیش‌فرض ایجاد می‌شود. وضعیت ارزیابی برای هر پایه/رشته جداگانه تنظیم می‌شود.
                 </p>
               </div>
 
@@ -1167,7 +1177,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
                   onValueChange={(v) => {
                     setExpandedChapterIdx(v || null);
                     if (v) {
-                      const ch = chapters[parseInt(v)];
+                      const ch = chapters.find((item) => item.clientId === v);
                       if (ch?.id) ensureTopicsLoaded(ch.id);
                     }
                   }}
@@ -1194,9 +1204,9 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor }: Curr
                                 {ch.title || `فصل ${toPersianDigits(ch.chapterNo)}`}
                               </p>
                               <p className="text-[10px] text-[var(--foreground-muted)] mt-0.5">
-                                {ch.isLastPage
-                                  ? `از صفحه ${toPersianDigits(ch.pageStart)} تا پایان کتاب`
-                                  : `صفحات ${toPersianDigits(ch.pageStart)} تا ${toPersianDigits(ch.pageEnd)}`}
+                                {ch.pageStart && ch.pageEnd
+                                  ? `صفحات ${toPersianDigits(ch.pageStart)} تا ${toPersianDigits(ch.pageEnd)}`
+                                  : 'بدون بازه صفحه'}
                                 {topics.length > 0 && ` · ${toPersianDigits(topics.length)} گفتار`}
                               </p>
                             </div>
@@ -1365,35 +1375,18 @@ function ChapterRowCard({
           />
         </div>
 
-        {/* Page end / isLastPage */}
+        {/* Page end */}
         <div className="md:col-span-3">
           <label className="text-[10px] font-medium text-[var(--foreground-muted)] mb-1 block">
             تا صفحه
           </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              value={row.isLastPage ? '' : row.pageEnd}
-              onChange={(e) => onChange({ pageEnd: e.target.value })}
-              disabled={row.isLastPage}
-              placeholder={row.isLastPage ? 'پایان کتاب' : ''}
-              className="flex-1 min-w-0 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-2 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/40 disabled:opacity-50"
-            />
-          </div>
-          <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer">
-            <Checkbox
-              checked={row.isLastPage}
-              onCheckedChange={(v) =>
-                onChange({
-                  isLastPage: v === true,
-                  pageEnd: v === true ? '' : row.pageEnd,
-                })
-              }
-              className="data-[state=checked]:bg-[var(--gold)] data-[state=checked]:border-[var(--gold)]"
-            />
-            <span className="text-[10px] text-[var(--foreground-muted)]">تا پایان کتاب</span>
-          </label>
+          <input
+            type="number"
+            min={1}
+            value={row.pageEnd}
+            onChange={(e) => onChange({ pageEnd: e.target.value })}
+            className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-2 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/40"
+          />
         </div>
       </div>
 
@@ -1421,7 +1414,7 @@ function ChapterRowCard({
         <div className="flex gap-1">
           <button
             onClick={onSave}
-            disabled={row.saving || !row.title.trim() || (!row.pageStart && !row.isLastPage)}
+            disabled={row.saving || !row.title.trim() || Boolean(row.pageStart) !== Boolean(row.pageEnd)}
             className="btn-hover glow-hover-gold h-8 px-3 rounded-lg bg-[var(--gold)] text-white font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
           >
             {row.saving ? (
@@ -1507,25 +1500,10 @@ function TopicRowCard({
           <input
             type="number"
             min={1}
-            value={row.isLastPage ? '' : row.pageEnd}
+            value={row.pageEnd}
             onChange={(e) => onChange({ pageEnd: e.target.value })}
-            disabled={row.isLastPage}
-            placeholder={row.isLastPage ? 'پایان کتاب' : ''}
-            className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-lg px-2 h-9 text-xs text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/40 disabled:opacity-50"
+            className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-lg px-2 h-9 text-xs text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/40"
           />
-          <label className="flex items-center gap-1.5 mt-1 cursor-pointer">
-            <Checkbox
-              checked={row.isLastPage}
-              onCheckedChange={(v) =>
-                onChange({
-                  isLastPage: v === true,
-                  pageEnd: v === true ? '' : row.pageEnd,
-                })
-              }
-              className="data-[state=checked]:bg-[var(--gold)] data-[state=checked]:border-[var(--gold)]"
-            />
-            <span className="text-[10px] text-[var(--foreground-muted)]">تا پایان</span>
-          </label>
         </div>
       </div>
 
@@ -1552,7 +1530,7 @@ function TopicRowCard({
         <div className="flex gap-1">
           <button
             onClick={onSave}
-            disabled={row.saving || !row.title.trim()}
+            disabled={row.saving || !row.title.trim() || Boolean(row.pageStart) !== Boolean(row.pageEnd)}
             className="btn-hover h-7 px-2.5 rounded-md bg-[var(--gold-soft)] border border-[var(--gold)]/30 text-[var(--gold)] font-bold text-[10px] disabled:opacity-50 flex items-center gap-1"
           >
             {row.saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}

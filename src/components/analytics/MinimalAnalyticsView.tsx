@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { BookOpen, ChevronDown, Layers3, Loader2 } from 'lucide-react';
 import {
   Bar,
   BarChart,
+  Cell,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -13,12 +14,14 @@ import {
 } from 'recharts';
 import { useAppStore } from '@/lib/store';
 import type { ActivityType, Task } from '@/lib/types';
-import { buildDailyTrend, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
+import { buildActivityBreakdown, buildDailyTrend, buildSubjectDistribution, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
 import { minutesToHoursLabel, toPersianDigits } from '@/lib/persian-date';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
 type TimeFilter = (typeof TIME_FILTERS)[number];
+const REPORT_VIEWS = ['روند مطالعه', 'تفکیک دروس', 'روش مطالعه روزانه'] as const;
+type ReportView = (typeof REPORT_VIEWS)[number];
 
 interface CurriculumSubject {
   id: string;
@@ -69,10 +72,12 @@ function ReportTooltip({
   active,
   payload,
   label,
+  unit = '',
 }: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color?: string }>;
   label?: string;
+  unit?: string;
 }) {
   if (!active || !payload?.length) return null;
   return (
@@ -80,11 +85,15 @@ function ReportTooltip({
       <p className="mb-1 font-medium text-[var(--foreground)]">{label}</p>
       {payload.filter((item) => item.value > 0).map((item) => (
         <p key={item.name} style={{ color: item.color }}>
-          {item.name}: <span className="tabular-nums">{toPersianDigits(item.value)}</span>
+          {item.name}: <span className="tabular-nums">{toPersianDigits(item.value)}{unit ? ` ${unit}` : ''}</span>
         </p>
       ))}
     </div>
   );
+}
+
+function EmptyReport({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return <div className="flex min-h-56 flex-col items-center justify-center gap-2 text-center text-xs text-[var(--foreground-muted)]"><span className="text-[var(--foreground-subtle)]">{icon}</span><p>{text}</p></div>;
 }
 
 function belongsToChapter(task: Task, chapter: CurriculumSubject['grades'][number]['chapters'][number]): boolean {
@@ -157,9 +166,25 @@ function aggregateChapter(
   };
 }
 
-export default function MinimalAnalyticsView() {
-  const { tasks, user } = useAppStore();
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('هفته جاری');
+interface MinimalAnalyticsViewProps {
+  tasksOverride?: Task[];
+  embedded?: boolean;
+  initialTimeFilter?: TimeFilter;
+  initialReportView?: ReportView;
+  academicContext?: { grade: string; major: string };
+}
+
+export default function MinimalAnalyticsView({
+  tasksOverride,
+  embedded = false,
+  initialTimeFilter = 'هفته جاری',
+  initialReportView = 'روند مطالعه',
+  academicContext,
+}: MinimalAnalyticsViewProps = {}) {
+  const { tasks: storeTasks, user } = useAppStore();
+  const tasks = tasksOverride ?? storeTasks;
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>(initialTimeFilter);
+  const [reportView, setReportView] = useState<ReportView>(initialReportView);
   const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
   const [subjects, setSubjects] = useState<CurriculumSubject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -171,11 +196,16 @@ export default function MinimalAnalyticsView() {
   useEffect(() => {
     let cancelled = false;
     async function loadSubjects() {
-      if (!user) return;
+      if (embedded || (!academicContext && !user)) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(false);
       try {
-        const params = `grade=${encodeURIComponent(user.grade)}&major=${encodeURIComponent(user.major)}&allGrades=true`;
+        const grade = academicContext?.grade ?? user!.grade;
+        const major = academicContext?.major ?? user!.major;
+        const params = `grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}&allGrades=true`;
         const [konkurResponse, finalResponse] = await Promise.all([
           fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('کنکور')}&${params}`),
           fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('نهایی')}&${params}`),
@@ -207,7 +237,7 @@ export default function MinimalAnalyticsView() {
     }
     void loadSubjects();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [academicContext?.grade, academicContext?.major, embedded, user]);
 
   const reportTasks = useMemo(
     () => filterTasksForReport(tasks, timeFilter, 'همه', new Date(), customRange),
@@ -216,6 +246,11 @@ export default function MinimalAnalyticsView() {
   const totals = useMemo(() => computeKpiTotals(reportTasks), [reportTasks]);
   const dailyTrend = useMemo(
     () => buildDailyTrend(reportTasks, timeFilter, new Date(), customRange),
+    [reportTasks, timeFilter, customRange],
+  );
+  const subjectDistribution = useMemo(() => buildSubjectDistribution(reportTasks), [reportTasks]);
+  const dailyActivities = useMemo(
+    () => buildActivityBreakdown(reportTasks, timeFilter, new Date(), customRange),
     [reportTasks, timeFilter, customRange],
   );
   const completedCount = reportTasks.filter((task) => task.status === 'COMPLETED').length;
@@ -240,7 +275,7 @@ export default function MinimalAnalyticsView() {
   }));
 
   return (
-    <div dir="rtl" className="mx-auto max-w-4xl px-4 py-6 md:px-0 md:py-8">
+    <div dir="rtl" className={`mx-auto max-w-4xl ${embedded ? 'px-0 py-0' : 'px-4 py-6 md:px-0 md:py-8'}`}>
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-[var(--foreground)] md:text-3xl">گزارش مطالعه</h1>
         <p className="mt-1 text-sm text-[var(--foreground-muted)]">خلاصه عملکرد و فعالیت هر فصل</p>
@@ -273,23 +308,63 @@ export default function MinimalAnalyticsView() {
 
       <section className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
         <div className="mb-4">
-          <h2 className="text-sm font-bold text-[var(--foreground)]">روند مطالعه</h2>
-          <p className="mt-1 text-[11px] text-[var(--foreground-muted)]">ساعت مطالعه تکمیل‌شده در بازه انتخابی</p>
+          <h2 className="text-sm font-bold text-[var(--foreground)]">نمای تحلیلی</h2>
+          <p className="mt-1 text-[11px] text-[var(--foreground-muted)]">زمان واقعی تسک‌های تکمیل‌شده در بازه انتخابی</p>
         </div>
-        <div className="h-60" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="day" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ReportTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="hours" name="ساعت مطالعه" fill="var(--accent)" radius={[5, 5, 0, 0]} maxBarSize={34} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="mb-5 grid grid-cols-3 gap-1 rounded-lg bg-[var(--bg-overlay)] p-1">
+          {REPORT_VIEWS.map((item) => (
+            <button key={item} onClick={() => setReportView(item)} className={`min-h-10 rounded-md px-2 text-[11px] font-medium transition-colors ${reportView === item ? 'bg-[var(--bg-elevated)] text-[var(--foreground)] shadow-sm' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}>{item}</button>
+          ))}
         </div>
+        {reportView === 'روند مطالعه' && (
+          <div className="h-60" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+                <XAxis dataKey="day" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="hours" name="ساعت مطالعه" fill="var(--accent)" radius={[5, 5, 0, 0]} maxBarSize={34} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {reportView === 'تفکیک دروس' && (
+          subjectDistribution.length > 0 ? <div className="h-64" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={subjectDistribution} layout="vertical" margin={{ top: 4, right: 8, left: 28, bottom: 0 }}>
+                <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="value" name="ساعت مطالعه" radius={[0, 5, 5, 0]} maxBarSize={24}>{subjectDistribution.map((subject) => <Cell key={subject.name} fill={subject.fill} />)}</Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div> : <EmptyReport icon={<BookOpen className="h-5 w-5" />} text="مطالعه تکمیل‌شده‌ای برای تفکیک دروس وجود ندارد." />
+        )}
+        {reportView === 'روش مطالعه روزانه' && (
+          dailyActivities.some((day) => day.مطالعه + day.مرور + day.تست_آموزشی + day.تست_سنجشی + day.کلاس_ویدیو > 0) ? <>
+            <div className="h-64" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyActivities} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                  <Bar dataKey="مطالعه" name="مطالعه" stackId="method" fill={ACTIVITY_COLORS['مطالعه']} maxBarSize={42} />
+                  <Bar dataKey="مرور" name="مرور" stackId="method" fill={ACTIVITY_COLORS['مرور']} maxBarSize={42} />
+                  <Bar dataKey="تست_آموزشی" name="تست آموزشی" stackId="method" fill={ACTIVITY_COLORS['تست آموزشی']} maxBarSize={42} />
+                  <Bar dataKey="تست_سنجشی" name="تست سنجشی" stackId="method" fill={ACTIVITY_COLORS['تست سنجشی']} maxBarSize={42} />
+                  <Bar dataKey="کلاس_ویدیو" name="کلاس/ویدیو" stackId="method" fill={ACTIVITY_COLORS['کلاس/ویدیو']} radius={[5, 5, 0, 0]} maxBarSize={42} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2">{(Object.keys(ACTIVITY_COLORS) as ActivityType[]).map((activity) => <span key={activity} className="inline-flex items-center gap-1.5 text-[10px] text-[var(--foreground-muted)]"><span className="h-2 w-2 rounded-sm" style={{ backgroundColor: ACTIVITY_COLORS[activity] }} />{activity}</span>)}</div>
+          </> : <EmptyReport icon={<Layers3 className="h-5 w-5" />} text="روش مطالعه‌ای برای این بازه ثبت نشده است." />
+        )}
       </section>
 
-      <section>
+      {!embedded && <section>
         <div className="mb-3">
           <h2 className="text-base font-bold text-[var(--foreground)]">تفکیک دروس و فصول</h2>
           <p className="mt-1 text-xs text-[var(--foreground-muted)]">ابتدا درس و سپس پایه را انتخاب کنید.</p>
@@ -473,7 +548,7 @@ export default function MinimalAnalyticsView() {
             )}
           </>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

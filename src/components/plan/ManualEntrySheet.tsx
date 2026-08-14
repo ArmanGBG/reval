@@ -13,6 +13,9 @@ import { FieldTypeBadge, FIELD_TYPE_STYLES } from '@/components/shared/FieldType
 
 const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
+const TIME_QUICK_PICKS = [60, 90, 120];
+const TEST_QUICK_PICKS = [20, 30, 40];
+
 /**
  * Unified task creation flow — all steps in one bottom sheet.
  *
@@ -47,6 +50,9 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     topicIds: initialTask.topicIds ?? (initialTask.topicId ? [initialTask.topicId] : []),
     topicNames: initialTask.topics?.map((topic) => `گفتار ${topic.topicNo}: ${topic.title}`),
     topicModeId: initialTask.topicModeId ?? undefined,
+    curriculumMode: initialTask.curriculumMode ?? undefined,
+    topicModeSubtopicIds: initialTask.topicModeSubtopicIds ?? [],
+    topicModeSubtopicNames: initialTask.topicModeSubtopics?.map((subtopic) => subtopic.title),
     displayText: initialTask.topic ?? undefined,
     pageStart: initialTask.pageStart ?? undefined,
     pageEnd: initialTask.pageEnd ?? undefined,
@@ -56,7 +62,14 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   const [activities, setActivities] = useState<ActivityType[]>(initialTask?.activityTypes ?? []);
   const [minutes, setMinutes] = useState(initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes));
   const [tests, setTests] = useState(initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount));
+  const [teacherClassName, setTeacherClassName] = useState(initialTask?.teacherClassName ?? '');
+  const [sessionNumber, setSessionNumber] = useState(initialTask?.sessionNumber ?? '');
+  const [bookName, setBookName] = useState(initialTask?.bookName ?? '');
+  const [testDescription, setTestDescription] = useState(initialTask?.testDescription ?? '');
   const [saving, setSaving] = useState(false);
+
+  const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
+  const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
 
   const reset = useCallback(() => {
     setStep(mode === 'complete-draft' ? 2 : 1);
@@ -65,12 +78,57 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     setActivities(initialTask?.activityTypes ?? []);
     setMinutes(initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes));
     setTests(initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount));
+    setTeacherClassName(initialTask?.teacherClassName ?? '');
+    setSessionNumber(initialTask?.sessionNumber ?? '');
+    setBookName(initialTask?.bookName ?? '');
+    setTestDescription(initialTask?.testDescription ?? '');
+    setTeacherClassSuggestions([]);
+    setBookSuggestions([]);
   }, [initialTask, initialSelection, mode]);
 
   useEffect(() => { if (open) reset(); }, [open, reset]);
 
+  // Fetch suggestions when subject or relevant activity types change
+  useEffect(() => {
+    const hasClassVideo = activities.includes('کلاس/ویدیو');
+    const hasTestDetails = activities.includes('تست آموزشی') || activities.includes('تست سنجشی');
+
+    if (!selection.subjectId || (!hasClassVideo && !hasTestDetails)) {
+      setTeacherClassSuggestions([]);
+      setBookSuggestions([]);
+      return;
+    }
+    const subjectId = selection.subjectId;
+
+    const fetchSuggestions = async () => {
+      const promises: Promise<void>[] = [];
+      if (hasClassVideo) {
+        promises.push(
+          fetch(`/api/task-suggestions?studentId=${encodeURIComponent(studentId || '')}&subjectId=${encodeURIComponent(subjectId)}&type=teacherClass`)
+            .then(r => r.ok ? r.json() : { values: [] })
+            .then(data => setTeacherClassSuggestions(data.values || []))
+            .catch(() => setTeacherClassSuggestions([]))
+        );
+      }
+      if (hasTestDetails) {
+        promises.push(
+          fetch(`/api/task-suggestions?studentId=${encodeURIComponent(studentId || '')}&subjectId=${encodeURIComponent(subjectId)}&type=book`)
+            .then(r => r.ok ? r.json() : { values: [] })
+            .then(data => setBookSuggestions(data.values || []))
+            .catch(() => setBookSuggestions([]))
+        );
+      }
+      await Promise.all(promises);
+    };
+
+    fetchSuggestions();
+  }, [selection.subjectId, activities, studentId]);
+
   // Can quick-save once subject is selected
-  const canQuickSave = !!selection.subjectId && !!selection.subjectName && !!selection.chapterId;
+  const canQuickSave = !!selection.subjectId && !!selection.subjectName && (
+    (selection.curriculumMode === 'BOOK' && !!selection.chapterId) ||
+    (selection.curriculumMode === 'THEMATIC' && !!selection.topicModeId)
+  );
 
   // Can full-save once subject + activity + time are set
   const canFullSave = canQuickSave && activities.length > 0 && Number(minutes) > 0;
@@ -99,8 +157,14 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     topicId: selection.topicId ?? null,
     topicIds: selection.topicIds ?? [],
     topicModeId: selection.topicModeId ?? null,
+    curriculumMode: selection.curriculumMode ?? null,
+    topicModeSubtopicIds: selection.topicModeSubtopicIds ?? [],
     pageStart: selection.pageStart ?? null,
     pageEnd: selection.pageEnd ?? null,
+    teacherClassName: teacherClassName || null,
+    sessionNumber: sessionNumber || null,
+    bookName: bookName || null,
+    testDescription: testDescription || null,
     detailsCompleted,
   });
 
@@ -130,10 +194,6 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   };
 
   const handlePrevious = () => {
-    if (step === 2 && selection.subjectId) {
-      setSelection({});
-      return;
-    }
     setStep((current) => (current - 1) as 1 | 2 | 3);
   };
 
@@ -205,97 +265,235 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                 <FieldTypeBadge value={fieldType} />
               </div>
               <TaskSubjectPicker
-                key={`${fieldType}:${selection.subjectId ?? 'subjects'}`}
+                key={fieldType}
                 fieldType={fieldType}
                  grade={grade ?? user?.grade ?? 'دوازدهم'}
                  major={major ?? user?.major ?? 'تجربی'}
                 value={selection}
                 onChange={setSelection}
+                onSelectionComplete={() => setStep(3)}
               />
             </div>
           )}
 
-          {/* ===== Step 3: Details (Activity + Time + Tests) ===== */}
-          {step === 3 && (
-            <div className="space-y-5">
-              {/* Summary of what was selected */}
-              <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
-                  />
-                  <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
-                  <FieldTypeBadge value={fieldType} className="mr-auto" />
-                </div>
-                {selection.topicNames && selection.topicNames.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {selection.topicNames.map((name, i) => (
-                      <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20">
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {selection.displayText && (!selection.topicNames || selection.topicNames.length === 0) && (
-                  <p className="text-xs text-[var(--foreground-muted)]">{selection.displayText}</p>
-                )}
-                {selection.pageStart != null && selection.pageEnd != null && (
-                  <p className="text-[10px] text-[var(--foreground-subtle)]">
-                    صفحات {selection.pageStart} تا {selection.pageEnd}
-                  </p>
-                )}
-              </div>
+           {/* ===== Step 3: Details (Activity + Time + Tests) ===== */}
+           {step === 3 && (
+             <div className="space-y-5">
+               {/* Summary of what was selected */}
+               <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] p-3 space-y-2">
+                 <div className="flex items-center gap-2">
+                   <span
+                     className="w-3 h-3 rounded-full shrink-0"
+                     style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
+                   />
+                   <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
+                   <FieldTypeBadge value={fieldType} className="mr-auto" />
+                 </div>
+                 {selection.topicNames && selection.topicNames.length > 0 && (
+                   <div className="flex flex-wrap gap-1">
+                     {selection.topicNames.map((name, i) => (
+                       <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20">
+                         {name}
+                       </span>
+                     ))}
+                   </div>
+                 )}
+                 {selection.topicModeSubtopicNames && selection.topicModeSubtopicNames.length > 0 && (
+                   <div className="flex flex-wrap gap-1">
+                     {selection.topicModeSubtopicNames.map((name) => (
+                       <span key={name} className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]/20">{name}</span>
+                     ))}
+                   </div>
+                 )}
+                 {selection.displayText && (!selection.topicNames || selection.topicNames.length === 0) && (
+                   <p className="text-xs text-[var(--foreground-muted)]">{selection.displayText}</p>
+                 )}
+                 {selection.pageStart != null && selection.pageEnd != null && (
+                   <p className="text-[10px] text-[var(--foreground-subtle)]">
+                     صفحات {selection.pageStart} تا {selection.pageEnd}
+                   </p>
+                 )}
+               </div>
 
-              {/* Activity types */}
-              <div>
-                <label className="text-xs text-[var(--foreground-muted)] mb-2 block">نوع فعالیت</label>
-                <div className="flex flex-wrap gap-2">
-                  {ACTIVITIES.map(a => (
-                    <button
-                      key={a}
-                      onClick={() => setActivities(v => v.includes(a) ? v.filter(x => x !== a) : [...v, a])}
-                      className={`px-3 py-2.5 rounded-lg border text-sm transition-all ${
-                        activities.includes(a)
-                          ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)] font-semibold'
-                          : 'border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
-                      }`}
-                    >
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
+               {/* Activity types */}
+               <div>
+                 <label className="text-xs text-[var(--foreground-muted)] mb-2 block">نوع فعالیت</label>
+                 <div className="flex flex-wrap gap-2">
+                   {ACTIVITIES.map(a => (
+                     <button
+                       key={a}
+                       onClick={() => setActivities(v => v.includes(a) ? v.filter(x => x !== a) : [...v, a])}
+                       className={`px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                         activities.includes(a)
+                           ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)] font-semibold'
+                           : 'border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
+                       }`}
+                     >
+                       {a}
+                     </button>
+                   ))}
+                 </div>
+               </div>
 
-              {/* Time + Test count */}
-              <div className="grid grid-cols-2 gap-3">
-                <label className="text-xs text-[var(--foreground-muted)]">
-                  زمان مطالعه (دقیقه) *
-                  <input
-                    type="number"
-                    min="1"
-                    value={minutes}
-                    onChange={e => setMinutes(e.target.value)}
-                    placeholder="مثلاً ۶۰"
-                    className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
-                    dir="ltr"
-                  />
-                </label>
-                <label className="text-xs text-[var(--foreground-muted)]">
-                  تعداد تست هدف
-                  <input
-                    type="number"
-                    min="0"
-                    value={tests}
-                    onChange={e => setTests(e.target.value)}
-                    placeholder="اختیاری"
-                    className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
-                    dir="ltr"
-                  />
-                </label>
-              </div>
-            </div>
-          )}
+               {/* Class/Video details */}
+               {activities.includes('کلاس/ویدیو') && (
+                 <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+                   <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات کلاس/ویدیو (اختیاری)</p>
+
+                   {/* Teacher/Class name with suggestions */}
+                   <div>
+                     <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">نام دبیر و کلاس</label>
+                     {teacherClassSuggestions.length > 0 && (
+                       <div className="flex flex-wrap gap-1.5 mb-2">
+                         {teacherClassSuggestions.map((suggestion) => (
+                           <button
+                             key={suggestion}
+                             type="button"
+                             onClick={() => setTeacherClassName(suggestion)}
+                             className={`px-2.5 py-1 rounded-md text-[11px] border transition-all ${
+                               teacherClassName === suggestion
+                                 ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                                 : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
+                             }`}
+                           >
+                             {suggestion}
+                           </button>
+                         ))}
+                       </div>
+                     )}
+                     <input
+                       type="text"
+                       value={teacherClassName}
+                       onChange={e => setTeacherClassName(e.target.value)}
+                       placeholder="مثلاً استاد محمدی — کلاس ۱۰"
+                       className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                     />
+                   </div>
+
+                   {/* Session number */}
+                   <div>
+                     <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">شماره جلسه</label>
+                     <input
+                       type="text"
+                       value={sessionNumber}
+                       onChange={e => setSessionNumber(e.target.value)}
+                       placeholder="مثلاً جلسه ۱۲"
+                       className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                     />
+                   </div>
+                 </div>
+               )}
+
+               {/* Test details */}
+               {(activities.includes('تست آموزشی') || activities.includes('تست سنجشی')) && (
+                 <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+                   <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات تست (اختیاری)</p>
+
+                   {/* Book name with suggestions */}
+                   <div>
+                     <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">نام کتاب</label>
+                     {bookSuggestions.length > 0 && (
+                       <div className="flex flex-wrap gap-1.5 mb-2">
+                         {bookSuggestions.map((suggestion) => (
+                           <button
+                             key={suggestion}
+                             type="button"
+                             onClick={() => setBookName(suggestion)}
+                             className={`px-2.5 py-1 rounded-md text-[11px] border transition-all ${
+                               bookName === suggestion
+                                 ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                                 : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
+                             }`}
+                           >
+                             {suggestion}
+                           </button>
+                         ))}
+                       </div>
+                     )}
+                     <input
+                       type="text"
+                       value={bookName}
+                       onChange={e => setBookName(e.target.value)}
+                       placeholder="مثلاً زیست‌شناسی نشر الگو"
+                       className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                     />
+                   </div>
+
+                   {/* Test description */}
+                   <div>
+                     <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">توضیح شماره تست‌ها</label>
+                     <input
+                       type="text"
+                       value={testDescription}
+                       onChange={e => setTestDescription(e.target.value)}
+                       placeholder="مثلاً تست‌های ۱۲۰ تا ۱۵۰"
+                       className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                     />
+                   </div>
+                 </div>
+               )}
+
+               {/* Time + Test count */}
+               <div className="grid grid-cols-2 gap-3">
+                 <label className="text-xs text-[var(--foreground-muted)]">
+                   زمان مطالعه (دقیقه) *
+                   <input
+                     type="number"
+                     min="1"
+                     value={minutes}
+                     onChange={e => setMinutes(e.target.value)}
+                     placeholder="مثلاً ۶۰"
+                     className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                     dir="ltr"
+                   />
+                   <div className="flex gap-1.5 mt-2">
+                     {TIME_QUICK_PICKS.map((m) => (
+                       <button
+                         key={m}
+                         type="button"
+                         onClick={() => setMinutes(String(m))}
+                         className={`btn-hover flex-1 h-8 rounded-lg text-[11px] font-medium border transition-all ${
+                           Number(minutes) === m
+                             ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                             : 'border-[var(--border)] text-[var(--foreground-muted)]'
+                         }`}
+                       >
+                         {m}
+                       </button>
+                     ))}
+                   </div>
+                 </label>
+                 <label className="text-xs text-[var(--foreground-muted)]">
+                   تعداد تست هدف
+                   <input
+                     type="number"
+                     min="0"
+                     value={tests}
+                     onChange={e => setTests(e.target.value)}
+                     placeholder="اختیاری"
+                     className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                     dir="ltr"
+                   />
+                   <div className="flex gap-1.5 mt-2">
+                     {TEST_QUICK_PICKS.map((t) => (
+                       <button
+                         key={t}
+                         type="button"
+                         onClick={() => setTests(String(t))}
+                         className={`btn-hover flex-1 h-8 rounded-lg text-[11px] font-medium border transition-all ${
+                           Number(tests) === t
+                             ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                             : 'border-[var(--border)] text-[var(--foreground-muted)]'
+                         }`}
+                       >
+                         {t}
+                       </button>
+                     ))}
+                   </div>
+                 </label>
+               </div>
+             </div>
+           )}
         </div>
 
         <DrawerFooter className="flex-col gap-2 pt-2">

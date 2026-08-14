@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import {
@@ -25,6 +25,9 @@ import {
 import { toast } from 'sonner';
 import { ModalInput } from './advisor-ui';
 import { ALL_ACTIVITY_TYPES } from './advisor-helpers';
+
+const TIME_QUICK_PICKS = [60, 90, 120];
+const TEST_QUICK_PICKS = [20, 30, 40];
 
 // ===== Task Modal (Add / Edit) — New Flow (Task 12-c):
 // field type → TaskSubjectPicker (subject + chapter/topic/topicMode) →
@@ -61,12 +64,16 @@ export function TaskModal({
   const [selection, setSelection] = useState<TaskSelection>(
     editTask
       ? {
+          subjectId: editTask.subjectId ?? undefined,
           subjectName: editTask.subject,
           subjectColor: editTask.subjectColor,
           displayText: editTask.topic && editTask.topic !== 'عمومی' ? editTask.topic : undefined,
           chapterId: editTask.chapterId ?? undefined,
           topicId: editTask.topicId ?? undefined,
+          topicIds: editTask.topicIds ?? [],
           topicModeId: editTask.topicModeId ?? undefined,
+          curriculumMode: editTask.curriculumMode ?? undefined,
+          topicModeSubtopicIds: editTask.topicModeSubtopicIds ?? [],
         }
       : {},
   );
@@ -82,6 +89,12 @@ export function TaskModal({
   const [date, setDate] = useState(
     editTask?.date ?? new Date().toISOString().split('T')[0],
   );
+  const [teacherClassName, setTeacherClassName] = useState(editTask?.teacherClassName ?? '');
+  const [sessionNumber, setSessionNumber] = useState(editTask?.sessionNumber ?? '');
+  const [bookName, setBookName] = useState(editTask?.bookName ?? '');
+  const [testDescription, setTestDescription] = useState(editTask?.testDescription ?? '');
+  const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
+  const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
 
   // Reset form (called on dialog close so the next open starts fresh).
   const resetForm = useCallback(() => {
@@ -89,6 +102,7 @@ export function TaskModal({
     setSelection(
       editTask
         ? {
+            subjectId: editTask.subjectId ?? undefined,
             subjectName: editTask.subject,
             subjectColor: editTask.subjectColor,
             displayText:
@@ -97,7 +111,10 @@ export function TaskModal({
                 : undefined,
             chapterId: editTask.chapterId ?? undefined,
             topicId: editTask.topicId ?? undefined,
+            topicIds: editTask.topicIds ?? [],
             topicModeId: editTask.topicModeId ?? undefined,
+            curriculumMode: editTask.curriculumMode ?? undefined,
+            topicModeSubtopicIds: editTask.topicModeSubtopicIds ?? [],
           }
         : {},
     );
@@ -105,6 +122,12 @@ export function TaskModal({
     setTargetTimeMinutes(editTask?.targetTimeMinutes ?? 60);
     setTargetTestCount(editTask?.targetTestCount ?? 20);
     setDate(editTask?.date ?? new Date().toISOString().split('T')[0]);
+    setTeacherClassName(editTask?.teacherClassName ?? '');
+    setSessionNumber(editTask?.sessionNumber ?? '');
+    setBookName(editTask?.bookName ?? '');
+    setTestDescription(editTask?.testDescription ?? '');
+    setTeacherClassSuggestions([]);
+    setBookSuggestions([]);
   }, [editTask]);
 
   const toggleActivity = (act: ActivityType) => {
@@ -112,6 +135,45 @@ export function TaskModal({
       prev.includes(act) ? prev.filter((a) => a !== act) : [...prev, act],
     );
   };
+
+  // Fetch suggestions when subject or activity types change (edit mode only)
+  useEffect(() => {
+    if (!isEdit || !selection.subjectId) {
+      setTeacherClassSuggestions([]);
+      setBookSuggestions([]);
+      return;
+    }
+
+    const hasClassVideo = activityTypes.includes('کلاس/ویدیو');
+    const hasTestDetails = activityTypes.includes('تست آموزشی') || activityTypes.includes('تست سنجشی');
+
+    const fetchSuggestions = async () => {
+      const promises: Promise<void>[] = [];
+      if (hasClassVideo) {
+        promises.push(
+          fetch(`/api/task-suggestions?studentId=${encodeURIComponent(studentId)}&subjectId=${encodeURIComponent(selection.subjectId!)}&type=teacherClass`)
+            .then(r => r.ok ? r.json() : { values: [] })
+            .then(data => setTeacherClassSuggestions(data.values || []))
+            .catch(() => setTeacherClassSuggestions([]))
+        );
+      }
+      if (hasTestDetails) {
+        promises.push(
+          fetch(`/api/task-suggestions?studentId=${encodeURIComponent(studentId)}&subjectId=${encodeURIComponent(selection.subjectId!)}&type=book`)
+            .then(r => r.ok ? r.json() : { values: [] })
+            .then(data => setBookSuggestions(data.values || []))
+            .catch(() => setBookSuggestions([]))
+        );
+      }
+      if (promises.length === 0) {
+        setTeacherClassSuggestions([]);
+        setBookSuggestions([]);
+      }
+      await Promise.all(promises);
+    };
+
+    fetchSuggestions();
+  }, [isEdit, selection.subjectId, activityTypes, studentId]);
 
   const handleSubmit = async () => {
     if (!selection.subjectId && !selection.subjectName) {
@@ -129,6 +191,7 @@ export function TaskModal({
 
     if (isEdit && editTask) {
       await updateTask(editTask.id, {
+        subjectId: selection.subjectId ?? editTask.subjectId ?? null,
         subject: subjectName,
         subjectColor,
         topic,
@@ -139,9 +202,16 @@ export function TaskModal({
         date,
         chapterId: selection.chapterId ?? null,
         topicId: selection.topicId ?? null,
+        topicIds: selection.topicIds ?? [],
         topicModeId: selection.topicModeId ?? null,
+        curriculumMode: selection.curriculumMode ?? null,
+        topicModeSubtopicIds: selection.topicModeSubtopicIds ?? [],
         pageStart: selection.pageStart ?? null,
         pageEnd: selection.pageEnd ?? null,
+        teacherClassName: teacherClassName || null,
+        sessionNumber: sessionNumber || null,
+        bookName: bookName || null,
+        testDescription: testDescription || null,
         detailsCompleted: true,
         status: 'PENDING',
         completed: null,
@@ -169,7 +239,10 @@ export function TaskModal({
         createdById: user?.id || null,
         chapterId: selection.chapterId || null,
         topicId: selection.topicId || null,
+        topicIds: selection.topicIds ?? [],
         topicModeId: selection.topicModeId || null,
+        curriculumMode: selection.curriculumMode ?? null,
+        topicModeSubtopicIds: selection.topicModeSubtopicIds ?? [],
         pageStart: selection.pageStart ?? null,
         pageEnd: selection.pageEnd ?? null,
         detailsCompleted: false,
@@ -184,8 +257,10 @@ export function TaskModal({
     () =>
       !studentInfoMissing &&
       (!!selection.subjectId || !!selection.subjectName) &&
+      ((selection.curriculumMode === 'BOOK' && !!selection.chapterId) ||
+        (selection.curriculumMode === 'THEMATIC' && !!selection.topicModeId)) &&
       (!isEdit || activityTypes.length > 0),
-    [studentInfoMissing, selection.subjectId, selection.subjectName, activityTypes.length, isEdit],
+    [studentInfoMissing, selection.subjectId, selection.subjectName, selection.curriculumMode, selection.chapterId, selection.topicModeId, activityTypes.length, isEdit],
   );
 
   return (
@@ -291,21 +366,151 @@ export function TaskModal({
             </div>
           </div>
 
+          {/* Class/Video details */}
+          {activityTypes.includes('کلاس/ویدیو') && (
+            <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+              <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات کلاس/ویدیو (اختیاری)</p>
+
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">نام دبیر و کلاس</label>
+                {teacherClassSuggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {teacherClassSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => setTeacherClassName(suggestion)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] border transition-all ${
+                          teacherClassName === suggestion
+                            ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                            : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
+                        }`}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={teacherClassName}
+                  onChange={e => setTeacherClassName(e.target.value)}
+                  placeholder="مثلاً استاد محمدی — کلاس ۱۰"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">شماره جلسه</label>
+                <input
+                  type="text"
+                  value={sessionNumber}
+                  onChange={e => setSessionNumber(e.target.value)}
+                  placeholder="مثلاً جلسه ۱۲"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Test details */}
+          {(activityTypes.includes('تست آموزشی') || activityTypes.includes('تست سنجشی')) && (
+            <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+              <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات تست (اختیاری)</p>
+
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">نام کتاب</label>
+                {bookSuggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {bookSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => setBookName(suggestion)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] border transition-all ${
+                          bookName === suggestion
+                            ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                            : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
+                        }`}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={bookName}
+                  onChange={e => setBookName(e.target.value)}
+                  placeholder="مثلاً زیست‌شناسی نشر الگو"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">توضیح شماره تست‌ها</label>
+                <input
+                  type="text"
+                  value={testDescription}
+                  onChange={e => setTestDescription(e.target.value)}
+                  placeholder="مثلاً تست‌های ۱۲۰ تا ۱۵۰"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
-            <ModalInput
-              label="زمان هدف (دقیقه)"
-              type="number"
-              value={targetTimeMinutes}
-              onChange={(e) => setTargetTimeMinutes(Number(e.target.value))}
-              min={1}
-            />
-            <ModalInput
-              label="تعداد تست هدف"
-              type="number"
-              value={targetTestCount}
-              onChange={(e) => setTargetTestCount(Number(e.target.value))}
-              min={0}
-            />
+            <div>
+              <ModalInput
+                label="زمان هدف (دقیقه)"
+                type="number"
+                value={targetTimeMinutes}
+                onChange={(e) => setTargetTimeMinutes(Number(e.target.value))}
+                min={1}
+              />
+              <div className="flex gap-1.5 mt-2">
+                {TIME_QUICK_PICKS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setTargetTimeMinutes(m)}
+                    className={`btn-hover flex-1 h-8 rounded-lg text-[11px] font-medium border transition-all ${
+                      targetTimeMinutes === m
+                        ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                        : 'border-[var(--border)] text-[var(--foreground-muted)]'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <ModalInput
+                label="تعداد تست هدف"
+                type="number"
+                value={targetTestCount}
+                onChange={(e) => setTargetTestCount(Number(e.target.value))}
+                min={0}
+              />
+              <div className="flex gap-1.5 mt-2">
+                {TEST_QUICK_PICKS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTargetTestCount(t)}
+                    className={`btn-hover flex-1 h-8 rounded-lg text-[11px] font-medium border transition-all ${
+                      targetTestCount === t
+                        ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                        : 'border-[var(--border)] text-[var(--foreground-muted)]'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <ModalInput

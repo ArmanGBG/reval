@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   ArrowRight,
   Loader2,
@@ -18,6 +19,7 @@ import { Subject } from '@/lib/subjects-types';
 import { SubjectSettingsPanel } from './SubjectSettingsPanel';
 import { CurriculumWizard } from './CurriculumWizard';
 import { TopicModesPanel } from './TopicModesPanel';
+import { Switch } from '@/components/ui/switch';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -40,6 +42,11 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
   const [subject, setSubject] = useState<Subject>(initialSubject);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>('tree');
+  const grades = subject.grades || [];
+  const [selectedGradeSubjectId, setSelectedGradeSubjectId] = useState<string | null>(
+    grades[0]?.id || null,
+  );
+  const [savingAssessment, setSavingAssessment] = useState(false);
   // When user clicks a grade card, we store the target grade+major
   // and switch to the 'tree' tab so CurriculumWizard receives them.
   const [navigateToGrade, setNavigateToGrade] = useState<{ grade: string; major: string } | null>(null);
@@ -62,6 +69,35 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    const currentGrades = subject.grades || [];
+    if (!currentGrades.some((grade) => grade.id === selectedGradeSubjectId)) {
+      setSelectedGradeSubjectId(currentGrades[0]?.id || null);
+    }
+  }, [subject.grades, selectedGradeSubjectId]);
+
+  const selectedGradeSubject = grades.find((grade) => grade.id === selectedGradeSubjectId) || null;
+
+  const updateAssessment = async (field: 'isKonkur' | 'isFinal', value: boolean) => {
+    if (!selectedGradeSubject) return;
+    if (!value && !selectedGradeSubject[field === 'isKonkur' ? 'isFinal' : 'isKonkur']) return;
+    setSavingAssessment(true);
+    try {
+      const res = await fetch(`/api/subjects/${subject.id}/grades/${selectedGradeSubject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'خطا در به‌روزرسانی نوع ارزیابی');
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'خطا در به‌روزرسانی نوع ارزیابی');
+    } finally {
+      setSavingAssessment(false);
+    }
+  };
+
   // ===== Stats =====
   // Chapters are now nested under grades[].chapters[] (new schema)
   const gradeCount = subject.grades?.length || 0;
@@ -77,7 +113,7 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
         (gs.chapters?.reduce((a, c) => a + (c.topics?.length || 0), 0) || 0),
       0,
     ) || 0;
-  const topicModeCount = subject.topicModes?.length || 0;
+  const topicModeCount = grades.reduce((count, grade) => count + (grade.topicModes?.length || 0), 0);
 
   return (
     <div className="space-y-5">
@@ -120,9 +156,10 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
             const hasChapters = chapters.length > 0;
             // Check if all chapters have valid page ranges
             const allPagesValid = chapters.every(
-              (c) => c.pageStart != null && (c.isLastPage || c.pageEnd != null),
+              (c) => (c.pageStart == null) === (c.pageEnd == null),
             );
             return {
+              id: gs.id,
               grade: gs.grade,
               major: gs.major,
               chapterCount: chapters.length,
@@ -154,6 +191,7 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.2 }}
                   onClick={() => {
+                    setSelectedGradeSubjectId(g.id);
                     setNavigateToGrade({ grade: g.grade, major: g.major });
                     setTab('tree');
                   }}
@@ -211,11 +249,59 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
         );
       })()}
 
+      <div className="surface-1 rounded-2xl p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-[var(--foreground-muted)] mb-1.5 block">
+              محدوده پایه/رشته
+            </label>
+            <select
+              value={selectedGradeSubjectId || ''}
+              onChange={(e) => {
+                setNavigateToGrade(null);
+                setSelectedGradeSubjectId(e.target.value || null);
+              }}
+              className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-3 h-11 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/40"
+            >
+              {grades.map((grade) => (
+                <option key={grade.id} value={grade.id}>
+                  {grade.grade} · {grade.major}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedGradeSubject && (
+            <div className="flex gap-2 sm:pt-5">
+              {([
+                ['isKonkur', 'کنکور'],
+                ['isFinal', 'نهایی'],
+              ] as const).map(([field, label]) => (
+                <label key={field} className="h-11 px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center gap-2 text-xs text-[var(--foreground)]">
+                  {label}
+                  <Switch
+                    checked={!!selectedGradeSubject[field]}
+                    onCheckedChange={(value) => updateAssessment(field, value)}
+                    disabled={savingAssessment || (
+                      selectedGradeSubject[field] &&
+                      !selectedGradeSubject[field === 'isKonkur' ? 'isFinal' : 'isKonkur']
+                    )}
+                    className="data-[state=checked]:bg-[var(--gold)] data-[state=unchecked]:bg-[var(--border-strong)]"
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        {!selectedGradeSubject && (
+          <p className="text-xs text-[var(--warning)]">ابتدا یک پایه/رشته برای این درس تعریف کنید.</p>
+        )}
+      </div>
+
       {/* ===== Tabs ===== */}
       <div className="flex gap-1 surface-1 rounded-xl p-1 sticky top-0 z-10">
         {[
           { id: 'tree' as Tab, label: 'درخت فصل‌ها', icon: Layers },
-          { id: 'topicModes' as Tab, label: 'مباحث کنکوری', icon: Sparkles },
+          { id: 'topicModes' as Tab, label: 'ساختار مبحثی', icon: Sparkles },
           { id: 'settings' as Tab, label: 'تنظیمات درس', icon: Pencil },
         ].map((t) => {
           const Icon = t.icon;
@@ -252,16 +338,17 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
         >
           {tab === 'tree' && (
             <CurriculumWizard
-              key={navigateToGrade ? `${navigateToGrade.grade}-${navigateToGrade.major}` : 'default'}
+              key={selectedGradeSubjectId || (navigateToGrade ? `${navigateToGrade.grade}-${navigateToGrade.major}` : 'default')}
               subjectId={subject.id}
-              initialGrade={navigateToGrade?.grade as 'دهم' | 'یازدهم' | 'دوازدهم' | undefined}
-              initialMajor={navigateToGrade?.major as 'تجربی' | 'ریاضی' | 'انسانی' | undefined}
+              initialGrade={(navigateToGrade?.grade || selectedGradeSubject?.grade) as 'دهم' | 'یازدهم' | 'دوازدهم' | undefined}
+              initialMajor={(navigateToGrade?.major || selectedGradeSubject?.major) as 'تجربی' | 'ریاضی' | 'انسانی' | undefined}
+              onRefresh={refresh}
             />
           )}
           {tab === 'topicModes' && (
             <TopicModesPanel
-              subject={subject}
-              topicModes={subject.topicModes || []}
+              subjectId={subject.id}
+              gradeSubject={selectedGradeSubject}
               onRefresh={refresh}
             />
           )}

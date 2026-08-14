@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
@@ -26,11 +26,12 @@ import ManualEntrySheet from './ManualEntrySheet';
 import { WeeklyPlanner } from './WeeklyPlanner';
 import { PersianCalendar } from './PersianCalendar';
 import { SortableTaskList } from './SortableTaskList';
+import type { TaskCardCapabilities } from './TaskCard';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
 import { TaskActionDialog } from './TaskActionDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import TaskStatsWidget from './TaskStatsWidget';
-import { canMoveTaskToDate, moveTaskToDateTransition, moveTaskToIncompleteTransition } from '@/lib/task-status';
+import { canMoveTaskToDate, isTaskVisibleOnScheduledDay, moveTaskToDateTransition, moveTaskToIncompleteTransition } from '@/lib/task-status';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -113,8 +114,19 @@ function PlanTabToggle({
   );
 }
 
+export interface PlanTargetStudent {
+  id: string;
+  grade: string;
+  major: string;
+}
+
+export interface PlanActor {
+  role: 'STUDENT' | 'ADVISOR';
+  id: string;
+}
+
 // ===== Main Component =====
-export default function PlanView() {
+export default function PlanView({ targetStudent, actor }: { targetStudent?: PlanTargetStudent; actor?: PlanActor } = {}) {
   const {
     tasks,
     addTask,
@@ -122,21 +134,21 @@ export default function PlanView() {
     deleteTask,
     resetTask,
     reorderTasks,
+    loadTasksForStudent,
     selectedDate,
     setSelectedDate,
   } = useAppStore();
-  const studentId = useCurrentStudentId();
-
-  // Carry untouched tasks forward once their scheduled day has ended.
-  useEffect(() => {
-    const today = new Date();
-    const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    tasks
-      .filter((task) => task.studentId === studentId && task.date < todayISO && (task.status === 'PENDING' || (task.status === undefined && task.completed === null)))
-      .forEach((task) => {
-        updateTask(task.id, moveTaskToIncompleteTransition());
-      });
-  }, [tasks, studentId, selectedDate, updateTask]);
+  const currentStudentId = useCurrentStudentId();
+  const studentId = targetStudent?.id ?? currentStudentId;
+  const isAdvisorWorkspace = actor?.role === 'ADVISOR';
+  const getTaskCapabilities = useCallback((task: Task): TaskCardCapabilities => {
+    if (!isAdvisorWorkspace) return {};
+    const ownsTask = task.createdBy === 'advisor'
+      && task.createdById === actor?.id
+      && task.status !== 'COMPLETED'
+      && task.status !== 'SKIPPED';
+    return { complete: false, reset: false, partial: false, action: ownsTask, edit: ownsTask, deleteDraft: ownsTask, drag: false };
+  }, [actor?.id, isAdvisorWorkspace]);
 
   // Local state
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
@@ -147,8 +159,8 @@ export default function PlanView() {
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
 
   // Filter tasks for current student + selected date.
-  // Incomplete drafts (detailsCompleted === false) are excluded from the daily
-  // view — they live in the "ناقصی‌ها" tab until the user fills in their details.
+  // Dated drafts stay visible on their scheduled day so weekly-plan placeholders
+  // can be completed in context. INCOMPLETE tasks live only in their own tab.
   // Sort: pending first (by order), then completed/skipped at the bottom
   const filteredTasks = useMemo(() => {
     return tasks
@@ -156,7 +168,7 @@ export default function PlanView() {
         (t) =>
           t.date === selectedDate &&
           t.studentId === studentId &&
-          (t.status === 'PENDING' || t.status === 'COMPLETED' || t.status === 'SKIPPED' || (t.status === undefined && t.detailsCompleted !== false))
+          isTaskVisibleOnScheduledDay(t.status, t.detailsCompleted)
       )
       .sort((a, b) => {
         // Pending tasks first, then completed/skipped
@@ -214,7 +226,7 @@ export default function PlanView() {
   const taskCountByDate = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of tasks) {
-      if (t.studentId === studentId) {
+      if (t.studentId === studentId && isTaskVisibleOnScheduledDay(t.status, t.detailsCompleted)) {
         map[t.date] = (map[t.date] || 0) + 1;
       }
     }
@@ -277,15 +289,19 @@ export default function PlanView() {
     async (taskId: string, newDate: string) => {
       const task = tasks.find((item) => item.id === taskId);
       if (!task) return;
-      if (task.createdBy !== 'student') throw new Error('انتقال روز برای تسک مشاور مجاز نیست');
+      if (isAdvisorWorkspace && !(task.createdBy === 'advisor' && task.createdById === actor?.id)) throw new Error('فقط تسک‌های ساخته‌شده توسط خود مشاور قابل جابه‌جایی هستند');
+      if (!isAdvisorWorkspace && task.createdBy !== 'student') throw new Error('انتقال روز برای تسک مشاور مجاز نیست');
       if (!task.status || !canMoveTaskToDate(task.status)) throw new Error('فقط تسک فعال یا ناقص قابل برنامه‌ریزی مجدد است');
       await updateTask(taskId, moveTaskToDateTransition(newDate));
+      await loadTasksForStudent(task.studentId);
+      setSelectedDate(newDate);
+      setPlanTab('daily');
       const d = parseLocalDate(newDate);
       toast.success(`تسک به ${getPersianWeekdayName(d)} ${formatPersianDate(d)} منتقل شد`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--accent)' },
       });
     },
-    [tasks, updateTask]
+    [actor?.id, isAdvisorWorkspace, tasks, updateTask, loadTasksForStudent, setSelectedDate]
   );
 
   const handleMoveToIncomplete = useCallback(
@@ -304,8 +320,11 @@ export default function PlanView() {
   const handleActionDelete = useCallback(
     async (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
-      if (task?.createdBy !== 'student') {
-        toast.error('تسک‌های مشاور قابل حذف نیستند');
+      const allowed = isAdvisorWorkspace
+        ? task?.createdBy === 'advisor' && task.createdById === actor?.id && task.status !== 'COMPLETED' && task.status !== 'SKIPPED'
+        : task?.createdBy === 'student';
+      if (!allowed) {
+        toast.error(isAdvisorWorkspace ? 'فقط تسک‌های ساخته‌شده توسط خود مشاور قابل حذف هستند' : 'تسک‌های مشاور قابل حذف نیستند');
         return;
       }
       await deleteTask(taskId);
@@ -313,14 +332,15 @@ export default function PlanView() {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--foreground-muted)' },
       });
     },
-    [deleteTask, tasks]
+    [actor?.id, deleteTask, isAdvisorWorkspace, tasks]
   );
 
   const handleReorder = useCallback(
     (reordered: Task[]) => {
+      if (isAdvisorWorkspace) return;
       reorderTasks(reordered);
     },
-    [reorderTasks]
+    [isAdvisorWorkspace, reorderTasks]
   );
 
   const handleManualSubmit = useCallback(
@@ -401,6 +421,8 @@ export default function PlanView() {
                   onReset={handleReset}
                   onReorder={handleReorder}
                   onEdit={setDetailsTaskId}
+                  getCapabilities={getTaskCapabilities}
+                  sortable={!isAdvisorWorkspace}
                 />
               )}
             </div>
@@ -421,6 +443,8 @@ export default function PlanView() {
                 onReset={handleReset}
                 onReorder={handleReorder}
                 onEdit={setDetailsTaskId}
+                getCapabilities={getTaskCapabilities}
+                sortable={!isAdvisorWorkspace}
               />
             )}
           </div>
@@ -520,6 +544,8 @@ export default function PlanView() {
                   onReset={handleReset}
                   onReorder={handleReorder}
                   onEdit={setDetailsTaskId}
+                  getCapabilities={getTaskCapabilities}
+                  sortable={!isAdvisorWorkspace}
                 />
               )}
             </div>
@@ -540,6 +566,8 @@ export default function PlanView() {
                 onReset={handleReset}
                 onReorder={handleReorder}
                 onEdit={setDetailsTaskId}
+                getCapabilities={getTaskCapabilities}
+                sortable={!isAdvisorWorkspace}
               />
             )}
           </div>
@@ -556,14 +584,41 @@ export default function PlanView() {
         existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === studentId).length}
         onSubmit={handleManualSubmit}
         onSaved={(task) => { if (task.status === 'DRAFT') setPlanTab('draft'); }}
+        studentId={studentId}
+        grade={targetStudent?.grade}
+        major={targetStudent?.major}
+        createdBy={isAdvisorWorkspace ? 'advisor' : 'student'}
+        createdById={isAdvisorWorkspace ? actor?.id ?? null : null}
       />
 
 
       <WeeklyPlanner
         open={weeklyPlannerOpen}
         onOpenChange={setWeeklyPlannerOpen}
+        targetStudent={targetStudent}
+        actor={actor}
       />
-      <TaskDetailsDialog task={tasks.find(t => t.id === detailsTaskId) ?? null} open={!!detailsTaskId} onOpenChange={v => !v && setDetailsTaskId(null)} grade={useAppStore.getState().user?.grade ?? 'دوازدهم'} major={useAppStore.getState().user?.major ?? 'تجربی'} onSave={updates => updateTask(detailsTaskId!, updates)} />
+      <TaskDetailsDialog
+        task={tasks.find((task) => task.id === detailsTaskId) ?? null}
+        open={!!detailsTaskId}
+        onOpenChange={(nextOpen) => !nextOpen && setDetailsTaskId(null)}
+        grade={targetStudent?.grade ?? useAppStore.getState().user?.grade ?? 'دوازدهم'}
+        major={targetStudent?.major ?? useAppStore.getState().user?.major ?? 'تجربی'}
+        onSave={async (updates) => {
+          if (!detailsTaskId) return;
+          if (isAdvisorWorkspace) {
+            const task = tasks.find((item) => item.id === detailsTaskId);
+            if (!task || task.createdBy !== 'advisor' || task.createdById !== actor?.id || task.status === 'COMPLETED' || task.status === 'SKIPPED') {
+              toast.error('فقط تسک‌های ساخته‌شده توسط خود مشاور قابل ویرایش هستند');
+              return;
+            }
+          }
+          const taskDate = tasks.find((task) => task.id === detailsTaskId)?.date;
+          await updateTask(detailsTaskId, updates);
+          if (taskDate) setSelectedDate(taskDate);
+          setPlanTab('daily');
+        }}
+      />
 
       {/* Settings / Partial Completion Dialog */}
       <Dialog open={!!settingsTaskId} onOpenChange={(open) => !open && setSettingsTaskId(null)}>
@@ -618,6 +673,11 @@ export default function PlanView() {
         onMoveToIncomplete={handleMoveToIncomplete}
         onDelete={handleActionDelete}
         taskCountByDate={taskCountByDate}
+        capabilities={isAdvisorWorkspace ? {
+          moveDate: actionTask?.status === 'PENDING' || actionTask?.status === 'INCOMPLETE',
+          moveToIncomplete: false,
+          delete: Boolean(actionTask && actionTask.createdBy === 'advisor' && actionTask.createdById === actor?.id && actionTask.status !== 'COMPLETED' && actionTask.status !== 'SKIPPED'),
+        } : undefined}
       />
     </div>
   );

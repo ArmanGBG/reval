@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Loader2, Settings, BookOpen } from 'lucide-react';
+import { Save, Loader2, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { Subject } from '@/lib/subjects-types';
 import { Switch } from '@/components/ui/switch';
@@ -24,7 +24,8 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
   const [name, setName] = useState(subject.name);
   const [color, setColor] = useState(subject.color);
   const [icon, setIcon] = useState(subject.icon || '📚');
-  const [isKonkur, setIsKonkur] = useState<boolean>(subject.isKonkur ?? false);
+  const [sortOrder, setSortOrder] = useState(subject.sortOrder);
+  const [isActive, setIsActive] = useState(subject.isActive);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -41,7 +42,8 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
           name: name.trim(),
           color,
           icon,
-          isKonkur,
+          sortOrder,
+          isActive,
         }),
       });
       const data = await res.json();
@@ -64,7 +66,7 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
         <div>
           <h2 className="text-base font-bold text-[var(--foreground)]">تنظیمات درس</h2>
           <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-            نام، رنگ، آیکون و وضعیت کنکور
+            فراداده، ترتیب نمایش و وضعیت کلی درس
           </p>
         </div>
       </div>
@@ -128,30 +130,30 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
           </div>
         </div>
 
-        {/* isKonkur toggle */}
-        <div>
-          <label className="text-xs font-medium text-[var(--foreground-muted)] mb-1.5 block">
-            وضعیت کنکور
-          </label>
-          <div className="surface-1 rounded-2xl p-4 flex items-center justify-between gap-3 border border-[var(--border)]">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-[var(--gold-soft)] border border-[var(--gold)]/30 flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4 text-[var(--gold)]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[var(--foreground)]">
-                  این درس در کنکور مطرح است؟
-                </p>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5 leading-relaxed">
-                  در صورت فعال بودن، این درس در فیلد کنکور به دانش‌آموزان نمایش داده می‌شود
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={isKonkur}
-              onCheckedChange={setIsKonkur}
-              className="data-[state=checked]:bg-[var(--gold)] data-[state=unchecked]:bg-[var(--border-strong)]"
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-medium text-[var(--foreground-muted)] mb-1.5 block">
+              ترتیب نمایش
+            </label>
+            <input
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
+              className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-3 h-11 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/40"
             />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--foreground-muted)] mb-1.5 block">
+              وضعیت درس
+            </label>
+            <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-3 h-11 flex items-center justify-between gap-3">
+              <span className="text-sm text-[var(--foreground)]">{isActive ? 'فعال' : 'غیرفعال'}</span>
+              <Switch
+                checked={isActive}
+                onCheckedChange={setIsActive}
+                className="data-[state=checked]:bg-[var(--gold)] data-[state=unchecked]:bg-[var(--border-strong)]"
+              />
+            </div>
           </div>
         </div>
 

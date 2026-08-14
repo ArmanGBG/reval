@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, type Variants } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil, UserRound, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { Task } from '@/lib/types';
 import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constants/feedbackMessages';
@@ -32,6 +32,17 @@ interface TaskCardProps {
   onReset: (id: string) => void; // NEW: undo complete/skip
   onEdit?: (id: string) => void; // edit task details
   dragHandleProps?: Record<string, unknown>; // for dnd-kit drag handle
+  capabilities?: TaskCardCapabilities;
+}
+
+export interface TaskCardCapabilities {
+  complete?: boolean;
+  action?: boolean;
+  partial?: boolean;
+  reset?: boolean;
+  edit?: boolean;
+  deleteDraft?: boolean;
+  drag?: boolean;
 }
 
 // ===== Component =====
@@ -46,6 +57,7 @@ export default function TaskCard({
   onReset,
   onEdit,
   dragHandleProps,
+  capabilities,
 }: TaskCardProps) {
   const isCompleted = task.completed === true;
   const isSkipped = task.completed === false;
@@ -53,22 +65,13 @@ export default function TaskCard({
   const isDraft = task.status === 'DRAFT';
   const isIncomplete = task.status === 'INCOMPLETE';
   const curriculumSummary = formatTaskCurriculum(task);
-
-  // Accent border classes based on status
-  // Pending tasks use the subject color so students can visually scan by subject.
-  // Completed/skipped use status colors (accent/danger).
-  const accentBorder = isCompleted
-    ? 'before:bg-[var(--accent)] before:w-[3px]'
-    : isSkipped
-      ? 'before:bg-[var(--danger)] before:w-[3px]'
-      : 'before:bg-[var(--subject-accent)] before:w-[3px]'; // pending: subject color
-
-  // Status dot color — neutral, no glow shadows
-  const statusDotColor = isCompleted
-    ? 'bg-[var(--accent)]'
-    : isSkipped
-      ? 'bg-[var(--danger)]'
-      : 'bg-[var(--warning)]';
+  const canComplete = capabilities?.complete ?? true;
+  const canAction = capabilities?.action ?? true;
+  const canPartial = capabilities?.partial ?? true;
+  const canReset = capabilities?.reset ?? true;
+  const canEdit = (capabilities?.edit ?? true) && Boolean(onEdit);
+  const canDeleteDraft = capabilities?.deleteDraft ?? true;
+  const canDrag = capabilities?.drag ?? true;
 
   return (
     <motion.div
@@ -81,15 +84,9 @@ export default function TaskCard({
       whileHover={{ y: -2 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       className={`surface-1 edge-highlight card-hover group relative overflow-hidden rounded-[var(--radius-lg)] p-4 md:p-5
-        before:absolute before:right-0 before:top-0 before:bottom-0 before:transition-all before:duration-300
         border border-[var(--border)] hover:border-[var(--border-strong)]
-        ${accentBorder}
         ${isCompleted || isSkipped ? 'opacity-60 hover:opacity-90' : ''}
       `}
-      style={isPending ? {
-        // Subject-color accent stripe on the right edge (RTL) for pending tasks
-        '--subject-accent': task.subjectColor,
-      } as React.CSSProperties : undefined}
     >
       {/* Top subject color stripe (subtle accent strip at the very top) */}
       <div
@@ -99,23 +96,11 @@ export default function TaskCard({
           backgroundColor: task.subjectColor,
         }}
       />
-      {/* Subtle accent overlay on hover (top-right) — kept calm, no glow */}
-      {!isCompleted && !isSkipped && (
-        <div
-          aria-hidden
-          className="absolute -top-12 -left-12 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
-          }}
-        />
-      )}
-
       <div className="flex items-start justify-between gap-2 md:gap-3 relative">
         {/* ===== Drag Handle + Task Info (right side in RTL) ===== */}
         <div className="flex items-start gap-1.5 flex-1 min-w-0">
           {/* Drag handle (desktop only) */}
-          {dragHandleProps && (
+          {dragHandleProps && canDrag && (
             <button
               {...dragHandleProps}
               className="hidden md:flex shrink-0 cursor-grab active:cursor-grabbing text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] transition-colors pt-1"
@@ -129,14 +114,6 @@ export default function TaskCard({
           <div className="flex-1 min-w-0">
             {/* Subject Row */}
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              {/* Status dot indicator */}
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 transition-all duration-300 ${statusDotColor}`}
-              />
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white/10"
-                style={{ backgroundColor: task.subjectColor }}
-              />
               <span className="text-[var(--foreground)] font-bold text-sm md:text-base truncate">
                 {task.subject}
               </span>
@@ -152,9 +129,16 @@ export default function TaskCard({
               </span>
             </div>
 
-            {isDraft && <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس · تکمیل جزئیات</button>}
+            {isDraft && (canEdit ? <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس · تکمیل جزئیات</button> : <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس</span>)}
             {isIncomplete && <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">ناقص</span>}
             {curriculumSummary && <p className="text-[var(--foreground-muted)] text-xs md:text-sm mb-2 line-clamp-2">{curriculumSummary}</p>}
+
+            {(task.teacherClassName || task.bookName) && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--foreground-muted)] mb-2">
+                {task.teacherClassName && <span className="flex items-center gap-1"><UserRound className="w-3 h-3" />دبیر: {task.teacherClassName}{task.sessionNumber ? ` · ${task.sessionNumber}` : ''}</span>}
+                {task.bookName && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />کتاب: {task.bookName}{task.testDescription ? ` · ${task.testDescription}` : ''}</span>}
+              </div>
+            )}
 
             {/* Activity Chips */}
             {task.detailsCompleted && <div className="flex flex-wrap gap-1.5 mb-2">
@@ -210,18 +194,18 @@ export default function TaskCard({
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           {isDraft ? (
             <div className="flex items-center gap-2">
-              {onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
-              <button
+              {canEdit && onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
+              {canDeleteDraft && canAction && <button
                 type="button"
                 onClick={(event) => { event.preventDefault(); event.stopPropagation(); onAction(task.id); }}
                 className="px-3 h-10 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger)] text-xs font-bold transition-colors hover:bg-[var(--danger)]/15"
               >
                 حذف تسک
-              </button>
+              </button>}
             </div>
           ) : isPending && task.detailsCompleted ? (
             <>
-              <button
+              {canComplete && <button
                 onClick={async () => {
                   await onComplete(task.id);
                   toast.success(getRandomSuccessMessage(), {
@@ -236,15 +220,15 @@ export default function TaskCard({
                 aria-label="انجام شد"
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-              <button
+              </button>}
+              {canAction && <button
                 onClick={() => onAction(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
                 aria-label="عملیات تسک"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-              {onEdit && task.createdBy === 'student' && (
+              </button>}
+              {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
                   className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
@@ -253,13 +237,13 @@ export default function TaskCard({
                   <Pencil className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               )}
-              <button
+              {canPartial && <button
                 onClick={() => onSettings(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.08)]"
                 aria-label="ثبت بخشی"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
+              </button>}
             </>
           ) : !isPending ? (
             <div className="flex items-center gap-1.5">
@@ -276,7 +260,7 @@ export default function TaskCard({
                 </span>
               )}
               {/* Undo button — NEW: allows reverting to pending */}
-              <button
+              {canReset && <button
                 onClick={async () => {
                   await onReset(task.id);
                   toast('وضعیت به حالت قبل برگشت', {
@@ -291,9 +275,9 @@ export default function TaskCard({
                 aria-label="بازگشت به حالت قبل"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+              </button>}
               {/* Task action button (opens the 3-way dialog) */}
-              {task.createdBy === 'student' && <button
+              {canAction && <button
                 onClick={() => onAction(task.id)}
                 className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
                 aria-label="عملیات تسک"
@@ -301,7 +285,7 @@ export default function TaskCard({
                 <Trash2 className="w-3.5 h-3.5" />
               </button>}
             </div>
-          ) : onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button> : null}
+          ) : canEdit && onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button> : null}
         </div>
       </div>
     </motion.div>

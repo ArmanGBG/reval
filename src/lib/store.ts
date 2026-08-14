@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
-import { MOCK_FLASHCARDS, MOCK_TICKETS, MOCK_INSTITUTE_ADVISORS, MOCK_INSTITUTE_STUDENTS, MOCK_EXAMS } from '@/lib/constants/mockData';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
@@ -16,18 +15,18 @@ import { AuthError } from '@/lib/api-client';
 // localStorage under a versioned key and hydrate it on store creation.
 // ====================================================================
 
-const FLASHCARDS_STORAGE_KEY = 'reval:flashcards:v1';
+const FLASHCARDS_STORAGE_KEY = 'reval:flashcards:v2';
+let taskLoadRequestSequence = 0;
 
 function loadFlashcardsFromStorage(): Flashcard[] {
-  if (typeof window === 'undefined') return MOCK_FLASHCARDS;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = window.localStorage.getItem(FLASHCARDS_STORAGE_KEY);
-    if (!raw) return MOCK_FLASHCARDS;
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as Flashcard[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_FLASHCARDS;
-    return parsed;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return MOCK_FLASHCARDS;
+    return [];
   }
 }
 
@@ -91,207 +90,6 @@ function saveStreakToStorage(s: PersistedStreak) {
 }
 
 // ====================================================================
-// Notification read-state persistence (localStorage)
-// -----------------------------------------------
-// We persist only the set of read notification IDs so that the
-// "unread" badge survives page refreshes. The notifications
-// themselves are recomputed dynamically from current data.
-// ====================================================================
-
-const NOTIFICATIONS_STORAGE_KEY = 'reval:notifications:v1';
-
-function loadReadNotificationIds(): Set<string> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = window.localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw) as string[];
-    if (Array.isArray(parsed)) return new Set(parsed);
-    return new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function saveReadNotificationIds(ids: Set<string>) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify([...ids]));
-  } catch {
-    // Quota exceeded — fail silently.
-  }
-}
-
-// ====================================================================
-// Notification computation
-// -----------------------------------------------
-// Builds the notification list from current store data (tasks, exams,
-// streak, flashcards, weekly goal). Called by refreshNotifications().
-// ====================================================================
-
-function computeNotifications(data: {
-  tasks: Task[];
-  exams: Exam[];
-  streakDays: number;
-  streakLastDate: string | null;
-  flashcards: Flashcard[];
-  weeklyGoalHours: number;
-  readIds: Set<string>;
-}): Notification[] {
-  const now = Date.now();
-  const todayISO = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
-
-  const notifications: Notification[] = [];
-
-  // 1. Upcoming Exam (3 days or less)
-  const threeDaysFromNow = new Date();
-  threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-  const threeDaysISO = (() => {
-    const d = threeDaysFromNow;
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
-
-  for (const exam of data.exams) {
-    if (exam.status !== 'upcoming') continue;
-    if (exam.date < todayISO || exam.date > threeDaysISO) continue;
-    const examDate = new Date(exam.date);
-    const todayDate = new Date(todayISO);
-    const diffDays = Math.round((examDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) continue;
-    notifications.push({
-      id: `exam-${exam.id}`,
-      type: 'upcoming-exam' as NotificationType,
-      title: `آزمون ${exam.subject}`,
-      description: diffDays === 0 ? 'امروز!' : `تا ${diffDays} روز دیگر`,
-      icon: 'ClipboardCheck',
-      color: diffDays <= 1 ? 'var(--danger)' : 'var(--warning)',
-      read: data.readIds.has(`exam-${exam.id}`),
-      createdAt: now - diffDays * 86400000,
-    });
-  }
-
-  // 2. Task Reminder — incomplete tasks for today
-  const todayIncompleteTasks = data.tasks.filter(
-    (t) => t.date === todayISO && t.completed === null,
-  );
-  if (todayIncompleteTasks.length > 0) {
-    notifications.push({
-      id: 'task-reminder-today',
-      type: 'task-reminder' as NotificationType,
-      title: `${todayIncompleteTasks.length} تسک انجام‌نشده برای امروز`,
-      description: 'به خودت فرصت بده و شروع کن!',
-      icon: 'ListTodo',
-      color: 'var(--accent)',
-      read: data.readIds.has('task-reminder-today'),
-      createdAt: now - 3600000, // 1 hour ago
-    });
-  }
-
-  // 3. Streak Warning — streak > 2 and no tasks completed today
-  const todayCompletedTasks = data.tasks.filter(
-    (t) => t.date === todayISO && t.completed === true,
-  );
-  if (data.streakDays > 2 && todayCompletedTasks.length === 0 && data.streakLastDate !== todayISO) {
-    notifications.push({
-      id: 'streak-warning',
-      type: 'streak-warning' as NotificationType,
-      title: 'اگر امروز مطالعه نکنی، رکوردت از دست می‌ره!',
-      description: `${data.streakDays} روز متوالی مطالعه`,
-      icon: 'Flame',
-      color: 'var(--danger)',
-      read: data.readIds.has('streak-warning'),
-      createdAt: now - 7200000, // 2 hours ago
-    });
-  }
-
-  // 4. Streak Milestone — streak is a multiple of 7 and > 0
-  if (data.streakDays > 0 && data.streakDays % 7 === 0) {
-    notifications.push({
-      id: `streak-milestone-${data.streakDays}`,
-      type: 'streak-milestone' as NotificationType,
-      title: `عالی! ${data.streakDays} روز متوالی مطالعه 🎉`,
-      description: 'ادامه بده، بی‌نظیری!',
-      icon: 'Trophy',
-      color: 'var(--gold)',
-      read: data.readIds.has(`streak-milestone-${data.streakDays}`),
-      createdAt: now - 1800000, // 30 min ago
-    });
-  }
-
-  // 5. Weekly Goal — compute hours studied this week
-  // Persian week: Sat–Fri. Compute study hours for current week.
-  const today = new Date();
-  const persianWeekday = (() => {
-    // Saturday=0, Sunday=1, ..., Friday=6
-    const jsDay = today.getDay();
-    return jsDay === 6 ? 0 : jsDay + 1;
-  })();
-  const saturdayOffset = persianWeekday;
-  const saturday = new Date(today);
-  saturday.setDate(today.getDate() - saturdayOffset);
-
-  let weeklyMinutes = 0;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(saturday);
-    d.setDate(saturday.getDate() + i);
-    if (d > today) break;
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const dayCompletedMinutes = data.tasks
-      .filter((t) => t.date === iso && t.completed === true && t.actualTimeMinutes)
-      .reduce((sum, t) => sum + (t.actualTimeMinutes || 0), 0);
-    weeklyMinutes += dayCompletedMinutes;
-  }
-  const weeklyHours = weeklyMinutes / 60;
-  const weeklyProgressPct = data.weeklyGoalHours > 0 ? (weeklyHours / data.weeklyGoalHours) * 100 : 100;
-
-  if (weeklyProgressPct < 50 && data.weeklyGoalHours > 0) {
-    const remaining = Math.max(0, data.weeklyGoalHours - weeklyHours);
-    const remainingRounded = Math.round(remaining * 10) / 10;
-    if (remainingRounded > 0) {
-      notifications.push({
-        id: 'weekly-goal-reminder',
-        type: 'weekly-goal' as NotificationType,
-        title: `هنوز ${remainingRounded} ساعت تا هدف هفتگیت فاصله داری`,
-        description: `${Math.round(weeklyProgressPct)}٪ از هدف هفتگی`,
-        icon: 'Target',
-        color: 'var(--warning)',
-        read: data.readIds.has('weekly-goal-reminder'),
-        createdAt: now - 5400000, // 1.5 hours ago
-      });
-    }
-  }
-
-  // 6. Flashcard Review — due cards
-  const dueCards = data.flashcards.filter((c) => {
-    if (!c.dueDate) return true; // never reviewed = due
-    return c.dueDate <= todayISO;
-  });
-  if (dueCards.length > 0) {
-    notifications.push({
-      id: 'flashcard-review',
-      type: 'flashcard-review' as NotificationType,
-      title: `${dueCards.length} فلش‌کارت برای مرور امروز آماده‌ان`,
-      description: 'مرور منظم، یادگیری رو تثبیت می‌کنه',
-      icon: 'Brain',
-      color: 'var(--accent)',
-      read: data.readIds.has('flashcard-review'),
-      createdAt: now - 900000, // 15 min ago
-    });
-  }
-
-  // Sort: unread first, then by createdAt (newest first)
-  notifications.sort((a, b) => {
-    if (a.read !== b.read) return a.read ? 1 : -1;
-    return b.createdAt - a.createdAt;
-  });
-
-  return notifications;
-}
-
-// ====================================================================
 // Auth persistence (localStorage)
 // -------------------------------
 // On page refresh the Zustand store resets to its initial values, so the
@@ -305,7 +103,7 @@ const AUTH_STORAGE_KEY = 'reval:auth:v1';
 
 interface PersistedAuth {
   userRole: UserRole;
-  user: Pick<User, 'id' | 'name' | 'avatar' | 'grade' | 'major' | 'goal' | 'dailyTargetHours' | 'phone' | 'assignedAdvisorId'> | null;
+  user: Pick<User, 'id' | 'name' | 'avatar' | 'grade' | 'major' | 'phone' | 'assignedAdvisorId'> | null;
   onboardingComplete: boolean;
 }
 
@@ -448,12 +246,6 @@ interface AppState {
   setFocusMode: (on: boolean) => void;
   toggleFocusMode: () => void;
 
-  // App Settings
-  hapticFeedback: boolean;
-  notificationReminders: boolean;
-  setHapticFeedback: (val: boolean) => void;
-  setNotificationReminders: (val: boolean) => void;
-
   // ===== Institute Manager State =====
   instituteProfile: InstituteProfile;
   setInstituteProfile: (profile: Partial<InstituteProfile>) => void;
@@ -509,13 +301,6 @@ interface AppState {
   streakBest: number;
   incrementStreak: () => void;
 
-  // ===== Weekly Study Goal =====
-  // The student's target study hours per Persian week (Sat–Fri).
-  // Default is 20 hours. The history is computed dynamically from
-  // `tasks` (no need to persist a separate history map).
-  weeklyGoalHours: number;
-  setWeeklyGoalHours: (hours: number) => void;
-
   // ===== Notifications =====
   notifications: Notification[];
   unreadNotificationCount: number;
@@ -528,7 +313,7 @@ interface AppState {
 // Rich profile fields (mood, scores, etc.) default to neutral values since
 // they're not stored in the DB — they'll be computed from task data in the
 // future. For now the advisor sees real student identity + tasks.
-// NOTE: grade/major/goal may be null if the student's profile is incomplete —
+// NOTE: grade/major may be null if the student's profile is incomplete —
 // the advisor TaskModal blocks task creation in that case.
 function buildStudentProfile(row: {
   id: string;
@@ -536,8 +321,6 @@ function buildStudentProfile(row: {
   avatar: string;
   grade: string | null;
   major: string | null;
-  goal: string | null;
-  dailyTargetHours: number;
   reportSummary?: {
     studyHoursThisWeek: number;
     taskCompletionRate: number;
@@ -550,9 +333,7 @@ function buildStudentProfile(row: {
     avatar: row.avatar || '🧑‍🎓',
     grade: (row.grade || '') as StudentProfile['grade'],
     major: (row.major || '') as StudentProfile['major'],
-    goal: (row.goal || '') as StudentProfile['goal'],
     studyHoursPerWeek: row.reportSummary?.studyHoursThisWeek ?? 0,
-    studyHoursTarget: row.dailyTargetHours * 7,
     studyHoursTrend: 'stable',
     mockExamScore: 0,
     previousMockScore: 0,
@@ -701,11 +482,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadedStudentId: null,
 
   loadTasksForStudent: async (studentId, opts) => {
+    const requestSequence = ++taskLoadRequestSequence;
     set({ tasksLoading: true, tasksError: null });
     try {
       const tasks = await taskService.loadTasks({ studentId, ...opts });
+      if (requestSequence !== taskLoadRequestSequence) return;
       set({ tasks, loadedStudentId: studentId, tasksLoading: false });
     } catch (err) {
+      if (requestSequence !== taskLoadRequestSequence) return;
       const msg = err instanceof Error ? err.message : 'خطا در بارگذاری وظایف';
       set({ tasksLoading: false, tasksError: msg });
     }
@@ -737,8 +521,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       topicId: task.topicId ?? null,
       topicIds: task.topicIds ?? [],
       topicModeId: task.topicModeId ?? null,
+      curriculumMode: task.curriculumMode ?? null,
+      topicModeSubtopicIds: task.topicModeSubtopicIds ?? [],
       pageStart: task.pageStart ?? null,
       pageEnd: task.pageEnd ?? null,
+      teacherClassName: task.teacherClassName ?? null,
+      sessionNumber: task.sessionNumber ?? null,
+      bookName: task.bookName ?? null,
+      testDescription: task.testDescription ?? null,
     };
 
     try {
@@ -782,8 +572,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       topicId: task.topicId ?? null,
       topicIds: task.topicIds ?? [],
       topicModeId: task.topicModeId ?? null,
+      curriculumMode: task.curriculumMode ?? null,
+      topicModeSubtopicIds: task.topicModeSubtopicIds ?? [],
       pageStart: task.pageStart ?? null,
       pageEnd: task.pageEnd ?? null,
+      teacherClassName: task.teacherClassName ?? null,
+      sessionNumber: task.sessionNumber ?? null,
+      bookName: task.bookName ?? null,
+      testDescription: task.testDescription ?? null,
     }));
 
     try {
@@ -933,13 +729,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   })(),
   setSelectedDate: (date) => set({ selectedDate: date }),
 
-  // Flashcards — hydrate from localStorage if available, else MOCK_FLASHCARDS.
+  // Flashcards — hydrate only user-created cards from localStorage.
   // Every card is guaranteed to have SRS fields (interval/repetition/easeFactor/dueDate).
   flashcards: (typeof window !== 'undefined'
     ? loadFlashcardsFromStorage().map((c) =>
         c.dueDate ? c : { ...c, ...initSRSFields() }
       )
-    : MOCK_FLASHCARDS),
+    : []),
   addFlashcard: (card) =>
     set((state) => {
       // New cards start with fresh SRS state (due immediately).
@@ -982,7 +778,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   // Tickets
-  tickets: MOCK_TICKETS,
+  tickets: [],
   addTicket: (ticket) => set((state) => ({ tickets: [...state.tickets, ticket] })),
 
   // Tools
@@ -994,12 +790,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFocusMode: (on) => set({ focusMode: on }),
   toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
 
-  // App Settings
-  hapticFeedback: true,
-  notificationReminders: true,
-  setHapticFeedback: (val) => set({ hapticFeedback: val }),
-  setNotificationReminders: (val) => set({ notificationReminders: val }),
-
   // ===== Institute Manager State =====
   instituteProfile: {
     name: 'آموزشگاه هدف',
@@ -1010,7 +800,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       instituteProfile: { ...state.instituteProfile, ...profile },
     })),
 
-  instituteAdvisors: MOCK_INSTITUTE_ADVISORS,
+  instituteAdvisors: [],
   addInstituteAdvisor: (advisor) =>
     set((state) => ({ instituteAdvisors: [...state.instituteAdvisors, advisor] })),
   updateInstituteAdvisor: (id, updates) =>
@@ -1020,7 +810,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     })),
 
-  instituteStudents: MOCK_INSTITUTE_STUDENTS,
+  instituteStudents: [],
   addInstituteStudent: (student) =>
     set((state) => ({ instituteStudents: [...state.instituteStudents, student] })),
   updateInstituteStudent: (id, updates) =>
@@ -1093,9 +883,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // ===== Exams State =====
-  // Initialize with MOCK_EXAMS so the UI has something to show before the
-  // first API load completes. loadExams() replaces these with real DB rows.
-  exams: MOCK_EXAMS,
+  exams: [],
   examsLoading: false,
   examsError: null,
   loadExams: async (opts) => {
@@ -1263,35 +1051,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // ===== Weekly Study Goal =====
-  weeklyGoalHours: 20,
-  setWeeklyGoalHours: (hours) => {
-    // Clamp to a sensible range (10–40 hours) and round to integers.
-    const clamped = Math.min(40, Math.max(10, Math.round(hours)));
-    set({ weeklyGoalHours: clamped });
-  },
-
   // ===== Notifications =====
   notifications: [],
   unreadNotificationCount: 0,
   markNotificationRead: (id) => {
+    const target = get().notifications.find((notification) => notification.id === id);
     set((state) => {
       const updated = state.notifications.map((n) =>
         n.id === id ? { ...n, read: true } : n,
       );
-      const readIds = new Set(
-        updated.filter((n) => n.read).map((n) => n.id),
-      );
-      saveReadNotificationIds(readIds);
       return {
         notifications: updated,
         unreadNotificationCount: updated.filter((n) => !n.read).length,
       };
     });
-    // ===== DB-backed message persistence =====
-    // If this notification links to a DB message (advisor/super-admin → student),
-    // fire-and-forget a PATCH to persist the read state server-side.
-    const target = get().notifications.find((n) => n.id === id);
     if (target?.messageId) {
       void messageService.markMessageRead(target.messageId);
     }
@@ -1299,14 +1072,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   markAllNotificationsRead: () => {
     set((state) => {
       const updated = state.notifications.map((n) => ({ ...n, read: true }));
-      const readIds = new Set(updated.map((n) => n.id));
-      saveReadNotificationIds(readIds);
       return {
         notifications: updated,
         unreadNotificationCount: 0,
       };
     });
-    // ===== DB-backed message persistence (mark all message notifications read) =====
     for (const n of get().notifications) {
       if (n.messageId) {
         void messageService.markMessageRead(n.messageId);
@@ -1315,34 +1085,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   refreshNotifications: () => {
     const state = get();
-    const readIds = loadReadNotificationIds();
-    const computed = computeNotifications({
-      tasks: state.tasks,
-      exams: state.exams,
-      streakDays: state.streakDays,
-      streakLastDate: state.streakLastDate,
-      flashcards: state.flashcards,
-      weeklyGoalHours: state.weeklyGoalHours,
-      readIds,
-    });
-
-    // ===== Merge DB-backed messages for STUDENT role =====
-    // For students, asynchronously fetch inbox messages (recipientId = me OR
-    // broadcast) and merge them into the notifications array. Computed
-    // notifications are shown immediately; DB messages are merged in once
-    // the fetch resolves. This keeps the bell responsive while still showing
-    // advisor/super-admin messages.
-    //
-    // GATE on `onboardingComplete` to avoid calling /api/messages before the
-    // session has been validated. Without this gate, a stale localStorage
-    // (onboardingComplete=true from a previous session) could trigger a 401
-    // that fires the global unauth handler prematurely.
     if (state.userRole === 'STUDENT' && state.onboardingComplete) {
-      // Show computed notifications immediately
-      const unreadNow = computed.filter((n) => !n.read).length;
-      set({ notifications: computed, unreadNotificationCount: unreadNow });
-
-      // Asynchronously merge DB messages
       void messageService.loadInboxMessages().then((messages) => {
         const messageNotifications: Notification[] = messages.map((m) => {
           const senderLabel =
@@ -1364,59 +1107,26 @@ export const useAppStore = create<AppState>((set, get) => ({
             senderName: senderLabel,
           };
         });
-
-        // Merge: keep computed notifications that aren't message-*,
-        // then add DB message notifications.
-        const merged = [
-          ...computed.filter((n) => !n.id.startsWith('message-')),
-          ...messageNotifications,
-        ];
-        // Sort: unread first, then by createdAt DESC
-        merged.sort((a, b) => {
+        messageNotifications.sort((a, b) => {
           if (a.read !== b.read) return a.read ? 1 : -1;
           return b.createdAt - a.createdAt;
         });
-        const mergedUnread = merged.filter((n) => !n.read).length;
         set({
-          notifications: merged,
-          unreadNotificationCount: mergedUnread,
+          notifications: messageNotifications,
+          unreadNotificationCount: messageNotifications.filter((n) => !n.read).length,
         });
       }).catch(() => {
-        // Network/API error — keep showing the computed notifications.
-        // No-op; the bell still works for computed notifications.
+        set({ notifications: [], unreadNotificationCount: 0 });
       });
     } else {
-      // Non-student roles — just show computed notifications
-      const unreadNotificationCount = computed.filter((n) => !n.read).length;
-      set({ notifications: computed, unreadNotificationCount });
+      set({ notifications: [], unreadNotificationCount: 0 });
     }
   },
 }));
 
-// ===== Initialize notifications on first client render =====
-// We call refreshNotifications once on the client so that
-// notifications are computed from the current store data.
-//
-// NOTE: This runs on module load, BEFORE the page.tsx useEffect has a chance
-// to validate the session with the server. At this point, `onboardingComplete`
-// is false (default store state) and `userRole` is 'STUDENT' (default).
-//
-// `refreshNotifications` checks `userRole === 'STUDENT'` to decide whether to
-// fetch inbox messages. With the default `userRole === 'STUDENT'`, it WOULD
-// call `loadInboxMessages` → `/api/messages`. If the user isn't authenticated
-// yet (no cookie), this returns 401. The apiFetch wrapper would throw an
-// AuthError, which is caught by the `.catch(() => {})` in refreshNotifications.
-//
-// This is safe (no toast, no redirect) because the SessionGuard hasn't mounted
-// yet (the unauthHandler is null). But it's still a wasted request. To avoid
-// it, we gate the call on `onboardingComplete` — only refresh notifications
-// once the user is actually logged in.
 if (typeof window !== 'undefined') {
   queueMicrotask(() => {
     const state = useAppStore.getState();
-    // Only fetch notifications if the user is logged in. Otherwise, skip —
-    // the AppShell / NotificationCenter will call refreshNotifications after
-    // the session is validated.
     if (state.onboardingComplete) {
       state.refreshNotifications();
     }

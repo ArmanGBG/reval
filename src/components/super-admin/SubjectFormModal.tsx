@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Loader2, Plus, BookOpen, Check } from 'lucide-react';
+import { X, Loader2, Plus, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { Switch } from '@/components/ui/switch';
 
 interface SubjectFormModalProps {
   onClose: () => void;
@@ -25,27 +24,46 @@ const ICONS = ['📚', '🧬', '⚛️', '⚗️', '📐', '🪨', '🌍', '🎨
 const GRADES = ['دهم', 'یازدهم', 'دوازدهم'] as const;
 const MAJORS = ['تجربی', 'ریاضی', 'انسانی'] as const;
 
-// Default matrix: تجربی × all grades (most common for konkur subjects)
-const DEFAULT_MATRIX: Record<string, boolean> = {
-  'دهم|تجربی': true,
-  'یازدهم|تجربی': true,
-  'دوازدهم|تجربی': true,
+interface GradeSelection {
+  selected: boolean;
+  isKonkur: boolean;
+  isFinal: boolean;
+}
+
+// Default matrix: تجربی × all grades, available for both assessment types.
+const DEFAULT_MATRIX: Record<string, GradeSelection> = {
+  'دهم|تجربی': { selected: true, isKonkur: true, isFinal: true },
+  'یازدهم|تجربی': { selected: true, isKonkur: true, isFinal: true },
+  'دوازدهم|تجربی': { selected: true, isKonkur: true, isFinal: true },
 };
 
 export function SubjectFormModal({ onClose, onSaved }: SubjectFormModalProps) {
   const [name, setName] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const [icon, setIcon] = useState(ICONS[0]);
-  const [isKonkur, setIsKonkur] = useState(true);
   // Grade/major matrix — key is `${grade}|${major}`
-  const [matrix, setMatrix] = useState<Record<string, boolean>>({ ...DEFAULT_MATRIX });
+  const [matrix, setMatrix] = useState<Record<string, GradeSelection>>({ ...DEFAULT_MATRIX });
   const [saving, setSaving] = useState(false);
 
-  const selectedCount = Object.values(matrix).filter(Boolean).length;
+  const selectedCount = Object.values(matrix).filter((cell) => cell.selected).length;
 
   const toggleCell = (grade: string, major: string) => {
     const key = `${grade}|${major}`;
-    setMatrix((prev) => ({ ...prev, [key]: !prev[key] }));
+    setMatrix((prev) => ({
+      ...prev,
+      [key]: prev[key]?.selected
+        ? { ...prev[key], selected: false }
+        : { selected: true, isKonkur: true, isFinal: true },
+    }));
+  };
+
+  const toggleAssessment = (grade: string, major: string, field: 'isKonkur' | 'isFinal') => {
+    const key = `${grade}|${major}`;
+    setMatrix((prev) => {
+      const cell = prev[key] || { selected: true, isKonkur: true, isFinal: true };
+      if (cell[field] && !cell[field === 'isKonkur' ? 'isFinal' : 'isKonkur']) return prev;
+      return { ...prev, [key]: { ...cell, selected: true, [field]: !cell[field] } };
+    });
   };
 
   const handleSubmit = async () => {
@@ -67,7 +85,6 @@ export function SubjectFormModal({ onClose, onSaved }: SubjectFormModalProps) {
           name: name.trim(),
           color,
           icon,
-          isKonkur,
           sortOrder: 0,
         }),
       });
@@ -81,14 +98,20 @@ export function SubjectFormModal({ onClose, onSaved }: SubjectFormModalProps) {
       const gradePromises: Promise<{ ok: boolean; grade: string; major: string; error?: string }>[] = [];
       for (const grade of GRADES) {
         for (const major of MAJORS) {
-          if (matrix[`${grade}|${major}`]) {
+          const selection = matrix[`${grade}|${major}`];
+          if (selection?.selected) {
             gradePromises.push(
               (async () => {
                 try {
                   const r = await fetch(`/api/subjects/${subjectId}/grades`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ grade, major }),
+                    body: JSON.stringify({
+                      grade,
+                      major,
+                      isKonkur: selection.isKonkur,
+                      isFinal: selection.isFinal,
+                    }),
                   });
                   if (!r.ok) {
                     const d = await r.json().catch(() => ({}));
@@ -149,7 +172,7 @@ export function SubjectFormModal({ onClose, onSaved }: SubjectFormModalProps) {
           <div>
             <h2 className="text-lg font-bold text-[var(--foreground)]">افزودن درس جدید</h2>
             <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
-              نام، رنگ، آیکون، وضعیت کنکور و پایه/رشته‌های قابل‌کاربرد
+              نام، رنگ، آیکون و پایه/رشته‌های قابل‌کاربرد
             </p>
           </div>
           <button
@@ -220,30 +243,6 @@ export function SubjectFormModal({ onClose, onSaved }: SubjectFormModalProps) {
           </div>
         </div>
 
-        {/* isKonkur toggle */}
-        <div className="mb-4">
-          <div className="surface-1 rounded-2xl p-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-[var(--gold-soft)] border border-[var(--gold)]/30 flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4 text-[var(--gold)]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[var(--foreground)]">
-                  این درس در کنکور مطرح است؟
-                </p>
-                <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5 leading-relaxed">
-                  در صورت فعال بودن، این درس در فیلد کنکور به دانش‌آموزان نمایش داده می‌شود
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={isKonkur}
-              onCheckedChange={setIsKonkur}
-              className="data-[state=checked]:bg-[var(--gold)] data-[state=unchecked]:bg-[var(--border-strong)]"
-            />
-          </div>
-        </div>
-
         {/* Grade/Major Matrix */}
         <div className="mb-5">
           <label className="text-xs font-medium text-[var(--foreground-muted)] mb-1.5 block">
@@ -277,21 +276,45 @@ export function SubjectFormModal({ onClose, onSaved }: SubjectFormModalProps) {
                     </td>
                     {MAJORS.map((major) => {
                       const key = `${grade}|${major}`;
-                      const checked = !!matrix[key];
+                      const selection = matrix[key];
+                      const checked = !!selection?.selected;
                       return (
                         <td key={major} className="text-center py-1 px-1">
-                          <button
-                            type="button"
-                            onClick={() => toggleCell(grade, major)}
-                            aria-label={`${grade} ${major}`}
-                            className={`w-8 h-8 rounded-lg btn-hover flex items-center justify-center transition-all mx-auto ${
-                              checked
-                                ? 'bg-[var(--gold-soft)] border border-[var(--gold)]/40 text-[var(--gold)]'
-                                : 'bg-[var(--bg-elevated)] border border-[var(--border)] text-transparent hover:text-[var(--foreground-subtle)]'
-                            }`}
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
+                          <div className="flex flex-col items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleCell(grade, major)}
+                              aria-label={`${grade} ${major}`}
+                              className={`w-8 h-8 rounded-lg btn-hover flex items-center justify-center transition-all ${
+                                checked
+                                  ? 'bg-[var(--gold-soft)] border border-[var(--gold)]/40 text-[var(--gold)]'
+                                  : 'bg-[var(--bg-elevated)] border border-[var(--border)] text-transparent hover:text-[var(--foreground-subtle)]'
+                              }`}
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            {checked && (
+                              <div className="flex gap-1">
+                                {([
+                                  ['isKonkur', 'کنکور'],
+                                  ['isFinal', 'نهایی'],
+                                ] as const).map(([field, label]) => (
+                                  <button
+                                    key={field}
+                                    type="button"
+                                    onClick={() => toggleAssessment(grade, major, field)}
+                                    className={`px-1.5 h-5 rounded text-[9px] border ${
+                                      selection[field]
+                                        ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                                        : 'border-[var(--border)] text-[var(--foreground-subtle)]'
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       );
                     })}

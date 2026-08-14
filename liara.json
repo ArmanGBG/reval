@@ -6,7 +6,7 @@
     "path": "."
   },
   "start": {
-    "command": "npm run start:liara",
+    "command": "npm run start",
     "port": 3000
   }
 }

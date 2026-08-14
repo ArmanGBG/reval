@@ -2,4 +2,5 @@ UPDATE "Task"
 SET
   "actualTimeMinutes" = COALESCE("actualTimeMinutes", "targetTimeMinutes", 0),
   "actualTestCount" = COALESCE("actualTestCount", "targetTestCount", 0)
-WHERE "status" = 'COMPLETED';
+WHERE "status" = 'COMPLETED'
+  AND ("actualTimeMinutes" IS NULL OR "actualTestCount" IS NULL);

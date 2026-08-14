@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canViewStudentTasks, canCreateTaskForStudent, getEligibleTaskSubject, isTaskFieldType, isValidTaskPageRange, validateTaskCurriculum } from '@/lib/api-auth';
+import { requireAuth, canViewStudentTasks, canCreateTaskForStudent, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskTopicInclude } from '@/lib/task-api';
 
@@ -29,32 +29,94 @@ export async function POST(request: NextRequest) {
     }
     if (typeof body.order !== 'number') return NextResponse.json({ error: 'order الزامی و باید عدد باشد' }, { status: 400 });
     if (typeof body.detailsCompleted !== 'boolean') return NextResponse.json({ error: 'detailsCompleted الزامی است' }, { status: 400 });
-    if (!isValidTaskPageRange(body.pageStart, body.pageEnd)) return NextResponse.json({ error: 'بازه صفحه معتبر نیست' }, { status: 400 });
     const permission = await canCreateTaskForStudent(ctx, body.studentId);
     if (!permission.allowed || !permission.createdBy) return NextResponse.json({ error: 'اجازه ایجاد تسک برای این دانش‌آموز را ندارید' }, { status: 403 });
-    const subject = await getEligibleTaskSubject(body.studentId, body.subjectId, body.fieldType);
-    if (!subject) return NextResponse.json({ error: 'درس برای پایه، رشته و نوع ارزیابی دانش‌آموز مجاز نیست' }, { status: 400 });
-    const curriculum = await validateTaskCurriculum(body);
-    if (!curriculum) return NextResponse.json({ error: 'شناسه‌های برنامه درسی با درس انتخابی سازگار نیستند' }, { status: 400 });
     const status = body.status ?? legacyTaskStatus(body.detailsCompleted, body.completed ?? null);
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
     const lifecycleError = validateTaskLifecycle(status, body.detailsCompleted, body.completed ?? null);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
+    const curriculum = await validateTaskCurriculum({
+      ...body,
+      studentId: body.studentId,
+      subjectId: body.subjectId,
+      fieldType: body.fieldType,
+      allowSubjectOnly: status === 'DRAFT' && body.detailsCompleted === false,
+    });
+    if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
     if (status !== 'DRAFT' && (!Array.isArray(body.activityTypes) || body.activityTypes.length === 0 || typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes <= 0 || typeof body.targetTestCount !== 'number' || body.targetTestCount < 0)) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
     if (!body.detailsCompleted && body.completed != null) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
+    const hasClassVideo = Array.isArray(body.activityTypes) && body.activityTypes.includes('کلاس/ویدیو');
+    const hasTestDetails = Array.isArray(body.activityTypes) && (body.activityTypes.includes('تست آموزشی') || body.activityTypes.includes('تست سنجشی'));
     const task = await db.task.create({ data: {
-      studentId: body.studentId, subjectId: subject.id, subject: subject.name, subjectColor: subject.color,
+      studentId: body.studentId, subjectId: curriculum.subject.id, subject: curriculum.subject.name, subjectColor: curriculum.subject.color,
       topic: curriculum.topic, fieldType: body.fieldType, activityTypes: Array.isArray(body.activityTypes) ? JSON.stringify(body.activityTypes) : null,
       targetTimeMinutes: typeof body.targetTimeMinutes === 'number' ? body.targetTimeMinutes : null, actualTimeMinutes: typeof body.actualTimeMinutes === 'number' ? body.actualTimeMinutes : null,
       targetTestCount: typeof body.targetTestCount === 'number' ? body.targetTestCount : null, actualTestCount: typeof body.actualTestCount === 'number' ? body.actualTestCount : null,
       status, completed: body.completed === true ? true : body.completed === false ? false : null, detailsCompleted: body.detailsCompleted,
       date: body.date, order: body.order, createdBy: permission.createdBy, createdById: permission.createdBy === 'advisor' ? ctx.userId : null,
-      chapterId: typeof body.chapterId === 'string' ? body.chapterId : null, topicId: typeof body.topicId === 'string' ? body.topicId : null,
-      topicModeId: typeof body.topicModeId === 'string' ? body.topicModeId : null, pageStart: typeof body.pageStart === 'number' ? body.pageStart : null, pageEnd: typeof body.pageEnd === 'number' ? body.pageEnd : null,
+      chapterId: curriculum.chapterId, topicId: curriculum.topicId,
+      topicModeId: curriculum.topicModeId, curriculumMode: curriculum.mode,
+      pageStart: curriculum.pageStart, pageEnd: curriculum.pageEnd,
+      teacherClassName: hasClassVideo && typeof body.teacherClassName === 'string' ? body.teacherClassName.trim() || null : null,
+      sessionNumber: hasClassVideo && typeof body.sessionNumber === 'string' ? body.sessionNumber.trim() || null : null,
+      bookName: hasTestDetails && typeof body.bookName === 'string' ? body.bookName.trim() || null : null,
+      testDescription: hasTestDetails && typeof body.testDescription === 'string' ? body.testDescription.trim() || null : null,
       topics: { create: curriculum.topicIds.map((topicId) => ({ topicId })) },
+      topicModeSubtopics: { create: curriculum.subtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId })) },
     }, include: taskTopicInclude });
+
+    // Save suggestions for teacher/class name and book name
+    const suggestionPromises: Promise<void>[] = [];
+    if (hasClassVideo && typeof body.teacherClassName === 'string' && body.teacherClassName.trim() !== '') {
+      suggestionPromises.push(
+        db.taskDetailSuggestion.upsert({
+          where: {
+            studentId_subjectId_type_value: {
+              studentId: body.studentId,
+              subjectId: curriculum.subject.id,
+              type: 'teacherClass',
+              value: body.teacherClassName.trim(),
+            },
+          },
+          create: {
+            studentId: body.studentId,
+            subjectId: curriculum.subject.id,
+            type: 'teacherClass',
+            value: body.teacherClassName.trim(),
+          },
+          update: {
+            createdAt: new Date(),
+          },
+        }).then(() => {})
+      );
+    }
+    if (hasTestDetails && typeof body.bookName === 'string' && body.bookName.trim() !== '') {
+      suggestionPromises.push(
+        db.taskDetailSuggestion.upsert({
+          where: {
+            studentId_subjectId_type_value: {
+              studentId: body.studentId,
+              subjectId: curriculum.subject.id,
+              type: 'book',
+              value: body.bookName.trim(),
+            },
+          },
+          create: {
+            studentId: body.studentId,
+            subjectId: curriculum.subject.id,
+            type: 'book',
+            value: body.bookName.trim(),
+          },
+          update: {
+            createdAt: new Date(),
+          },
+        }).then(() => {})
+      );
+    }
+    await Promise.all(suggestionPromises).catch((error) => console.error('Saving task suggestions failed:', error));
+
     return NextResponse.json({ task: parseTaskResponse({ ...task }) }, { status: 201 });
   } catch (cause) {
     console.error('POST /api/tasks error:', cause);

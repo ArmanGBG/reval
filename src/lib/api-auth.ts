@@ -177,9 +177,8 @@ export async function canCreateTaskForStudent(
 }
 
 // Can this auth context MODIFY/DELETE a specific task?
-// - The task's student (owner)
-// - The student's assigned advisor
-// - A super admin
+// Students manage their own tasks. Advisors manage only tasks they created.
+// Viewing an assigned student's tasks does not imply modification rights.
 export async function canModifyTask(
   ctx: AuthContext,
   taskId: string,
@@ -188,13 +187,20 @@ export async function canModifyTask(
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    select: { studentId: true, createdBy: true },
+    select: { studentId: true, createdBy: true, createdById: true, status: true },
   });
 
   if (!task) return false;
 
   if (ctx.user.role === 'STUDENT') return task.studentId === ctx.userId && task.createdBy === 'student';
-  return canViewStudentTasks(ctx, task.studentId);
+  if (ctx.user.role === 'ADVISOR') {
+    return task.createdBy === 'advisor'
+      && task.createdById === ctx.userId
+      && task.status !== 'COMPLETED'
+      && task.status !== 'SKIPPED'
+      && await canViewStudentTasks(ctx, task.studentId);
+  }
+  return false;
 }
 
 // ===== Chapter / Topic ownership checks =====
@@ -209,16 +215,15 @@ export async function canModifyTask(
 export async function verifyChapterOwnership(
   subjectId: string,
   chapterId: string,
-): Promise<{ id: string; gradeSubjectId: string; chapterNo: number; pageStart: number | null; pageEnd: number | null; isLastPage: boolean } | null> {
-  const chapter = await db.chapter.findUnique({
-    where: { id: chapterId },
+): Promise<{ id: string; gradeSubjectId: string; chapterNo: number; pageStart: number | null; pageEnd: number | null } | null> {
+  const chapter = await db.chapter.findFirst({
+    where: { id: chapterId, isActive: true, gradeSubject: { isActive: true, subject: { isActive: true } } },
     select: {
       id: true,
       gradeSubjectId: true,
       chapterNo: true,
       pageStart: true,
       pageEnd: true,
-      isLastPage: true,
       gradeSubject: { select: { subjectId: true } },
     },
   });
@@ -235,15 +240,14 @@ export async function verifyChapterOwnership(
 export async function verifyChapterOwnershipWithTopics(
   subjectId: string,
   chapterId: string,
-): Promise<{ id: string; gradeSubjectId: string; pageStart: number | null; pageEnd: number | null; isLastPage: boolean } | null> {
-  const chapter = await db.chapter.findUnique({
-    where: { id: chapterId },
+): Promise<{ id: string; gradeSubjectId: string; pageStart: number | null; pageEnd: number | null } | null> {
+  const chapter = await db.chapter.findFirst({
+    where: { id: chapterId, isActive: true, gradeSubject: { isActive: true, subject: { isActive: true } } },
     select: {
       id: true,
       gradeSubjectId: true,
       pageStart: true,
       pageEnd: true,
-      isLastPage: true,
       gradeSubject: { select: { subjectId: true } },
     },
   });
@@ -259,44 +263,156 @@ export function isTaskFieldType(value: unknown): value is TaskFieldType {
   return TASK_FIELD_TYPES.includes(value as TaskFieldType);
 }
 
-export async function getEligibleTaskSubject(studentId: string, subjectId: string, fieldType: TaskFieldType) {
-  const student = await db.user.findUnique({ where: { id: studentId }, select: { grade: true, major: true } });
-  if (!student?.grade || !student.major) return null;
-  // Konkur planning spans all high-school grades in the student's major.
-  // Final-exam tasks remain tied to the student's exact grade and major.
-  const grade = fieldType === 'کنکور' ? {} : { grade: student.grade };
-  return db.subject.findFirst({
-    where: {
-      id: subjectId,
-      isActive: true,
-      ...(fieldType === 'کنکور' ? { isKonkur: true } : {}),
-      grades: { some: { ...grade, major: student.major, isActive: true } },
-    },
-    select: { id: true, name: true, color: true },
-  });
+export interface TaskCurriculumInput {
+  studentId: string;
+  subjectId: string;
+  fieldType: TaskFieldType;
+  curriculumMode: unknown;
+  allowSubjectOnly?: boolean;
+  chapterId?: unknown;
+  topicId?: unknown;
+  topicIds?: unknown;
+  topicModeId?: unknown;
+  topicModeSubtopicIds?: unknown;
+  pageStart?: unknown;
+  pageEnd?: unknown;
 }
 
-export async function validateTaskCurriculum(input: { subjectId: string; chapterId?: string | null; topicId?: string | null; topicIds?: string[] | null; topicModeId?: string | null }) {
-  if (input.topicIds != null && !Array.isArray(input.topicIds)) return null;
-  if (input.topicIds?.some((id) => typeof id !== 'string' || !id)) return null;
-  const topicIds = [...new Set(input.topicIds?.length ? input.topicIds : input.topicId ? [input.topicId] : [])];
-  const [chapter, topic, mode] = await Promise.all([
-    input.chapterId ? db.chapter.findUnique({ where: { id: input.chapterId }, select: { id: true, title: true, gradeSubject: { select: { subjectId: true } } } }) : null,
-    topicIds.length ? db.topic.findMany({ where: { id: { in: topicIds } }, select: { id: true, title: true, topicNo: true, chapterId: true, chapter: { select: { gradeSubject: { select: { subjectId: true } } } } }, orderBy: { topicNo: 'asc' } }) : [],
-    input.topicModeId ? db.topicMode.findUnique({ where: { id: input.topicModeId }, select: { title: true, subjectId: true } }) : null,
-  ]);
-  if (input.chapterId && (!chapter || chapter.gradeSubject.subjectId !== input.subjectId)) return null;
-  if (topic.length !== topicIds.length || topic.some((item) => item.chapter.gradeSubject.subjectId !== input.subjectId)) return null;
-  if (input.topicModeId && (!mode || mode.subjectId !== input.subjectId)) return null;
-  if (chapter && topic.some((item) => item.chapterId !== chapter.id)) return null;
-  if (mode && topic.length) return null;
-  const topicSummary = topic.length
-    ? [chapter?.title, ...topic.map((item) => item.title)].filter(Boolean).join(' · ')
-    : chapter?.title ?? mode?.title ?? null;
-  return { topic: topicSummary, topicIds, topics: topic.map(({ chapter: _chapter, ...item }) => item) };
+export async function validateTaskCurriculum(input: TaskCurriculumInput) {
+  const student = await db.user.findFirst({
+    where: { id: input.studentId, role: 'STUDENT', isActive: true },
+    select: { grade: true, major: true },
+  });
+  if (!student?.grade || !student.major) return null;
+  if (!isValidTaskPageRange(input.pageStart, input.pageEnd)) return null;
+
+  const topicIdsInput = input.topicIds == null ? [] : input.topicIds;
+  const subtopicIdsInput = input.topicModeSubtopicIds == null ? [] : input.topicModeSubtopicIds;
+  if (!Array.isArray(topicIdsInput) || topicIdsInput.some((id) => typeof id !== 'string' || !id)) return null;
+  if (!Array.isArray(subtopicIdsInput) || subtopicIdsInput.some((id) => typeof id !== 'string' || !id)) return null;
+  if (input.topicId != null && (typeof input.topicId !== 'string' || !input.topicId)) return null;
+  if (input.chapterId != null && (typeof input.chapterId !== 'string' || !input.chapterId)) return null;
+  if (input.topicModeId != null && (typeof input.topicModeId !== 'string' || !input.topicModeId)) return null;
+
+  const requestedTopicIds = [...new Set(topicIdsInput as string[])];
+  if (typeof input.topicId === 'string' && requestedTopicIds.length && !requestedTopicIds.includes(input.topicId)) return null;
+  const topicIds = requestedTopicIds.length ? requestedTopicIds : typeof input.topicId === 'string' ? [input.topicId] : [];
+  const subtopicIds = [...new Set(subtopicIdsInput as string[])];
+  const gradeEligibility = {
+    isActive: true,
+    major: student.major,
+    ...(input.fieldType === 'کنکور' ? { isKonkur: true } : { isFinal: true, grade: student.grade }),
+    subject: { id: input.subjectId, isActive: true },
+  };
+
+  if (input.curriculumMode !== 'BOOK' && input.curriculumMode !== 'THEMATIC') {
+    const hasCurriculumSelection =
+      input.chapterId != null ||
+      input.topicId != null ||
+      topicIds.length > 0 ||
+      input.topicModeId != null ||
+      subtopicIds.length > 0 ||
+      input.pageStart != null ||
+      input.pageEnd != null;
+    if (!input.allowSubjectOnly || input.curriculumMode != null || hasCurriculumSelection) return null;
+
+    const gradeSubject = await db.gradeSubject.findFirst({
+      where: gradeEligibility,
+      select: { subject: { select: { id: true, name: true, color: true } } },
+    });
+    if (!gradeSubject) return null;
+    return {
+      subject: gradeSubject.subject,
+      topic: null,
+      topicIds: [] as string[],
+      subtopicIds: [] as string[],
+      mode: null,
+      chapterId: null,
+      topicId: null,
+      topicModeId: null,
+      pageStart: null,
+      pageEnd: null,
+    };
+  }
+
+  if (input.curriculumMode === 'BOOK') {
+    if (typeof input.chapterId !== 'string') return null;
+    if (input.topicModeId != null || subtopicIds.length > 0) return null;
+    const chapter = await db.chapter.findFirst({
+      where: { id: input.chapterId, isActive: true, gradeSubject: gradeEligibility },
+      select: {
+        id: true,
+        title: true,
+        pageStart: true,
+        pageEnd: true,
+        gradeSubjectId: true,
+        gradeSubject: { select: { subject: { select: { id: true, name: true, color: true } } } },
+      },
+    });
+    if (!chapter) return null;
+    const topics = topicIds.length
+      ? await db.topic.findMany({
+          where: { id: { in: topicIds }, chapterId: chapter.id, isActive: true },
+          select: { id: true, title: true, topicNo: true, chapterId: true },
+          orderBy: { topicNo: 'asc' },
+        })
+      : [];
+    if (topics.length !== topicIds.length) return null;
+    if (input.pageStart != null && input.pageEnd != null) {
+      if (chapter.pageStart === null || chapter.pageEnd === null) return null;
+      if ((input.pageStart as number) < chapter.pageStart || (input.pageEnd as number) > chapter.pageEnd) return null;
+    }
+    return {
+      subject: chapter.gradeSubject.subject,
+      topic: topics.length ? [chapter.title, ...topics.map((item) => item.title)].join(' · ') : chapter.title,
+      topicIds: topics.map((item) => item.id),
+      subtopicIds: [] as string[],
+      mode: 'BOOK' as const,
+      chapterId: chapter.id,
+      topicId: topics[0]?.id ?? null,
+      topicModeId: null,
+      pageStart: input.pageStart == null ? null : input.pageStart as number,
+      pageEnd: input.pageEnd == null ? null : input.pageEnd as number,
+    };
+  }
+
+  if (typeof input.topicModeId !== 'string') return null;
+  if (input.chapterId != null || input.topicId != null || topicIds.length > 0 || input.pageStart != null || input.pageEnd != null) return null;
+  const mode = await db.topicMode.findFirst({
+    where: { id: input.topicModeId, isActive: true, gradeSubject: gradeEligibility },
+    select: {
+      id: true,
+      title: true,
+      gradeSubjectId: true,
+      gradeSubject: { select: { subject: { select: { id: true, name: true, color: true } } } },
+    },
+  });
+  if (!mode) return null;
+  const subtopics = subtopicIds.length
+    ? await db.topicModeSubtopic.findMany({
+        where: { id: { in: subtopicIds }, topicModeId: mode.id, isActive: true },
+        select: { id: true, title: true, subtopicNo: true },
+        orderBy: { subtopicNo: 'asc' },
+      })
+    : [];
+  if (subtopics.length !== subtopicIds.length) return null;
+  return {
+    subject: mode.gradeSubject.subject,
+    topic: [mode.title, ...subtopics.map((item) => item.title)].join(' · '),
+    topicIds: [] as string[],
+    subtopicIds: subtopics.map((item) => item.id),
+    mode: 'THEMATIC' as const,
+    chapterId: null,
+    topicId: null,
+    topicModeId: mode.id,
+    pageStart: null,
+    pageEnd: null,
+  };
 }
 
 export function isValidTaskPageRange(start: unknown, end: unknown) {
   const valid = (value: unknown) => value == null || (Number.isInteger(value) && (value as number) >= 1);
-  return valid(start) && valid(end) && !(typeof start === 'number' && typeof end === 'number' && start > end);
+  const hasStart = start != null;
+  const hasEnd = end != null;
+  return valid(start) && valid(end) && hasStart === hasEnd && !(typeof start === 'number' && typeof end === 'number' && start > end);
 }

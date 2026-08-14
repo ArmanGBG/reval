@@ -7,8 +7,7 @@ import { requireAuth } from '@/lib/api-auth';
 // Authorization: any authenticated user (students + advisors creating tasks).
 //
 // Logic:
-//   fieldType=کنکور → subjects where isKonkur=true
-//   fieldType=نهایی  → return ALL active subjects (no isKonkur filter)
+//   Eligibility is scoped to each subject + grade + major offering.
 //
 // Also filters by grade+major via GradeSubject pivot, and returns the full tree
 // (grades config → chapters → topics, plus topicModes) for each subject so the
@@ -32,14 +31,10 @@ export async function GET(request: NextRequest) {
   if (fieldType !== 'کنکور' && fieldType !== 'نهایی') return NextResponse.json({ error: 'fieldType نامعتبر است' }, { status: 400 });
 
   const where: Record<string, unknown> = { isActive: true };
-  if (fieldType === 'کنکور') {
-    where.isKonkur = true;
-  }
-  // For نهایی → return ALL active subjects (no isKonkur filter).
-  // Filter by grade + major via GradeSubject pivot.
+  const eligibility = fieldType === 'کنکور' ? { isKonkur: true } : { isFinal: true };
   const gradeFilter = fieldType === 'کنکور' || allGrades
-    ? { major, isActive: true }
-    : { grade, major, isActive: true };
+    ? { major, isActive: true, ...eligibility }
+    : { grade, major, isActive: true, ...eligibility };
   where.grades = { some: gradeFilter };
 
   const subjects = await db.subject.findMany({
@@ -60,11 +55,14 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          topicModes: {
+            where: { isActive: true },
+            orderBy: { modeNo: 'asc' },
+            include: {
+              subtopics: { where: { isActive: true }, orderBy: { subtopicNo: 'asc' } },
+            },
+          },
         },
-      },
-      topicModes: {
-        where: { isActive: true },
-        orderBy: { modeNo: 'asc' },
       },
     },
   });

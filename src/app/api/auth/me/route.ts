@@ -31,8 +31,6 @@ export async function GET(request: NextRequest) {
         role: true,
         grade: true,
         major: true,
-        goal: true,
-        dailyTargetHours: true,
         assignedAdvisorId: true,
         publicCode: true,
         isActive: true,

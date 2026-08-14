@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
-import { SUBJECTS } from '@/lib/constants/mockData';
+import { loadSubjectOptions, type SubjectOption } from '@/lib/subject-service';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ export function GroupExamModal({
 }) {
   const { addExam, advisorStudents } = useAppStore();
   const students = advisorStudents;
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -35,6 +36,13 @@ export function GroupExamModal({
   const [startTime, setStartTime] = useState('08:00');
   const [duration, setDuration] = useState(90);
   const [totalScore, setTotalScore] = useState(100);
+
+  useEffect(() => {
+    if (!open) return;
+    loadSubjectOptions()
+      .then(setSubjects)
+      .catch((error) => toast.error(error instanceof Error ? error.message : 'خطا در بارگذاری دروس'));
+  }, [open]);
 
   const resetForm = () => {
     setSelectedStudentIds([]);
@@ -74,7 +82,7 @@ export function GroupExamModal({
       return;
     }
 
-    const subjectObj = SUBJECTS.find(s => s.name === subject);
+    const subjectObj = subjects.find(s => s.name === subject);
     const subjectColor = subjectObj?.color ?? 'var(--accent)';
 
     toast.loading('در حال ثبت آزمون...', { id: 'exam-create' });
@@ -152,7 +160,7 @@ export function GroupExamModal({
           <ModalInput label="عنوان آزمون" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثلاً: آزمون جامع ریاضی - اسفند" />
           <ModalSelect label="درس" value={subject} onChange={(e) => setSubject(e.target.value)}>
             <option value="">انتخاب درس...</option>
-            {SUBJECTS.map(s => (
+            {subjects.map(s => (
               <option key={s.name} value={s.name}>{s.name}</option>
             ))}
           </ModalSelect>

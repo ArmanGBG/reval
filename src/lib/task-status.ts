@@ -3,6 +3,12 @@ import type { TaskStatus } from '@/lib/types';
 export const TASK_STATUSES: TaskStatus[] = ['DRAFT', 'PENDING', 'COMPLETED', 'SKIPPED', 'INCOMPLETE'];
 
 export const STUDENT_ADVISOR_TASK_PATCH_FIELDS = ['status', 'completed', 'actualTimeMinutes', 'actualTestCount'] as const;
+export const ADVISOR_PLAN_TASK_PATCH_FIELDS = [
+  'subjectId', 'fieldType', 'activityTypes', 'targetTimeMinutes', 'targetTestCount',
+  'detailsCompleted', 'date', 'order', 'status', 'completed', 'actualTimeMinutes', 'actualTestCount', 'chapterId', 'topicId', 'topicIds',
+  'topicModeId', 'topicModeSubtopicIds', 'curriculumMode', 'pageStart', 'pageEnd',
+  'teacherClassName', 'sessionNumber', 'bookName', 'testDescription',
+] as const;
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === 'string' && TASK_STATUSES.includes(value as TaskStatus);
@@ -40,7 +46,29 @@ export function moveTaskToIncompleteTransition() {
   return { status: 'INCOMPLETE' as const, completed: null };
 }
 
+export function isTaskVisibleOnScheduledDay(status: TaskStatus | undefined, detailsCompleted: boolean | undefined): boolean {
+  if (status === 'INCOMPLETE') return false;
+  if (status === 'DRAFT' || status === 'PENDING' || status === 'COMPLETED' || status === 'SKIPPED') return true;
+  return detailsCompleted !== false;
+}
+
 export function isStudentAdvisorTaskPatch(body: Record<string, unknown>): boolean {
   const allowed = new Set<string>(STUDENT_ADVISOR_TASK_PATCH_FIELDS);
   return Object.keys(body).length > 0 && Object.keys(body).every((key) => allowed.has(key));
+}
+
+export function isAdvisorPlanTaskPatch(body: Record<string, unknown>): boolean {
+  const allowed = new Set<string>(ADVISOR_PLAN_TASK_PATCH_FIELDS);
+  if (Object.keys(body).length === 0 || !Object.keys(body).every((key) => allowed.has(key))) return false;
+  if ('status' in body && body.status !== 'DRAFT' && body.status !== 'PENDING') return false;
+  if ('completed' in body && body.completed !== null) return false;
+  if ('actualTimeMinutes' in body && body.actualTimeMinutes !== null) return false;
+  if ('actualTestCount' in body && body.actualTestCount !== null) return false;
+  return true;
+}
+
+export function isAdvisorMoveTaskPatch(body: Record<string, unknown>): boolean {
+  const keys = Object.keys(body).sort();
+  return keys.length === 3 && keys[0] === 'completed' && keys[1] === 'date' && keys[2] === 'status'
+    && typeof body.date === 'string' && body.status === 'PENDING' && body.completed === null;
 }

@@ -56,8 +56,7 @@ export default function LoginPage() {
       setUserRole(role);
       setUser({
         id: data.user.id, name: data.user.name, avatar: data.user.avatar,
-        grade: data.user.grade || 'دوازدهم', major: data.user.major || 'تجربی', goal: data.user.goal || 'کنکور',
-        dailyTargetHours: data.user.dailyTargetHours || 6, phone: data.user.phone,
+        grade: data.user.grade || 'دوازدهم', major: data.user.major || 'تجربی', phone: data.user.phone,
         assignedAdvisorId: data.user.assignedAdvisorId || null,
       });
       setOnboardingComplete(true);
@@ -119,7 +118,8 @@ export default function LoginPage() {
             {!otpRequested ? (
               <motion.div key="phone" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}>
                 <h1 className="text-center text-xl font-bold text-foreground">ورود</h1>
-                <p className="mb-7 mt-2 text-center text-xs text-muted-foreground">شماره موبایل خود را وارد کنید</p>
+                <p className="mt-2 text-center text-xs text-muted-foreground">شماره موبایل خود را وارد کنید</p>
+                <p className="mb-7 mt-3 text-center text-xs font-semibold text-[var(--warning)]">لطفاً VPNات رو قطع کن! ممنون</p>
                 <label className="mb-2 block text-[11px] font-medium text-muted-foreground">شماره موبایل</label>
                 <input
                   autoFocus type="tel" inputMode="numeric" dir="ltr" maxLength={11} pattern="09[0-9]{9}"

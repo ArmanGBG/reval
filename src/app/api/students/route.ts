@@ -62,8 +62,6 @@ export async function GET(request: NextRequest) {
       phone: true,
       grade: true,
       major: true,
-      goal: true,
-      dailyTargetHours: true,
       assignedAdvisorId: true,
       instituteId: true,
       createdAt: true,
@@ -87,8 +85,6 @@ export async function GET(request: NextRequest) {
     // wrong subjects. Missing grade/major is surfaced as a block in the UI.
     grade: u.grade,
     major: u.major,
-    goal: u.goal,
-    dailyTargetHours: u.dailyTargetHours,
     assignedAdvisorId: u.assignedAdvisorId,
     instituteId: u.instituteId,
     createdAt: u.createdAt.toISOString(),

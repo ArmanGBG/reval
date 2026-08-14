@@ -6,16 +6,16 @@ import {
   validatePageRange,
   normalizePageRange,
   findOverlap,
-  validateIsLastPageOnlyLast,
+  validateTopicWithinChapter,
   type RangeEntry,
 } from '@/lib/validators/page-range';
 
 // PATCH /api/subjects/:subjectId/chapters/:chapterId
-// Body: { title?, chapterNo?, gradeSubjectId?, pageStart?, pageEnd?, isLastPage?, sortOrder?, isActive? }
+// Body: { title?, chapterNo?, gradeSubjectId?, pageStart?, pageEnd?, sortOrder?, isActive? }
 // If gradeSubjectId is being changed, the new gradeSubject must also belong to subjectId.
 //
-// Validation: same as POST — chapterNo integer>=1, page range valid, no
-// overlaps with siblings, only one isLastPage per gradeSubject.
+// Validation: same as POST — chapterNo integer>=0, page range valid, no
+// overlaps with siblings.
 // Ownership: chapter must belong to subject in path (bug 10).
 export async function PATCH(
   request: NextRequest,
@@ -27,6 +27,9 @@ export async function PATCH(
   const { subjectId, chapterId } = await params;
   try {
     const body = await request.json();
+    if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim())) {
+      return NextResponse.json({ error: 'عنوان فصل باید متن غیرخالی باشد' }, { status: 400 });
+    }
 
     // Ownership check: chapter must belong to subject in path (bug 10)
     const ownedChapter = await verifyChapterOwnership(subjectId, chapterId);
@@ -36,7 +39,7 @@ export async function PATCH(
 
     // Validate chapterNo (if provided)
     if (body.chapterNo !== undefined) {
-      const noErr = validateSequenceNumber(body.chapterNo, 'شماره فصل');
+      const noErr = validateSequenceNumber(body.chapterNo, 'شماره فصل', 0);
       if (noErr) {
         return NextResponse.json({ error: noErr.message }, { status: 400 });
       }
@@ -51,23 +54,19 @@ export async function PATCH(
     // Merge provided page fields with existing values for validation
     const mergedPageStart = body.pageStart !== undefined ? body.pageStart : existing.pageStart;
     const mergedPageEnd = body.pageEnd !== undefined ? body.pageEnd : existing.pageEnd;
-    const mergedIsLastPage = body.isLastPage !== undefined ? body.isLastPage : existing.isLastPage;
 
     // Validate the merged page range
     const pageErr = validatePageRange({
       pageStart: mergedPageStart,
       pageEnd: mergedPageEnd,
-      isLastPage: mergedIsLastPage,
     });
     if (pageErr) {
       return NextResponse.json({ error: pageErr.message }, { status: 400 });
     }
 
-    // Normalize (clears pageEnd if isLastPage)
     const normalized = normalizePageRange({
       pageStart: mergedPageStart,
       pageEnd: mergedPageEnd,
-      isLastPage: mergedIsLastPage,
     });
 
     // Determine the effective gradeSubjectId (may be changing)
@@ -87,10 +86,10 @@ export async function PATCH(
       }
     }
 
-    // Fetch siblings for overlap + isLastPage checks (exclude self)
+    // Fetch siblings for overlap checks (exclude self)
     const siblings = await db.chapter.findMany({
       where: { gradeSubjectId: effectiveGradeSubjectId, isActive: true, id: { not: chapterId } },
-      select: { id: true, pageStart: true, pageEnd: true, isLastPage: true },
+      select: { id: true, pageStart: true, pageEnd: true },
     });
 
     // Overlap check
@@ -99,7 +98,6 @@ export async function PATCH(
         id: chapterId,
         pageStart: normalized.pageStart,
         pageEnd: normalized.pageEnd,
-        isLastPage: normalized.isLastPage,
       };
       const overlap = findOverlap(candidate, siblings as RangeEntry[]);
       if (overlap) {
@@ -110,28 +108,39 @@ export async function PATCH(
       }
     }
 
-    // isLastPage uniqueness
-    if (normalized.isLastPage) {
-      const isLastErr = validateIsLastPageOnlyLast(
-        { id: chapterId, pageStart: normalized.pageStart, pageEnd: normalized.pageEnd, isLastPage: true },
-        siblings as RangeEntry[],
-      );
-      if (isLastErr) {
-        return NextResponse.json({ error: isLastErr.message }, { status: 400 });
+    const activeTopics = await db.topic.findMany({
+      where: { chapterId, isActive: true },
+      select: { id: true, pageStart: true, pageEnd: true },
+    });
+    for (const topic of activeTopics) {
+      const withinErr = validateTopicWithinChapter(topic, {
+        id: chapterId,
+        pageStart: normalized.pageStart,
+        pageEnd: normalized.pageEnd,
+      });
+      if (withinErr) {
+        return NextResponse.json(
+          { error: `بازه صفحات فصل با گفتارهای آن سازگار نیست: ${withinErr.message}` },
+          { status: 400 },
+        );
       }
     }
 
-    // Build the update data — only include fields that were provided, but
-    // always include the normalized page fields (so isLastPage clearing propagates).
+    // Build the update data, always including the merged page range.
     const data: Record<string, unknown> = {};
     const allowed = ['title', 'chapterNo', 'gradeSubjectId', 'sortOrder', 'isActive'];
     for (const key of allowed) {
       if (body[key] !== undefined) data[key] = body[key];
     }
-    // Always set the normalized page fields (handles isLastPage clearing)
+    if (typeof data.title === 'string') data.title = data.title.trim();
+    if (data.sortOrder !== undefined && (!Number.isInteger(data.sortOrder) || (data.sortOrder as number) < 0)) {
+      return NextResponse.json({ error: 'ترتیب باید عدد صحیح نامنفی باشد' }, { status: 400 });
+    }
+    if (data.isActive !== undefined && typeof data.isActive !== 'boolean') {
+      return NextResponse.json({ error: 'isActive باید boolean باشد' }, { status: 400 });
+    }
     data.pageStart = normalized.pageStart;
     data.pageEnd = normalized.pageEnd;
-    data.isLastPage = normalized.isLastPage;
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(

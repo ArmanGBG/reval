@@ -61,7 +61,7 @@ export default function SuperAdminSubjects() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterKonkur, setFilterKonkur] = useState<'all' | 'konkur' | 'non'>('all');
+  const [assessmentFilter, setAssessmentFilter] = useState<'all' | 'konkur' | 'final'>('all');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -88,8 +88,9 @@ export default function SuperAdminSubjects() {
   // ===== Filtered subjects =====
   const filtered = subjects.filter((s) => {
     if (search && !s.name.includes(search)) return false;
-    if (filterKonkur === 'konkur' && !s.isKonkur) return false;
-    if (filterKonkur === 'non' && s.isKonkur) return false;
+    const grades = s.grades || [];
+    if (assessmentFilter === 'konkur' && !grades.some((grade) => grade.isKonkur)) return false;
+    if (assessmentFilter === 'final' && !grades.some((grade) => grade.isFinal)) return false;
     return true;
   });
 
@@ -101,8 +102,16 @@ export default function SuperAdminSubjects() {
         (s.grades?.reduce((a, gs) => a + (gs.chapters?.length || 0), 0) || 0),
       0,
     ) || 0;
-  const totalTopicModes = subjects.reduce((acc, s) => acc + (s.topicModes?.length || 0), 0);
-  const konkurCount = subjects.filter((s) => s.isKonkur).length;
+  const totalTopicModes = subjects.reduce(
+    (acc, s) => acc + (s.grades || []).reduce(
+      (count, grade) => count + (grade.topicModes?.length || 0),
+      0,
+    ),
+    0,
+  );
+  const konkurCount = subjects.filter((s) =>
+    (s.grades || []).some((grade) => grade.isKonkur),
+  ).length;
 
   // ===== Handle subject created/updated =====
   const handleSubjectChange = useCallback(() => {
@@ -143,7 +152,7 @@ export default function SuperAdminSubjects() {
             مدیریت ساختار دروس
           </h1>
           <p className="text-sm text-[var(--foreground-muted)] mt-1">
-            درخت کامل دروس، فصل‌ها، گفتارها و مباحث کنکوری — قابل ویرایش پویا
+            درخت کامل دروس، فصل‌ها، گفتارها و مباحث — قابل ویرایش پویا
           </p>
         </div>
         <button
@@ -161,7 +170,7 @@ export default function SuperAdminSubjects() {
           { label: 'دروس', value: subjects.length, icon: BookOpen, color: 'text-[var(--gold)]' },
           { label: 'درس‌های کنکوری', value: konkurCount, icon: Award, color: 'text-[var(--gold)]' },
           { label: 'فصل‌ها', value: totalChapters, icon: Layers, color: 'text-[var(--accent)]' },
-          { label: 'مباحث کنکوری', value: totalTopicModes, icon: Sparkles, color: 'text-[var(--warning)]' },
+          { label: 'مباحث', value: totalTopicModes, icon: Sparkles, color: 'text-[var(--warning)]' },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
@@ -208,18 +217,18 @@ export default function SuperAdminSubjects() {
           {([
             { id: 'all', label: 'همه' },
             { id: 'konkur', label: 'کنکوری' },
-            { id: 'non', label: 'غیرکنکوری' },
+            { id: 'final', label: 'نهایی' },
           ] as const).map((opt) => (
             <button
               key={opt.id}
-              onClick={() => setFilterKonkur(opt.id)}
+              onClick={() => setAssessmentFilter(opt.id)}
               className={`relative px-3 h-8 rounded-lg text-xs font-medium transition-colors duration-150 ${
-                filterKonkur === opt.id
+                assessmentFilter === opt.id
                   ? 'text-white'
                   : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
               }`}
             >
-              {filterKonkur === opt.id && (
+              {assessmentFilter === opt.id && (
                 <motion.span
                   layoutId="konkur-filter-pill"
                   className="absolute inset-0 rounded-lg bg-[var(--gold)]"

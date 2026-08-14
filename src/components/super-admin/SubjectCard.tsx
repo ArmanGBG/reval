@@ -28,13 +28,12 @@ export function computeSubjectStatus(subject: Subject): SubjectStatus {
   if (grades.length === 0) return 'incomplete_no_grades';
 
   const chapters = grades.flatMap((gs) => gs.chapters || []);
-  if (chapters.length === 0) return 'incomplete_no_chapters';
+  const topicModes = grades.flatMap((gs) => gs.topicModes || []);
+  if (chapters.length === 0 && topicModes.length === 0) return 'incomplete_no_chapters';
 
-  // Check if all chapters have valid page ranges (pageStart set, and either
-  // pageEnd set or isLastPage true)
+  // Page bounds are optional, but partial ranges are invalid.
   const hasInvalidPages = chapters.some(
-    (c) => c.pageStart === null || c.pageStart === undefined ||
-      (!c.isLastPage && (c.pageEnd === null || c.pageEnd === undefined)),
+    (c) => (c.pageStart == null) !== (c.pageEnd == null),
   );
   if (hasInvalidPages) return 'incomplete_no_pages';
 
@@ -73,8 +72,9 @@ const STATUS_CONFIG: Record<SubjectStatus, { label: string; dotColor: string; bg
 };
 
 export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: () => void }) {
+  const grades = subject.grades || [];
   // New schema: chapters are nested under grades[].chapters[]
-  const gradeCount = subject.grades?.length || 0;
+  const gradeCount = grades.length;
   const chapterCount =
     subject.grades?.reduce(
       (acc, gs) => acc + (gs.chapters?.length || 0),
@@ -87,9 +87,10 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
         (gs.chapters?.reduce((a, c) => a + (c.topics?.length || 0), 0) || 0),
       0,
     ) || 0;
-  const topicModeCount = subject.topicModes?.length || 0;
+  const topicModeCount = grades.reduce((count, grade) => count + (grade.topicModes?.length || 0), 0);
 
-  const isKonkur = !!subject.isKonkur;
+  const hasKonkur = grades.some((grade) => grade.isKonkur);
+  const hasFinal = grades.some((grade) => grade.isFinal);
   const status = computeSubjectStatus(subject);
   const statusConfig = STATUS_CONFIG[status];
 
@@ -133,16 +134,17 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
         <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] group-hover:text-[var(--gold)] group-hover:-translate-x-1 transition-all shrink-0" />
       </div>
 
-      {/* Badges row 1: konkur + status */}
+      {/* Assessment and completeness badges */}
       <div className="flex flex-wrap gap-1.5 mb-3">
-        {isKonkur ? (
+        {hasKonkur && (
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[var(--gold-soft)] text-[var(--gold)] border-[var(--gold)]/30 flex items-center gap-1">
             <Award className="w-2.5 h-2.5" />
             کنکور
           </span>
-        ) : (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[var(--border-strong)] text-[var(--foreground-muted)]">
-            غیرکنکوری
+        )}
+        {hasFinal && (
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/30">
+            نهایی
           </span>
         )}
         {/* Completeness status badge: dot + text */}

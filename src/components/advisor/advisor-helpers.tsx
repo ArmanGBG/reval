@@ -26,11 +26,10 @@ export function toPersianDigits(num: number | string): string {
 
 // ===== Analysis Engine =====
 export function computeStudentStatus(student: StudentProfile): StudentStatus {
-  const studyRatio = student.studyHoursPerWeek / student.studyHoursTarget;
-  if (studyRatio >= 0.85 && student.taskCompletionRate >= 75) return 'excellent';
+  if (student.studyHoursTrend === 'up' && student.taskCompletionRate >= 75) return 'excellent';
   if (student.taskCompletionRate < 30) return 'critical';
   if (student.studyHoursTrend === 'down' || student.taskCompletionRate < 55) return 'at-risk';
-  if (student.taskCompletionRate >= 55 && studyRatio >= 0.65) return 'good';
+  if (student.taskCompletionRate >= 70) return 'good';
   return 'fair';
 }
 
@@ -38,14 +37,14 @@ export function computeRisks(students: StudentProfile[]): StudentRisk[] {
   return students.map((student) => {
     const reasons: string[] = [];
     let level: 'high' | 'medium' | 'low' = 'low';
-    if (student.studyHoursTrend === 'down' && student.studyHoursPerWeek < student.studyHoursTarget * 0.7) { reasons.push(`کاهش ساعت مطالعه (${toPersianDigits(student.studyHoursPerWeek)} ساعت از ${toPersianDigits(student.studyHoursTarget)})`); level = 'medium'; }
+    if (student.studyHoursTrend === 'down') { reasons.push(`کاهش ساعت مطالعه هفتگی (${toPersianDigits(student.studyHoursPerWeek)} ساعت)`); level = 'medium'; }
     if (student.taskCompletionRate < 35) { reasons.push(`تکمیل وظایف پایین (${toPersianDigits(student.taskCompletionRate)}٪)`); level = level === 'medium' ? 'high' : 'medium'; }
 
     let immediateAction = '';
     if (level === 'high') {
       immediateAction = 'بازبینی فوری برنامه و تسک‌های انجام‌نشده';
     } else if (level === 'medium') {
-      immediateAction = 'جلسه هفتگی + هدف‌گذاری خرد';
+      immediateAction = 'جلسه هفتگی و بازبینی حجم برنامه';
     } else {
       immediateAction = 'ادامه برنامه + تشویق و تثبیت';
     }
@@ -65,9 +64,6 @@ export function computeAnalyses(students: StudentProfile[]): StudentAnalysis[] {
 
     if (student.studyHoursTrend === 'down') weaknesses.push('کاهش ساعت مطالعه');
     if (student.taskCompletionRate < 50) weaknesses.push(`تکمیل پایین (${toPersianDigits(student.taskCompletionRate)}٪)`);
-    const deficit = student.studyHoursTarget - student.studyHoursPerWeek;
-    if (deficit > 10) weaknesses.push(`کمبود ${toPersianDigits(deficit)} ساعت مطالعه`);
-
     const psychologicalAssessment = '';
 
     if (student.studyHoursTrend === 'down') interventions.push('بازنگری برنامه: کاهش حجم و افزایش کیفیت جلسات مطالعه');

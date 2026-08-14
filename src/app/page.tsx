@@ -78,8 +78,6 @@ export default function Home() {
             avatar: data.user.avatar,
             grade: data.user.grade || 'دوازدهم',
             major: data.user.major || 'تجربی',
-            goal: data.user.goal || 'کنکور',
-            dailyTargetHours: data.user.dailyTargetHours || 6,
             phone: data.user.phone,
             assignedAdvisorId: data.user.assignedAdvisorId || null,
           });

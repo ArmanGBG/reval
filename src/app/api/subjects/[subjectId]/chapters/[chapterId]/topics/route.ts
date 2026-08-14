@@ -6,7 +6,6 @@ import {
   validatePageRange,
   normalizePageRange,
   findOverlap,
-  validateIsLastPageOnlyLast,
   validateTopicWithinChapter,
   type RangeEntry,
 } from '@/lib/validators/page-range';
@@ -36,14 +35,13 @@ export async function GET(
 }
 
 // POST /api/subjects/:subjectId/chapters/:chapterId/topics
-// Body: { title, topicNo?, pageStart?, pageEnd?, isLastPage? }
+// Body: { title, topicNo?, pageStart?, pageEnd? }
 //
 // Validation (API is the source of truth):
-//   - topicNo: integer >= 1 (if provided)
-//   - pageStart/pageEnd/isLastPage: valid range (see validatePageRange)
+//   - topicNo: integer >= 0 (if provided; 0 is reserved for book prefaces)
+//   - pageStart/pageEnd: both positive integers or both null/unset
 //   - Topic range must be within parent chapter's range
 //   - No overlapping topic ranges within the same chapter
-//   - Only one topic per chapter may have isLastPage=true
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ subjectId: string; chapterId: string }> },
@@ -54,8 +52,8 @@ export async function POST(
   const { subjectId, chapterId } = await params;
   try {
     const body = await request.json();
-    const { title, topicNo, pageStart, pageEnd, isLastPage } = body;
-    if (!title) {
+    const { title, topicNo, pageStart, pageEnd } = body;
+    if (typeof title !== 'string' || !title.trim()) {
       return NextResponse.json(
         { error: 'عنوان گفتار الزامی است' },
         { status: 400 },
@@ -64,19 +62,19 @@ export async function POST(
 
     // Validate topicNo (if provided)
     if (topicNo !== undefined) {
-      const noErr = validateSequenceNumber(topicNo, 'شماره گفتار');
+      const noErr = validateSequenceNumber(topicNo, 'شماره گفتار', 0);
       if (noErr) {
         return NextResponse.json({ error: noErr.message }, { status: 400 });
       }
     }
 
     // Validate page range
-    const pageErr = validatePageRange({ pageStart, pageEnd, isLastPage });
+    const pageErr = validatePageRange({ pageStart, pageEnd });
     if (pageErr) {
       return NextResponse.json({ error: pageErr.message }, { status: 400 });
     }
 
-    const normalized = normalizePageRange({ pageStart, pageEnd, isLastPage });
+    const normalized = normalizePageRange({ pageStart, pageEnd });
 
     // Ownership check: chapter must belong to subject in path (bug 9)
     const chapter = await verifyChapterOwnershipWithTopics(subjectId, chapterId);
@@ -107,40 +105,29 @@ export async function POST(
     const existingTopic = await db.topic.findUnique({
       where: { chapterId_topicNo: { chapterId, topicNo: nextNo } },
     });
-    if (existingTopic) {
-      if (existingTopic.isActive) {
-        return NextResponse.json(
-          { error: 'گفتاری با این شماره قبلاً ثبت شده' },
-          { status: 409 },
-        );
-      }
-      // Reactivate the soft-deleted topic
-      const reactivated = await db.topic.update({
-        where: { id: existingTopic.id },
-        data: {
-          isActive: true,
-          title,
-          pageStart: normalized.pageStart,
-          pageEnd: normalized.pageEnd,
-          isLastPage: normalized.isLastPage,
-        },
-      });
-      return NextResponse.json({ topic: reactivated, reactivated: true });
+    if (existingTopic?.isActive) {
+      return NextResponse.json(
+        { error: 'گفتاری با این شماره قبلاً ثبت شده' },
+        { status: 409 },
+      );
     }
 
-    // Fetch active sibling topics for overlap + isLastPage checks
+    // Fetch active sibling topics for overlap checks.
     const siblings = await db.topic.findMany({
-      where: { chapterId, isActive: true },
-      select: { id: true, pageStart: true, pageEnd: true, isLastPage: true },
+      where: {
+        chapterId,
+        isActive: true,
+        ...(existingTopic ? { id: { not: existingTopic.id } } : {}),
+      },
+      select: { id: true, pageStart: true, pageEnd: true },
     });
 
     // Overlap check
     if (normalized.pageStart !== null) {
       const candidate: RangeEntry = {
-        id: 'new',
+        id: existingTopic?.id ?? 'new',
         pageStart: normalized.pageStart,
         pageEnd: normalized.pageEnd,
-        isLastPage: normalized.isLastPage,
       };
       const overlap = findOverlap(candidate, siblings as RangeEntry[]);
       if (overlap) {
@@ -151,25 +138,26 @@ export async function POST(
       }
     }
 
-    // isLastPage uniqueness
-    if (normalized.isLastPage) {
-      const isLastErr = validateIsLastPageOnlyLast(
-        { id: 'new', pageStart: normalized.pageStart, pageEnd: normalized.pageEnd, isLastPage: true },
-        siblings as RangeEntry[],
-      );
-      if (isLastErr) {
-        return NextResponse.json({ error: isLastErr.message }, { status: 400 });
-      }
+    if (existingTopic) {
+      const reactivated = await db.topic.update({
+        where: { id: existingTopic.id },
+        data: {
+          isActive: true,
+          title: title.trim(),
+          pageStart: normalized.pageStart,
+          pageEnd: normalized.pageEnd,
+        },
+      });
+      return NextResponse.json({ topic: reactivated, reactivated: true });
     }
 
     const topic = await db.topic.create({
       data: {
         chapterId,
-        title,
+        title: title.trim(),
         topicNo: nextNo,
         pageStart: normalized.pageStart,
         pageEnd: normalized.pageEnd,
-        isLastPage: normalized.isLastPage,
         sortOrder: nextNo,
       },
     });

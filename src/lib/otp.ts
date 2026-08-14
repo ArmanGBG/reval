@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
-import { isSmsSandbox, sendSmsIrVerification } from '@/lib/sms-ir';
+import { sendOtpSms } from '@/lib/sms';
 
 const OTP_TTL_MS = 2 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -27,9 +27,7 @@ export async function requestOtp(phone: string, purpose: 'LOGIN' | 'SIGNUP'): Pr
   });
 
   try {
-    // Sandbox mode intentionally skips the provider and returns the generated
-    // code through the local-only test response.
-    if (!isSmsSandbox()) await sendSmsIrVerification(phone, code);
+    await sendOtpSms(phone, code);
     return code;
   } catch (error) {
     await db.otpChallenge.delete({ where: { id: challenge.id } }).catch(() => {});

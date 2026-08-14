@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { ArrowRight, Phone, User as UserIcon, GraduationCap, Loader2, Shield, Building2, BookOpen } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAppStore } from '@/lib/store';
-import { AVATARS } from '@/lib/constants/mockData';
+import { AVATARS } from '@/lib/constants/avatars';
 import type { Grade, Major, User, UserRole } from '@/lib/types';
 import { isIranianMobileInput, numericInput } from '@/lib/phone';
 
@@ -106,7 +106,8 @@ function StepPhone({
       </div>
 
       <h1 className="text-2xl font-bold text-foreground mb-2">ورود به روال</h1>
-      <p className="text-muted-foreground mb-8">شماره موبایلت رو وارد کن</p>
+      <p className="text-muted-foreground">شماره موبایلت رو وارد کن</p>
+      <p className="mb-8 mt-3 text-sm font-semibold text-[var(--warning)]">لطفاً VPNات رو قطع کن! ممنون</p>
 
       {!showOtp ? (
         <div className="w-full space-y-6">
@@ -613,8 +614,6 @@ export default function OnboardingWizard() {
         avatar: u.avatar,
         grade: (u.grade as Grade) || (grade as Grade),
         major: (u.major as Major) || (major as Major),
-        goal: (u.goal as 'کنکور' | 'نهایی' | 'هر دو') || 'کنکور',
-        dailyTargetHours: typeof u.dailyTargetHours === 'number' ? u.dailyTargetHours : 6,
         phone: u.phone,
         assignedAdvisorId: u.assignedAdvisorId || null,
       };

@@ -20,7 +20,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { AnimatePresence } from 'framer-motion';
 import { Task } from '@/lib/types';
-import TaskCard from './TaskCard';
+import TaskCard, { type TaskCardCapabilities } from './TaskCard';
 
 interface SortableTaskListProps {
   tasks: Task[];
@@ -32,6 +32,8 @@ interface SortableTaskListProps {
   onReset: (id: string) => void;
   onReorder: (tasks: Task[]) => void;
   onEdit?: (id: string) => void;
+  getCapabilities?: (task: Task) => TaskCardCapabilities;
+  sortable?: boolean;
 }
 
 // ===== Sortable wrapper for each task card =====
@@ -45,6 +47,8 @@ function SortableTaskCard({
   onSettings,
   onReset,
   onEdit,
+  capabilities,
+  sortable,
 }: {
   task: Task;
   index: number;
@@ -55,6 +59,8 @@ function SortableTaskCard({
   onSettings: (id: string) => void;
   onReset: (id: string) => void;
   onEdit?: (id: string) => void;
+  capabilities?: TaskCardCapabilities;
+  sortable: boolean;
 }) {
   const {
     attributes,
@@ -63,7 +69,7 @@ function SortableTaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, disabled: !sortable });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -84,7 +90,8 @@ function SortableTaskCard({
         onSettings={onSettings}
         onReset={onReset}
         onEdit={onEdit}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        capabilities={capabilities}
+        dragHandleProps={sortable ? { ...attributes, ...listeners } : undefined}
       />
     </div>
   );
@@ -101,6 +108,8 @@ export function SortableTaskList({
   onReset,
   onReorder,
   onEdit,
+  getCapabilities,
+  sortable = true,
 }: SortableTaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -113,6 +122,7 @@ export function SortableTaskList({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    if (!sortable) return;
     if (!over || active.id === over.id) return;
 
     const oldIndex = tasks.findIndex((t) => t.id === active.id);
@@ -148,6 +158,8 @@ export function SortableTaskList({
                 onSettings={onSettings}
                 onReset={onReset}
                 onEdit={onEdit}
+                capabilities={getCapabilities?.(task)}
+                sortable={sortable}
               />
             ))}
           </AnimatePresence>

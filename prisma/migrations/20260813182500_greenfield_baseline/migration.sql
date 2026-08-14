@@ -1,3 +1,12 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateEnum
+CREATE TYPE "TaskStatus" AS ENUM ('DRAFT', 'PENDING', 'COMPLETED', 'SKIPPED', 'INCOMPLETE');
+
+-- CreateEnum
+CREATE TYPE "CurriculumMode" AS ENUM ('BOOK', 'THEMATIC');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -15,6 +24,7 @@ CREATE TABLE "User" (
     "publicCode" TEXT NOT NULL,
     "phoneVerifiedAt" TIMESTAMP(3),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -81,6 +91,7 @@ CREATE TABLE "Institute" (
     "status" TEXT NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "Institute_pkey" PRIMARY KEY ("id")
 );
@@ -99,6 +110,7 @@ CREATE TABLE "Task" (
     "actualTimeMinutes" INTEGER,
     "targetTestCount" INTEGER,
     "actualTestCount" INTEGER,
+    "status" "TaskStatus" NOT NULL DEFAULT 'PENDING',
     "completed" BOOLEAN,
     "detailsCompleted" BOOLEAN NOT NULL DEFAULT true,
     "date" TEXT NOT NULL,
@@ -108,12 +120,21 @@ CREATE TABLE "Task" (
     "chapterId" TEXT,
     "topicId" TEXT,
     "topicModeId" TEXT,
+    "curriculumMode" "CurriculumMode",
     "pageStart" INTEGER,
     "pageEnd" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TaskTopic" (
+    "taskId" TEXT NOT NULL,
+    "topicId" TEXT NOT NULL,
+
+    CONSTRAINT "TaskTopic_pkey" PRIMARY KEY ("taskId","topicId")
 );
 
 -- CreateTable
@@ -163,7 +184,6 @@ CREATE TABLE "Subject" (
     "color" TEXT NOT NULL DEFAULT '#3EB489',
     "icon" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "isKonkur" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -178,6 +198,8 @@ CREATE TABLE "GradeSubject" (
     "grade" TEXT NOT NULL,
     "major" TEXT NOT NULL,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isKonkur" BOOLEAN NOT NULL DEFAULT false,
+    "isFinal" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "GradeSubject_pkey" PRIMARY KEY ("id")
@@ -191,7 +213,6 @@ CREATE TABLE "Chapter" (
     "chapterNo" INTEGER NOT NULL,
     "pageStart" INTEGER,
     "pageEnd" INTEGER,
-    "isLastPage" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -208,7 +229,6 @@ CREATE TABLE "Topic" (
     "topicNo" INTEGER NOT NULL,
     "pageStart" INTEGER,
     "pageEnd" INTEGER,
-    "isLastPage" BOOLEAN NOT NULL DEFAULT false,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -220,7 +240,7 @@ CREATE TABLE "Topic" (
 -- CreateTable
 CREATE TABLE "TopicMode" (
     "id" TEXT NOT NULL,
-    "subjectId" TEXT NOT NULL,
+    "gradeSubjectId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "modeNo" INTEGER NOT NULL,
@@ -230,6 +250,28 @@ CREATE TABLE "TopicMode" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "TopicMode_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TopicModeSubtopic" (
+    "id" TEXT NOT NULL,
+    "topicModeId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "subtopicNo" INTEGER NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TopicModeSubtopic_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TaskTopicModeSubtopic" (
+    "taskId" TEXT NOT NULL,
+    "topicModeSubtopicId" TEXT NOT NULL,
+
+    CONSTRAINT "TaskTopicModeSubtopic_pkey" PRIMARY KEY ("taskId","topicModeSubtopicId")
 );
 
 -- CreateIndex
@@ -263,6 +305,9 @@ CREATE UNIQUE INDEX "MessageRead_messageId_userId_key" ON "MessageRead"("message
 CREATE UNIQUE INDEX "Institute_managerId_key" ON "Institute"("managerId");
 
 -- CreateIndex
+CREATE INDEX "TaskTopic_topicId_idx" ON "TaskTopic"("topicId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ExamParticipant_examId_studentId_key" ON "ExamParticipant"("examId", "studentId");
 
 -- CreateIndex
@@ -284,7 +329,13 @@ CREATE UNIQUE INDEX "Chapter_gradeSubjectId_chapterNo_key" ON "Chapter"("gradeSu
 CREATE UNIQUE INDEX "Topic_chapterId_topicNo_key" ON "Topic"("chapterId", "topicNo");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "TopicMode_subjectId_modeNo_key" ON "TopicMode"("subjectId", "modeNo");
+CREATE UNIQUE INDEX "TopicMode_gradeSubjectId_modeNo_key" ON "TopicMode"("gradeSubjectId", "modeNo");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TopicModeSubtopic_topicModeId_subtopicNo_key" ON "TopicModeSubtopic"("topicModeId", "subtopicNo");
+
+-- CreateIndex
+CREATE INDEX "TaskTopicModeSubtopic_topicModeSubtopicId_idx" ON "TaskTopicModeSubtopic"("topicModeSubtopicId");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_instituteId_fkey" FOREIGN KEY ("instituteId") REFERENCES "Institute"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -329,6 +380,12 @@ ALTER TABLE "Task" ADD CONSTRAINT "Task_topicId_fkey" FOREIGN KEY ("topicId") RE
 ALTER TABLE "Task" ADD CONSTRAINT "Task_topicModeId_fkey" FOREIGN KEY ("topicModeId") REFERENCES "TopicMode"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "TaskTopic" ADD CONSTRAINT "TaskTopic_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TaskTopic" ADD CONSTRAINT "TaskTopic_topicId_fkey" FOREIGN KEY ("topicId") REFERENCES "Topic"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Exam" ADD CONSTRAINT "Exam_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -356,4 +413,63 @@ ALTER TABLE "Chapter" ADD CONSTRAINT "Chapter_gradeSubjectId_fkey" FOREIGN KEY (
 ALTER TABLE "Topic" ADD CONSTRAINT "Topic_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "Chapter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TopicMode" ADD CONSTRAINT "TopicMode_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "TopicMode" ADD CONSTRAINT "TopicMode_gradeSubjectId_fkey" FOREIGN KEY ("gradeSubjectId") REFERENCES "GradeSubject"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TopicModeSubtopic" ADD CONSTRAINT "TopicModeSubtopic_topicModeId_fkey" FOREIGN KEY ("topicModeId") REFERENCES "TopicMode"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TaskTopicModeSubtopic" ADD CONSTRAINT "TaskTopicModeSubtopic_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TaskTopicModeSubtopic" ADD CONSTRAINT "TaskTopicModeSubtopic_topicModeSubtopicId_fkey" FOREIGN KEY ("topicModeSubtopicId") REFERENCES "TopicModeSubtopic"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Curriculum business invariants enforced at the database boundary.
+ALTER TABLE "GradeSubject" ADD CONSTRAINT "GradeSubject_active_eligibility_check"
+CHECK (NOT "isActive" OR "isKonkur" OR "isFinal");
+
+ALTER TABLE "Chapter" ADD CONSTRAINT "Chapter_chapterNo_check"
+CHECK ("chapterNo" >= 1);
+
+ALTER TABLE "Chapter" ADD CONSTRAINT "Chapter_page_range_check"
+CHECK (
+  ("pageStart" IS NULL AND "pageEnd" IS NULL)
+  OR
+  ("pageStart" IS NOT NULL AND "pageEnd" IS NOT NULL AND "pageStart" >= 1 AND "pageEnd" >= "pageStart")
+);
+
+ALTER TABLE "Topic" ADD CONSTRAINT "Topic_topicNo_check"
+CHECK ("topicNo" >= 1);
+
+ALTER TABLE "Topic" ADD CONSTRAINT "Topic_page_range_check"
+CHECK (
+  ("pageStart" IS NULL AND "pageEnd" IS NULL)
+  OR
+  ("pageStart" IS NOT NULL AND "pageEnd" IS NOT NULL AND "pageStart" >= 1 AND "pageEnd" >= "pageStart")
+);
+
+ALTER TABLE "TopicMode" ADD CONSTRAINT "TopicMode_modeNo_check"
+CHECK ("modeNo" >= 1);
+
+ALTER TABLE "TopicModeSubtopic" ADD CONSTRAINT "TopicModeSubtopic_subtopicNo_check"
+CHECK ("subtopicNo" >= 1);
+
+ALTER TABLE "Task" ADD CONSTRAINT "Task_page_range_check"
+CHECK (
+  ("pageStart" IS NULL AND "pageEnd" IS NULL)
+  OR
+  ("pageStart" IS NOT NULL AND "pageEnd" IS NOT NULL AND "pageStart" >= 1 AND "pageEnd" >= "pageStart")
+);
+
+ALTER TABLE "Task" ADD CONSTRAINT "Task_curriculum_shape_check"
+CHECK (
+  "curriculumMode" IS NULL
+  OR ("curriculumMode" = 'BOOK' AND "topicModeId" IS NULL)
+  OR (
+    "curriculumMode" = 'THEMATIC'
+    AND "chapterId" IS NULL
+    AND "topicId" IS NULL
+    AND "pageStart" IS NULL
+    AND "pageEnd" IS NULL
+  )
+);

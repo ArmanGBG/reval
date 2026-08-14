@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import {
@@ -36,6 +36,12 @@ export function PersianCalendar({
   const todayJalali = toJalali(today);
   const [viewYear, setViewYear] = useState(todayJalali.jy);
   const [viewMonth, setViewMonth] = useState(todayJalali.jm); // 1-12
+
+  useEffect(() => {
+    const selectedJalali = toJalali(parseLocalDate(selectedDate));
+    setViewYear(selectedJalali.jy);
+    setViewMonth(selectedJalali.jm);
+  }, [selectedDate]);
 
   // Generate calendar grid for the month
   const calendarDays = useMemo(() => {

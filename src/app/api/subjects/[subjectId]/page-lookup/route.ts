@@ -9,9 +9,8 @@ import { requireAuth } from '@/lib/api-auth';
 //
 // Algorithm:
 //   1. Fetch all chapters (with topics) for the gradeSubjectId, ordered by chapterNo.
-//   2. Search topics first: for each topic, if isLastPage=true and page>=pageStart
-//      → match; else if page>=pageStart && page<=pageEnd → match.
-//   3. If no topic match, search chapters using the same logic.
+//   2. Search bounded topic ranges first.
+//   3. If no topic match, search bounded chapter ranges.
 //   4. If no exact match (gap between chapters), return the nearest previous
 //      chapter (last chapter where pageStart <= page) with status="unmapped".
 //   5. If no chapter has pageStart <= page at all, return status="not_found".
@@ -41,8 +40,8 @@ export async function GET(
   if (!pageStr) {
     return NextResponse.json({ error: 'page الزامی است' }, { status: 400 });
   }
-  const page = Number.parseInt(pageStr, 10);
-  if (!Number.isFinite(page) || page < 1) {
+  const page = Number(pageStr);
+  if (!Number.isInteger(page) || page < 1) {
     return NextResponse.json(
       { error: 'page باید عدد صحیح مثبت باشد' },
       { status: 400 },
@@ -50,11 +49,11 @@ export async function GET(
   }
 
   // Verify gradeSubject belongs to subject in path.
-  const gradeSubject = await db.gradeSubject.findUnique({
-    where: { id: gradeSubjectId },
+  const gradeSubject = await db.gradeSubject.findFirst({
+    where: { id: gradeSubjectId, subjectId, isActive: true, subject: { isActive: true } },
     select: { subjectId: true },
   });
-  if (!gradeSubject || gradeSubject.subjectId !== subjectId) {
+  if (!gradeSubject) {
     return NextResponse.json(
       { error: 'پایه-درس متعلق به این درس نیست' },
       { status: 404 },
@@ -77,15 +76,12 @@ export async function GET(
     return NextResponse.json({ status: 'not_found' });
   }
 
-  // Does an entity with pageStart/pageEnd/isLastPage match `page`?
+  // Null or incomplete ranges are unmapped and cannot match a page.
   function matchesPage(e: {
     pageStart: number | null;
     pageEnd: number | null;
-    isLastPage: boolean;
   }): boolean {
-    if (e.pageStart === null) return false;
-    if (e.isLastPage) return page >= e.pageStart;
-    if (e.pageEnd === null) return page >= e.pageStart;
+    if (e.pageStart === null || e.pageEnd === null) return false;
     return page >= e.pageStart && page <= e.pageEnd;
   }
 
@@ -113,10 +109,10 @@ export async function GET(
   }
 
   // 3) No exact match — find nearest previous chapter
-  //    (last chapter where pageStart !== null && pageStart <= page).
+  //    (last bounded chapter where pageStart <= page).
   let nearestPrev: (typeof chapters)[number] | null = null;
   for (const ch of chapters) {
-    if (ch.pageStart !== null && ch.pageStart <= page) {
+    if (ch.pageStart !== null && ch.pageEnd !== null && ch.pageStart <= page) {
       nearestPrev = ch;
     }
   }

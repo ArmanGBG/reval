@@ -36,6 +36,7 @@ import {
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
+import type { PlanActor, PlanTargetStudent } from './PlanView';
 
 // ===== Types =====
 interface WeekdayPlan {
@@ -47,6 +48,8 @@ interface WeekdayPlan {
 interface WeeklyPlannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  targetStudent?: PlanTargetStudent;
+  actor?: PlanActor;
 }
 
 type QuickSubject = Subject & { resolvedFieldType: FieldType };
@@ -61,12 +64,23 @@ interface JalaliYMD {
 
 const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
+const TIME_QUICK_PICKS = [60, 90, 120];
+const TEST_QUICK_PICKS = [20, 30, 40];
+
 // ============================================================
 // Main Component — reads REAL tasks from store, immediate sync
 // ============================================================
-export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
+export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: WeeklyPlannerProps) {
   const { user, tasks, addTask, updateTask, deleteTask, resetTask } = useAppStore();
-  const studentId = useCurrentStudentId();
+  const currentStudentId = useCurrentStudentId();
+  const studentId = targetStudent?.id ?? currentStudentId;
+  const isAdvisorWorkspace = actor?.role === 'ADVISOR';
+  const canManageTask = useCallback((task: Task) => !isAdvisorWorkspace || (
+    task.createdBy === 'advisor'
+    && task.createdById === actor?.id
+    && task.status !== 'COMPLETED'
+    && task.status !== 'SKIPPED'
+  ), [actor?.id, isAdvisorWorkspace]);
 
   // Available subjects
   const [subjects, setSubjects] = useState<QuickSubject[]>([]);
@@ -130,14 +144,14 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
         });
       return { date, dateStr, tasks: dayTasks };
     });
-  }, [displayDays, tasks, user]);
+  }, [displayDays, tasks, studentId]);
 
   // ===== Fetch subjects =====
   const fetchSubjects = useCallback(async () => {
     setSubjectsLoading(true);
     try {
-      const grade = user?.grade || 'دوازدهم';
-      const major = user?.major || 'تجربی';
+      const grade = targetStudent?.grade ?? user?.grade ?? 'دوازدهم';
+      const major = targetStudent?.major ?? user?.major ?? 'تجربی';
       const [konkurRes, finalRes] = await Promise.all([
         fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('کنکور')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
         fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('نهایی')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
@@ -146,16 +160,15 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
       const finalData = await finalRes.json();
       if (!konkurRes.ok || !finalRes.ok) throw new Error(konkurData.error || finalData.error);
       const resolved = new Map<string, QuickSubject>();
-      const preferFinal = user?.goal === 'نهایی';
-      for (const subject of (preferFinal ? finalData.subjects : konkurData.subjects) || []) resolved.set(subject.id, { ...subject, resolvedFieldType: preferFinal ? 'نهایی' : 'کنکور' });
-      for (const subject of (preferFinal ? konkurData.subjects : finalData.subjects) || []) if (!resolved.has(subject.id)) resolved.set(subject.id, { ...subject, resolvedFieldType: preferFinal ? 'کنکور' : 'نهایی' });
+      for (const subject of konkurData.subjects || []) resolved.set(subject.id, { ...subject, resolvedFieldType: 'کنکور' });
+      for (const subject of finalData.subjects || []) if (!resolved.has(subject.id)) resolved.set(subject.id, { ...subject, resolvedFieldType: 'نهایی' });
       setSubjects([...resolved.values()]);
     } catch {
       setSubjects([]);
     } finally {
       setSubjectsLoading(false);
     }
-  }, [user]);
+  }, [targetStudent?.grade, targetStudent?.major, user?.grade, user?.major]);
 
   useEffect(() => {
     if (open) fetchSubjects();
@@ -181,11 +194,16 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
       completed: null,
       date: dateStr,
       order: existingCount,
-      createdBy: 'student',
+      createdBy: isAdvisorWorkspace ? 'advisor' : 'student',
+      createdById: isAdvisorWorkspace ? actor?.id ?? null : null,
       detailsCompleted: false,
     };
-    await addTask(newTask);
-    setAddingToDay(null);
+    try {
+      await addTask(newTask);
+      setAddingToDay(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'افزودن درس به برنامه ناموفق بود');
+    }
   };
 
   // ===== Stats =====
@@ -301,14 +319,27 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
                 key={dayPlan.dateStr}
                 dayPlan={dayPlan}
                 onAdd={() => setAddingToDay(dayPlan.dateStr)}
-                onRemove={(taskId) => deleteTask(taskId)}
-                onEdit={(taskId) => setEditingTaskId(taskId)}
+                 canManage={canManageTask}
+                 canComplete={!isAdvisorWorkspace}
+                 onRemove={(taskId) => {
+                   const task = tasks.find((item) => item.id === taskId);
+                   if (task && canManageTask(task)) deleteTask(taskId);
+                 }}
+                 onEdit={(taskId) => {
+                   const task = tasks.find((item) => item.id === taskId);
+                   if (task && canManageTask(task)) setEditingTaskId(taskId);
+                 }}
                 onToggleComplete={(taskId) => {
                   const task = tasks.find((t) => t.id === taskId);
-                  if (task) {
+                   if (task && !isAdvisorWorkspace) {
                      if (!task.detailsCompleted) setEditingTaskId(task.id);
                       else if (task.status === 'PENDING' || (task.status === undefined && task.completed === null)) {
-                       updateTask(taskId, { status: 'COMPLETED', completed: true });
+                        updateTask(taskId, {
+                          status: 'COMPLETED',
+                          completed: true,
+                          actualTimeMinutes: task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0,
+                          actualTestCount: task.actualTestCount ?? task.targetTestCount ?? 0,
+                        });
                     } else {
                       resetTask(taskId);
                     }
@@ -346,7 +377,7 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
 
         {/* ===== Edit Task Details Modal ===== */}
         {editingTaskId && (
-          <TaskDetailsDialog task={tasks.find(t => t.id === editingTaskId) ?? null} open grade={user?.grade ?? 'دوازدهم'} major={user?.major ?? 'تجربی'} onOpenChange={v => !v && setEditingTaskId(null)} onSave={updates => updateTask(editingTaskId, updates)} />
+           <TaskDetailsDialog task={tasks.find(t => t.id === editingTaskId) ?? null} open grade={targetStudent?.grade ?? user?.grade ?? 'دوازدهم'} major={targetStudent?.major ?? user?.major ?? 'تجربی'} onOpenChange={v => !v && setEditingTaskId(null)} onSave={updates => updateTask(editingTaskId, updates)} />
         )}
       </DialogContent>
     </Dialog>
@@ -358,12 +389,16 @@ export function WeeklyPlanner({ open, onOpenChange }: WeeklyPlannerProps) {
 // ============================================================
 function DayColumn({
   dayPlan,
+  canManage,
+  canComplete,
   onAdd,
   onRemove,
   onEdit,
   onToggleComplete,
 }: {
   dayPlan: WeekdayPlan;
+  canManage: (task: Task) => boolean;
+  canComplete: boolean;
   onAdd: () => void;
   onRemove: (taskId: string) => void;
   onEdit: (taskId: string) => void;
@@ -399,6 +434,8 @@ function DayColumn({
             <TaskChip
               key={task.id}
               task={task}
+              canManage={canManage(task)}
+              canComplete={canComplete}
               onClick={() => onEdit(task.id)}
               onRemove={() => onRemove(task.id)}
               onToggleComplete={() => onToggleComplete(task.id)}
@@ -424,11 +461,15 @@ function DayColumn({
 // ============================================================
 function TaskChip({
   task,
+  canManage,
+  canComplete,
   onClick,
   onRemove,
   onToggleComplete,
 }: {
   task: Task;
+  canManage: boolean;
+  canComplete: boolean;
   onClick: () => void;
   onRemove: () => void;
   onToggleComplete: () => void;
@@ -439,7 +480,7 @@ function TaskChip({
   return (
     <div className="group flex items-center gap-1.5">
       {/* Complete toggle */}
-      <button
+      {canComplete && <button
         onClick={(e) => {
           e.stopPropagation();
           onToggleComplete();
@@ -451,32 +492,28 @@ function TaskChip({
         }`}
       >
          {hasDetails ? <Check className="w-3 h-3" /> : null}
-      </button>
+      </button>}
 
       {/* Subject chip — click to edit */}
       <button
-        onClick={onClick}
-        className={`btn-hover flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg border text-right ${
+        onClick={canManage ? onClick : undefined}
+        className={`btn-hover relative overflow-hidden flex-1 px-2.5 py-2.5 rounded-lg border text-right ${
           hasDetails
             ? 'bg-[var(--accent-soft)] border-[var(--accent)]/20'
             : 'bg-[var(--bg-elevated)] border-[var(--border)]'
         } ${isDone ? 'opacity-50 line-through' : ''}`}
       >
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: task.subjectColor }}
-        />
-        <span className="text-xs font-medium text-[var(--foreground)] truncate flex-1">
-          {task.subject}
+        <span aria-hidden className="absolute top-0 left-0 right-0 h-[2px]" style={{ backgroundColor: task.subjectColor }} />
+        <span className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[var(--foreground)] truncate flex-1">{task.subject}</span>
+          {hasDetails && !isDone && <Check className="w-3 h-3 text-[var(--accent)] shrink-0" />}
+          {!hasDetails && <span className="text-[9px] text-[var(--warning)] shrink-0">تکمیل جزئیات</span>}
         </span>
-        {hasDetails && !isDone && (
-          <Check className="w-3 h-3 text-[var(--accent)] shrink-0" />
-        )}
-        {!hasDetails && <span className="text-[9px] text-[var(--warning)] shrink-0">تکمیل جزئیات</span>}
+        {(task.teacherClassName || task.bookName) && <span className="mt-1 block text-[9px] text-[var(--foreground-subtle)] truncate">{[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}</span>}
       </button>
 
       {/* Remove */}
-      <button
+      {canManage && <button
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
@@ -484,7 +521,7 @@ function TaskChip({
         className="icon-btn w-6 h-6 rounded flex items-center justify-center text-[var(--foreground-subtle)] hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <X className="w-3 h-3" />
-      </button>
+      </button>}
     </div>
   );
 }
@@ -573,38 +610,95 @@ function EditTaskModal({
   const { user } = useAppStore();
   const dayLabel = getPersianWeekdayName(new Date(task.date));
 
-  // Initial selection derived from the existing task — the picker will
-  // resolve the subject by name (and pre-fill displayText/chapterId/etc).
+  // Initial selection derived from the existing task
   const [selection, setSelection] = useState<TaskSelection>(
     task.topic && task.topic !== 'عمومی'
       ? {
+          subjectId: task.subjectId ?? undefined,
           subjectName: task.subject,
           subjectColor: task.subjectColor,
           displayText: task.topic,
           chapterId: task.chapterId ?? undefined,
           topicId: task.topicId ?? undefined,
+          topicIds: task.topicIds ?? [],
           topicModeId: task.topicModeId ?? undefined,
+          curriculumMode: task.curriculumMode ?? undefined,
+          topicModeSubtopicIds: task.topicModeSubtopicIds ?? [],
         }
       : {
+          subjectId: task.subjectId ?? undefined,
           subjectName: task.subject,
           subjectColor: task.subjectColor,
         },
   );
 
+  const [teacherClassName, setTeacherClassName] = useState(task.teacherClassName ?? '');
+  const [sessionNumber, setSessionNumber] = useState(task.sessionNumber ?? '');
+  const [bookName, setBookName] = useState(task.bookName ?? '');
+  const [testDescription, setTestDescription] = useState(task.testDescription ?? '');
+  const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
+  const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
+
   const handleChange = useCallback(
     (next: TaskSelection) => {
       setSelection(next);
       onUpdate({
+        subjectId: next.subjectId ?? task.subjectId ?? null,
         topic: next.displayText || 'عمومی',
         subject: next.subjectName || task.subject,
         subjectColor: next.subjectColor || task.subjectColor,
         chapterId: next.chapterId ?? null,
         topicId: next.topicId ?? null,
+        topicIds: next.topicIds ?? [],
         topicModeId: next.topicModeId ?? null,
+        curriculumMode: next.curriculumMode ?? null,
+        topicModeSubtopicIds: next.topicModeSubtopicIds ?? [],
+        pageStart: next.pageStart ?? null,
+        pageEnd: next.pageEnd ?? null,
       });
     },
-    [onUpdate, task.subject, task.subjectColor],
+    [onUpdate, task.subjectId, task.subject, task.subjectColor],
   );
+
+  // Fetch suggestions when activity types change
+  useEffect(() => {
+    const hasClassVideo = (task.activityTypes ?? []).includes('کلاس/ویدیو');
+    const hasTestDetails = (task.activityTypes ?? []).includes('تست آموزشی') || (task.activityTypes ?? []).includes('تست سنجشی');
+
+    if (!task.subjectId || (!hasClassVideo && !hasTestDetails)) {
+      setTeacherClassSuggestions([]);
+      setBookSuggestions([]);
+      return;
+    }
+    const subjectId = task.subjectId;
+
+    const fetchSuggestions = async () => {
+      const promises: Promise<void>[] = [];
+      if (hasClassVideo) {
+        promises.push(
+          fetch(`/api/task-suggestions?studentId=${encodeURIComponent(task.studentId)}&subjectId=${encodeURIComponent(subjectId)}&type=teacherClass`)
+            .then(r => r.ok ? r.json() : { values: [] })
+            .then(data => setTeacherClassSuggestions(data.values || []))
+            .catch(() => setTeacherClassSuggestions([]))
+        );
+      }
+      if (hasTestDetails) {
+        promises.push(
+          fetch(`/api/task-suggestions?studentId=${encodeURIComponent(task.studentId)}&subjectId=${encodeURIComponent(subjectId)}&type=book`)
+            .then(r => r.ok ? r.json() : { values: [] })
+            .then(data => setBookSuggestions(data.values || []))
+            .catch(() => setBookSuggestions([]))
+        );
+      }
+      if (promises.length === 0) {
+        setTeacherClassSuggestions([]);
+        setBookSuggestions([]);
+      }
+      await Promise.all(promises);
+    };
+
+    fetchSuggestions();
+  }, [task.activityTypes, task.subjectId, task.studentId]);
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -663,6 +757,104 @@ function EditTaskModal({
             </div>
           </div>
 
+          {(task.activityTypes ?? []).includes('کلاس/ویدیو') && (
+            <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+              <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات کلاس/ویدیو (اختیاری)</p>
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">نام دبیر و کلاس</label>
+                {teacherClassSuggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {teacherClassSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => {
+                          setTeacherClassName(suggestion);
+                          onUpdate({ teacherClassName: suggestion });
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-[11px] border ${teacherClassName === suggestion ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]' : 'border-[var(--border)] text-[var(--foreground-muted)]'}`}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={teacherClassName}
+                  onChange={(e) => {
+                    setTeacherClassName(e.target.value);
+                    onUpdate({ teacherClassName: e.target.value || null });
+                  }}
+                  placeholder="مثلاً استاد محمدی - کلاس ۱۰"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">شماره جلسه</label>
+                <input
+                  type="text"
+                  value={sessionNumber}
+                  onChange={(e) => {
+                    setSessionNumber(e.target.value);
+                    onUpdate({ sessionNumber: e.target.value || null });
+                  }}
+                  placeholder="مثلاً جلسه ۱۲"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
+                />
+              </div>
+            </div>
+          )}
+
+          {((task.activityTypes ?? []).includes('تست آموزشی') || (task.activityTypes ?? []).includes('تست سنجشی')) && (
+            <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+              <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات تست (اختیاری)</p>
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">نام کتاب</label>
+                {bookSuggestions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {bookSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => {
+                          setBookName(suggestion);
+                          onUpdate({ bookName: suggestion });
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-[11px] border ${bookName === suggestion ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]' : 'border-[var(--border)] text-[var(--foreground-muted)]'}`}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={bookName}
+                  onChange={(e) => {
+                    setBookName(e.target.value);
+                    onUpdate({ bookName: e.target.value || null });
+                  }}
+                  placeholder="مثلاً زیست‌شناسی نشر الگو"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block">توضیح شماره تست‌ها</label>
+                <input
+                  type="text"
+                  value={testDescription}
+                  onChange={(e) => {
+                    setTestDescription(e.target.value);
+                    onUpdate({ testDescription: e.target.value || null });
+                  }}
+                  placeholder="مثلاً تست‌های ۱۲۰ تا ۱۵۰"
+                  className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Duration & test count */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -678,7 +870,7 @@ function EditTaskModal({
                 dir="ltr"
               />
               <div className="flex gap-1 mt-1.5">
-                {[30, 60, 90, 120].map((m) => (
+                {TIME_QUICK_PICKS.map((m) => (
                   <button
                     key={m}
                     onClick={() => onUpdate({ targetTimeMinutes: m })}
@@ -706,7 +898,7 @@ function EditTaskModal({
                 dir="ltr"
               />
               <div className="flex gap-1 mt-1.5">
-                {[0, 10, 20, 30].map((t) => (
+                {TEST_QUICK_PICKS.map((t) => (
                   <button
                     key={t}
                     onClick={() => onUpdate({ targetTestCount: t })}

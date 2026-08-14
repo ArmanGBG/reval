@@ -222,7 +222,7 @@ export function AdvisorStudentsList() {
                       <span className="w-11 h-11 rounded-xl bg-[var(--bg-overlay)] flex items-center justify-center text-xl shrink-0">{student.avatar}</span>
                       <div className="min-w-0">
                         <p className="font-bold text-[var(--foreground)] truncate">{student.name}</p>
-                        <p className="text-[11px] text-[var(--foreground-muted)] truncate">{student.grade} - {student.major} | {student.goal}</p>
+                        <p className="text-[11px] text-[var(--foreground-muted)] truncate">{student.grade} - {student.major}</p>
                       </div>
                     </div>
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold ${config.bg} ${config.color} ring-1 ${config.ring} shrink-0`}>
@@ -239,7 +239,7 @@ export function AdvisorStudentsList() {
                     <div className="text-center">
                       <p className="text-[10px] text-[var(--foreground-muted)] mb-0.5">ساعت/هفته</p>
                       <p className="text-sm font-bold text-[var(--foreground)] tabular-nums">{toPersianDigits(student.studyHoursPerWeek)}</p>
-                      <p className="text-[9px] text-[var(--foreground-subtle)]">از {toPersianDigits(student.studyHoursTarget)}</p>
+                      <p className="text-[9px] text-[var(--foreground-subtle)]">زمان واقعی</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] text-[var(--foreground-muted)] mb-0.5">تکمیل</p>
@@ -290,7 +290,7 @@ export function AdvisorStudentsList() {
                       <span className="w-10 h-10 rounded-xl bg-[var(--bg-overlay)] flex items-center justify-center text-lg shrink-0">{student.avatar}</span>
                       <div className="min-w-0 text-right">
                         <p className="font-bold text-[var(--foreground)] truncate">{student.name}</p>
-                        <p className="text-[11px] text-[var(--foreground-muted)] truncate">{student.grade} - {student.major} · {student.goal}</p>
+                        <p className="text-[11px] text-[var(--foreground-muted)] truncate">{student.grade} - {student.major}</p>
                       </div>
                     </div>
                     <div className="col-span-1 text-center">
@@ -307,16 +307,7 @@ export function AdvisorStudentsList() {
                     </div>
                     <div className="col-span-2 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <div className="flex-1 max-w-[60px] h-1.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.min((student.studyHoursPerWeek / student.studyHoursTarget) * 100, 100)}%`,
-                              backgroundColor: student.studyHoursPerWeek >= student.studyHoursTarget ? 'var(--accent)' : student.studyHoursPerWeek >= student.studyHoursTarget * 0.7 ? 'var(--warning)' : 'var(--danger)',
-                            }}
-                          />
-                        </div>
-                        <span className="text-[11px] text-[var(--foreground)] tabular-nums">{toPersianDigits(student.studyHoursPerWeek)}/{toPersianDigits(student.studyHoursTarget)}</span>
+                        <span className="text-[11px] text-[var(--foreground)] tabular-nums">{toPersianDigits(student.studyHoursPerWeek)} ساعت</span>
                       </div>
                     </div>
                     <div className="col-span-1 text-center">

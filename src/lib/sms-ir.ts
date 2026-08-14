@@ -1,12 +1,8 @@
 const SMS_IR_VERIFY_URL = 'https://api.sms.ir/v1/send/verify';
 
-export function isSmsSandbox(): boolean {
-  return process.env.SMS_IR_MODE === 'sandbox';
-}
-
 export async function sendSmsIrVerification(phone: string, code: string): Promise<void> {
   const apiKey = process.env.SMS_IR_API_KEY;
-  const templateId = Number(process.env.SMS_IR_OTP_TEMPLATE_ID || (isSmsSandbox() ? '123456' : ''));
+  const templateId = Number(process.env.SMS_IR_OTP_TEMPLATE_ID);
   if (!apiKey || !Number.isInteger(templateId) || templateId <= 0) {
     throw new Error('SMS_IR_NOT_CONFIGURED');
   }
@@ -21,7 +17,7 @@ export async function sendSmsIrVerification(phone: string, code: string): Promis
     body: JSON.stringify({
       mobile: phone,
       templateId,
-      parameters: [{ name: process.env.SMS_IR_OTP_PARAMETER || (isSmsSandbox() ? 'Code' : 'CODE'), value: code }],
+      parameters: [{ name: process.env.SMS_IR_OTP_PARAMETER || 'CODE', value: code }],
     }),
   });
 

@@ -26,6 +26,11 @@ interface TaskActionDialogProps {
   onDelete: (taskId: string) => Promise<void>;
   /** task counts per date — passed to the calendar for indicators */
   taskCountByDate?: Record<string, number>;
+  capabilities?: {
+    moveDate?: boolean;
+    moveToIncomplete?: boolean;
+    delete?: boolean;
+  };
 }
 
 /**
@@ -47,12 +52,15 @@ export function TaskActionDialog({
   onMoveToIncomplete,
   onDelete,
   taskCountByDate = {},
+  capabilities,
 }: TaskActionDialogProps) {
   const [mode, setMode] = useState<ActionMode>('menu');
   const [pickedDate, setPickedDate] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const isStudentTask = task?.createdBy === 'student';
+  const canMoveDate = capabilities?.moveDate ?? task?.createdBy === 'student';
+  const canMoveToIncomplete = capabilities?.moveToIncomplete ?? task?.status !== 'DRAFT';
+  const canDelete = capabilities?.delete ?? task?.createdBy === 'student';
 
   // Reset to the menu whenever the dialog re-opens or the task changes.
   useEffect(() => {
@@ -126,7 +134,7 @@ export function TaskActionDialog({
               transition={{ duration: 0.2 }}
               className="space-y-2.5 py-1"
             >
-              {isStudentTask && task?.status !== 'DRAFT' && <button
+              {canMoveDate && task?.status !== 'DRAFT' && <button
                 onClick={handlePickMoveDate}
                 disabled={submitting}
                 className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)] transition-all text-right min-h-[56px]"
@@ -142,7 +150,7 @@ export function TaskActionDialog({
               </button>}
 
               {/* Option 2: Move to incompletes */}
-              {task?.status !== 'DRAFT' && <button
+              {canMoveToIncomplete && task?.status !== 'DRAFT' && <button
                 onClick={handleMoveToIncomplete}
                 disabled={submitting}
                 className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--warning)]/40 hover:bg-[rgba(216,150,20,0.08)] transition-all text-right min-h-[56px]"
@@ -157,7 +165,7 @@ export function TaskActionDialog({
                 <ChevronLeft className="w-4 h-4 text-[var(--foreground-subtle)] flip-rtl group-hover:text-[var(--warning)] transition-colors" />
               </button>}
 
-              {isStudentTask && <button
+              {canDelete && <button
                 onClick={handleDelete}
                 disabled={submitting}
                 className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--danger)]/40 hover:bg-[rgba(229,72,77,0.08)] transition-all text-right min-h-[56px]"
