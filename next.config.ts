@@ -2,6 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": [
+      "node_modules/prisma/**/*",
+      "node_modules/@prisma/engines/**/*",
+      "node_modules/tsx/**/*",
+      "prisma/**/*",
+      "src/lib/**/*",
+      "seed - Data.csv",
+    ],
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: false,
