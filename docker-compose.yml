@@ -1,0 +1,16 @@
+services:
+  reval-postgres:
+    image: postgres:16
+    container_name: reval-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: reval
+      POSTGRES_PASSWORD: dd4b1e979ac0
+      POSTGRES_DB: reval
+    ports:
+      - "5432:5432"
+    volumes:
+      - reval-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  reval-postgres-data:
