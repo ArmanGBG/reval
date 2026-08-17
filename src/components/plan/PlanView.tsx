@@ -608,9 +608,10 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
           if (!detailsTaskId) return;
           if (isAdvisorWorkspace) {
             const task = tasks.find((item) => item.id === detailsTaskId);
-            if (!task || task.createdBy !== 'advisor' || task.createdById !== actor?.id || task.status === 'COMPLETED' || task.status === 'SKIPPED') {
-              toast.error('فقط تسک‌های ساخته‌شده توسط خود مشاور قابل ویرایش هستند');
-              return;
+            if (!task || task.status === 'COMPLETED' || task.status === 'SKIPPED') {
+              const error = new Error('این تسک دیگر قابل ویرایش نیست');
+              toast.error(error.message);
+              throw error;
             }
           }
           const taskDate = tasks.find((task) => task.id === detailsTaskId)?.date;

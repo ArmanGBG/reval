@@ -155,4 +155,22 @@ describe('task details update payload', () => {
     expect(updates.activityTypes).toEqual(['مرور']);
     expect(isAdvisorPlanTaskPatch(updates as Record<string, unknown>)).toBe(true);
   });
+
+  it('builds a pending update when an advisor completes a student draft', () => {
+    const draftTask = { ...completedTask, status: 'DRAFT' as const, completed: null, detailsCompleted: false };
+    const updates = buildTaskDetailsUpdate(draftTask, {
+      ...draftTask,
+      activityTypes: ['مطالعه'],
+      targetTimeMinutes: 60,
+      targetTestCount: 10,
+      status: 'PENDING',
+      detailsCompleted: true,
+    });
+
+    expect(updates.status).toBe('PENDING');
+    expect(updates.completed).toBeNull();
+    expect(updates.detailsCompleted).toBe(true);
+    expect(updates.targetTimeMinutes).toBe(60);
+    expect(updates.targetTestCount).toBe(10);
+  });
 });
