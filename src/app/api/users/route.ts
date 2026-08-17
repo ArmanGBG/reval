@@ -27,9 +27,19 @@ function serializeUser(user: {
   };
 }
 
-const userInclude = {
+const userSelect = {
+  id: true,
+  name: true,
+  avatar: true,
+  phone: true,
+  role: true,
+  grade: true,
+  major: true,
+  assignedAdvisorId: true,
+  instituteId: true,
+  isActive: true,
+  createdAt: true,
   institute: { select: { name: true } },
-  grade: true, major: true, assignedAdvisorId: true,
   tasks: { select: { status: true, actualTimeMinutes: true } },
   students: { select: { tasks: { select: { status: true, actualTimeMinutes: true } } } },
 } as const;
@@ -39,7 +49,7 @@ export async function GET(request: NextRequest) {
   if (error || !ctx) return error;
   const requestedRole = new URL(request.url).searchParams.get('role');
   const role = requestedRole === 'STUDENT' || requestedRole === 'ADVISOR' || requestedRole === 'INSTITUTE_MANAGER' ? requestedRole : undefined;
-  const users = await db.user.findMany({ where: { deletedAt: null, role: role ?? { in: ['STUDENT', 'ADVISOR', 'INSTITUTE_MANAGER'] } }, orderBy: { createdAt: 'desc' }, include: userInclude });
+  const users = await db.user.findMany({ where: { deletedAt: null, role: role ?? { in: ['STUDENT', 'ADVISOR', 'INSTITUTE_MANAGER'] } }, orderBy: { createdAt: 'desc' }, select: userSelect });
   return NextResponse.json({ users: users.map(serializeUser) });
 }
 
@@ -60,6 +70,6 @@ export async function POST(request: NextRequest) {
   if (instituteId && !(await db.institute.findFirst({ where: { id: instituteId, deletedAt: null }, select: { id: true } }))) {
     return NextResponse.json({ error: 'آموزشگاه معتبر نیست' }, { status: 400 });
   }
-  const user = await db.user.create({ data: { phone, name, role, grade, major, instituteId, publicCode: await createPublicCode(role === 'ADVISOR' ? 'ADV' : 'STU'), isActive: true }, include: userInclude });
+  const user = await db.user.create({ data: { phone, name, role, grade, major, instituteId, publicCode: await createPublicCode(role === 'ADVISOR' ? 'ADV' : 'STU'), isActive: true }, select: userSelect });
   return NextResponse.json({ user: serializeUser(user) }, { status: 201 });
 }
