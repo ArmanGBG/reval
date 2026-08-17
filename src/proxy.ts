@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTokenEdge, SESSION_COOKIE_NAME } from '@/lib/edge-auth';
+import { isTrustedMutationOrigin } from '@/lib/request-origin';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (!isTrustedMutationOrigin(request)) {
+    return NextResponse.json({ error: 'مبدأ درخواست معتبر نیست' }, { status: 403 });
+  }
 
   // Allow health check at /api
   if (pathname === '/api') {

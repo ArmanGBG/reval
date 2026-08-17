@@ -78,6 +78,17 @@ export interface TaskSelection {
   pageEnd?: number;
 }
 
+export interface TaskSubjectPickerDraftState {
+  selectedGrade: string | null;
+  curriculumMode: 'BOOK' | 'THEMATIC' | null;
+  selectedChapterId: string | null;
+  selectedTopicIds: string[];
+  selectedTopicModeId: string | null;
+  selectedSubtopicIds: string[];
+  pageRangeStart: string;
+  pageRangeEnd: string;
+}
+
 interface TaskSubjectPickerProps {
   fieldType: FieldType;
   grade: string;
@@ -85,6 +96,8 @@ interface TaskSubjectPickerProps {
   value: TaskSelection;
   onChange: (selection: TaskSelection) => void;
   onSelectionComplete?: () => void;
+  draftState?: TaskSubjectPickerDraftState;
+  onDraftStateChange?: (state: TaskSubjectPickerDraftState) => void;
 }
 
 type ApiSubject = Subject;
@@ -104,6 +117,8 @@ export function TaskSubjectPicker({
   value,
   onChange,
   onSelectionComplete,
+  draftState,
+  onDraftStateChange,
 }: TaskSubjectPickerProps) {
   const [subjects, setSubjects] = useState<ApiSubject[]>([]);
   const [loading, setLoading] = useState(false);
@@ -162,14 +177,27 @@ export function TaskSubjectPicker({
 
   // Konkur starts with grade selection. The API returns all eligible grades
   // for the student's major, so the subject list can be filtered locally.
-  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(draftState?.selectedGrade ?? null);
   const [selectedChapter, setSelectedChapter] = useState<ApiChapter | null>(null);
-  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
-  const [curriculumMode, setCurriculumMode] = useState<'BOOK' | 'THEMATIC' | null>(value.curriculumMode ?? null);
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>(draftState?.selectedTopicIds ?? []);
+  const [curriculumMode, setCurriculumMode] = useState<'BOOK' | 'THEMATIC' | null>(draftState?.curriculumMode ?? value.curriculumMode ?? null);
   const [selectedTopicMode, setSelectedTopicMode] = useState<ApiTopicMode | null>(null);
-  const [selectedSubtopicIds, setSelectedSubtopicIds] = useState<string[]>(value.topicModeSubtopicIds ?? []);
-  const [pageRangeStart, setPageRangeStart] = useState<string>('');
-  const [pageRangeEnd, setPageRangeEnd] = useState<string>('');
+  const [selectedSubtopicIds, setSelectedSubtopicIds] = useState<string[]>(draftState?.selectedSubtopicIds ?? value.topicModeSubtopicIds ?? []);
+  const [pageRangeStart, setPageRangeStart] = useState<string>(draftState?.pageRangeStart ?? '');
+  const [pageRangeEnd, setPageRangeEnd] = useState<string>(draftState?.pageRangeEnd ?? '');
+
+  useEffect(() => {
+    onDraftStateChange?.({
+      selectedGrade,
+      curriculumMode,
+      selectedChapterId: selectedChapter?.id ?? draftState?.selectedChapterId ?? null,
+      selectedTopicIds,
+      selectedTopicModeId: selectedTopicMode?.id ?? draftState?.selectedTopicModeId ?? null,
+      selectedSubtopicIds,
+      pageRangeStart,
+      pageRangeEnd,
+    });
+  }, [curriculumMode, draftState?.selectedChapterId, draftState?.selectedTopicModeId, onDraftStateChange, pageRangeEnd, pageRangeStart, selectedChapter?.id, selectedGrade, selectedSubtopicIds, selectedTopicIds, selectedTopicMode?.id]);
 
   const konkurGrades = useMemo(() => {
     const available = new Set(

@@ -7,7 +7,7 @@ import { createPublicCode } from '@/lib/public-code';
 const roleMap = { STUDENT: 'student', ADVISOR: 'advisor', INSTITUTE_MANAGER: 'institute_manager' } as const;
 
 function serializeUser(user: {
-  id: string; name: string; avatar: string; phone: string; role: string; instituteId: string | null;
+  id: string; name: string; avatar: string; phone: string; role: string; instituteId: string | null; grade: string | null; major: string | null; assignedAdvisorId: string | null;
   isActive: boolean; createdAt: Date; institute: { name: string } | null;
   tasks: Array<{ status: string; actualTimeMinutes: number | null }>;
   students?: Array<{ tasks: Array<{ status: string; actualTimeMinutes: number | null }> }>;
@@ -18,6 +18,7 @@ function serializeUser(user: {
   return {
     id: user.id, name: user.name, avatar: user.avatar, phone: user.phone,
     role: roleMap[user.role as keyof typeof roleMap] ?? 'student',
+    grade: user.grade, major: user.major, assignedAdvisorId: user.assignedAdvisorId,
     instituteId: user.instituteId, instituteName: user.institute?.name ?? 'بدون آموزشگاه',
     status: user.isActive ? 'active' : 'suspended',
     completionRate: reportable.length ? Math.round((completed.length / reportable.length) * 100) : 0,
@@ -28,6 +29,7 @@ function serializeUser(user: {
 
 const userInclude = {
   institute: { select: { name: true } },
+  grade: true, major: true, assignedAdvisorId: true,
   tasks: { select: { status: true, actualTimeMinutes: true } },
   students: { select: { tasks: { select: { status: true, actualTimeMinutes: true } } } },
 } as const;
@@ -35,7 +37,9 @@ const userInclude = {
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requireRole(request, ['SUPER_ADMIN']);
   if (error || !ctx) return error;
-  const users = await db.user.findMany({ where: { deletedAt: null, role: { in: ['STUDENT', 'ADVISOR', 'INSTITUTE_MANAGER'] } }, orderBy: { createdAt: 'desc' }, include: userInclude });
+  const requestedRole = new URL(request.url).searchParams.get('role');
+  const role = requestedRole === 'STUDENT' || requestedRole === 'ADVISOR' || requestedRole === 'INSTITUTE_MANAGER' ? requestedRole : undefined;
+  const users = await db.user.findMany({ where: { deletedAt: null, role: role ?? { in: ['STUDENT', 'ADVISOR', 'INSTITUTE_MANAGER'] } }, orderBy: { createdAt: 'desc' }, include: userInclude });
   return NextResponse.json({ users: users.map(serializeUser) });
 }
 
@@ -45,9 +49,17 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const phone = normalizeIranianPhone(typeof body.phone === 'string' ? body.phone : '');
   const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const role = body.role === 'advisor' ? 'ADVISOR' : body.role === 'institute_manager' ? 'INSTITUTE_MANAGER' : 'STUDENT';
+  const role = body.role === 'advisor' ? 'ADVISOR' : body.role === 'student' ? 'STUDENT' : null;
+  if (!role) return NextResponse.json({ error: 'نقش معتبر نیست' }, { status: 400 });
   if (!phone || !name) return NextResponse.json({ error: 'نام و شماره موبایل الزامی است' }, { status: 400 });
   if (await db.user.findUnique({ where: { phone }, select: { id: true } })) return NextResponse.json({ error: 'این شماره قبلاً ثبت شده است' }, { status: 409 });
-  const user = await db.user.create({ data: { phone, name, role, instituteId: body.instituteId || null, publicCode: await createPublicCode(role === 'ADVISOR' ? 'ADV' : role === 'STUDENT' ? 'STU' : 'MGR'), isActive: true }, include: userInclude });
+  const grade = typeof body.grade === 'string' ? body.grade : null;
+  const major = typeof body.major === 'string' ? body.major : null;
+  if (role === 'STUDENT' && (!grade || !major)) return NextResponse.json({ error: 'پایه و رشته دانش‌آموز الزامی است' }, { status: 400 });
+  const instituteId = body.instituteId || null;
+  if (instituteId && !(await db.institute.findFirst({ where: { id: instituteId, deletedAt: null }, select: { id: true } }))) {
+    return NextResponse.json({ error: 'آموزشگاه معتبر نیست' }, { status: 400 });
+  }
+  const user = await db.user.create({ data: { phone, name, role, grade, major, instituteId, publicCode: await createPublicCode(role === 'ADVISOR' ? 'ADV' : 'STU'), isActive: true }, include: userInclude });
   return NextResponse.json({ user: serializeUser(user) }, { status: 201 });
 }

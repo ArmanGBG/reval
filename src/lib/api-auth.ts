@@ -20,6 +20,8 @@ export interface AuthContext {
     instituteId: string | null;
     assignedAdvisorId: string | null;
     isActive: boolean;
+    deletedAt: Date | null;
+    institute: { status: string; deletedAt: Date | null } | null;
   };
 }
 
@@ -59,10 +61,12 @@ export async function requireAuth(
       instituteId: true,
       assignedAdvisorId: true,
       isActive: true,
+      deletedAt: true,
+      institute: { select: { status: true, deletedAt: true } },
     },
   });
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     return {
       ctx: null,
       error: NextResponse.json(
@@ -77,6 +81,16 @@ export async function requireAuth(
       ctx: null,
       error: NextResponse.json(
         { error: 'حساب شما غیرفعال شده است' },
+        { status: 403 },
+      ),
+    };
+  }
+
+  if (user.role !== 'SUPER_ADMIN' && user.institute && (user.institute.deletedAt || user.institute.status === 'suspended')) {
+    return {
+      ctx: null,
+      error: NextResponse.json(
+        { error: 'دسترسی آموزشگاه شما تعلیق شده است', code: 'INSTITUTE_SUSPENDED' },
         { status: 403 },
       ),
     };
@@ -201,6 +215,16 @@ export async function canModifyTask(
       && await canViewStudentTasks(ctx, task.studentId);
   }
   return false;
+}
+
+// Plan editing is broader than task ownership: an assigned advisor can revise
+// the study plan even when the task was created by the student or another
+// advisor. Execution results and destructive actions use canModifyTask.
+export async function canEditAssignedStudentPlan(
+  ctx: AuthContext,
+  studentId: string,
+): Promise<boolean> {
+  return ctx.user.role === 'ADVISOR' && await canViewStudentTasks(ctx, studentId);
 }
 
 // ===== Chapter / Topic ownership checks =====

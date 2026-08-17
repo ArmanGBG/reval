@@ -10,6 +10,7 @@ import {
 } from "framer-motion";
 
 export function Hero() {
+  const [isMobile, setIsMobile] = React.useState(true);
   const heroRef = React.useRef<HTMLElement>(null);
   const [step, setStep] = React.useState(0);
   const [compactScroll, setCompactScroll] = React.useState(false);
@@ -18,6 +19,14 @@ export function Hero() {
     target: heroRef,
     offset: ["start start", "end end"],
   });
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   React.useEffect(() => {
     const media = window.matchMedia("(max-width: 639px)");
@@ -32,6 +41,43 @@ export function Hero() {
     const secondBoundary = compactScroll ? 0.42 : 0.52;
     setStep(progress < firstBoundary ? 0 : progress < secondBoundary ? 1 : 2);
   });
+
+  if (isMobile) {
+    return (
+      <section
+        id="top"
+        ref={heroRef}
+        className="relative h-[220svh] border-b border-border/50"
+        aria-labelledby="hero-title"
+      >
+        <div className="sticky top-0 flex h-[100svh] items-center px-5 pb-12 pt-20 text-center">
+          <div className="mx-auto w-full max-w-xl">
+            <h1 id="hero-title" className="text-balance text-4xl font-black leading-[1.35] text-foreground">
+              {step === 0 ? (
+                <>
+                  تو <span className="text-[var(--danger)]">بن بست</span> برنامه‌ریزی و <span className="text-mint">آنالیز</span> دقیق گیر کردی؟
+                </>
+              ) : step === 1 ? (
+                <>
+                  نمی‌تونی مشاور <span className="text-mint">مناسب</span> خودت رو پیدا کنی؟
+                </>
+              ) : (
+                <>
+                  ما اینجاییم همه چی بیفته رو <span className="text-mint">روال</span>!
+                </>
+              )}
+            </h1>
+
+            {step === 2 && (
+              <p className="mx-auto mt-6 max-w-md text-sm leading-8 text-muted-foreground">
+                با روال، درس خوندنت از گیجی درمیاد! خیلی راحت می‌بینی برای هر درس چقدر تست زدی، چقدر کلاس رفتی و کجای کاری. تازه، ما یه مشاور کاردرستِ مخصوص خودت پیدا می‌کنیم که مستقیم تو خود اپلیکیشن بهت وصل می‌شه تا زحمت برنامه‌ریزی رو بکشه و قدم به قدم همراهت باشه.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

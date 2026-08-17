@@ -147,7 +147,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
       && task.createdById === actor?.id
       && task.status !== 'COMPLETED'
       && task.status !== 'SKIPPED';
-    return { complete: false, reset: false, partial: false, action: ownsTask, edit: ownsTask, deleteDraft: ownsTask, drag: false };
+    return { complete: false, reset: false, partial: false, action: ownsTask, edit: true, deleteDraft: ownsTask, drag: false };
   }, [actor?.id, isAdvisorWorkspace]);
 
   // Local state

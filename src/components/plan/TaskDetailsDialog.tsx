@@ -1,6 +1,8 @@
 'use client';
 
 import type { Task } from '@/lib/types';
+import type { UpdateTaskPayload } from '@/lib/task-service';
+import { buildTaskDetailsUpdate } from '@/lib/task-service';
 import ManualEntrySheet from './ManualEntrySheet';
 
 export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSave }: {
@@ -9,7 +11,7 @@ export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSa
   onOpenChange: (open: boolean) => void;
   grade: string;
   major: string;
-  onSave: (updates: Partial<Task>) => Promise<void> | void;
+  onSave: (updates: UpdateTaskPayload) => Promise<void> | void;
 }) {
   if (!task) return null;
   return (
@@ -26,8 +28,7 @@ export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSa
       mode="complete-draft"
       initialTask={task}
       onSubmit={async (nextTask) => {
-        const { id: _id, studentId: _studentId, createdBy: _createdBy, createdById: _createdById, date: _date, order: _order, ...updates } = nextTask;
-        await onSave(updates);
+        await onSave(buildTaskDetailsUpdate(task, nextTask));
       }}
     />
   );

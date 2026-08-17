@@ -259,6 +259,15 @@ export default function TaskCard({
                   انجام نشد
                 </span>
               )}
+              {canEdit && onEdit && (
+                <button
+                  onClick={() => onEdit(task.id)}
+                  className="icon-btn w-9 h-9 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  aria-label="ویرایش جزئیات برنامه"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
               {/* Undo button — NEW: allows reverting to pending */}
               {canReset && <button
                 onClick={async () => {

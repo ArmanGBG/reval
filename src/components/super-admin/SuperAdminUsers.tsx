@@ -9,8 +9,6 @@ import {
   Users,
   Search,
   Eye,
-  CheckCircle2,
-  XCircle,
   Filter,
   Crown,
   Building2,
@@ -22,6 +20,16 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -35,7 +43,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 export default function SuperAdminUsers() {
-  const { globalUsers, updateGlobalUser, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, setCurrentView, setSelectedGlobalUserId } = useAppStore();
+  const { globalUsers, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, setCurrentView, setSelectedGlobalUserId } = useAppStore();
   useEffect(() => { loadGlobalUsers().catch(() => {}); loadPlatformInstitutes().catch(() => {}); }, [loadGlobalUsers, loadPlatformInstitutes]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | GlobalUserRole>('all');
@@ -45,13 +53,16 @@ export default function SuperAdminUsers() {
   const [advisorPhone, setAdvisorPhone] = useState('');
   const [creatingAdvisor, setCreatingAdvisor] = useState(false);
   const [showAdvisorForm, setShowAdvisorForm] = useState(false);
-  const [newRole, setNewRole] = useState<GlobalUserRole>('student');
+  const [newRole, setNewRole] = useState<'student' | 'advisor'>('student');
   const [newInstituteId, setNewInstituteId] = useState<string>('');
+  const [newGrade, setNewGrade] = useState('دوازدهم');
+  const [newMajor, setNewMajor] = useState('تجربی');
+  const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name: string } | null>(null);
 
   const createAdvisor = async () => {
     setCreatingAdvisor(true);
     try {
-      await createGlobalUser({ name: advisorName, phone: advisorPhone, role: newRole, instituteId: newInstituteId || null });
+      await createGlobalUser({ name: advisorName, phone: advisorPhone, role: newRole, instituteId: newInstituteId || null, ...(newRole === 'student' ? { grade: newGrade, major: newMajor } : {}) });
       toast.success('حساب کاربر در دیتابیس ساخته شد');
       setAdvisorName(''); setAdvisorPhone(''); setShowAdvisorForm(false);
     } catch (error) { toast.error(error instanceof Error ? error.message : 'ساخت مشاور انجام نشد'); }
@@ -80,10 +91,6 @@ export default function SuperAdminUsers() {
 
     return result;
   }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus]);
-
-  const toggleUserStatus = (id: string, currentStatus: UserAccountStatus) => {
-    updateGlobalUser(id, { status: currentStatus === 'active' ? 'suspended' : 'active' }).catch(() => {});
-  };
 
   const handleViewUser = (id: string) => {
     setSelectedGlobalUserId(id);
@@ -116,7 +123,13 @@ export default function SuperAdminUsers() {
 
       {showAdvisorForm && <div className="surface-1 rounded-2xl p-4 border border-gold/25 space-y-3">
         <div className="flex items-center justify-between"><h3 className="font-bold">ایجاد کاربر در دیتابیس</h3><button onClick={() => setShowAdvisorForm(false)}><X className="w-4 h-4" /></button></div>
-        <div className="grid md:grid-cols-2 gap-3"><input value={advisorName} onChange={(e) => setAdvisorName(e.target.value)} placeholder="نام و نام خانوادگی" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /><input value={advisorPhone} onChange={(e) => setAdvisorPhone(e.target.value)} placeholder="شماره موبایل" dir="ltr" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" /><select value={newRole} onChange={(e) => setNewRole(e.target.value as GlobalUserRole)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option value="student">دانش‌آموز</option><option value="advisor">مشاور</option></select><select value={newInstituteId} onChange={(e) => setNewInstituteId(e.target.value)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option value="">بدون آموزشگاه</option>{platformInstitutes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div className="grid md:grid-cols-2 gap-3">
+          <input value={advisorName} onChange={(e) => setAdvisorName(e.target.value)} placeholder="نام و نام خانوادگی" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" />
+          <input value={advisorPhone} onChange={(e) => setAdvisorPhone(e.target.value)} placeholder="شماره موبایل" dir="ltr" className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3" />
+          <select value={newRole} onChange={(e) => setNewRole(e.target.value as 'student' | 'advisor')} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option value="student">دانش‌آموز</option><option value="advisor">مشاور</option></select>
+          <select value={newInstituteId} onChange={(e) => setNewInstituteId(e.target.value)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option value="">بدون آموزشگاه</option>{platformInstitutes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+          {newRole === 'student' && <><select value={newGrade} onChange={(e) => setNewGrade(e.target.value)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option>دهم</option><option>یازدهم</option><option>دوازدهم</option><option>فارغ‌التحصیل</option></select><select value={newMajor} onChange={(e) => setNewMajor(e.target.value)} className="h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3"><option>تجربی</option><option>ریاضی</option><option>انسانی</option></select></>}
+        </div>
         <button disabled={creatingAdvisor || !advisorName.trim() || !advisorPhone.trim()} onClick={createAdvisor} className="px-4 py-2 rounded-xl bg-gold text-[var(--bg-deep)] font-bold disabled:opacity-40">{creatingAdvisor ? 'در حال ساخت...' : 'ساخت حساب'}</button>
       </div>}
 
@@ -248,19 +261,7 @@ export default function SuperAdminUsers() {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => deleteGlobalUser(user.id).then(() => toast.success('کاربر حذف شد')).catch((error) => toast.error(error.message))} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
-                    <button
-                      onClick={() => toggleUserStatus(user.id, user.status)}
-                      className={`icon-btn p-2 rounded-[8px] border border-transparent ${
-                        user.status === 'active'
-                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
-                          : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
-                      }`}
-                      title={user.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
-                    >
-                      {user.status === 'active' ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                    </button>
-                    <button onClick={() => deleteGlobalUser(user.id).catch(() => {})} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setDeleteCandidate({ id: user.id, name: user.name })} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               );
@@ -312,17 +313,7 @@ export default function SuperAdminUsers() {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => toggleUserStatus(user.id, user.status)}
-                      className={`icon-btn p-2 rounded-[8px] border border-transparent ${
-                        user.status === 'active'
-                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
-                          : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
-                      }`}
-                      title={user.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
-                    >
-                      {user.status === 'active' ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                    </button>
+                    <button onClick={() => setDeleteCandidate({ id: user.id, name: user.name })} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               </motion.div>
@@ -335,6 +326,35 @@ export default function SuperAdminUsers() {
           </div>
         )}
       </div>
+      <AlertDialog open={Boolean(deleteCandidate)} onOpenChange={(open) => !open && setDeleteCandidate(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف حساب کاربری</AlertDialogTitle>
+            <AlertDialogDescription>
+              حساب «{deleteCandidate?.name}» حذف نرم می‌شود. کاربر بعداً می‌تواند با همان شماره و تأیید پیامکی دوباره ثبت‌نام کند.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteCandidate) return;
+                try {
+                  await deleteGlobalUser(deleteCandidate.id);
+                  toast.success('کاربر حذف شد');
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : 'حذف کاربر انجام نشد');
+                } finally {
+                  setDeleteCandidate(null);
+                }
+              }}
+            >
+              حذف حساب
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

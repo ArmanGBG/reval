@@ -1833,3 +1833,35 @@
     border: none;
   }
 }
+
+/* Mobile landing: prioritize scroll and input latency over decoration. */
+@media (max-width: 767px) {
+  .landing-page,
+  .landing-page * {
+    scroll-behavior: auto;
+  }
+
+  .landing-page .aurora,
+  .landing-page .animate-shimmer,
+  .landing-page .pulse-glow-mint,
+  .landing-page .float-subtle,
+  .landing-page .text-shimmer,
+  .landing-page .breathe,
+  .landing-page .animate-float,
+  .landing-page .animate-pulse-soft,
+  .landing-page .shimmer-border,
+  .landing-page .border-shimmer::before {
+    animation: none !important;
+  }
+
+  .landing-page header > div,
+  .landing-page .glass,
+  .landing-page .glass-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .landing-page header > div {
+    background-color: color-mix(in srgb, var(--background) 96%, transparent);
+  }
+}

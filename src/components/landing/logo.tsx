@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * Reval logo — the official logo from the GitHub repo.
- * Uses logo.png which includes both the green wheat/plant
+ * Uses logo.webp which includes both the green wheat/plant
  * icon and the Persian wordmark "روال" as a single composed image.
- * Background has been removed (transparent PNG).
+ * Background has been removed and transparency is preserved.
  * The `showWord` prop is accepted for API compatibility but is a no-op
  * since the image already includes the wordmark.
  */
@@ -20,13 +20,13 @@ export function Logo({
   /** No-op — the image already includes the wordmark */
   showWord?: boolean;
 }) {
-  // logo.png is 183×82 (w×h). We scale based on the requested height.
+  // logo.webp is 183x82 (w x h). We scale based on the requested height.
   const LOGO_ASPECT = 183 / 82; // ≈ 2.23
   const width = Math.round(size * LOGO_ASPECT);
 
   return (
     <Image
-      src="/logo.png"
+      src="/logo.webp"
       alt="روال"
       width={width}
       height={size}

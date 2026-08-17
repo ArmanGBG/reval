@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { Header } from './header';
 import { Hero } from './hero';
@@ -15,6 +16,15 @@ import { FloatingLines } from './floating-lines';
 // switching, so the rest of the SPA (auth, dashboard, …) stays untouched.
 export default function LandingPage() {
   const setCurrentView = useAppStore((s) => s.setCurrentView);
+  const [isMobile, setIsMobile] = useState(true);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     // The landing uses <Link href="#login"> / <Link href="#signup"> for its
@@ -68,11 +78,11 @@ export default function LandingPage() {
   }, [setCurrentView]);
 
   return (
-    <>
-      <div className="relative isolate flex min-h-screen flex-col overflow-x-clip bg-background noise font-yekan">
-        <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />
+    <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
+      <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan md:noise">
+        {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
         <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
-        <FloatingLines />
+        {!isMobile && <FloatingLines />}
 
         <Header />
 
@@ -83,6 +93,6 @@ export default function LandingPage() {
         </main>
         <Footer />
       </div>
-    </>
+    </MotionConfig>
   );
 }

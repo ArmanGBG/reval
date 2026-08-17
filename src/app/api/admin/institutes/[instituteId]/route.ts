@@ -21,10 +21,27 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const { instituteId } = await params;
   const institute = await db.institute.findUnique({ where: { id: instituteId }, select: { id: true, managerId: true } });
   if (!institute) return NextResponse.json({ error: 'آموزشگاه یافت نشد' }, { status: 404 });
-  await db.$transaction([
-    db.user.updateMany({ where: { instituteId }, data: { instituteId: null } }),
-    db.user.update({ where: { id: institute.managerId }, data: { isActive: false, deletedAt: new Date(), instituteId: null } }),
-    db.institute.update({ where: { id: instituteId }, data: { deletedAt: new Date(), status: 'suspended' } }),
-  ]);
+  await db.$transaction(async (tx) => {
+    const members = await tx.user.findMany({ where: { instituteId }, select: { id: true } });
+    const memberIds = members.map((member) => member.id);
+    await tx.user.updateMany({ where: { assignedAdvisorId: { in: memberIds } }, data: { assignedAdvisorId: null } });
+    await tx.connectionRequest.updateMany({
+      where: { OR: [{ studentId: { in: memberIds } }, { advisorId: { in: memberIds } }], status: { in: ['PENDING', 'ACCEPTED'] } },
+      data: { status: 'ENDED', respondedAt: new Date() },
+    });
+    await tx.user.updateMany({ where: { instituteId }, data: { instituteId: null, assignedAdvisorId: null } });
+    await tx.user.update({
+      where: { id: institute.managerId },
+      data: {
+        phone: `deleted-${institute.managerId}-${Date.now()}`,
+        password: null,
+        phoneVerifiedAt: null,
+        isActive: false,
+        deletedAt: new Date(),
+        instituteId: null,
+      },
+    });
+    await tx.institute.update({ where: { id: instituteId }, data: { deletedAt: new Date(), status: 'suspended' } });
+  });
   return NextResponse.json({ success: true });
 }

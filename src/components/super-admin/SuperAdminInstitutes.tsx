@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { PlatformInstitute, SubscriptionPlan, InstituteStatus } from '@/lib/types';
 import {
@@ -15,8 +16,6 @@ import {
   Crown,
   Zap,
   Phone,
-  CheckCircle2,
-  Ban,
   Trash2,
   Filter,
 } from 'lucide-react';
@@ -88,9 +87,14 @@ export default function SuperAdminInstitutes() {
     setShowAddModal(false);
   };
 
-  const toggleInstituteStatus = (id: string, currentStatus: InstituteStatus) => {
-    const newStatus: InstituteStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    updatePlatformInstitute(id, { status: newStatus }).catch(() => {});
+  const setInstituteStatus = async (id: string, status: InstituteStatus) => {
+    if (status === 'suspended' && !window.confirm('با تعلیق آموزشگاه، دسترسی تمام اعضای آن قطع می‌شود. ادامه می‌دهید؟')) return;
+    try {
+      await updatePlatformInstitute(id, { status });
+      toast.success('وضعیت آموزشگاه به‌روزرسانی شد');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'تغییر وضعیت انجام نشد');
+    }
   };
 
   const handleGodView = (id: string) => {
@@ -243,18 +247,8 @@ export default function SuperAdminInstitutes() {
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => deletePlatformInstitute(institute.id).catch(() => {})} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف آموزشگاه"><Trash2 className="w-3.5 h-3.5" /></button>
-                    <button
-                      onClick={() => toggleInstituteStatus(institute.id, institute.status)}
-                      className={`icon-btn p-2 rounded-[8px] border border-transparent ${
-                        institute.status === 'active'
-                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
-                          : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
-                      }`}
-                      title={institute.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
-                    >
-                      {institute.status === 'active' ? <Ban className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                    </button>
+                    <button onClick={async () => { if (!window.confirm(`آموزشگاه «${institute.name}» حذف شود؟ اعضا از آموزشگاه جدا می‌شوند.`)) return; try { await deletePlatformInstitute(institute.id); toast.success('آموزشگاه حذف شد'); } catch (error) { toast.error(error instanceof Error ? error.message : 'حذف آموزشگاه انجام نشد'); } }} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف آموزشگاه"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <select value={institute.status} onChange={(event) => setInstituteStatus(institute.id, event.target.value as InstituteStatus)} className="h-8 rounded-lg border border-[var(--border)] bg-[var(--bg-overlay)] px-2 text-[10px] text-foreground" aria-label="وضعیت آموزشگاه"><option value="active">فعال</option><option value="trial">آزمایشی</option><option value="suspended">معلق</option></select>
                     <button
                       onClick={() => handleGodView(institute.id)}
                       className="btn-hover text-[11px] px-3 py-1.5 rounded-[8px] bg-gold/10 text-gold hover:bg-gold/20 font-medium"
@@ -311,7 +305,7 @@ export default function SuperAdminInstitutes() {
                   >
                     <Eye className="w-4 h-4" />
                   </button>
-                  <button onClick={() => deletePlatformInstitute(institute.id).catch(() => {})} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={async () => { if (!window.confirm(`آموزشگاه «${institute.name}» حذف شود؟ اعضا از آموزشگاه جدا می‌شوند.`)) return; try { await deletePlatformInstitute(institute.id); toast.success('آموزشگاه حذف شد'); } catch (error) { toast.error(error instanceof Error ? error.message : 'حذف آموزشگاه انجام نشد'); } }} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]"><Trash2 className="w-4 h-4" /></button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[var(--border)] text-[11px]">
@@ -341,17 +335,7 @@ export default function SuperAdminInstitutes() {
                     <Eye className="w-3.5 h-3.5" />
                     God View
                   </button>
-                  <button
-                    onClick={() => toggleInstituteStatus(institute.id, institute.status)}
-                    className={`btn-hover flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-[10px] font-medium ${
-                      institute.status === 'active'
-                        ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20'
-                        : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20'
-                    }`}
-                  >
-                    {institute.status === 'active' ? <Ban className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {institute.status === 'active' ? 'تعلیق' : 'فعال‌سازی'}
-                  </button>
+                  <select value={institute.status} onChange={(event) => setInstituteStatus(institute.id, event.target.value as InstituteStatus)} className="flex-1 rounded-[10px] border border-[var(--border)] bg-[var(--bg-overlay)] px-3 py-2 text-xs text-foreground" aria-label="وضعیت آموزشگاه"><option value="active">فعال</option><option value="trial">آزمایشی</option><option value="suspended">معلق</option></select>
                 </div>
               </motion.div>
             );

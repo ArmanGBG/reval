@@ -40,7 +40,12 @@ export default function ConnectionManager({ role, onChanged }: { role: 'STUDENT'
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const refresh = () => { void load(); };
+    window.addEventListener('reval:relationship-changed', refresh);
+    return () => window.removeEventListener('reval:relationship-changed', refresh);
+  }, [load]);
 
   const send = async () => {
     if (!code.trim()) return;

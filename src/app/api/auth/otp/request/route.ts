@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
     if (!phone || !purpose) return NextResponse.json({ error: 'شماره موبایل یا نوع درخواست نامعتبر است' }, { status: 400 });
 
     if (purpose === 'SIGNUP') {
-      const existing = await db.user.findUnique({ where: { phone }, select: { id: true } });
-      if (existing) {
+      const existing = await db.user.findUnique({ where: { phone }, select: { id: true, deletedAt: true, role: true } });
+      if (existing && (!existing.deletedAt || existing.role !== 'STUDENT')) {
         return NextResponse.json(
           { error: 'این شماره قبلاً ثبت شده است. وارد حساب خود شوید', code: 'ACCOUNT_EXISTS' },
           { status: 409 },

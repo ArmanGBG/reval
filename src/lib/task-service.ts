@@ -13,7 +13,7 @@ export interface CreateTaskPayload {
   subjectId: string;
   topic?: string | null;
   fieldType: Task['fieldType'];
-  activityTypes?: string[] | null;
+  activityTypes?: Task['activityTypes'];
   targetTimeMinutes?: number | null;
   actualTimeMinutes?: number | null;
   targetTestCount?: number | null;
@@ -23,7 +23,7 @@ export interface CreateTaskPayload {
   detailsCompleted: boolean;
   date: string;
   order?: number;
-  createdBy?: string;
+  createdBy?: Task['createdBy'];
   createdById?: string | null;
   chapterId?: string | null;
   topicId?: string | null;
@@ -39,9 +39,33 @@ export interface CreateTaskPayload {
   testDescription?: string | null;
 }
 
-export type UpdateTaskPayload = Omit<Partial<CreateTaskPayload>, 'subjectId'> & {
+export type UpdateTaskPayload = Omit<Partial<CreateTaskPayload>, 'studentId' | 'createdBy' | 'createdById' | 'subjectId' | 'topic'> & {
   subjectId?: string | null;
 };
+
+export function buildTaskDetailsUpdate(task: Task, nextTask: Task): UpdateTaskPayload {
+  const {
+    id: _id,
+    studentId: _studentId,
+    createdBy: _createdBy,
+    createdById: _createdById,
+    subject: _subject,
+    subjectColor: _subjectColor,
+    topic: _topic,
+    date: _date,
+    order: _order,
+    ...draftUpdates
+  } = nextTask;
+  const updates: UpdateTaskPayload = { ...draftUpdates };
+  if (task.status === 'COMPLETED' || task.status === 'SKIPPED') {
+    delete updates.status;
+    delete updates.completed;
+    delete updates.actualTimeMinutes;
+    delete updates.actualTestCount;
+    delete updates.detailsCompleted;
+  }
+  return updates;
+}
 
 // Cast the API response (where activityTypes may be a JSON string or already
 // parsed array) into a properly-typed Task.
