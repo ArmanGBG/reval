@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import {
   ChevronRight,
@@ -34,13 +35,26 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 export default function UserDetail() {
-  const { selectedGlobalUserId, globalUsers, updateGlobalUser, loadGlobalUsers, setCurrentView } = useAppStore();
+  const { selectedGlobalUserId, globalUsers, updateGlobalUser, assignGlobalStudentAdvisor, loadGlobalUsers, setCurrentView } = useAppStore();
   useEffect(() => { if (globalUsers.length === 0) loadGlobalUsers().catch(() => {}); }, [globalUsers.length, loadGlobalUsers]);
 
   const user = useMemo(() =>
     globalUsers.find((u) => u.id === selectedGlobalUserId),
     [selectedGlobalUserId, globalUsers]
   );
+  const [saving, setSaving] = useState(false);
+
+  const mutate = async (action: () => Promise<void>, success: string) => {
+    setSaving(true);
+    try {
+      await action();
+      toast.success(success);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'عملیات انجام نشد');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -111,17 +125,6 @@ export default function UserDetail() {
                     <span className="text-[11px] text-muted-foreground tabular-nums" dir="ltr">{user.phone}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' }).catch(() => {})}
-                  className={`btn-hover p-3 rounded-[12px] font-bold text-xs border ${
-                    user.status === 'active'
-                      ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border-[var(--danger)]/20'
-                      : 'bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 border-[var(--success)]/20'
-                  }`}
-                  title={user.status === 'active' ? 'تعلیق کاربر' : 'فعال‌سازی کاربر'}
-                >
-                  {user.status === 'active' ? <XCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-                </button>
               </div>
 
               {/* Meta grid */}
@@ -282,8 +285,56 @@ export default function UserDetail() {
               <Crown className="w-4 h-4 text-gold" />
               اقدامات مدیریتی
             </h3>
+            {user.role !== 'institute_manager' && <div className="space-y-3 mb-4 pb-4 border-b border-[var(--border)]">
+              <label className="text-xs text-muted-foreground block">نقش کاربر</label>
+              <select
+                value={user.role}
+                disabled={saving}
+                onChange={(event) => {
+                  const role = event.target.value as 'student' | 'advisor';
+                  mutate(() => updateGlobalUser(user.id, { role, ...(role === 'student' ? { grade: user.grade || 'دوازدهم', major: user.major || 'تجربی' } : {}) }), 'نقش کاربر تغییر کرد');
+                }}
+                className="w-full h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3 text-sm"
+              >
+                <option value="student">دانش‌آموز</option>
+                <option value="advisor">مشاور</option>
+              </select>
+              {user.role === 'student' && <div className="grid grid-cols-2 gap-2">
+                <select value={user.grade || 'دوازدهم'} disabled={saving} onChange={(event) => mutate(() => updateGlobalUser(user.id, { grade: event.target.value, major: user.major || 'تجربی' }), 'پایه به‌روزرسانی شد')} className="h-10 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border)] px-2 text-xs"><option>دهم</option><option>یازدهم</option><option>دوازدهم</option><option>فارغ‌التحصیل</option></select>
+                <select value={user.major || 'تجربی'} disabled={saving} onChange={(event) => mutate(() => updateGlobalUser(user.id, { major: event.target.value, grade: user.grade || 'دوازدهم' }), 'رشته به‌روزرسانی شد')} className="h-10 rounded-lg bg-[var(--bg-overlay)] border border-[var(--border)] px-2 text-xs"><option>تجربی</option><option>ریاضی</option><option>انسانی</option></select>
+              </div>}
+            </div>}
+
+            {user.role === 'student' && <div className="space-y-2 mb-4 pb-4 border-b border-[var(--border)]">
+              <label className="text-xs text-muted-foreground block">مشاور دانش‌آموز</label>
+              <select
+                value={user.assignedAdvisorId || ''}
+                disabled={saving}
+                onChange={(event) => mutate(() => assignGlobalStudentAdvisor(user.id, event.target.value || null), event.target.value ? 'مشاور تعیین شد' : 'ارتباط مشاور حذف شد')}
+                className="w-full h-11 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] px-3 text-sm"
+              >
+                <option value="">بدون مشاور</option>
+                {globalUsers.filter((item) => item.role === 'advisor' && item.status === 'active' && item.instituteId === user.instituteId).map((advisor) => <option key={advisor.id} value={advisor.id}>{advisor.name}</option>)}
+              </select>
+            </div>}
+
+            {user.role === 'advisor' && <div className="space-y-2 mb-4 pb-4 border-b border-[var(--border)]">
+              <label className="text-xs text-muted-foreground block">دانش‌آموزان این مشاور</label>
+              <div className="max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar">
+                {globalUsers.filter((item) => item.role === 'student' && item.status === 'active' && item.instituteId === user.instituteId).map((student) => {
+                  const assigned = student.assignedAdvisorId === user.id;
+                  return <button key={student.id} disabled={saving} onClick={() => mutate(() => assignGlobalStudentAdvisor(student.id, assigned ? null : user.id), assigned ? 'دانش‌آموز از مشاور جدا شد' : 'دانش‌آموز به مشاور تخصیص داده شد')} className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${assigned ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]' : 'bg-[var(--bg-overlay)] border-[var(--border)] text-muted-foreground'}`}><span>{student.name}</span><span>{assigned ? 'تخصیص داده شده' : student.assignedAdvisorId ? 'انتقال به این مشاور' : 'افزودن'}</span></button>;
+                })}
+              </div>
+            </div>}
+
             <button
-              onClick={() => updateGlobalUser(user.id, { status: user.status === 'active' ? 'suspended' : 'active' }).catch(() => {})}
+              disabled={saving}
+              onClick={() => {
+                const nextStatus = user.status === 'active' ? 'suspended' : 'active';
+                if (nextStatus === 'suspended' && !window.confirm(`حساب «${user.name}» تعلیق شود؟`)) return;
+                mutate(() => updateGlobalUser(user.id, { status: nextStatus }), nextStatus === 'suspended' ? 'حساب تعلیق شد' : 'حساب فعال شد');
+              }}
               className={`btn-hover w-full flex items-center justify-center gap-2 py-3 rounded-[12px] text-sm font-bold border ${
                 user.status === 'active'
                   ? 'bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 border-[var(--danger)]/20'

@@ -81,6 +81,9 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
     && task.status !== 'COMPLETED'
     && task.status !== 'SKIPPED'
   ), [actor?.id, isAdvisorWorkspace]);
+  // The assigned advisor can edit plan details for every task. Destructive
+  // actions remain guarded by canManageTask and task ownership.
+  const canEditTask = useCallback((_task: Task) => true, []);
 
   // Available subjects
   const [subjects, setSubjects] = useState<QuickSubject[]>([]);
@@ -317,18 +320,19 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
             {weekPlan.map((dayPlan) => (
               <DayColumn
                 key={dayPlan.dateStr}
-                dayPlan={dayPlan}
-                onAdd={() => setAddingToDay(dayPlan.dateStr)}
-                 canManage={canManageTask}
-                 canComplete={!isAdvisorWorkspace}
+                 dayPlan={dayPlan}
+                 onAdd={() => setAddingToDay(dayPlan.dateStr)}
+                  canManage={canManageTask}
+                  canEdit={canEditTask}
+                  canComplete={!isAdvisorWorkspace}
                  onRemove={(taskId) => {
                    const task = tasks.find((item) => item.id === taskId);
                    if (task && canManageTask(task)) deleteTask(taskId);
                  }}
-                 onEdit={(taskId) => {
-                   const task = tasks.find((item) => item.id === taskId);
-                   if (task && canManageTask(task)) setEditingTaskId(taskId);
-                 }}
+                  onEdit={(taskId) => {
+                    const task = tasks.find((item) => item.id === taskId);
+                    if (task && canEditTask(task)) setEditingTaskId(taskId);
+                  }}
                 onToggleComplete={(taskId) => {
                   const task = tasks.find((t) => t.id === taskId);
                    if (task && !isAdvisorWorkspace) {
@@ -390,6 +394,7 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
 function DayColumn({
   dayPlan,
   canManage,
+  canEdit,
   canComplete,
   onAdd,
   onRemove,
@@ -398,6 +403,7 @@ function DayColumn({
 }: {
   dayPlan: WeekdayPlan;
   canManage: (task: Task) => boolean;
+  canEdit: (task: Task) => boolean;
   canComplete: boolean;
   onAdd: () => void;
   onRemove: (taskId: string) => void;
@@ -435,6 +441,7 @@ function DayColumn({
               key={task.id}
               task={task}
               canManage={canManage(task)}
+              canEdit={canEdit(task)}
               canComplete={canComplete}
               onClick={() => onEdit(task.id)}
               onRemove={() => onRemove(task.id)}
@@ -462,6 +469,7 @@ function DayColumn({
 function TaskChip({
   task,
   canManage,
+  canEdit,
   canComplete,
   onClick,
   onRemove,
@@ -469,6 +477,7 @@ function TaskChip({
 }: {
   task: Task;
   canManage: boolean;
+  canEdit: boolean;
   canComplete: boolean;
   onClick: () => void;
   onRemove: () => void;
@@ -496,7 +505,7 @@ function TaskChip({
 
       {/* Subject chip — click to edit */}
       <button
-        onClick={canManage ? onClick : undefined}
+        onClick={canEdit ? onClick : undefined}
         className={`btn-hover relative overflow-hidden flex-1 px-2.5 py-2.5 rounded-lg border text-right ${
           hasDetails
             ? 'bg-[var(--accent-soft)] border-[var(--accent)]/20'

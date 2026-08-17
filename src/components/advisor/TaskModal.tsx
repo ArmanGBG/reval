@@ -192,9 +192,6 @@ export function TaskModal({
     if (isEdit && editTask) {
       await updateTask(editTask.id, {
         subjectId: selection.subjectId ?? editTask.subjectId ?? null,
-        subject: subjectName,
-        subjectColor,
-        topic,
         fieldType,
         activityTypes,
         targetTimeMinutes,

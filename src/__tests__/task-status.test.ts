@@ -10,6 +10,29 @@ import {
   validateTaskLifecycle,
 } from '@/lib/task-status';
 import { taskPatchData } from '@/lib/task-api';
+import { buildTaskDetailsUpdate } from '@/lib/task-service';
+import type { Task } from '@/lib/types';
+
+const completedTask: Task = {
+  id: 'task-1',
+  studentId: 'student-1',
+  subjectId: 'subject-1',
+  subject: 'زیست',
+  subjectColor: '#00aa77',
+  topic: 'فصل اول',
+  fieldType: 'کنکور',
+  activityTypes: ['مطالعه'],
+  targetTimeMinutes: 60,
+  actualTimeMinutes: 55,
+  targetTestCount: 20,
+  actualTestCount: 18,
+  status: 'COMPLETED',
+  completed: true,
+  detailsCompleted: true,
+  date: '2026-08-17',
+  order: 0,
+  createdBy: 'student',
+};
 
 describe('task lifecycle transitions', () => {
   it('moves an active task to another date as pending', () => {
@@ -44,9 +67,37 @@ describe('task lifecycle transitions', () => {
   });
 
   it('allows advisors to edit plan fields without writing student execution', () => {
-    expect(isAdvisorPlanTaskPatch({ targetTimeMinutes: 90, status: 'PENDING', completed: null, actualTimeMinutes: null })).toBe(true);
+    expect(isAdvisorPlanTaskPatch({
+      subjectId: 'subject-1',
+      chapterId: 'chapter-1',
+      topicIds: ['topic-1'],
+      activityTypes: ['مطالعه'],
+      targetTimeMinutes: 90,
+      targetTestCount: 0,
+      detailsCompleted: true,
+      status: 'PENDING',
+      completed: null,
+      actualTimeMinutes: null,
+      actualTestCount: null,
+    })).toBe(true);
     expect(isAdvisorPlanTaskPatch({ status: 'COMPLETED', completed: true, actualTimeMinutes: 90 })).toBe(false);
     expect(isAdvisorPlanTaskPatch({ actualTestCount: 20 })).toBe(false);
+  });
+
+  it('rejects display-derived fields that the API resolves from curriculum', () => {
+    expect(isAdvisorPlanTaskPatch({ subject: 'زیست', targetTimeMinutes: 90 })).toBe(false);
+    expect(isAdvisorPlanTaskPatch({ subjectColor: '#fff', targetTimeMinutes: 90 })).toBe(false);
+    expect(isAdvisorPlanTaskPatch({ topic: 'فصل اول', targetTimeMinutes: 90 })).toBe(false);
+  });
+
+  it('allows plan-only edits without lifecycle fields for finalized tasks', () => {
+    expect(isAdvisorPlanTaskPatch({
+      subjectId: 'subject-1',
+      activityTypes: ['مرور'],
+      targetTimeMinutes: 60,
+      targetTestCount: 0,
+      bookName: 'کتاب جدید',
+    })).toBe(true);
   });
 
   it('recognizes only the exact advisor move transition', () => {
@@ -75,5 +126,33 @@ describe('task topic relation patches', () => {
       { status: 'PENDING', topicIds: ['topic-1'], detailsCompleted: true },
       ['status', 'topicIds', 'detailsCompleted'],
     )).toEqual({ status: 'PENDING', detailsCompleted: true });
+  });
+});
+
+describe('task details update payload', () => {
+  it('removes display fields and preserves finalized execution results', () => {
+    const updates = buildTaskDetailsUpdate(completedTask, {
+      ...completedTask,
+      subject: 'شیمی',
+      subjectColor: '#ffffff',
+      topic: 'فصل دوم',
+      activityTypes: ['مرور'],
+      targetTimeMinutes: 75,
+      status: 'PENDING',
+      completed: null,
+      actualTimeMinutes: null,
+      actualTestCount: null,
+    });
+
+    expect(updates).not.toHaveProperty('subject');
+    expect(updates).not.toHaveProperty('subjectColor');
+    expect(updates).not.toHaveProperty('topic');
+    expect(updates).not.toHaveProperty('status');
+    expect(updates).not.toHaveProperty('completed');
+    expect(updates).not.toHaveProperty('actualTimeMinutes');
+    expect(updates).not.toHaveProperty('actualTestCount');
+    expect(updates.targetTimeMinutes).toBe(75);
+    expect(updates.activityTypes).toEqual(['مرور']);
+    expect(isAdvisorPlanTaskPatch(updates as Record<string, unknown>)).toBe(true);
   });
 });

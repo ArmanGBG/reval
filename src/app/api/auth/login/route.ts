@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       where: { phone },
       include: {
         institute: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, status: true, deletedAt: true },
         },
         assignedAdvisor: {
           select: { id: true, name: true, avatar: true },
@@ -58,16 +58,18 @@ export async function POST(request: NextRequest) {
           isActive: true,
         },
         include: {
-          institute: { select: { id: true, name: true } },
+          institute: { select: { id: true, name: true, status: true, deletedAt: true } },
           assignedAdvisor: { select: { id: true, name: true, avatar: true } },
         },
       });
-    } else if (isBootstrapSuperAdmin && (user.role !== 'SUPER_ADMIN' || !user.phoneVerifiedAt)) {
+    } else if (isBootstrapSuperAdmin && user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'شماره راه‌اندازی متعلق به یک حساب غیرمدیریتی است' }, { status: 409 });
+    } else if (isBootstrapSuperAdmin && !user.phoneVerifiedAt) {
       user = await db.user.update({
         where: { id: user.id },
-        data: { role: 'SUPER_ADMIN', phoneVerifiedAt: user.phoneVerifiedAt ?? new Date(), isActive: true },
+        data: { phoneVerifiedAt: new Date(), isActive: true },
         include: {
-          institute: { select: { id: true, name: true } },
+          institute: { select: { id: true, name: true, status: true, deletedAt: true } },
           assignedAdvisor: { select: { id: true, name: true, avatar: true } },
         },
       });
@@ -76,17 +78,20 @@ export async function POST(request: NextRequest) {
         where: { id: user.id },
         data: { phoneVerifiedAt: new Date() },
         include: {
-          institute: { select: { id: true, name: true } },
+          institute: { select: { id: true, name: true, status: true, deletedAt: true } },
           assignedAdvisor: { select: { id: true, name: true, avatar: true } },
         },
       });
     }
 
-    if (!user.isActive) {
+    if (!user.isActive || user.deletedAt) {
       return NextResponse.json(
         { error: 'حساب شما غیرفعال شده است' },
         { status: 403 }
       );
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.institute && (user.institute.deletedAt || user.institute.status === 'suspended')) {
+      return NextResponse.json({ error: 'دسترسی آموزشگاه شما تعلیق شده است' }, { status: 403 });
     }
 
     // Generate session token

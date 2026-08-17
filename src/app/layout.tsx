@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   keywords: ["روال", "Reval", "مطالعه", "کنکور", "بهره‌وری", "دانش‌آموز"],
   authors: [{ name: "Reval Team" }],
   icons: {
-    icon: "/logo.png",
+    icon: "/logo.webp",
   },
 };
 

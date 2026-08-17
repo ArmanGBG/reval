@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canModifyTask, canViewStudentTasks, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
+import { requireAuth, canModifyTask, canEditAssignedStudentPlan, canViewStudentTasks, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
 import { isAdvisorMoveTaskPatch, isAdvisorPlanTaskPatch, isStudentAdvisorTaskPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskPatchData, taskTopicInclude } from '@/lib/task-api';
 
@@ -60,16 +60,17 @@ export async function PATCH(
     const existing = await db.task.findUnique({ where: { id: taskId }, include: taskTopicInclude });
     if (!existing) return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
     const canModify = await canModifyTask(ctx, taskId);
+    const canEditAdvisorPlan = await canEditAssignedStudentPlan(ctx, existing.studentId);
     const isStudentLifecycleUpdate = ctx.user.role === 'STUDENT' && ctx.userId === existing.studentId && existing.createdBy === 'advisor';
-    if (!canModify && (!isStudentLifecycleUpdate || !isStudentAdvisorTaskPatch(body))) {
+    if (!canModify && (!canEditAdvisorPlan || !isAdvisorPlanTaskPatch(body)) && (!isStudentLifecycleUpdate || !isStudentAdvisorTaskPatch(body))) {
       return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
     }
     if (!(await canViewStudentTasks(ctx, existing.studentId))) return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
     if (ctx.user.role === 'ADVISOR') {
       const planPatch = isAdvisorPlanTaskPatch(body);
       const movePatch = isAdvisorMoveTaskPatch(body) && (existing.status === 'PENDING' || existing.status === 'INCOMPLETE');
-      if ((!planPatch && !movePatch) || (planPatch && (existing.status === 'COMPLETED' || existing.status === 'SKIPPED'))) {
-        return NextResponse.json({ error: 'مشاور فقط می‌تواند برنامه تسک‌های فعال ساخته‌شده توسط خودش را ویرایش کند' }, { status: 403 });
+      if (!planPatch && !movePatch) {
+        return NextResponse.json({ error: 'مشاور فقط می‌تواند جزئیات برنامه را ویرایش کند و اجازه تغییر نتیجه ثبت‌شده را ندارد' }, { status: 403 });
       }
     }
 

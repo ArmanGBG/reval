@@ -1,20 +1,32 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { FieldType, ActivityType, Task } from '@/lib/types';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
-import { TaskSubjectPicker, TaskSelection } from '@/components/shared/TaskSubjectPicker';
+import { TaskSubjectPicker, TaskSelection, TaskSubjectPickerDraftState } from '@/components/shared/TaskSubjectPicker';
 import { useAppStore } from '@/lib/store';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { AuthError } from '@/lib/api-client';
 import { ChevronLeft, Save, ArrowLeft } from 'lucide-react';
 import { FieldTypeBadge, FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
+import { clearTaskFormDraft, readTaskFormDraft, taskFormDraftKey, writeTaskFormDraft } from '@/lib/task-form-draft';
 
 const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 const TIME_QUICK_PICKS = [60, 90, 120];
 const TEST_QUICK_PICKS = [20, 30, 40];
+
+const EMPTY_PICKER_DRAFT: TaskSubjectPickerDraftState = {
+  selectedGrade: null,
+  curriculumMode: null,
+  selectedChapterId: null,
+  selectedTopicIds: [],
+  selectedTopicModeId: null,
+  selectedSubtopicIds: [],
+  pageRangeStart: '',
+  pageRangeEnd: '',
+};
 
 /**
  * Unified task creation flow — all steps in one bottom sheet.
@@ -66,7 +78,9 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   const [sessionNumber, setSessionNumber] = useState(initialTask?.sessionNumber ?? '');
   const [bookName, setBookName] = useState(initialTask?.bookName ?? '');
   const [testDescription, setTestDescription] = useState(initialTask?.testDescription ?? '');
+  const [pickerDraft, setPickerDraft] = useState<TaskSubjectPickerDraftState>(EMPTY_PICKER_DRAFT);
   const [saving, setSaving] = useState(false);
+  const hydratedDraftKeyRef = useRef<string | null>(null);
 
   const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
   const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
@@ -82,11 +96,57 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     setSessionNumber(initialTask?.sessionNumber ?? '');
     setBookName(initialTask?.bookName ?? '');
     setTestDescription(initialTask?.testDescription ?? '');
+    setPickerDraft(EMPTY_PICKER_DRAFT);
     setTeacherClassSuggestions([]);
     setBookSuggestions([]);
   }, [initialTask, initialSelection, mode]);
 
-  useEffect(() => { if (open) reset(); }, [open, reset]);
+  const draftKey = useMemo(() => taskFormDraftKey({
+    studentId,
+    selectedDate,
+    mode,
+    taskId: initialTask?.id,
+  }), [initialTask?.id, mode, selectedDate, studentId]);
+
+  useEffect(() => {
+    if (!open || hydratedDraftKeyRef.current === draftKey) return;
+    const draft = readTaskFormDraft(window.localStorage, draftKey);
+    if (draft) {
+      setStep(draft.step);
+      setFieldType(draft.fieldType);
+      setSelection(draft.selection);
+      setPickerDraft(draft.picker);
+      setActivities(draft.activities);
+      setMinutes(draft.minutes);
+      setTests(draft.tests);
+      setTeacherClassName(draft.teacherClassName);
+      setSessionNumber(draft.sessionNumber);
+      setBookName(draft.bookName);
+      setTestDescription(draft.testDescription);
+    } else {
+      reset();
+    }
+    hydratedDraftKeyRef.current = draftKey;
+  }, [draftKey, open, reset]);
+
+  useEffect(() => {
+    if (!open || hydratedDraftKeyRef.current !== draftKey) return;
+    writeTaskFormDraft(window.localStorage, draftKey, {
+      version: 1,
+      step,
+      fieldType,
+      selection,
+      picker: pickerDraft,
+      activities,
+      minutes,
+      tests,
+      teacherClassName,
+      sessionNumber,
+      bookName,
+      testDescription,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [activities, bookName, draftKey, fieldType, minutes, open, pickerDraft, selection, sessionNumber, step, teacherClassName, testDescription, tests]);
 
   // Fetch suggestions when subject or relevant activity types change
   useEffect(() => {
@@ -179,6 +239,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
       } else {
         toast.success('تسک اولیه ثبت شد — بعداً تکمیلش کنید');
       }
+      clearTaskFormDraft(window.localStorage, draftKey);
+      hydratedDraftKeyRef.current = null;
       reset();
       onOpenChange(false);
     } catch (err) {
@@ -213,7 +275,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   );
 
   return (
-    <Drawer open={open} onOpenChange={v => { if (!v) reset(); onOpenChange(v); }} direction="bottom">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
       <DrawerContent className="surface-2 border-t border-[var(--border-strong)] text-[var(--foreground)] max-h-[88vh]">
         <DrawerHeader className="text-right pb-2">
           <div className="flex items-center justify-between">
@@ -269,10 +331,12 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                 fieldType={fieldType}
                  grade={grade ?? user?.grade ?? 'دوازدهم'}
                  major={major ?? user?.major ?? 'تجربی'}
-                value={selection}
-                onChange={setSelection}
-                onSelectionComplete={() => setStep(3)}
-              />
+                 value={selection}
+                 onChange={setSelection}
+                 onSelectionComplete={() => setStep(3)}
+                 draftState={pickerDraft}
+                 onDraftStateChange={setPickerDraft}
+               />
             </div>
           )}
 

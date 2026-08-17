@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { assignAdvisor } from '@/lib/user-lifecycle';
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { ctx, error } = await requireRole(request, ['STUDENT', 'ADVISOR']);
@@ -14,10 +15,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   if (action === 'END') {
     if (connection.status !== 'ACCEPTED') return NextResponse.json({ error: 'همکاری فعالی وجود ندارد' }, { status: 409 });
-    await db.$transaction([
-      db.connectionRequest.update({ where: { id }, data: { status: 'ENDED', respondedAt: new Date() } }),
-      db.user.update({ where: { id: connection.studentId }, data: { assignedAdvisorId: null } }),
-    ]);
+    await db.$transaction(async (tx) => {
+      await tx.connectionRequest.update({ where: { id }, data: { status: 'ENDED', respondedAt: new Date() } });
+      await tx.user.updateMany({ where: { id: connection.studentId, assignedAdvisorId: connection.advisorId }, data: { assignedAdvisorId: null } });
+    });
     return NextResponse.json({ message: 'همکاری پایان یافت' });
   }
   if (connection.status !== 'PENDING') return NextResponse.json({ error: 'این درخواست دیگر فعال نیست' }, { status: 409 });
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (action === 'ACCEPT') {
       const student = await tx.user.findUnique({ where: { id: connection.studentId }, select: { assignedAdvisorId: true } });
       if (student?.assignedAdvisorId && student.assignedAdvisorId !== connection.advisorId) throw new Error('STUDENT_ALREADY_ASSIGNED');
-      await tx.user.update({ where: { id: connection.studentId }, data: { assignedAdvisorId: connection.advisorId } });
+      await assignAdvisor(tx, connection.studentId, connection.advisorId);
     }
     return result;
   }).catch((transactionError) => {

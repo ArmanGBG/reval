@@ -200,7 +200,7 @@ interface AppState {
   addTasks: (tasks: Task[]) => Promise<void>;
 
   // Update a task. Optimistic + API call + revert on error.
-  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  updateTask: (id: string, updates: taskService.UpdateTaskPayload) => Promise<void>;
 
   // Delete a task. Optimistic + API call + revert on error.
   deleteTask: (id: string) => Promise<void>;
@@ -268,8 +268,9 @@ interface AppState {
 
   globalUsers: GlobalUser[];
   loadGlobalUsers: () => Promise<void>;
-  createGlobalUser: (input: { name: string; phone: string; role: GlobalUserRole; instituteId?: string | null }) => Promise<void>;
-  updateGlobalUser: (id: string, updates: Partial<GlobalUser>) => Promise<void>;
+  createGlobalUser: (input: { name: string; phone: string; role: Exclude<GlobalUserRole, 'institute_manager'>; instituteId?: string | null; grade?: string; major?: string }) => Promise<void>;
+  updateGlobalUser: (id: string, updates: { status?: 'active' | 'suspended'; name?: string; role?: 'student' | 'advisor'; instituteId?: string | null; grade?: string; major?: string }) => Promise<void>;
+  assignGlobalStudentAdvisor: (studentId: string, advisorId: string | null) => Promise<void>;
   deleteGlobalUser: (id: string) => Promise<void>;
 
   // ===== Exams State =====
@@ -874,6 +875,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'ویرایش کاربر ناموفق بود');
     set((state) => ({ globalUsers: state.globalUsers.map((item) => item.id === id ? data.user : item) }));
+  },
+  assignGlobalStudentAdvisor: async (studentId, advisorId) => {
+    const res = await fetch(`/api/users/${studentId}/advisor`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ advisorId }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'تخصیص مشاور ناموفق بود');
+    set((state) => ({ globalUsers: state.globalUsers.map((item) => item.id === studentId ? { ...item, assignedAdvisorId: advisorId } : item) }));
   },
   deleteGlobalUser: async (id) => {
     const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });

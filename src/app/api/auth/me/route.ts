@@ -34,11 +34,16 @@ export async function GET(request: NextRequest) {
         assignedAdvisorId: true,
         publicCode: true,
         isActive: true,
+        deletedAt: true,
+        institute: { select: { status: true, deletedAt: true } },
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || user.deletedAt) {
       return NextResponse.json({ error: 'کاربر یافت نشد' }, { status: 401 });
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.institute && (user.institute.deletedAt || user.institute.status === 'suspended')) {
+      return NextResponse.json({ error: 'دسترسی آموزشگاه شما تعلیق شده است' }, { status: 403 });
     }
 
     return NextResponse.json({ user });

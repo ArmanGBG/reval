@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import * as React from "react";
 
 const paths = [
   "M-80 180 C 140 20, 310 320, 560 150 S 940 20, 1280 210 S 1600 320, 1820 100",
@@ -9,6 +10,20 @@ const paths = [
 ] as const;
 
 export function FloatingLines() {
+  const [isMobile, setIsMobile] = React.useState(true);
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  // Do not mount the SVG at all on mobile. Hiding it with CSS would still
+  // leave Framer Motion and the SVG blur filter running in the background.
+  if (isMobile) return null;
+
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
       <motion.svg

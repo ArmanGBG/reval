@@ -269,6 +269,9 @@ export interface GlobalUser {
   avatar: string;
   phone: string;
   role: GlobalUserRole;
+  grade: string | null;
+  major: string | null;
+  assignedAdvisorId: string | null;
   instituteId: string | null;
   instituteName: string;
   status: UserAccountStatus;

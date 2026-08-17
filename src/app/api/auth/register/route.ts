@@ -4,6 +4,7 @@ import { generateToken, SESSION_COOKIE_NAME, getSessionCookieOptions } from '@/l
 import { normalizeIranianPhone } from '@/lib/phone';
 import { verifyOtp } from '@/lib/otp';
 import { createPublicCode } from '@/lib/public-code';
+import { detachAdvisorRoster, detachStudent } from '@/lib/user-lifecycle';
 
 // ===== POST /api/auth/register =====
 // Sign-up / onboarding endpoint.
@@ -65,9 +66,15 @@ export async function POST(request: NextRequest) {
     const existing = await db.user.findUnique({
       where: { phone: normalizedPhone },
     });
-    if (existing) {
+    if (existing && !existing.deletedAt) {
       return NextResponse.json(
         { error: 'این شماره قبلاً ثبت شده است. وارد حساب خود شوید', code: 'ACCOUNT_EXISTS' },
+        { status: 409 },
+      );
+    }
+    if (existing && existing.role !== 'STUDENT') {
+      return NextResponse.json(
+        { error: 'این شماره متعلق به یک حساب مدیریتی است و ثبت‌نام عمومی برای آن مجاز نیست', code: 'ACCOUNT_EXISTS' },
         { status: 409 },
       );
     }
@@ -77,9 +84,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'کد تایید نامعتبر یا منقضی شده است' }, { status: 401 });
     }
 
-    const user = await db.user.create({
-      data: { phone: normalizedPhone, name, avatar, role, publicCode: await createPublicCode('STU'), grade: grade || 'دوازدهم', major: major || 'تجربی', isActive: true, phoneVerifiedAt: new Date() },
-    });
+    const publicCode = await createPublicCode('STU');
+    const user = existing
+      ? await db.$transaction(async (tx) => {
+          await detachStudent(tx, existing.id);
+          await detachAdvisorRoster(tx, existing.id);
+          await tx.user.update({
+            where: { id: existing.id },
+            data: { phone: `deleted-${existing.id}-${Date.now()}`, password: null, phoneVerifiedAt: null },
+          });
+          return tx.user.create({
+            data: { phone: normalizedPhone, name, avatar, role, publicCode, grade, major, isActive: true, phoneVerifiedAt: new Date() },
+          });
+        })
+      : await db.user.create({
+          data: { phone: normalizedPhone, name, avatar, role, publicCode, grade, major, isActive: true, phoneVerifiedAt: new Date() },
+        });
 
     // Strip password before returning.
     const { password: _, ...userWithoutPassword } = user;
@@ -87,7 +107,7 @@ export async function POST(request: NextRequest) {
     const token = generateToken(user.id);
     const response = NextResponse.json({
       user: userWithoutPassword,
-      message: 'حساب شما با موفقیت ساخته شد',
+      message: existing ? 'حساب جدید شما با موفقیت ساخته شد' : 'حساب شما با موفقیت ساخته شد',
     });
 
     // Set httpOnly session cookie.
