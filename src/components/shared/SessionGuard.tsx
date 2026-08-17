@@ -84,21 +84,34 @@ export default function SessionGuard() {
             const previous = useAppStore.getState();
             const roleChanged = previous.userRole !== nextUser.role;
             const assignmentChanged = previous.user?.assignedAdvisorId !== (nextUser.assignedAdvisorId || null);
-            setUserRole(nextUser.role);
-            setUser({
-              id: nextUser.id,
-              name: nextUser.name,
-              avatar: nextUser.avatar,
-              grade: nextUser.grade || 'دوازدهم',
-              major: nextUser.major || 'تجربی',
-              phone: nextUser.phone,
-              assignedAdvisorId: nextUser.assignedAdvisorId || null,
-            });
+            const profileChanged = !previous.user
+              || previous.user.id !== nextUser.id
+              || previous.user.name !== nextUser.name
+              || previous.user.avatar !== nextUser.avatar
+              || previous.user.grade !== (nextUser.grade || 'دوازدهم')
+              || previous.user.major !== (nextUser.major || 'تجربی')
+              || previous.user.phone !== nextUser.phone;
+
+            // Do not call setUserRole on every focus. It resets currentView
+            // and selected entities, which makes returning to this tab look
+            // like a full app refresh. Only role changes need navigation.
+            if (roleChanged) setUserRole(nextUser.role);
+            if (profileChanged || assignmentChanged) {
+              setUser({
+                id: nextUser.id,
+                name: nextUser.name,
+                avatar: nextUser.avatar,
+                grade: nextUser.grade || 'دوازدهم',
+                major: nextUser.major || 'تجربی',
+                phone: nextUser.phone,
+                assignedAdvisorId: nextUser.assignedAdvisorId || null,
+              });
+            }
             if (roleChanged) {
               setCurrentView(nextUser.role === 'ADVISOR' ? 'advisor-dashboard' : nextUser.role === 'INSTITUTE_MANAGER' ? 'institute-dashboard' : nextUser.role === 'SUPER_ADMIN' ? 'sa-dashboard' : 'dashboard');
             }
             if (assignmentChanged) window.dispatchEvent(new Event('reval:relationship-changed'));
-            if (nextUser.role === 'ADVISOR') {
+            if (nextUser.role === 'ADVISOR' && roleChanged) {
               await useAppStore.getState().loadAdvisorStudents(nextUser.id);
             } else if (nextUser.role === 'STUDENT' && assignmentChanged) {
               await useAppStore.getState().loadTasksForStudent(nextUser.id);
