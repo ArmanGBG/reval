@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { requireAuth, canCreateTaskForStudent, canModifyTask, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskTopicInclude } from '@/lib/task-api';
+import { classSessionDetailsComplete, isClassActivityTypes } from '@/lib/class-task';
 
 // POST /api/tasks/batch
 // Create multiple tasks at once (for AI plan parser results).
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
           { status: 403 },
         );
       }
-      if (!isTaskFieldType(t.fieldType)) {
+      const inputHasClassVideo = isClassActivityTypes(t.activityTypes);
+      if (!isTaskFieldType(t.fieldType) && !(inputHasClassVideo && t.fieldType == null)) {
         return NextResponse.json(
           { error: `tasks[${i}]: نوع ارزیابی الزامی است` },
           { status: 400 },
@@ -65,7 +67,22 @@ export async function POST(request: NextRequest) {
       if (!isTaskStatus(status)) return NextResponse.json({ error: `tasks[${i}]: status معتبر نیست` }, { status: 400 });
       const lifecycleError = validateTaskLifecycle(status, t.detailsCompleted, t.completed ?? null);
       if (lifecycleError) return NextResponse.json({ error: `tasks[${i}]: ${lifecycleError}` }, { status: 400 });
-      if (status !== 'DRAFT' && (!Array.isArray(t.activityTypes) || t.activityTypes.length === 0 || typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes <= 0 || typeof t.targetTestCount !== 'number' || t.targetTestCount < 0)) {
+      const hasClassVideo = inputHasClassVideo;
+      if (hasClassVideo && t.detailsCompleted !== false) {
+        return NextResponse.json({ error: `tasks[${i}]: کلاس/ویدیو در مرحله ایجاد باید به‌صورت پیش‌نویس ثبت شود` }, { status: 400 });
+      }
+      if (hasClassVideo && !classSessionDetailsComplete(t.teacherClassName, t.sessionNumber)) {
+        return NextResponse.json({ error: `tasks[${i}]: نام کلاس و شماره جلسه برای کلاس/ویدیو الزامی است` }, { status: 400 });
+      }
+      if (hasClassVideo && t.curriculumMode != null && !isTaskFieldType(t.fieldType)) {
+        return NextResponse.json({ error: `tasks[${i}]: برای اتصال کلاس به محتوای درسی، نوع ارزیابی الزامی است` }, { status: 400 });
+      }
+      const invalidClassMetrics = hasClassVideo && (
+        (t.targetTimeMinutes != null && (typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes <= 0))
+        || (t.targetTestCount != null && (typeof t.targetTestCount !== 'number' || t.targetTestCount < 0))
+      );
+      const invalidStandardMetrics = !hasClassVideo && status !== 'DRAFT' && (!Array.isArray(t.activityTypes) || t.activityTypes.length === 0 || typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes <= 0 || typeof t.targetTestCount !== 'number' || t.targetTestCount < 0);
+      if (invalidClassMetrics || invalidStandardMetrics) {
         return NextResponse.json(
           { error: `tasks[${i}]: جزئیات تکمیل‌شده ناقص است` },
           { status: 400 },
@@ -78,14 +95,13 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
-      const curriculum = await validateTaskCurriculum({ ...t, studentId: t.studentId, subjectId: t.subjectId, fieldType: t.fieldType });
+      const curriculum = await validateTaskCurriculum({ ...t, studentId: t.studentId, subjectId: t.subjectId, fieldType: isTaskFieldType(t.fieldType) ? t.fieldType : null, allowSubjectOnly: hasClassVideo, allowAllGrades: true });
       if (!curriculum) return NextResponse.json({ error: `tasks[${i}]: ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست` }, { status: 400 });
 
       // Derive createdBy/createdById from session (not body) to prevent spoofing.
       const sessionCreatedBy = permission.createdBy;
       const sessionCreatedById =
         permission.createdBy === 'advisor' ? ctx.userId : null;
-      const hasClassVideo = Array.isArray(t.activityTypes) && t.activityTypes.includes('کلاس/ویدیو');
       const hasTestDetails = Array.isArray(t.activityTypes) && (t.activityTypes.includes('تست آموزشی') || t.activityTypes.includes('تست سنجشی'));
       prepared.push({
          ...t,
@@ -121,7 +137,7 @@ export async function POST(request: NextRequest) {
             subject: t.subject as string,
             subjectColor: (t.subjectColor as string) || '#3EB489',
             topic: (t.topic as string | null) ?? null,
-            fieldType: t.fieldType as string,
+            fieldType: isTaskFieldType(t.fieldType) ? t.fieldType : null,
             activityTypes: Array.isArray(t.activityTypes) ? JSON.stringify(t.activityTypes) : null,
             targetTimeMinutes: typeof t.targetTimeMinutes === 'number' ? t.targetTimeMinutes : null,
             actualTimeMinutes:
@@ -185,6 +201,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 
 // PATCH /api/tasks/batch
 // Reorder multiple tasks at once.

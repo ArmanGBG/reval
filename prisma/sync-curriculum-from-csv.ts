@@ -11,6 +11,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from '@prisma/client';
 import { pathToFileURL } from 'node:url';
+import { supportsFinalAssessment } from '../src/lib/subject-eligibility';
 import { db } from '../src/lib/db';
 import { normalizePersianText } from '../src/lib/validators/normalize';
 
@@ -499,7 +500,8 @@ async function importBookCurriculum(
 
       for (const gradeInput of subjectInput.gradeSubjects) {
         const isKonkur = gradeInput.assessmentType === 'کنکور' || gradeInput.assessmentType === 'هر دو';
-        const isFinal = gradeInput.assessmentType === 'نهایی' || gradeInput.assessmentType === 'هر دو';
+        const isFinal = supportsFinalAssessment(gradeInput.grade)
+          && (gradeInput.assessmentType === 'نهایی' || gradeInput.assessmentType === 'هر دو');
         const gradeWhere = { subjectId_grade_major: { subjectId: subject.id, grade: gradeInput.grade, major: gradeInput.major } } as const;
         const existingGrade = await tx.gradeSubject.findUnique({
           where: gradeWhere,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/api-auth';
+import { supportsFinalAssessment } from '@/lib/subject-eligibility';
 
 // GET /api/subjects/for-task
 // Query: ?fieldType=کنکور&grade=دوازدهم&major=تجربی
@@ -31,9 +32,14 @@ export async function GET(request: NextRequest) {
   if (fieldType !== 'کنکور' && fieldType !== 'نهایی') return NextResponse.json({ error: 'fieldType نامعتبر است' }, { status: 400 });
 
   const where: Record<string, unknown> = { isActive: true };
+  // Grade-ten books are not final-exam offerings. Keep this guard at the API
+  // boundary as well as in imported data so stale databases cannot expose it.
+  if (fieldType === 'نهایی' && !supportsFinalAssessment(grade) && !allGrades) {
+    return NextResponse.json({ subjects: [], fieldType, grade, major });
+  }
   const eligibility = fieldType === 'کنکور' ? { isKonkur: true } : { isFinal: true };
   const gradeFilter = fieldType === 'کنکور' || allGrades
-    ? { major, isActive: true, ...eligibility }
+    ? { major, isActive: true, ...eligibility, ...(fieldType === 'نهایی' ? { grade: { not: 'دهم' } } : {}) }
     : { grade, major, isActive: true, ...eligibility };
   where.grades = { some: gradeFilter };
 

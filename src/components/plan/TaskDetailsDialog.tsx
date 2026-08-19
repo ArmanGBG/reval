@@ -25,7 +25,7 @@ export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSa
       major={major}
       createdBy={task.createdBy}
       createdById={task.createdById ?? null}
-      mode="complete-draft"
+      mode={task.status === 'DRAFT' || task.detailsCompleted === false ? 'complete-draft' : 'edit'}
       initialTask={task}
       onSubmit={async (nextTask) => {
         await onSave(buildTaskDetailsUpdate(task, nextTask));

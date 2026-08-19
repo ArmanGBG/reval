@@ -44,7 +44,7 @@ export interface Task {
   subjectColor: string;
   subjectId?: string | null;
   topic: string | null;
-  fieldType: FieldType;
+  fieldType: FieldType | null;
   activityTypes: ActivityType[] | null;
   targetTimeMinutes: number | null;
   actualTimeMinutes: number | null;
@@ -73,6 +73,8 @@ export interface Task {
   pageStart?: number | null;
   pageEnd?: number | null;
   detailsCompleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Flashcard {

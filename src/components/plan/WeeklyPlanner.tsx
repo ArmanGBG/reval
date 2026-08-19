@@ -35,8 +35,11 @@ import {
 } from '@/lib/persian-date';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
+import { activitySelectedStyle } from '@/lib/activity-styles';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import type { PlanActor, PlanTargetStudent } from './PlanView';
+import { ClassSessionFields } from '@/components/shared/ClassSessionFields';
+import { buildClassDraft, classSessionDetailsComplete } from '@/lib/class-task';
 
 // ===== Types =====
 interface WeekdayPlan {
@@ -48,11 +51,35 @@ interface WeekdayPlan {
 interface WeeklyPlannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSelectDay?: (date: string) => void;
   targetStudent?: PlanTargetStudent;
   actor?: PlanActor;
 }
 
-type QuickSubject = Subject & { resolvedFieldType: FieldType };
+type QuickMode = 'BOOK' | 'THEMATIC' | 'CLASS_VIDEO';
+type QuickSubject = Subject & { resolvedFieldType: FieldType; quickMode?: QuickMode; topicModeId?: string; teacherClassName?: string; sessionNumber?: string };
+type QuickSubjectGroup = { name: string; color: string; icon: string | null; variants: QuickSubject[] };
+
+function hasEligibleOffering(subject: Subject, fieldType: FieldType, grade: string, major: string): boolean {
+  return (subject.grades ?? []).some((offering) =>
+    offering.isActive &&
+    offering.major === major &&
+    (fieldType === 'کنکور' ? offering.isKonkur : offering.isFinal && offering.grade === grade),
+  );
+}
+
+function groupQuickSubjects(subjects: QuickSubject[]): QuickSubjectGroup[] {
+  const groups = new Map<string, QuickSubjectGroup>();
+  for (const subject of subjects) {
+    const name = subject.name.replace(/\s*[۱۲۳123]\s*$/, '').trim()
+      .replace(/^زیست(?:‌|\s)*شناسی$/, 'زیست')
+      .replace(/^زمین(?:‌|\s)*شناسی$/, 'زمین');
+    const current = groups.get(name) ?? { name, color: subject.color, icon: subject.icon, variants: [] };
+    if (!current.variants.some((item) => item.id === subject.id && item.resolvedFieldType === subject.resolvedFieldType)) current.variants.push(subject);
+    groups.set(name, current);
+  }
+  return [...groups.values()];
+}
 
 type RangeMode = 'week' | 'custom';
 
@@ -70,16 +97,17 @@ const TEST_QUICK_PICKS = [20, 30, 40];
 // ============================================================
 // Main Component — reads REAL tasks from store, immediate sync
 // ============================================================
-export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: WeeklyPlannerProps) {
+export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, actor }: WeeklyPlannerProps) {
   const { user, tasks, addTask, updateTask, deleteTask, resetTask } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
   const isAdvisorWorkspace = actor?.role === 'ADVISOR';
   const canManageTask = useCallback((task: Task) => !isAdvisorWorkspace || (
-    task.createdBy === 'advisor'
-    && task.createdById === actor?.id
-    && task.status !== 'COMPLETED'
-    && task.status !== 'SKIPPED'
+    (task.createdBy === 'advisor'
+      && task.createdById === actor?.id
+      && task.status !== 'COMPLETED'
+      && task.status !== 'SKIPPED')
+    || (task.createdBy === 'student' && task.status === 'DRAFT')
   ), [actor?.id, isAdvisorWorkspace]);
   // The assigned advisor can edit plan details for every task. Destructive
   // actions remain guarded by canManageTask and task ownership.
@@ -163,8 +191,16 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
       const finalData = await finalRes.json();
       if (!konkurRes.ok || !finalRes.ok) throw new Error(konkurData.error || finalData.error);
       const resolved = new Map<string, QuickSubject>();
-      for (const subject of konkurData.subjects || []) resolved.set(subject.id, { ...subject, resolvedFieldType: 'کنکور' });
-      for (const subject of finalData.subjects || []) if (!resolved.has(subject.id)) resolved.set(subject.id, { ...subject, resolvedFieldType: 'نهایی' });
+      for (const subject of konkurData.subjects || []) {
+        if (hasEligibleOffering(subject, 'کنکور', grade, major)) {
+          resolved.set(`${subject.id}:کنکور`, { ...subject, resolvedFieldType: 'کنکور' });
+        }
+      }
+      for (const subject of finalData.subjects || []) {
+        if (hasEligibleOffering(subject, 'نهایی', grade, major)) {
+          resolved.set(`${subject.id}:نهایی`, { ...subject, resolvedFieldType: 'نهایی' });
+        }
+      }
       setSubjects([...resolved.values()]);
     } catch {
       setSubjects([]);
@@ -180,7 +216,19 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
   // ===== Add subject to a day (IMMEDIATE — creates real task) =====
   const addSubjectToDay = async (dateStr: string, subject: QuickSubject) => {
     const existingCount = tasks.filter((t) => t.date === dateStr && t.studentId === (studentId)).length;
-    const newTask: Task = {
+    const newTask: Task = subject.quickMode === 'CLASS_VIDEO' ? buildClassDraft({
+      id: crypto.randomUUID(),
+      studentId,
+      subjectId: subject.id,
+      subject: subject.name,
+      subjectColor: subject.color,
+      teacherClassName: subject.teacherClassName ?? '',
+      sessionNumber: subject.sessionNumber ?? '',
+      date: dateStr,
+      order: existingCount,
+      createdBy: isAdvisorWorkspace ? 'advisor' : 'student',
+      createdById: isAdvisorWorkspace ? actor?.id ?? null : null,
+    }) : {
       id: crypto.randomUUID(),
       studentId: studentId,
       subject: subject.name,
@@ -199,6 +247,10 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
       order: existingCount,
       createdBy: isAdvisorWorkspace ? 'advisor' : 'student',
       createdById: isAdvisorWorkspace ? actor?.id ?? null : null,
+      teacherClassName: null,
+      sessionNumber: null,
+      topicModeId: subject.quickMode === 'THEMATIC' ? subject.topicModeId ?? null : null,
+      curriculumMode: subject.quickMode === 'THEMATIC' ? 'THEMATIC' : null,
       detailsCompleted: false,
     };
     try {
@@ -325,10 +377,15 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
                   canManage={canManageTask}
                   canEdit={canEditTask}
                   canComplete={!isAdvisorWorkspace}
-                 onRemove={(taskId) => {
-                   const task = tasks.find((item) => item.id === taskId);
-                   if (task && canManageTask(task)) deleteTask(taskId);
-                 }}
+                  onSelectDay={() => onSelectDay?.(dayPlan.dateStr)}
+                  onRemove={(taskId) => {
+                    const task = tasks.find((item) => item.id === taskId);
+                    if (!task || !canManageTask(task)) return;
+                    if (task.status === 'DRAFT' && !window.confirm('این پیش‌نویس برای همیشه حذف شود؟')) return;
+                    void deleteTask(taskId).catch((error) => {
+                      toast.error(error instanceof Error ? error.message : 'حذف پیش‌نویس ناموفق بود');
+                    });
+                  }}
                   onEdit={(taskId) => {
                     const task = tasks.find((item) => item.id === taskId);
                     if (task && canEditTask(task)) setEditingTaskId(taskId);
@@ -373,6 +430,7 @@ export function WeeklyPlanner({ open, onOpenChange, targetStudent, actor }: Week
             dayLabel={getPersianWeekdayName(new Date(addingToDay))}
             dateLabel={formatPersianDate(new Date(addingToDay))}
             subjects={subjects}
+            studentId={studentId}
             loading={subjectsLoading}
             onClose={() => setAddingToDay(null)}
             onSelect={(subject) => addSubjectToDay(addingToDay, subject)}
@@ -396,6 +454,7 @@ function DayColumn({
   canManage,
   canEdit,
   canComplete,
+  onSelectDay,
   onAdd,
   onRemove,
   onEdit,
@@ -405,6 +464,7 @@ function DayColumn({
   canManage: (task: Task) => boolean;
   canEdit: (task: Task) => boolean;
   canComplete: boolean;
+  onSelectDay: () => void;
   onAdd: () => void;
   onRemove: (taskId: string) => void;
   onEdit: (taskId: string) => void;
@@ -417,19 +477,25 @@ function DayColumn({
   return (
     <div className={`surface-1 rounded-xl overflow-hidden ${isTodayCell ? 'ring-1 ring-[var(--accent)]/40' : ''}`}>
       {/* Day header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-[var(--foreground)]">{dayName}</span>
-          {isTodayCell && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
-              امروز
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="px-3 pb-1">
-        <span className="text-[10px] text-[var(--foreground-subtle)]">{dateLabel}</span>
-      </div>
+      <button
+        type="button"
+        onClick={onSelectDay}
+        className="btn-hover flex w-full items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 text-right hover:bg-[var(--bg-overlay)]"
+        aria-label={`مشاهده برنامه روزانه ${dayName} ${dateLabel}`}
+      >
+        <span>
+          <span className="flex items-center gap-2">
+            <span className="text-sm font-bold text-[var(--foreground)]">{dayName}</span>
+            {isTodayCell && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+                امروز
+              </span>
+            )}
+          </span>
+          <span className="mt-0.5 block text-[10px] text-[var(--foreground-subtle)]">{dateLabel}</span>
+        </span>
+        <ChevronLeft className="h-3.5 w-3.5 shrink-0 text-[var(--foreground-subtle)]" />
+      </button>
 
       {/* Tasks list */}
       <div className="p-2 space-y-1.5 min-h-[60px]">
@@ -485,6 +551,7 @@ function TaskChip({
 }) {
   const hasDetails = task.detailsCompleted;
   const isDone = task.completed === true;
+  const isDraft = task.status === 'DRAFT';
 
   return (
     <div className="group flex items-center gap-1.5">
@@ -521,13 +588,24 @@ function TaskChip({
         {(task.teacherClassName || task.bookName) && <span className="mt-1 block text-[9px] text-[var(--foreground-subtle)] truncate">{[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}</span>}
       </button>
 
+      {isDraft && canEdit && <button
+        type="button"
+        onClick={(event) => { event.stopPropagation(); onClick(); }}
+        className="h-8 shrink-0 rounded-md bg-[var(--warning)]/10 px-2 text-[10px] font-bold text-[var(--warning)]"
+        aria-label="تکمیل جزئیات کلاس"
+      >
+        تکمیل
+      </button>}
+
       {/* Remove */}
       {canManage && <button
         onClick={(e) => {
           e.stopPropagation();
           onRemove();
         }}
-        className="icon-btn w-6 h-6 rounded flex items-center justify-center text-[var(--foreground-subtle)] hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
+        className={`icon-btn w-7 h-7 rounded flex items-center justify-center hover:text-rose-400 transition-opacity ${isDraft ? 'text-[var(--danger)] opacity-100' : 'text-[var(--foreground-subtle)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}
+        aria-label={isDraft ? 'حذف پیش‌نویس' : 'حذف تسک'}
+        title={isDraft ? 'حذف پیش‌نویس' : 'حذف تسک'}
       >
         <X className="w-3 h-3" />
       </button>}
@@ -542,6 +620,7 @@ function AddSubjectModal({
   dayLabel,
   dateLabel,
   subjects,
+  studentId,
   loading,
   onClose,
   onSelect,
@@ -549,14 +628,39 @@ function AddSubjectModal({
   dayLabel: string;
   dateLabel: string;
   subjects: QuickSubject[];
+  studentId: string;
   loading: boolean;
   onClose: () => void;
   onSelect: (subject: QuickSubject) => void;
 }) {
+  const [selectedGroupName, setSelectedGroupName] = useState<string | null>(null);
+  const [classVariant, setClassVariant] = useState<QuickSubject | null>(null);
+  const [teacherClassName, setTeacherClassName] = useState('');
+  const [sessionNumber, setSessionNumber] = useState('');
+  const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
+  const groups = useMemo(() => groupQuickSubjects(subjects), [subjects]);
+  const selectedGroup = groups.find((group) => group.name === selectedGroupName) ?? null;
+
+  useEffect(() => {
+    const subjectId = selectedGroup?.variants[0]?.id;
+    if (!subjectId) {
+      setTeacherClassSuggestions([]);
+      return;
+    }
+    fetch(`/api/task-suggestions?studentId=${encodeURIComponent(studentId)}&subjectId=${encodeURIComponent(subjectId)}&type=teacherClass`)
+      .then((response) => response.ok ? response.json() : { values: [] })
+      .then((data) => setTeacherClassSuggestions(Array.isArray(data.values) ? data.values : []))
+      .catch(() => setTeacherClassSuggestions([]));
+  }, [selectedGroup, studentId]);
+
+  const selectVariant = (variant: QuickSubject, quickMode: QuickMode, topicModeId?: string) => {
+    onSelect({ ...variant, quickMode, topicModeId });
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-2rem)] sm:max-w-sm rounded-2xl" dir="rtl">
-        <div className="flex items-center justify-between mb-4">
+      <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-2rem)] sm:max-w-sm max-h-[80vh] overflow-hidden rounded-2xl flex flex-col" dir="rtl">
+        <div className="flex shrink-0 items-center justify-between mb-4">
           <div>
             <h2 className="text-sm font-bold text-[var(--foreground)]">
               افزودن درس به {dayLabel}
@@ -581,20 +685,55 @@ function AddSubjectModal({
             <p className="text-xs text-[var(--foreground-muted)]">درسی یافت نشد</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {subjects.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => onSelect(s)}
-                className="btn-hover flex items-center gap-2 py-2.5 px-3 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground)] hover:border-[var(--accent)]/30 text-sm"
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: s.color }}
-                />
-                <span className="truncate">{s.name}</span>
-              </button>
-            ))}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 touch-pan-y">
+            {classVariant ? (
+              <div className="space-y-3">
+                <button type="button" onClick={() => setClassVariant(null)} className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)]"><ChevronRight className="h-3.5 w-3.5" /> بازگشت</button>
+                 <ClassSessionFields teacherClassName={teacherClassName} sessionNumber={sessionNumber} teacherSuggestions={teacherClassSuggestions} onTeacherClassNameChange={setTeacherClassName} onSessionNumberChange={setSessionNumber} />
+                <button type="button" disabled={!classSessionDetailsComplete(teacherClassName, sessionNumber)} onClick={() => onSelect({ ...classVariant, quickMode: 'CLASS_VIDEO', teacherClassName, sessionNumber })} className="h-11 w-full rounded-xl bg-[#35C49A] text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40">ثبت کلاس/ویدیو</button>
+              </div>
+            ) : !selectedGroup ? (
+              <div className="grid grid-cols-1 gap-2">
+                {groups.map((group) => (
+                  <button key={group.name} type="button" onClick={() => setSelectedGroupName(group.name)} className="btn-hover flex min-h-12 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3 text-right text-sm font-medium text-[var(--foreground)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)]">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} />
+                    <span className="flex-1">{group.name}</span>
+                    <ChevronLeft className="h-4 w-4 text-[var(--foreground-subtle)]" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <button type="button" onClick={() => setSelectedGroupName(null)} className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)]"><ChevronRight className="h-3.5 w-3.5" /> بازگشت به درس‌ها</button>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-overlay)] px-3 py-2 text-sm font-bold text-[var(--foreground)]">{selectedGroup.name}</div>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-medium text-[var(--foreground-muted)]">کتاب‌ها</p>
+                  {[...new Map(selectedGroup.variants.map((variant) => [variant.id, selectedGroup.variants.filter((item) => item.id === variant.id)])).entries()].map(([subjectId, variants]) => (
+                    <div key={subjectId} className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5">
+                      <span className="min-w-0 flex-1 truncate text-right text-xs text-[var(--foreground)]">{variants[0].name}</span>
+                      <div className="flex shrink-0 gap-1">
+                        {variants.map((variant) => <button key={variant.resolvedFieldType} type="button" onClick={() => selectVariant(variant, 'BOOK')} className={`rounded-md border px-2 py-1 text-[9px] font-semibold ${variant.resolvedFieldType === 'کنکور' ? 'border-[#B07CFF]/35 bg-[#B07CFF]/10 text-[#C39DFF]' : 'border-[#4DA3FF]/35 bg-[#4DA3FF]/10 text-[#79BDFF]'}`}>{variant.resolvedFieldType}</button>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-[var(--border)] pt-3">
+                  <p className="mb-2 text-[10px] font-medium text-[var(--foreground-muted)]">گزینه‌های دیگر</p>
+                  {(() => {
+                    const classVariant = selectedGroup.variants.find((variant) => variant.resolvedFieldType === 'نهایی') ?? selectedGroup.variants[0];
+                    return classVariant ? <button type="button" onClick={() => setClassVariant(classVariant)} className="btn-hover mb-2 flex w-full items-center justify-between rounded-lg border border-[#35C49A]/30 bg-[#35C49A]/10 px-3 py-2.5 text-right text-xs text-[#72E0BF]"><span>کلاس/ویدیو</span><span className="text-[9px] opacity-70">ثبت استاد و شماره جلسه</span></button> : null;
+                  })()}
+                  {selectedGroup.variants.map((variant) => {
+                    const modes = (variant.grades ?? []).flatMap((grade) => (grade.topicModes ?? []).map((mode) => ({ grade, mode })));
+                    return (
+                      <div key={`extras:${variant.id}:${variant.resolvedFieldType}`} className="mb-2 space-y-1.5">
+                        {modes.map(({ grade, mode }) => <button key={mode.id} type="button" onClick={() => selectVariant(variant, 'THEMATIC', mode.id)} className="btn-hover flex w-full items-center justify-between rounded-lg border border-[#F2B84B]/30 bg-[#F2B84B]/10 px-3 py-2.5 text-right text-xs text-[#FFD27A]">{mode.title}<span className="text-[9px] opacity-70">مبحثی · {grade.grade}</span></button>)}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
@@ -632,12 +771,18 @@ function EditTaskModal({
           topicIds: task.topicIds ?? [],
           topicModeId: task.topicModeId ?? undefined,
           curriculumMode: task.curriculumMode ?? undefined,
-          topicModeSubtopicIds: task.topicModeSubtopicIds ?? [],
+           topicModeSubtopicIds: task.topicModeSubtopicIds ?? [],
+           contentType: task.activityTypes?.includes('کلاس/ویدیو') ? 'CLASS_VIDEO' : task.curriculumMode === 'THEMATIC' ? 'THEMATIC' : 'BOOK',
+           teacherClassName: task.teacherClassName ?? '',
+           sessionNumber: task.sessionNumber ?? '',
         }
       : {
           subjectId: task.subjectId ?? undefined,
           subjectName: task.subject,
-          subjectColor: task.subjectColor,
+           subjectColor: task.subjectColor,
+           contentType: task.activityTypes?.includes('کلاس/ویدیو') ? 'CLASS_VIDEO' : task.curriculumMode === 'THEMATIC' ? 'THEMATIC' : 'BOOK',
+           teacherClassName: task.teacherClassName ?? '',
+           sessionNumber: task.sessionNumber ?? '',
         },
   );
 
@@ -664,6 +809,9 @@ function EditTaskModal({
         topicModeSubtopicIds: next.topicModeSubtopicIds ?? [],
         pageStart: next.pageStart ?? null,
         pageEnd: next.pageEnd ?? null,
+        fieldType: next.contentType === 'CLASS_VIDEO' ? task.fieldType : task.fieldType,
+        teacherClassName: next.teacherClassName ?? task.teacherClassName ?? null,
+        sessionNumber: next.sessionNumber ?? task.sessionNumber ?? null,
       });
     },
     [onUpdate, task.subjectId, task.subject, task.subjectColor],
@@ -735,17 +883,29 @@ function EditTaskModal({
             <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
               درس و مبحث
             </label>
-            <TaskSubjectPicker
+            {(task.fieldType || task.activityTypes?.includes('کلاس/ویدیو')) && <TaskSubjectPicker
               fieldType={task.fieldType}
               grade={user?.grade || 'دوازدهم'}
               major={user?.major || 'تجربی'}
               value={selection}
               onChange={handleChange}
-            />
+              onFieldTypeChange={(nextFieldType, nextSelection) => {
+                onUpdate({ fieldType: nextFieldType, ...(nextSelection ? {
+                  subjectId: nextSelection.subjectId ?? task.subjectId ?? null,
+                  topic: nextSelection.displayText ?? task.topic ?? null,
+                  curriculumMode: nextSelection.curriculumMode ?? null,
+                  chapterId: nextSelection.chapterId ?? null,
+                  topicId: nextSelection.topicId ?? null,
+                  topicModeId: nextSelection.topicModeId ?? null,
+                } : {}) });
+              }}
+              allGrades={task.activityTypes?.includes('کلاس/ویدیو')}
+              allowClassCurriculumLink={task.activityTypes?.includes('کلاس/ویدیو')}
+            />}
           </div>
 
           {/* Activity types */}
-          <div>
+          {!task.activityTypes?.includes('کلاس/ویدیو') && <div>
             <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
               نوع فعالیت
             </label>
@@ -756,7 +916,7 @@ function EditTaskModal({
                   onClick={() => onToggleActivity(act)}
                   className={`btn-hover px-3 py-2 rounded-lg text-xs font-medium border ${
                     (task.activityTypes ?? []).includes(act)
-                      ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)]'
+                      ? activitySelectedStyle(act)
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)]'
                   }`}
                 >
@@ -764,7 +924,7 @@ function EditTaskModal({
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {(task.activityTypes ?? []).includes('کلاس/ویدیو') && (
             <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
@@ -925,7 +1085,7 @@ function EditTaskModal({
           </div>
 
           {/* Field type */}
-          <div>
+          {!task.activityTypes?.includes('کلاس/ویدیو') && <div>
             <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
               حوزه
             </label>
@@ -944,7 +1104,7 @@ function EditTaskModal({
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="flex gap-2 pt-4 border-t border-[var(--border)]">

@@ -24,6 +24,8 @@ export function parseTaskResponse(task: Record<string, unknown> & { topics?: Tas
   const topicModeSubtopics = (task.topicModeSubtopics ?? []).map((row) => row.subtopic).sort((a, b) => a.subtopicNo - b.subtopicNo);
   return {
     ...task,
+    createdAt: task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt,
+    updatedAt: task.updatedAt instanceof Date ? task.updatedAt.toISOString() : task.updatedAt,
     activityTypes,
     topics,
     topicIds: topics.map((topic) => topic.id),

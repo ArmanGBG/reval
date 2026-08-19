@@ -25,6 +25,8 @@ import {
 import { toast } from 'sonner';
 import { ModalInput } from './advisor-ui';
 import { ALL_ACTIVITY_TYPES } from './advisor-helpers';
+import { activitySelectedStyle } from '@/lib/activity-styles';
+import { buildClassDraft, classSessionDetailsComplete, isClassTask } from '@/lib/class-task';
 
 const TIME_QUICK_PICKS = [60, 90, 120];
 const TEST_QUICK_PICKS = [20, 30, 40];
@@ -58,7 +60,7 @@ export function TaskModal({
   const studentInfoMissing = !studentGrade || !studentMajor;
 
   // Form state — new flow
-  const [fieldType, setFieldType] = useState<FieldType>(
+  const [fieldType, setFieldType] = useState<FieldType | null>(
     editTask?.fieldType ?? 'کنکور',
   );
   const [selection, setSelection] = useState<TaskSelection>(
@@ -95,6 +97,7 @@ export function TaskModal({
   const [testDescription, setTestDescription] = useState(editTask?.testDescription ?? '');
   const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
   const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
+  const isClassVideo = selection.contentType === 'CLASS_VIDEO' || Boolean(editTask && isClassTask(editTask));
 
   // Reset form (called on dialog close so the next open starts fresh).
   const resetForm = useCallback(() => {
@@ -180,7 +183,7 @@ export function TaskModal({
       toast.error('لطفاً درس را انتخاب کنید');
       return;
     }
-    if (isEdit && activityTypes.length === 0) {
+    if (isEdit && !isClassVideo && activityTypes.length === 0) {
       toast.error('لطفاً حداقل یک نوع فعالیت انتخاب کنید');
       return;
     }
@@ -189,13 +192,36 @@ export function TaskModal({
     const subjectColor = selection.subjectColor || editTask?.subjectColor || 'var(--accent)';
     const topic = selection.displayText || null;
 
+    if (isClassVideo && !isEdit) {
+      if (!classSessionDetailsComplete(selection.teacherClassName, selection.sessionNumber)) {
+        toast.error('نام کلاس و شماره جلسه را وارد کنید');
+        return;
+      }
+      await addTask(buildClassDraft({
+        id: crypto.randomUUID(),
+        studentId,
+        subjectId: selection.subjectId!,
+        subject: subjectName,
+        subjectColor,
+        teacherClassName: selection.teacherClassName!,
+        sessionNumber: selection.sessionNumber!,
+        date,
+        order: 0,
+        createdBy: 'advisor',
+        createdById: user?.id ?? null,
+      }));
+      toast.success('کلاس/ویدیو به‌صورت پیش‌نویس اضافه شد');
+      onOpenChange(false);
+      return;
+    }
+
     if (isEdit && editTask) {
       await updateTask(editTask.id, {
         subjectId: selection.subjectId ?? editTask.subjectId ?? null,
-        fieldType,
-        activityTypes,
-        targetTimeMinutes,
-        targetTestCount,
+        fieldType: isClassVideo ? editTask.fieldType : fieldType,
+        activityTypes: isClassVideo ? ['کلاس/ویدیو'] : activityTypes,
+        targetTimeMinutes: isClassVideo ? (targetTimeMinutes || null) : targetTimeMinutes,
+        targetTestCount: isClassVideo ? (targetTestCount || null) : targetTestCount,
         date,
         chapterId: selection.chapterId ?? null,
         topicId: selection.topicId ?? null,
@@ -205,8 +231,8 @@ export function TaskModal({
         topicModeSubtopicIds: selection.topicModeSubtopicIds ?? [],
         pageStart: selection.pageStart ?? null,
         pageEnd: selection.pageEnd ?? null,
-        teacherClassName: teacherClassName || null,
-        sessionNumber: sessionNumber || null,
+        teacherClassName: isClassVideo ? (selection.teacherClassName || teacherClassName || null) : teacherClassName || null,
+        sessionNumber: isClassVideo ? (selection.sessionNumber || sessionNumber || null) : sessionNumber || null,
         bookName: bookName || null,
         testDescription: testDescription || null,
         detailsCompleted: true,
@@ -254,10 +280,12 @@ export function TaskModal({
     () =>
       !studentInfoMissing &&
       (!!selection.subjectId || !!selection.subjectName) &&
-      ((selection.curriculumMode === 'BOOK' && !!selection.chapterId) ||
+      (isClassVideo
+        ? classSessionDetailsComplete(selection.teacherClassName, selection.sessionNumber)
+        : ((selection.curriculumMode === 'BOOK' && !!selection.chapterId) ||
         (selection.curriculumMode === 'THEMATIC' && !!selection.topicModeId)) &&
-      (!isEdit || activityTypes.length > 0),
-    [studentInfoMissing, selection.subjectId, selection.subjectName, selection.curriculumMode, selection.chapterId, selection.topicModeId, activityTypes.length, isEdit],
+      (!isEdit || activityTypes.length > 0)),
+    [isClassVideo, studentInfoMissing, selection.subjectId, selection.subjectName, selection.curriculumMode, selection.chapterId, selection.topicModeId, selection.teacherClassName, selection.sessionNumber, activityTypes.length, isEdit],
   );
 
   return (
@@ -297,7 +325,7 @@ export function TaskModal({
         ) : (
         <div className="space-y-4">
           {/* Step 1: Field Type */}
-          <div>
+           {!isClassVideo && <div>
             <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block font-medium">
               حوزه
             </label>
@@ -319,23 +347,36 @@ export function TaskModal({
                 </button>
               ))}
             </div>
-          </div>
+           </div>}
 
           {/* Quick create stops at subject; edit retains the full form. */}
           <div>
             <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block font-medium">
                {isEdit ? 'درس و مبحث' : 'درس'}
             </label>
-            <TaskSubjectPicker
+           <TaskSubjectPicker
               fieldType={fieldType}
               grade={studentGrade}
               major={studentMajor}
               value={selection}
               onChange={setSelection}
+              onClassVideoSelected={() => { setFieldType(null); setActivityTypes(['کلاس/ویدیو']); }}
+              onClassVideoExited={() => {
+                setActivityTypes([]);
+                setTeacherClassName('');
+                setSessionNumber('');
+                setFieldType(null);
+              }}
+              onFieldTypeChange={(nextFieldType, nextSelection) => {
+                setFieldType(nextFieldType);
+                if (nextSelection) setSelection(nextSelection);
+              }}
+              allowClassCurriculumLink={isEdit}
+              teacherClassSuggestions={teacherClassSuggestions}
             />
           </div>
 
-          {isEdit && <>
+          {isEdit && !isClassVideo && <>
 
           {/* Activity Types */}
           <div>
@@ -348,7 +389,7 @@ export function TaskModal({
                   key={act}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border cursor-pointer nav-item-hover ${
                     activityTypes.includes(act)
-                      ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                      ? activitySelectedStyle(act)
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
                   }`}
                 >

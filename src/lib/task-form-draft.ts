@@ -2,11 +2,12 @@ import type { ActivityType, FieldType } from '@/lib/types';
 import type { TaskSelection, TaskSubjectPickerDraftState } from '@/components/shared/TaskSubjectPicker';
 
 const DRAFT_PREFIX = 'reval:task-form-draft:v1';
+export const TASK_FORM_DRAFT_PREFIX = DRAFT_PREFIX;
 
 export interface TaskFormDraft {
   version: 1;
   step: 1 | 2 | 3;
-  fieldType: FieldType;
+  fieldType: FieldType | null;
   selection: TaskSelection;
   picker: TaskSubjectPickerDraftState;
   activities: ActivityType[];
@@ -16,6 +17,7 @@ export interface TaskFormDraft {
   sessionNumber: string;
   bookName: string;
   testDescription: string;
+  selectedDate?: string;
   updatedAt: string;
 }
 
@@ -27,7 +29,7 @@ export function taskFormDraftKey({
 }: {
   studentId: string;
   selectedDate: string;
-  mode: 'create' | 'complete-draft';
+  mode: 'create' | 'complete-draft' | 'edit';
   taskId?: string;
 }): string {
   return [DRAFT_PREFIX, mode, studentId, taskId ?? selectedDate].map(encodeURIComponent).join(':');
@@ -41,7 +43,7 @@ export function readTaskFormDraft(storage: Pick<Storage, 'getItem'>, key: string
     if (
       value.version !== 1
       || (value.step !== 1 && value.step !== 2 && value.step !== 3)
-      || (value.fieldType !== 'کنکور' && value.fieldType !== 'نهایی')
+      || (value.fieldType !== null && value.fieldType !== 'کنکور' && value.fieldType !== 'نهایی')
       || !value.selection
       || !value.picker
       || !Array.isArray(value.activities)
@@ -68,4 +70,36 @@ export function clearTaskFormDraft(storage: Pick<Storage, 'removeItem'>, key: st
   } catch {
     // Saving the task still succeeds when local draft cleanup is unavailable.
   }
+}
+
+export interface StoredTaskFormDraft {
+  key: string;
+  draftId: string;
+  studentId: string;
+  selectedDate: string;
+  draft: TaskFormDraft;
+}
+
+export function listCreateTaskFormDrafts(
+  storage: Pick<Storage, 'length' | 'key' | 'getItem'>,
+  studentId: string,
+): StoredTaskFormDraft[] {
+  const drafts: StoredTaskFormDraft[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key) continue;
+    const parts = key.split(':');
+    const [encodedPrefix, encodedMode, encodedStudentId, encodedDraftId] = parts;
+    const prefix = decodeURIComponent(encodedPrefix ?? '');
+    const mode = decodeURIComponent(encodedMode ?? '');
+    const keyStudentId = decodeURIComponent(encodedStudentId ?? '');
+    const draftId = decodeURIComponent(encodedDraftId ?? '');
+    if (prefix !== DRAFT_PREFIX || mode !== 'create') continue;
+    if (keyStudentId !== studentId || !draftId) continue;
+    const draft = readTaskFormDraft(storage, key);
+    if (!draft) continue;
+    const legacyDate = /^\d{4}-\d{2}-\d{2}$/.test(draftId) ? draftId : '';
+    drafts.push({ key, draftId, studentId: keyStudentId, selectedDate: draft.selectedDate ?? legacyDate, draft });
+  }
+  return drafts.sort((a, b) => b.draft.updatedAt.localeCompare(a.draft.updatedAt));
 }

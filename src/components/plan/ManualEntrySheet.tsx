@@ -9,10 +9,12 @@ import { useAppStore } from '@/lib/store';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { AuthError } from '@/lib/api-client';
 import { ChevronLeft, Save, ArrowLeft } from 'lucide-react';
-import { FieldTypeBadge, FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
+import { FieldTypeBadge } from '@/components/shared/FieldTypeBadge';
 import { clearTaskFormDraft, readTaskFormDraft, taskFormDraftKey, writeTaskFormDraft } from '@/lib/task-form-draft';
+import { activitySelectedStyle } from '@/lib/activity-styles';
+import { buildClassDraft, CLASS_ACTIVITY_TYPES, classSessionDetailsComplete, isClassTask, withoutClassActivity } from '@/lib/class-task';
 
-const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
+const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
 
 const TIME_QUICK_PICKS = [60, 90, 120];
 const TEST_QUICK_PICKS = [20, 30, 40];
@@ -39,12 +41,16 @@ const EMPTY_PICKER_DRAFT: TaskSubjectPickerDraftState = {
  * User can do a "quick save" after step 2 (subject selected) → creates draft with detailsCompleted=false.
  * Or continue to step 3 and save a complete task with detailsCompleted=true.
  */
-export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null }: {
+export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, onDraftChange, draftSessionId, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null, persistFormDraft = true, allowDraftSave = true }: {
   open: boolean; onOpenChange: (open: boolean) => void; selectedDate: string;
   existingTaskCount: number; onSubmit: (task: Task) => Promise<void> | void;
   studentId?: string; grade?: string; major?: string; createdBy?: 'student' | 'advisor'; createdById?: string | null;
-  mode?: 'create' | 'complete-draft'; initialTask?: Task | null;
+  mode?: 'create' | 'complete-draft' | 'edit'; initialTask?: Task | null;
+  persistFormDraft?: boolean;
+  allowDraftSave?: boolean;
   onSaved?: (task: Task) => void;
+  onDraftChange?: () => void;
+  draftSessionId?: string;
 }) {
   const { user } = useAppStore();
   const currentStudentId = useCurrentStudentId();
@@ -52,7 +58,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
 
   // === Step state ===
   // 1 = field type, 2 = subject picker, 3 = details (activity/time)
-  const [step, setStep] = useState<1 | 2 | 3>(mode === 'complete-draft' ? 2 : 1);
+  const [step, setStep] = useState<1 | 2 | 3>(2);
   const initialSelection = useCallback((): TaskSelection => initialTask ? ({
     subjectId: initialTask.subjectId ?? undefined,
     subjectName: initialTask.subject,
@@ -63,17 +69,21 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     topicNames: initialTask.topics?.map((topic) => `گفتار ${topic.topicNo}: ${topic.title}`),
     topicModeId: initialTask.topicModeId ?? undefined,
     curriculumMode: initialTask.curriculumMode ?? undefined,
-    topicModeSubtopicIds: initialTask.topicModeSubtopicIds ?? [],
-    topicModeSubtopicNames: initialTask.topicModeSubtopics?.map((subtopic) => subtopic.title),
-    displayText: initialTask.topic ?? undefined,
+     topicModeSubtopicIds: initialTask.topicModeSubtopicIds ?? [],
+     topicModeSubtopicNames: initialTask.topicModeSubtopics?.map((subtopic) => subtopic.title),
+     contentType: initialTask.activityTypes?.includes('کلاس/ویدیو') ? 'CLASS_VIDEO' : initialTask.curriculumMode === 'THEMATIC' ? 'THEMATIC' : 'BOOK',
+     teacherClassName: initialTask.teacherClassName ?? '',
+     sessionNumber: initialTask.sessionNumber ?? '',
+     displayText: initialTask.topic ?? undefined,
     pageStart: initialTask.pageStart ?? undefined,
     pageEnd: initialTask.pageEnd ?? undefined,
   }) : ({}), [initialTask]);
-  const [fieldType, setFieldType] = useState<FieldType>(initialTask?.fieldType ?? 'کنکور');
+  const [fieldType, setFieldType] = useState<FieldType | null>(initialTask?.fieldType ?? null);
   const [selection, setSelection] = useState<TaskSelection>(initialSelection);
   const [activities, setActivities] = useState<ActivityType[]>(initialTask?.activityTypes ?? []);
-  const [minutes, setMinutes] = useState(initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes));
-  const [tests, setTests] = useState(initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount));
+  const initialIsClassVideo = Boolean(initialTask && isClassTask(initialTask));
+  const [minutes, setMinutes] = useState(initialIsClassVideo ? (initialTask?.actualTimeMinutes == null ? '' : String(initialTask.actualTimeMinutes)) : (initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes)));
+  const [tests, setTests] = useState(initialIsClassVideo ? (initialTask?.actualTestCount == null ? '' : String(initialTask.actualTestCount)) : (initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount)));
   const [teacherClassName, setTeacherClassName] = useState(initialTask?.teacherClassName ?? '');
   const [sessionNumber, setSessionNumber] = useState(initialTask?.sessionNumber ?? '');
   const [bookName, setBookName] = useState(initialTask?.bookName ?? '');
@@ -84,14 +94,18 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
 
   const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
   const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
+  const [classVideoMode, setClassVideoMode] = useState(Boolean(initialTask && isClassTask(initialTask)));
+  const isClassVideo = classVideoMode || selection.contentType === 'CLASS_VIDEO' || isClassTask({ activityTypes: activities });
 
   const reset = useCallback(() => {
-    setStep(mode === 'complete-draft' ? 2 : 1);
-    setFieldType(initialTask?.fieldType ?? 'کنکور');
+    setStep(2);
+    setFieldType(initialTask?.fieldType ?? null);
     setSelection(initialSelection());
     setActivities(initialTask?.activityTypes ?? []);
-    setMinutes(initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes));
-    setTests(initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount));
+    setClassVideoMode(Boolean(initialTask && isClassTask(initialTask)));
+    const resettingClass = Boolean(initialTask && isClassTask(initialTask));
+    setMinutes(resettingClass ? (initialTask?.actualTimeMinutes == null ? '' : String(initialTask.actualTimeMinutes)) : (initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes)));
+    setTests(resettingClass ? (initialTask?.actualTestCount == null ? '' : String(initialTask.actualTestCount)) : (initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount)));
     setTeacherClassName(initialTask?.teacherClassName ?? '');
     setSessionNumber(initialTask?.sessionNumber ?? '');
     setBookName(initialTask?.bookName ?? '');
@@ -105,14 +119,28 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     studentId,
     selectedDate,
     mode,
-    taskId: initialTask?.id,
-  }), [initialTask?.id, mode, selectedDate, studentId]);
+    taskId: initialTask?.id ?? draftSessionId,
+  }), [draftSessionId, initialTask?.id, mode, selectedDate, studentId]);
 
   useEffect(() => {
-    if (!open || hydratedDraftKeyRef.current === draftKey) return;
+    if (!open) {
+      if (!persistFormDraft) {
+        clearTaskFormDraft(window.localStorage, draftKey);
+        hydratedDraftKeyRef.current = null;
+        reset();
+      }
+      return;
+    }
+    if (hydratedDraftKeyRef.current === draftKey) return;
+    if (!persistFormDraft) {
+      clearTaskFormDraft(window.localStorage, draftKey);
+      reset();
+      hydratedDraftKeyRef.current = draftKey;
+      return;
+    }
     const draft = readTaskFormDraft(window.localStorage, draftKey);
     if (draft) {
-      setStep(draft.step);
+      setStep(draft.step === 1 ? 2 : draft.step);
       setFieldType(draft.fieldType);
       setSelection(draft.selection);
       setPickerDraft(draft.picker);
@@ -127,10 +155,12 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
       reset();
     }
     hydratedDraftKeyRef.current = draftKey;
-  }, [draftKey, open, reset]);
+  }, [draftKey, open, persistFormDraft, reset]);
 
   useEffect(() => {
-    if (!open || hydratedDraftKeyRef.current !== draftKey) return;
+    if (!persistFormDraft || !open || hydratedDraftKeyRef.current !== draftKey) return;
+    const hasProgress = step > 1 || Boolean(selection.subjectId || selection.subjectName);
+    if (!hasProgress) return;
     writeTaskFormDraft(window.localStorage, draftKey, {
       version: 1,
       step,
@@ -144,13 +174,15 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
       sessionNumber,
       bookName,
       testDescription,
+      selectedDate,
       updatedAt: new Date().toISOString(),
     });
-  }, [activities, bookName, draftKey, fieldType, minutes, open, pickerDraft, selection, sessionNumber, step, teacherClassName, testDescription, tests]);
+    onDraftChange?.();
+  }, [activities, bookName, draftKey, fieldType, minutes, onDraftChange, open, persistFormDraft, pickerDraft, selectedDate, selection, sessionNumber, step, teacherClassName, testDescription, tests]);
 
   // Fetch suggestions when subject or relevant activity types change
   useEffect(() => {
-    const hasClassVideo = activities.includes('کلاس/ویدیو');
+    const hasClassVideo = isClassVideo;
     const hasTestDetails = activities.includes('تست آموزشی') || activities.includes('تست سنجشی');
 
     if (!selection.subjectId || (!hasClassVideo && !hasTestDetails)) {
@@ -182,19 +214,42 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     };
 
     fetchSuggestions();
-  }, [selection.subjectId, activities, studentId]);
+  }, [selection.subjectId, activities, isClassVideo, studentId]);
 
   // Can quick-save once subject is selected
+  const classTeacherName = selection.teacherClassName ?? teacherClassName;
+  const classSessionNumber = selection.sessionNumber ?? sessionNumber;
+  const classDetailsComplete = classSessionDetailsComplete(classTeacherName, classSessionNumber);
   const canQuickSave = !!selection.subjectId && !!selection.subjectName && (
+    (isClassVideo && classDetailsComplete) ||
     (selection.curriculumMode === 'BOOK' && !!selection.chapterId) ||
     (selection.curriculumMode === 'THEMATIC' && !!selection.topicModeId)
   );
 
   // Can full-save once subject + activity + time are set
-  const canFullSave = canQuickSave && activities.length > 0 && Number(minutes) > 0;
+  const effectiveActivities = isClassVideo
+    ? CLASS_ACTIVITY_TYPES
+    : activities.filter((activity) => activity !== 'کلاس/ویدیو');
+  const canFullSave = canQuickSave && effectiveActivities.length > 0 && (isClassVideo || Number(minutes) > 0);
 
   // Build task object from current state
-  const buildTask = (detailsCompleted: boolean): Task => ({
+  const buildTask = (detailsCompleted: boolean): Task => {
+    if (isClassVideo && mode === 'create') {
+      return buildClassDraft({
+        id: initialTask?.id ?? crypto.randomUUID(),
+        studentId,
+        subjectId: selection.subjectId!,
+        subject: selection.subjectName!,
+        subjectColor: selection.subjectColor ?? 'var(--accent)',
+        teacherClassName: classTeacherName,
+        sessionNumber: classSessionNumber,
+        date: initialTask?.date ?? selectedDate,
+        order: initialTask?.order ?? existingTaskCount + 1,
+        createdBy: initialTask?.createdBy ?? createdBy,
+        createdById: initialTask?.createdById ?? createdById,
+      });
+    }
+    return {
     id: initialTask?.id ?? crypto.randomUUID(),
     studentId,
     subjectId: selection.subjectId!,
@@ -202,12 +257,12 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     subjectColor: selection.subjectColor ?? 'var(--accent)',
     topic: selection.displayText ?? null,
     fieldType,
-    activityTypes: detailsCompleted ? activities : null,
-    targetTimeMinutes: detailsCompleted ? Number(minutes) : null,
-    actualTimeMinutes: null,
-    targetTestCount: detailsCompleted ? (tests ? Number(tests) : 0) : null,
-    actualTestCount: null,
-    status: detailsCompleted ? 'PENDING' : 'DRAFT',
+    activityTypes: detailsCompleted || isClassVideo ? effectiveActivities : null,
+    targetTimeMinutes: !isClassVideo && detailsCompleted && minutes ? Number(minutes) : null,
+    actualTimeMinutes: isClassVideo && minutes ? Number(minutes) : null,
+    targetTestCount: !isClassVideo && detailsCompleted && tests ? Number(tests) : null,
+    actualTestCount: isClassVideo && tests ? Number(tests) : null,
+    status: mode === 'edit' ? initialTask?.status ?? 'PENDING' : detailsCompleted ? 'PENDING' : 'DRAFT',
     completed: null,
     date: initialTask?.date ?? selectedDate,
     order: initialTask?.order ?? existingTaskCount + 1,
@@ -221,12 +276,13 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     topicModeSubtopicIds: selection.topicModeSubtopicIds ?? [],
     pageStart: selection.pageStart ?? null,
     pageEnd: selection.pageEnd ?? null,
-    teacherClassName: teacherClassName || null,
-    sessionNumber: sessionNumber || null,
+    teacherClassName: isClassVideo ? (selection.teacherClassName !== undefined ? selection.teacherClassName : teacherClassName).trim() : null,
+    sessionNumber: isClassVideo ? (selection.sessionNumber !== undefined ? selection.sessionNumber : sessionNumber).trim() : null,
     bookName: bookName || null,
     testDescription: testDescription || null,
-    detailsCompleted,
-  });
+      detailsCompleted: mode === 'edit' ? initialTask?.detailsCompleted ?? true : detailsCompleted,
+    };
+  };
 
   const doSave = async (detailsCompleted: boolean) => {
     setSaving(true);
@@ -240,6 +296,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
         toast.success('تسک اولیه ثبت شد — بعداً تکمیلش کنید');
       }
       clearTaskFormDraft(window.localStorage, draftKey);
+      onDraftChange?.();
       hydratedDraftKeyRef.current = null;
       reset();
       onOpenChange(false);
@@ -256,14 +313,37 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   };
 
   const handlePrevious = () => {
-    setStep((current) => (current - 1) as 1 | 2 | 3);
+    setStep((current) => current === 3 ? 2 : current);
+  };
+
+  const handleFieldTypeChange = (nextFieldType: FieldType | null, nextSelection?: TaskSelection) => {
+    setFieldType(nextFieldType);
+    if (nextSelection) {
+      setSelection(nextSelection);
+      setPickerDraft(EMPTY_PICKER_DRAFT);
+      return;
+    }
+    if (nextFieldType === fieldType) return;
+    if (!selection.subjectId || !selection.subjectName) {
+      setSelection({});
+      setPickerDraft(EMPTY_PICKER_DRAFT);
+      return;
+    }
+    setSelection(isClassVideo
+      ? { ...selection, contentType: 'CLASS_VIDEO' }
+      : {
+          subjectId: selection.subjectId,
+          subjectName: selection.subjectName,
+          subjectColor: selection.subjectColor,
+        });
+    setPickerDraft(EMPTY_PICKER_DRAFT);
   };
 
   // Step labels
-  const stepLabel = step === 1 ? 'انتخاب حوزه' : step === 2 ? 'انتخاب درس' : 'جزئیات مطالعه';
+  const stepLabel = isClassVideo ? 'ثبت کلاس/ویدیو' : step === 2 ? 'انتخاب درس و نوع تسک' : 'جزئیات مطالعه';
   const stepIndicator = (
     <div className="flex items-center justify-center gap-1.5 mb-2">
-      {[1, 2, 3].map(s => (
+      {[2, 3].map(s => (
         <div
           key={s}
           className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -283,7 +363,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
               <DrawerTitle>افزودن تسک</DrawerTitle>
               <p className="text-xs text-[var(--foreground-subtle)] mt-0.5">{stepLabel}</p>
             </div>
-            {step > 1 && (
+            {step === 3 && (
               <button
                 onClick={handlePrevious}
                 className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
@@ -297,47 +377,67 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
         </DrawerHeader>
 
         <div className="px-4 pb-2 overflow-y-auto flex-1">
-          {/* ===== Step 1: Field Type ===== */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <p className="text-sm text-[var(--foreground-muted)]">نوع برنامه‌ریزی رو انتخاب کن:</p>
-              <div className="flex gap-3">
-                {(['کنکور', 'نهایی'] as FieldType[]).map(ft => (
-                  <button
-                    key={ft}
-                    onClick={() => { setFieldType(ft); setSelection({}); }}
-                    className={`flex-1 py-4 rounded-xl border text-center transition-all ${
-                      fieldType === ft
-                        ? `${FIELD_TYPE_STYLES[ft].selected} font-bold scale-[1.02]`
-                        : 'border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--foreground-muted)]'
-                    }`}
-                  >
-                    <span className="block text-sm mt-1">{ft}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* ===== Step 2: Subject Picker ===== */}
           {step === 2 && (
             <div className="space-y-3">
               {/* Field type badge */}
               <div className="flex items-center gap-2">
-                <FieldTypeBadge value={fieldType} />
+                {fieldType && <FieldTypeBadge value={fieldType} />}
               </div>
-              <TaskSubjectPicker
-                key={fieldType}
-                fieldType={fieldType}
+                <TaskSubjectPicker
+                  fieldType={fieldType}
                  grade={grade ?? user?.grade ?? 'دوازدهم'}
                  major={major ?? user?.major ?? 'تجربی'}
                  value={selection}
                  onChange={setSelection}
-                 onSelectionComplete={() => setStep(3)}
+                   onSelectionComplete={() => { if (!isClassVideo) setStep(3); }}
+                  allGrades={Boolean(initialTask?.activityTypes?.includes('کلاس/ویدیو'))}
+                  onFieldTypeChange={handleFieldTypeChange}
+                  onClassVideoSelected={() => { setClassVideoMode(true); setFieldType(null); }}
+                  onClassVideoExited={() => {
+                    setClassVideoMode(false);
+                    setActivities((current) => withoutClassActivity(current));
+                    setTeacherClassName('');
+                    setSessionNumber('');
+                    setFieldType(null);
+                  }}
+                  allowClassCurriculumLink={mode !== 'create'}
+                  teacherClassSuggestions={teacherClassSuggestions}
                  draftState={pickerDraft}
-                 onDraftStateChange={setPickerDraft}
-               />
-            </div>
+                  onDraftStateChange={setPickerDraft}
+                />
+                {isClassVideo && mode !== 'create' && (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+                    <p className="mb-3 text-xs font-semibold text-[var(--foreground)]">زمان و تمرین این جلسه</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="text-xs text-[var(--foreground-muted)]">
+                        زمان واقعی (دقیقه)
+                        <input
+                          type="number"
+                          min="1"
+                          value={minutes}
+                          onChange={(event) => setMinutes(event.target.value)}
+                          placeholder="اختیاری"
+                          className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
+                          dir="ltr"
+                        />
+                      </label>
+                      <label className="text-xs text-[var(--foreground-muted)]">
+                        تعداد تمرین/تست
+                        <input
+                          type="number"
+                          min="0"
+                          value={tests}
+                          onChange={(event) => setTests(event.target.value)}
+                          placeholder="اختیاری"
+                          className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
+                          dir="ltr"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+             </div>
           )}
 
            {/* ===== Step 3: Details (Activity + Time + Tests) ===== */}
@@ -351,7 +451,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                      style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
                    />
                    <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
-                   <FieldTypeBadge value={fieldType} className="mr-auto" />
+                    {fieldType ? <FieldTypeBadge value={fieldType} className="mr-auto" /> : <span className="mr-auto rounded-md border border-[#35C49A]/30 bg-[#35C49A]/10 px-2 py-0.5 text-[10px] font-semibold text-[#72E0BF]">کلاس</span>}
                  </div>
                  {selection.topicNames && selection.topicNames.length > 0 && (
                    <div className="flex flex-wrap gap-1">
@@ -379,76 +479,28 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                  )}
                </div>
 
-               {/* Activity types */}
-               <div>
-                 <label className="text-xs text-[var(--foreground-muted)] mb-2 block">نوع فعالیت</label>
-                 <div className="flex flex-wrap gap-2">
-                   {ACTIVITIES.map(a => (
-                     <button
-                       key={a}
-                       onClick={() => setActivities(v => v.includes(a) ? v.filter(x => x !== a) : [...v, a])}
-                       className={`px-3 py-2.5 rounded-lg border text-sm transition-all ${
-                         activities.includes(a)
-                           ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)] font-semibold'
-                           : 'border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
-                       }`}
-                     >
-                       {a}
-                     </button>
-                   ))}
-                 </div>
-               </div>
+                {!isClassVideo && (
+                  <div>
+                    <label className="text-xs text-[var(--foreground-muted)] mb-2 block">نوع فعالیت</label>
+                    <div className="flex flex-wrap gap-2">
+                      {ACTIVITIES.map(a => (
+                        <button
+                          key={a}
+                          onClick={() => setActivities(v => v.includes(a) ? v.filter(x => x !== a) : [...v, a])}
+                          className={`px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                            activities.includes(a)
+                              ? `${activitySelectedStyle(a)} font-semibold`
+                              : 'border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
+                          }`}
+                        >
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-               {/* Class/Video details */}
-               {activities.includes('کلاس/ویدیو') && (
-                 <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
-                   <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات کلاس/ویدیو (اختیاری)</p>
-
-                   {/* Teacher/Class name with suggestions */}
-                   <div>
-                     <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">نام دبیر و کلاس</label>
-                     {teacherClassSuggestions.length > 0 && (
-                       <div className="flex flex-wrap gap-1.5 mb-2">
-                         {teacherClassSuggestions.map((suggestion) => (
-                           <button
-                             key={suggestion}
-                             type="button"
-                             onClick={() => setTeacherClassName(suggestion)}
-                             className={`px-2.5 py-1 rounded-md text-[11px] border transition-all ${
-                               teacherClassName === suggestion
-                                 ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
-                                 : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'
-                             }`}
-                           >
-                             {suggestion}
-                           </button>
-                         ))}
-                       </div>
-                     )}
-                     <input
-                       type="text"
-                       value={teacherClassName}
-                       onChange={e => setTeacherClassName(e.target.value)}
-                       placeholder="مثلاً استاد محمدی — کلاس ۱۰"
-                       className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
-                     />
-                   </div>
-
-                   {/* Session number */}
-                   <div>
-                     <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">شماره جلسه</label>
-                     <input
-                       type="text"
-                       value={sessionNumber}
-                       onChange={e => setSessionNumber(e.target.value)}
-                       placeholder="مثلاً جلسه ۱۲"
-                       className="w-full h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
-                     />
-                   </div>
-                 </div>
-               )}
-
-               {/* Test details */}
+                {/* Test details */}
                {(activities.includes('تست آموزشی') || activities.includes('تست سنجشی')) && (
                  <div className="space-y-3 p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
                    <p className="text-[10px] text-[var(--foreground-subtle)] font-medium">جزئیات تست (اختیاری)</p>
@@ -497,10 +549,10 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                  </div>
                )}
 
-               {/* Time + Test count */}
+               {/* Optional completion metrics for class/video; required time for other activities. */}
                <div className="grid grid-cols-2 gap-3">
                  <label className="text-xs text-[var(--foreground-muted)]">
-                   زمان مطالعه (دقیقه) *
+                   {isClassVideo ? 'زمان کلاس (دقیقه) - اختیاری' : 'زمان مطالعه (دقیقه) *'}
                    <input
                      type="number"
                      min="1"
@@ -528,7 +580,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                    </div>
                  </label>
                  <label className="text-xs text-[var(--foreground-muted)]">
-                   تعداد تست هدف
+                   {isClassVideo ? 'تعداد تست - اختیاری' : 'تعداد تست هدف'}
                    <input
                      type="number"
                      min="0"
@@ -561,29 +613,29 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
         </div>
 
         <DrawerFooter className="flex-col gap-2 pt-2">
-          {step === 1 && (
-            <button
-              onClick={() => setStep(2)}
-              className="w-full h-11 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold flex items-center justify-center gap-2"
-            >
-              ادامه
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          )}
-
           {step === 2 && (
             <>
               {/* Primary: continue to details */}
-              <button
+              {!isClassVideo && <button
                 disabled={!canQuickSave}
                 onClick={() => setStep(3)}
                 className="w-full h-11 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 ادامه
                 <ChevronLeft className="w-4 h-4" />
-              </button>
+              </button>}
+              {isClassVideo && mode === 'create' && (
+                <button disabled={!canQuickSave || saving} onClick={() => doSave(false)} className="w-full h-11 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold disabled:opacity-40">
+                  {saving ? 'در حال ثبت...' : 'ثبت کلاس/ویدیو'}
+                </button>
+              )}
+              {isClassVideo && (mode === 'complete-draft' || mode === 'edit') && (
+                <button disabled={!canQuickSave || saving} onClick={() => doSave(true)} className="w-full h-11 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold disabled:opacity-40">
+                  {saving ? 'در حال ذخیره...' : mode === 'complete-draft' ? 'ذخیره و آماده انجام' : 'ذخیره تغییرات کلاس'}
+                </button>
+              )}
               {/* Secondary: quick save as draft */}
-               {mode === 'create' && canQuickSave && (
+                {mode === 'create' && allowDraftSave && canQuickSave && !isClassVideo && (
                 <button
                   disabled={saving}
                   onClick={() => doSave(false)}

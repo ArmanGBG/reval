@@ -217,6 +217,31 @@ export async function canModifyTask(
   return false;
 }
 
+// Deletion is intentionally narrower than plan editing. In addition to tasks
+// they own, assigned advisors may remove student-created drafts only.
+export async function canDeleteTask(
+  ctx: AuthContext,
+  taskId: string,
+): Promise<boolean> {
+  if (ctx.user.role === 'SUPER_ADMIN') return true;
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    select: { studentId: true, createdBy: true, createdById: true, status: true },
+  });
+
+  if (!task) return false;
+  if (ctx.user.role === 'STUDENT') return task.studentId === ctx.userId && task.createdBy === 'student';
+  if (ctx.user.role !== 'ADVISOR' || !(await canViewStudentTasks(ctx, task.studentId))) return false;
+
+  const ownsTask = task.createdBy === 'advisor'
+    && task.createdById === ctx.userId
+    && task.status !== 'COMPLETED'
+    && task.status !== 'SKIPPED';
+  const isStudentDraft = task.createdBy === 'student' && task.status === 'DRAFT';
+  return ownsTask || isStudentDraft;
+}
+
 // Plan editing is broader than task ownership: an assigned advisor can revise
 // the study plan even when the task was created by the student or another
 // advisor. Execution results and destructive actions use canModifyTask.
@@ -290,9 +315,10 @@ export function isTaskFieldType(value: unknown): value is TaskFieldType {
 export interface TaskCurriculumInput {
   studentId: string;
   subjectId: string;
-  fieldType: TaskFieldType;
+  fieldType: TaskFieldType | null;
   curriculumMode: unknown;
   allowSubjectOnly?: boolean;
+  allowAllGrades?: boolean;
   chapterId?: unknown;
   topicId?: unknown;
   topicIds?: unknown;
@@ -325,7 +351,7 @@ export async function validateTaskCurriculum(input: TaskCurriculumInput) {
   const gradeEligibility = {
     isActive: true,
     major: student.major,
-    ...(input.fieldType === 'کنکور' ? { isKonkur: true } : { isFinal: true, grade: student.grade }),
+    ...(input.fieldType === 'کنکور' ? { isKonkur: true } : input.fieldType === 'نهایی' ? { isFinal: true, ...(!input.allowAllGrades ? { grade: student.grade } : {}) } : {}),
     subject: { id: input.subjectId, isActive: true },
   };
 
@@ -340,13 +366,16 @@ export async function validateTaskCurriculum(input: TaskCurriculumInput) {
       input.pageEnd != null;
     if (!input.allowSubjectOnly || input.curriculumMode != null || hasCurriculumSelection) return null;
 
-    const gradeSubject = await db.gradeSubject.findFirst({
-      where: gradeEligibility,
-      select: { subject: { select: { id: true, name: true, color: true } } },
+    // A class/video is deliberately created before it is assigned to a
+    // curriculum offering. Validate the subject itself here; requiring a
+    // student's current GradeSubject would reject valid unclassified classes.
+    const subject = await db.subject.findFirst({
+      where: { id: input.subjectId, isActive: true },
+      select: { id: true, name: true, color: true },
     });
-    if (!gradeSubject) return null;
+    if (!subject) return null;
     return {
-      subject: gradeSubject.subject,
+      subject,
       topic: null,
       topicIds: [] as string[],
       subtopicIds: [] as string[],
@@ -370,21 +399,38 @@ export async function validateTaskCurriculum(input: TaskCurriculumInput) {
         pageStart: true,
         pageEnd: true,
         gradeSubjectId: true,
-        gradeSubject: { select: { subject: { select: { id: true, name: true, color: true } } } },
+        gradeSubject: { select: { id: true, subject: { select: { id: true, name: true, color: true } } } },
       },
     });
     if (!chapter) return null;
     const topics = topicIds.length
       ? await db.topic.findMany({
-          where: { id: { in: topicIds }, chapterId: chapter.id, isActive: true },
+          where: { id: { in: topicIds }, chapter: { gradeSubjectId: chapter.gradeSubject.id, isActive: true }, isActive: true },
           select: { id: true, title: true, topicNo: true, chapterId: true },
           orderBy: { topicNo: 'asc' },
         })
       : [];
     if (topics.length !== topicIds.length) return null;
     if (input.pageStart != null && input.pageEnd != null) {
-      if (chapter.pageStart === null || chapter.pageEnd === null) return null;
-      if ((input.pageStart as number) < chapter.pageStart || (input.pageEnd as number) > chapter.pageEnd) return null;
+      const rangeStart = input.pageStart as number;
+      const rangeEnd = input.pageEnd as number;
+      const coveringChapters = await db.chapter.findMany({
+        where: {
+          gradeSubjectId: chapter.gradeSubject.id,
+          isActive: true,
+          pageStart: { lte: rangeEnd },
+          pageEnd: { gte: rangeStart },
+        },
+        select: { pageStart: true, pageEnd: true },
+        orderBy: { pageStart: 'asc' },
+      });
+      let coveredThrough = rangeStart - 1;
+      for (const item of coveringChapters) {
+        if (item.pageStart == null || item.pageEnd == null || item.pageStart > coveredThrough + 1) return null;
+        coveredThrough = Math.max(coveredThrough, item.pageEnd);
+        if (coveredThrough >= rangeEnd) break;
+      }
+      if (coveredThrough < rangeEnd) return null;
     }
     return {
       subject: chapter.gradeSubject.subject,

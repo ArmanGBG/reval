@@ -82,7 +82,7 @@ export default function DataExportHelper() {
         تاریخ: t.date,
         درس: t.subject,
         مبحث: t.topic ?? '',
-        'نوع رشته': t.fieldType,
+        'نوع رشته': t.fieldType ?? 'کلاس بدون حوزه',
         'انواع فعالیت': (t.activityTypes ?? []).join(' / '),
         'زمان هدف (دقیقه)': t.targetTimeMinutes ?? '',
         'زمان واقعی (دقیقه)': t.actualTimeMinutes ?? '',

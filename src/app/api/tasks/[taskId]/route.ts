@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canModifyTask, canEditAssignedStudentPlan, canViewStudentTasks, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
+import { requireAuth, canModifyTask, canDeleteTask, canEditAssignedStudentPlan, canViewStudentTasks, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
 import { isAdvisorMoveTaskPatch, isAdvisorPlanTaskPatch, isStudentAdvisorTaskPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskPatchData, taskTopicInclude } from '@/lib/task-api';
+import { classSessionDetailsComplete, isClassActivityTypes } from '@/lib/class-task';
 
 // GET /api/tasks/[taskId] — Get a single task
 // Authorization: caller must be able to view the task's student (owner,
@@ -119,10 +120,40 @@ export async function PATCH(
       );
     }
 
-    const fieldType = body.fieldType ?? existing.fieldType;
+    let existingActivityTypesForCurriculum: unknown = null;
+    if (existing.activityTypes) {
+      try {
+        existingActivityTypesForCurriculum = JSON.parse(existing.activityTypes);
+      } catch {
+        existingActivityTypesForCurriculum = null;
+      }
+    }
+    const requestedActivityTypes = body.activityTypes !== undefined ? body.activityTypes : existingActivityTypesForCurriculum;
+    const hasClassVideoRequested = isClassActivityTypes(requestedActivityTypes);
+    if (hasClassVideoRequested) {
+      const teacherClassName = 'teacherClassName' in body ? body.teacherClassName : existing.teacherClassName;
+      const sessionNumber = 'sessionNumber' in body ? body.sessionNumber : existing.sessionNumber;
+      const existingIsClassVideo = isClassActivityTypes(existingActivityTypesForCurriculum);
+      const classDefinitionChanged = body.activityTypes !== undefined
+        || 'teacherClassName' in body
+        || 'sessionNumber' in body
+        || 'subjectId' in body
+        || 'fieldType' in body
+        || 'curriculumMode' in body
+        || 'chapterId' in body
+        || 'topicId' in body
+        || 'topicModeId' in body;
+      if ((!existingIsClassVideo || classDefinitionChanged) && !classSessionDetailsComplete(teacherClassName, sessionNumber)) {
+        return NextResponse.json({ error: 'نام کلاس و شماره جلسه برای کلاس/ویدیو الزامی است' }, { status: 400 });
+      }
+    }
+    const fieldType = 'fieldType' in body ? body.fieldType : existing.fieldType;
     const subjectId = body.subjectId ?? existing.subjectId;
-    if (!isTaskFieldType(fieldType) || typeof subjectId !== 'string') return NextResponse.json({ error: 'subjectId یا fieldType معتبر نیست' }, { status: 400 });
+    if ((!isTaskFieldType(fieldType) && !(hasClassVideoRequested && fieldType == null)) || typeof subjectId !== 'string') return NextResponse.json({ error: 'subjectId یا fieldType معتبر نیست' }, { status: 400 });
     const curriculumMode = 'curriculumMode' in body ? body.curriculumMode : existing.curriculumMode;
+    if (hasClassVideoRequested && curriculumMode != null && !isTaskFieldType(fieldType)) {
+      return NextResponse.json({ error: 'برای اتصال کلاس به محتوای درسی، نوع ارزیابی الزامی است' }, { status: 400 });
+    }
     const isBook = curriculumMode === 'BOOK';
     const isThematic = curriculumMode === 'THEMATIC';
     const chapterChanged = 'chapterId' in body && body.chapterId !== existing.chapterId;
@@ -150,6 +181,8 @@ export async function PATCH(
       topicModeSubtopicIds: 'topicModeSubtopicIds' in body ? body.topicModeSubtopicIds : isThematic ? existing.topicModeSubtopics.map((item) => item.topicModeSubtopicId) : [],
       pageStart: 'pageStart' in body ? body.pageStart : isBook ? existing.pageStart : null,
       pageEnd: 'pageEnd' in body ? body.pageEnd : isBook ? existing.pageEnd : null,
+      allowSubjectOnly: hasClassVideoRequested,
+      allowAllGrades: true,
     });
     if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
     const detailsCompleted = body.detailsCompleted !== undefined ? body.detailsCompleted : existing.detailsCompleted;
@@ -169,16 +202,21 @@ export async function PATCH(
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
     const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed !== undefined ? body.completed : existing.completed);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
-    if (status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0 || typeof targetTestCount !== 'number' || targetTestCount < 0)) {
+    const invalidClassMetrics = hasClassVideoRequested && (
+      (targetTimeMinutes != null && (typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0))
+      || (targetTestCount != null && (typeof targetTestCount !== 'number' || targetTestCount < 0))
+    );
+    const invalidStandardMetrics = !hasClassVideoRequested && status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0 || typeof targetTestCount !== 'number' || targetTestCount < 0);
+    if (invalidClassMetrics || invalidStandardMetrics) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
     if ((body.completed === true || body.completed === false) && !detailsCompleted) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
     if (status === 'COMPLETED') {
       if (body.actualTimeMinutes === undefined && existing.actualTimeMinutes === null) {
-        data.actualTimeMinutes = targetTimeMinutes;
+        data.actualTimeMinutes = typeof targetTimeMinutes === 'number' ? targetTimeMinutes : 0;
       }
       if (body.actualTestCount === undefined && existing.actualTestCount === null) {
-        data.actualTestCount = targetTestCount;
+        data.actualTestCount = typeof targetTestCount === 'number' ? targetTestCount : 0;
       }
     }
     data.subjectId = curriculum.subject.id;
@@ -316,6 +354,7 @@ export async function PATCH(
   }
 }
 
+
 // DELETE /api/tasks/[taskId] — Delete a task
 // Authorization: caller must be able to modify the task (owner, assigned
 // advisor, or super admin).
@@ -329,8 +368,8 @@ export async function DELETE(
   const { taskId } = await params;
 
   // Ownership check
-  const canModify = await canModifyTask(ctx, taskId);
-  if (!canModify) {
+  const canDelete = await canDeleteTask(ctx, taskId);
+  if (!canDelete) {
     return NextResponse.json(
       { error: 'دسترسی به این تسک مجاز نیست' },
       { status: 403 },

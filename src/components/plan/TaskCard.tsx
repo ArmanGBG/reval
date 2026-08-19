@@ -8,6 +8,7 @@ import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constant
 import { toPersianDigits, minutesToHoursLabel } from '@/lib/persian-date';
 import { formatTaskCurriculum } from '@/lib/task-summary';
 import { FieldTypeBadge } from '@/components/shared/FieldTypeBadge';
+import { isClassTask } from '@/lib/class-task';
 
 // ===== Animation Variants =====
 const cardVariants: Variants = {
@@ -117,7 +118,7 @@ export default function TaskCard({
               <span className="text-[var(--foreground)] font-bold text-sm md:text-base truncate">
                 {task.subject}
               </span>
-              <FieldTypeBadge value={task.fieldType} />
+              {task.fieldType ? <FieldTypeBadge value={task.fieldType} /> : <span className="rounded-md border border-[#35C49A]/30 bg-[#35C49A]/10 px-2 py-0.5 text-[10px] font-semibold text-[#72E0BF]">کلاس</span>}
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
                   task.createdBy === 'advisor'
@@ -237,7 +238,7 @@ export default function TaskCard({
                   <Pencil className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               )}
-              {canPartial && <button
+              {canPartial && !isClassTask(task) && <button
                 onClick={() => onSettings(task.id)}
                 className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.08)]"
                 aria-label="ثبت بخشی"

@@ -70,7 +70,8 @@ export function filterTasksForReport(
   return tasks.filter((t) => {
     if (t.status === 'DRAFT' || (t.status === undefined && t.detailsCompleted === false)) return false;
     if (range) {
-      if (t.date < range.start || t.date > range.end) return false;
+      const reportDate = t.status === 'COMPLETED' && t.updatedAt ? t.updatedAt.slice(0, 10) : t.date;
+      if (reportDate < range.start || reportDate > range.end) return false;
     }
     if (fieldFilter === 'کنکوری' && t.fieldType !== 'کنکور') return false;
     if (fieldFilter === 'نهایی' && t.fieldType !== 'نهایی') return false;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clearTaskFormDraft,
+  listCreateTaskFormDrafts,
   readTaskFormDraft,
   taskFormDraftKey,
   type TaskFormDraft,
@@ -10,6 +11,8 @@ import {
 function memoryStorage() {
   const values = new Map<string, string>();
   return {
+    get length() { return values.size; },
+    key: (index: number) => [...values.keys()][index] ?? null,
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => { values.set(key, value); },
     removeItem: (key: string) => { values.delete(key); },
@@ -67,6 +70,17 @@ describe('task form draft persistence', () => {
     expect(readTaskFormDraft(storage, key)).toEqual(draft);
     clearTaskFormDraft(storage, key);
     expect(readTaskFormDraft(storage, key)).toBeNull();
+  });
+
+  it('lists independent create drafts without making new-task restore one implicitly', () => {
+    const storage = memoryStorage();
+    const firstKey = taskFormDraftKey({ studentId: 'student-1', selectedDate: '2026-08-17', mode: 'create', taskId: 'draft-1' });
+    const secondKey = taskFormDraftKey({ studentId: 'student-1', selectedDate: '2026-08-18', mode: 'create', taskId: 'draft-2' });
+    writeTaskFormDraft(storage, firstKey, { ...draft, selectedDate: '2026-08-17' });
+    writeTaskFormDraft(storage, secondKey, { ...draft, selectedDate: '2026-08-18', updatedAt: '2026-08-18T12:00:00.000Z' });
+
+    expect(listCreateTaskFormDrafts(storage, 'student-1').map((item) => item.draftId)).toEqual(['draft-2', 'draft-1']);
+    expect(readTaskFormDraft(storage, taskFormDraftKey({ studentId: 'student-1', selectedDate: '2026-08-19', mode: 'create', taskId: 'draft-3' }))).toBeNull();
   });
 
   it('ignores malformed or unsupported snapshots', () => {

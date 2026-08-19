@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
@@ -32,6 +32,7 @@ import { TaskActionDialog } from './TaskActionDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import TaskStatsWidget from './TaskStatsWidget';
 import { canMoveTaskToDate, isTaskVisibleOnScheduledDay, moveTaskToDateTransition, moveTaskToIncompleteTransition } from '@/lib/task-status';
+import { clearTaskFormDraft, listCreateTaskFormDrafts, type StoredTaskFormDraft } from '@/lib/task-form-draft';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -147,7 +148,8 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
       && task.createdById === actor?.id
       && task.status !== 'COMPLETED'
       && task.status !== 'SKIPPED';
-    return { complete: false, reset: false, partial: false, action: ownsTask, edit: true, deleteDraft: ownsTask, drag: false };
+    const canDeleteStudentDraft = task.createdBy === 'student' && task.status === 'DRAFT';
+    return { complete: false, reset: false, partial: false, action: ownsTask || canDeleteStudentDraft, edit: true, deleteDraft: ownsTask || canDeleteStudentDraft, drag: false };
   }, [actor?.id, isAdvisorWorkspace]);
 
   // Local state
@@ -157,6 +159,40 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
   const [planTab, setPlanTab] = useState<'daily' | 'draft' | 'incomplete'>('daily');
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
+  const [draftSessionId, setDraftSessionId] = useState<string | null>(null);
+  const [resumingLocalDraft, setResumingLocalDraft] = useState<StoredTaskFormDraft | null>(null);
+  const [localDrafts, setLocalDrafts] = useState<StoredTaskFormDraft[]>([]);
+
+  const refreshLocalDrafts = useCallback(() => {
+    if (typeof window === 'undefined' || isAdvisorWorkspace) {
+      setLocalDrafts([]);
+      return;
+    }
+    setLocalDrafts(listCreateTaskFormDrafts(window.localStorage, studentId));
+  }, [isAdvisorWorkspace, studentId]);
+
+  useEffect(() => {
+    refreshLocalDrafts();
+  }, [refreshLocalDrafts]);
+
+  const openNewTask = useCallback(() => {
+    setResumingLocalDraft(null);
+    setDraftSessionId(crypto.randomUUID());
+    setAddDrawerOpen(true);
+  }, []);
+
+  const resumeLocalDraft = useCallback((draft: StoredTaskFormDraft) => {
+    setResumingLocalDraft(draft);
+    setDraftSessionId(draft.draftId);
+    if (draft.selectedDate) setSelectedDate(draft.selectedDate);
+    setAddDrawerOpen(true);
+  }, [setSelectedDate]);
+
+  const deleteLocalDraft = useCallback((draft: StoredTaskFormDraft) => {
+    if (!window.confirm('این پیش‌نویس برای همیشه حذف شود؟')) return;
+    clearTaskFormDraft(window.localStorage, draft.key);
+    refreshLocalDrafts();
+  }, [refreshLocalDrafts]);
 
   // Filter tasks for current student + selected date.
   // Dated drafts stay visible on their scheduled day so weekly-plan placeholders
@@ -188,6 +224,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   }, [tasks, studentId]);
 
   const draftTasks = useMemo(() => tasks.filter((t) => t.studentId === studentId && t.status === 'DRAFT'), [tasks, studentId]);
+  const totalDraftCount = draftTasks.length + localDrafts.length;
   const secondaryTabTasks = planTab === 'draft' ? draftTasks : incompleteTasks;
 
   // Dynamic header title
@@ -321,10 +358,13 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
     async (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
       const allowed = isAdvisorWorkspace
-        ? task?.createdBy === 'advisor' && task.createdById === actor?.id && task.status !== 'COMPLETED' && task.status !== 'SKIPPED'
+        ? Boolean(task && (
+            (task.createdBy === 'advisor' && task.createdById === actor?.id && task.status !== 'COMPLETED' && task.status !== 'SKIPPED')
+            || (task.createdBy === 'student' && task.status === 'DRAFT')
+          ))
         : task?.createdBy === 'student';
       if (!allowed) {
-        toast.error(isAdvisorWorkspace ? 'فقط تسک‌های ساخته‌شده توسط خود مشاور قابل حذف هستند' : 'تسک‌های مشاور قابل حذف نیستند');
+        toast.error(isAdvisorWorkspace ? 'فقط پیش‌نویس دانش‌آموز یا تسک‌های ساخته‌شده توسط خود مشاور قابل حذف است' : 'تسک‌های مشاور قابل حذف نیستند');
         return;
       }
       await deleteTask(taskId);
@@ -388,7 +428,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
         {/* Plan Tab Toggle */}
         <div className="mb-4">
-          <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={draftTasks.length} incompleteCount={incompleteTasks.length} />
+          <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length} />
         </div>
 
         {planTab === 'daily' ? (
@@ -430,9 +470,13 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         ) : (
           /* Draft and incomplete tasks tabs */
           <div className="space-y-3">
-            {secondaryTabTasks.length === 0 ? (
+            {planTab === 'draft' && localDrafts.map((draft) => (
+              <LocalDraftCard key={draft.key} draft={draft} onResume={() => resumeLocalDraft(draft)} onDelete={() => deleteLocalDraft(draft)} />
+            ))}
+            {secondaryTabTasks.length === 0 && (planTab !== 'draft' || localDrafts.length === 0) && (
               <IncompleteEmptyState draft={planTab === 'draft'} />
-            ) : (
+            )}
+            {secondaryTabTasks.length > 0 && (
               <SortableTaskList
                 tasks={secondaryTabTasks}
                 onComplete={handleComplete}
@@ -454,7 +498,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         {planTab === 'daily' && (
           <motion.button
             whileTap={{ scale: 0.92 }}
-            onClick={() => setAddDrawerOpen(true)}
+            onClick={openNewTask}
             className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
             aria-label="اضافه کردن تسک"
           >
@@ -489,7 +533,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={draftTasks.length} incompleteCount={incompleteTasks.length} />
+            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length} />
             {planTab === 'daily' && (
               <button
                 onClick={() => setWeeklyPlannerOpen(true)}
@@ -517,7 +561,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
               {/* Add task CTA */}
               <div className="surface-1 edge-highlight card-hover rounded-[var(--radius-lg)] p-4">
                 <button
-                  onClick={() => setAddDrawerOpen(true)}
+                  onClick={openNewTask}
                   className="glow-hover btn-hover flex items-center justify-center gap-2 w-full py-2.5 rounded-[var(--radius)] bg-[var(--accent)] text-[var(--bg-deep)] font-semibold text-sm min-h-[44px]"
                 >
                   <Plus className="w-4 h-4" />
@@ -553,9 +597,13 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         ) : (
           /* Draft or incomplete tasks tab — full width */
           <div className="max-w-3xl mx-auto space-y-3">
-            {secondaryTabTasks.length === 0 ? (
+            {planTab === 'draft' && localDrafts.map((draft) => (
+              <LocalDraftCard key={draft.key} draft={draft} onResume={() => resumeLocalDraft(draft)} onDelete={() => deleteLocalDraft(draft)} />
+            ))}
+            {secondaryTabTasks.length === 0 && (planTab !== 'draft' || localDrafts.length === 0) && (
               <IncompleteEmptyState draft={planTab === 'draft'} />
-            ) : (
+            )}
+            {secondaryTabTasks.length > 0 && (
               <SortableTaskList
                 tasks={secondaryTabTasks}
                 onComplete={handleComplete}
@@ -579,22 +627,41 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
           =================================================== */}
       <ManualEntrySheet
         open={addDrawerOpen}
-        onOpenChange={setAddDrawerOpen}
-        selectedDate={selectedDate}
-        existingTaskCount={tasks.filter((t) => t.date === selectedDate && t.studentId === studentId).length}
+        onOpenChange={(nextOpen) => {
+          setAddDrawerOpen(nextOpen);
+          if (!nextOpen) refreshLocalDrafts();
+        }}
+        selectedDate={resumingLocalDraft?.selectedDate || selectedDate}
+        existingTaskCount={tasks.filter((t) => t.date === (resumingLocalDraft?.selectedDate || selectedDate) && t.studentId === studentId).length}
         onSubmit={handleManualSubmit}
-        onSaved={(task) => { if (task.status === 'DRAFT') setPlanTab('draft'); }}
+        onSaved={(task) => {
+          if (task.activityTypes?.includes('کلاس/ویدیو')) {
+            setSelectedDate(task.date);
+            setPlanTab('daily');
+            return;
+          }
+          if (task.status === 'DRAFT') setPlanTab('draft');
+        }}
+        onDraftChange={refreshLocalDrafts}
+        draftSessionId={draftSessionId ?? undefined}
         studentId={studentId}
         grade={targetStudent?.grade}
         major={targetStudent?.major}
         createdBy={isAdvisorWorkspace ? 'advisor' : 'student'}
         createdById={isAdvisorWorkspace ? actor?.id ?? null : null}
+        persistFormDraft={!isAdvisorWorkspace}
+        allowDraftSave={!isAdvisorWorkspace}
       />
 
 
       <WeeklyPlanner
         open={weeklyPlannerOpen}
         onOpenChange={setWeeklyPlannerOpen}
+        onSelectDay={(date) => {
+          setSelectedDate(date);
+          setPlanTab('daily');
+          setWeeklyPlannerOpen(false);
+        }}
         targetStudent={targetStudent}
         actor={actor}
       />
@@ -677,9 +744,32 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         capabilities={isAdvisorWorkspace ? {
           moveDate: actionTask?.status === 'PENDING' || actionTask?.status === 'INCOMPLETE',
           moveToIncomplete: false,
-          delete: Boolean(actionTask && actionTask.createdBy === 'advisor' && actionTask.createdById === actor?.id && actionTask.status !== 'COMPLETED' && actionTask.status !== 'SKIPPED'),
+          delete: Boolean(actionTask && (
+            (actionTask.createdBy === 'advisor' && actionTask.createdById === actor?.id && actionTask.status !== 'COMPLETED' && actionTask.status !== 'SKIPPED')
+            || (actionTask.createdBy === 'student' && actionTask.status === 'DRAFT')
+          )),
         } : undefined}
       />
+    </div>
+  );
+}
+
+function LocalDraftCard({ draft, onResume, onDelete }: { draft: StoredTaskFormDraft; onResume: () => void; onDelete: () => void }) {
+  const subject = draft.draft.selection.subjectName || 'تسک جدید';
+  const topic = draft.draft.selection.displayText;
+  const dateLabel = draft.selectedDate ? formatPersianDate(parseLocalDate(draft.selectedDate)) : 'تاریخ انتخاب نشده';
+
+  return (
+    <div className="surface-1 flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--warning)]/25 p-4">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-sm font-bold text-[var(--foreground)]">{subject}</p>
+          <span className="rounded-md bg-[var(--warning)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--warning)]">پیش‌نویس فرم</span>
+        </div>
+        <p className="mt-1 truncate text-[11px] text-[var(--foreground-muted)]">{topic || 'در حال انتخاب درس و مبحث'} · {dateLabel}</p>
+      </div>
+      <button type="button" onClick={onResume} className="h-9 shrink-0 rounded-lg bg-[var(--warning)]/10 px-3 text-xs font-bold text-[var(--warning)]">ادامه</button>
+      <button type="button" onClick={onDelete} className="h-9 shrink-0 rounded-lg border border-[var(--danger)]/25 px-3 text-xs font-bold text-[var(--danger)]">حذف</button>
     </div>
   );
 }

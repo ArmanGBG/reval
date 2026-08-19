@@ -141,7 +141,7 @@ model Task {
   subject           String
   subjectColor      String
   topic             String?
-  fieldType         String // کنکور, نهایی
+  fieldType         String? // کنکور, نهایی; null for an unclassified class/video task
   activityTypes     String? // JSON array stored as string
   targetTimeMinutes Int?
   actualTimeMinutes Int?

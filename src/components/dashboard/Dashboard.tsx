@@ -23,9 +23,11 @@ import {
   toISODate,
 } from '@/lib/persian-date';
 import { useCurrentStudentId } from '@/lib/student-utils';
+import { activitySelectedStyle } from '@/lib/activity-styles';
 import { SortableTaskList } from '@/components/plan/SortableTaskList';
 import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
+import { TaskActionDialog } from '@/components/plan/TaskActionDialog';
 import { useCelebration } from '@/hooks/use-celebration';
 import NotificationCenter from '@/components/shared/NotificationCenter';
 
@@ -211,6 +213,7 @@ export default function Dashboard() {
   const [partialTask, setPartialTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   // Subject filter for today's task list (click a subject chip to focus on it)
   const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
 
@@ -261,10 +264,18 @@ export default function Dashboard() {
     toast('وضعیت برگشت');
   }, [resetTask]);
 
-  const handleDelete = useCallback((taskId: string) => {
-    deleteTask(taskId);
+  const handleDelete = useCallback(async (taskId: string) => {
+    await deleteTask(taskId);
     toast('تسک حذف شد');
   }, [deleteTask]);
+
+  const actionTask = actionTaskId ? tasks.find((task) => task.id === actionTaskId) ?? null : null;
+  const handleMoveDate = useCallback(async (taskId: string, date: string) => {
+    await updateTask(taskId, { date });
+  }, [updateTask]);
+  const handleMoveToIncomplete = useCallback(async (taskId: string) => {
+    await updateTask(taskId, { status: 'INCOMPLETE', completed: null });
+  }, [updateTask]);
 
   const handlePartialOpen = useCallback((id: string) => {
     const task = tasks.find((t) => t.id === id);
@@ -491,7 +502,7 @@ export default function Dashboard() {
             onComplete={handleComplete}
             onSkip={handleSkip}
             onDelete={handleDelete}
-            onAction={handleComplete}
+            onAction={setActionTaskId}
             onSettings={handlePartialOpen}
             onReset={handleReset}
             onReorder={reorderTasks}
@@ -510,6 +521,15 @@ export default function Dashboard() {
 
       {/* ===== Edit task modal ===== */}
       <TaskDetailsDialog task={editingTask} open={!!editingTask} onOpenChange={v => !v && setEditingTaskId(null)} grade={user?.grade ?? 'دوازدهم'} major={user?.major ?? 'تجربی'} onSave={updates => updateTask(editingTaskId!, updates)} />
+      <TaskActionDialog
+        task={actionTask}
+        open={!!actionTaskId}
+        onOpenChange={(open) => !open && setActionTaskId(null)}
+        onMoveDate={handleMoveDate}
+        onMoveToIncomplete={handleMoveToIncomplete}
+        onDelete={handleDelete}
+        capabilities={{ moveDate: true, moveToIncomplete: true, delete: true }}
+      />
     </div>
   );
 }
@@ -605,13 +625,13 @@ function EditTaskModal({
             <label className="text-[11px] font-medium text-[var(--foreground-muted)] mb-1.5 block">
               درس و مبحث
             </label>
-            <TaskSubjectPicker
+            {task.fieldType && <TaskSubjectPicker
               fieldType={task.fieldType}
               grade={user?.grade || 'دوازدهم'}
               major={user?.major || 'تجربی'}
               value={selection}
               onChange={handleChange}
-            />
+            />}
           </div>
 
           {/* Activity types */}
@@ -626,7 +646,7 @@ function EditTaskModal({
                   onClick={() => onToggleActivity(act)}
                   className={`btn-hover px-3 py-2 rounded-lg text-xs font-medium border ${
                     (task.activityTypes ?? []).includes(act)
-                      ? 'bg-[var(--accent)] text-[var(--bg-deep)] border-[var(--accent)]'
+                      ? activitySelectedStyle(act)
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)]'
                   }`}
                 >

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpen, ChevronDown, Layers3, Loader2 } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronDown, Layers3, Loader2 } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -17,6 +17,7 @@ import type { ActivityType, Task } from '@/lib/types';
 import { buildActivityBreakdown, buildDailyTrend, buildSubjectDistribution, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
 import { minutesToHoursLabel, toPersianDigits } from '@/lib/persian-date';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
+import { ACTIVITY_COLORS } from '@/lib/activity-styles';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
 type TimeFilter = (typeof TIME_FILTERS)[number];
@@ -34,9 +35,45 @@ interface CurriculumSubject {
       id: string;
       title: string;
       chapterNo: number;
+      pageStart: number | null;
+      pageEnd: number | null;
       topics: Array<{ id: string; title: string; topicNo: number }>;
     }>;
   }>;
+}
+
+interface CourseBook {
+  subject: CurriculumSubject;
+  grade: CurriculumSubject['grades'][number];
+}
+
+interface CourseGroup {
+  name: string;
+  color: string;
+  books: CourseBook[];
+}
+
+const GRADE_ORDER: Record<string, number> = { دهم: 1, یازدهم: 2, دوازدهم: 3 };
+const COURSE_PART_COLORS = ['#4DA3FF', '#7C8CFF', '#B07CFF'];
+
+function courseName(name: string): string {
+  return name.replace(/\s*[۱۲۳123]\s*$/, '').trim()
+    .replace(/^زیست(?:‌|\s)*شناسی$/, 'زیست')
+    .replace(/^زمین(?:‌|\s)*شناسی$/, 'زمین');
+}
+
+function ActivityColorLegend() {
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2" aria-label="راهنمای رنگ نوع فعالیت">
+      <span className="text-[10px] font-medium text-[var(--foreground-subtle)]">راهنمای رنگ:</span>
+      {(Object.keys(ACTIVITY_COLORS) as ActivityType[]).map((activity) => (
+        <span key={activity} className="inline-flex items-center gap-1.5 text-[10px] text-[var(--foreground-muted)]">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: ACTIVITY_COLORS[activity] }} />
+          {activity}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 interface ChapterActivity {
@@ -48,6 +85,7 @@ interface ChapterActivity {
   taskCount: number;
   activities: Array<{ name: ActivityType; minutes: number }>;
   topics: TopicActivity[];
+  classSessions: ClassSession[];
 }
 
 interface TopicActivity {
@@ -58,15 +96,39 @@ interface TopicActivity {
   tests: number;
   taskCount: number;
   activities: Array<{ name: ActivityType; minutes: number }>;
+  classSessions: ClassSession[];
 }
 
-const ACTIVITY_COLORS: Record<ActivityType, string> = {
-  'مطالعه': 'var(--chart-1)',
-  'مرور': 'var(--chart-2)',
-  'تست آموزشی': 'var(--chart-3)',
-  'تست سنجشی': 'var(--chart-5)',
-  'کلاس/ویدیو': 'var(--chart-4)',
-};
+interface ClassSession {
+  id: string;
+  teacherClassName: string;
+  sessionNumber: string;
+  minutes: number;
+  tests: number;
+  pageStart: number | null;
+  pageEnd: number | null;
+}
+
+function toClassSession(task: Task): ClassSession {
+  return {
+    id: task.id,
+    teacherClassName: task.teacherClassName || 'کلاس/ویدیو',
+    sessionNumber: task.sessionNumber || 'جلسه بدون شماره',
+    minutes: task.actualTimeMinutes ?? 0,
+    tests: task.actualTestCount ?? 0,
+    pageStart: task.pageStart ?? null,
+    pageEnd: task.pageEnd ?? null,
+  };
+}
+
+function ClassSessionMeta({ session }: { session: ClassSession }) {
+  const parts = [
+    session.minutes > 0 ? minutesToHoursLabel(session.minutes) : 'زمان ثبت نشده',
+    session.tests > 0 ? `${toPersianDigits(session.tests)} تست` : null,
+    session.pageStart != null && session.pageEnd != null ? `صفحات ${toPersianDigits(session.pageStart)} تا ${toPersianDigits(session.pageEnd)}` : null,
+  ].filter(Boolean);
+  return <span className="shrink-0 text-[#72E0BF]">{parts.join(' · ')}</span>;
+}
 
 function ReportTooltip({
   active,
@@ -97,6 +159,9 @@ function EmptyReport({ icon, text }: { icon: React.ReactNode; text: string }) {
 }
 
 function belongsToChapter(task: Task, chapter: CurriculumSubject['grades'][number]['chapters'][number]): boolean {
+  if (task.pageStart != null && task.pageEnd != null && chapter.pageStart != null && chapter.pageEnd != null) {
+    return chapter.pageStart <= task.pageEnd && task.pageStart <= chapter.pageEnd;
+  }
   if (task.chapterId === chapter.id) return true;
   const topicIds = task.topicIds?.length ? task.topicIds : task.topicId ? [task.topicId] : [];
   if (topicIds.some((id) => chapter.topics.some((topic) => topic.id === id))) return true;
@@ -107,6 +172,15 @@ function belongsToChapter(task: Task, chapter: CurriculumSubject['grades'][numbe
   return chapter.topics.some((topic) => topic.title === task.topic);
 }
 
+function chapterTaskShare(task: Task, chapter: CurriculumSubject['grades'][number]['chapters'][number]): number {
+  if (task.pageStart == null || task.pageEnd == null || chapter.pageStart == null || chapter.pageEnd == null) return 1;
+  const totalPages = task.pageEnd - task.pageStart + 1;
+  const overlapStart = Math.max(task.pageStart, chapter.pageStart);
+  const overlapEnd = Math.min(task.pageEnd, chapter.pageEnd);
+  const overlapPages = Math.max(0, overlapEnd - overlapStart + 1);
+  return totalPages > 0 ? overlapPages / totalPages : 1;
+}
+
 function aggregateChapter(
   chapter: CurriculumSubject['grades'][number]['chapters'][number],
   tasks: Task[],
@@ -115,7 +189,7 @@ function aggregateChapter(
   const activityMinutes = new Map<ActivityType, number>();
 
   for (const task of completed) {
-    const minutes = task.actualTimeMinutes ?? 0;
+    const minutes = (task.actualTimeMinutes ?? 0) * chapterTaskShare(task, chapter);
     const activities = task.activityTypes ?? [];
     if (activities.length === 0) continue;
     const share = minutes / activities.length;
@@ -149,6 +223,9 @@ function aggregateChapter(
       activities: [...activityMinutesByType.entries()]
         .map(([name, minutes]) => ({ name, minutes: Math.round(minutes) }))
         .sort((a, b) => b.minutes - a.minutes),
+      classSessions: topicTasks
+        .filter((task) => task.activityTypes?.includes('کلاس/ویدیو'))
+        .map(toClassSession),
     };
   });
 
@@ -156,13 +233,16 @@ function aggregateChapter(
     id: chapter.id,
     title: chapter.title,
     chapterNo: chapter.chapterNo,
-    minutes: completed.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0),
-    tests: completed.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0),
+    minutes: Math.round(completed.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0) * chapterTaskShare(task, chapter), 0)),
+    tests: Math.round(completed.reduce((sum, task) => sum + (task.actualTestCount ?? 0) * chapterTaskShare(task, chapter), 0)),
     taskCount: completed.length,
     activities: [...activityMinutes.entries()]
       .map(([name, minutes]) => ({ name, minutes: Math.round(minutes) }))
       .sort((a, b) => b.minutes - a.minutes),
     topics,
+    classSessions: completed
+      .filter((task) => task.activityTypes?.includes('کلاس/ویدیو'))
+      .map(toClassSession),
   };
 }
 
@@ -187,6 +267,7 @@ export default function MinimalAnalyticsView({
   const [reportView, setReportView] = useState<ReportView>(initialReportView);
   const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
   const [subjects, setSubjects] = useState<CurriculumSubject[]>([]);
+  const [selectedCourseName, setSelectedCourseName] = useState<string | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
   const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
@@ -226,6 +307,7 @@ export default function MinimalAnalyticsView({
         const result = [...merged.values()];
         if (!cancelled) {
           setSubjects(result);
+          setSelectedCourseName(null);
           setSelectedSubjectId(null);
           setSelectedGradeId(null);
         }
@@ -254,6 +336,26 @@ export default function MinimalAnalyticsView({
     [reportTasks, timeFilter, customRange],
   );
   const completedCount = reportTasks.filter((task) => task.status === 'COMPLETED').length;
+  const courseGroups = useMemo<CourseGroup[]>(() => {
+    const groups = new Map<string, CourseGroup>();
+    for (const subject of subjects) {
+      const name = courseName(subject.name);
+      const group = groups.get(name) ?? { name, color: subject.color, books: [] };
+      for (const grade of subject.grades) {
+        if (!group.books.some((book) => book.subject.id === subject.id && book.grade.id === grade.id)) {
+          group.books.push({ subject, grade });
+        }
+      }
+      groups.set(name, group);
+    }
+    return [...groups.values()]
+      .map((group) => ({
+        ...group,
+        books: group.books.sort((a, b) => (GRADE_ORDER[a.grade.grade] ?? 99) - (GRADE_ORDER[b.grade.grade] ?? 99)),
+      }))
+      .sort((a, b) => a.books[0]?.subject.name.localeCompare(b.books[0]?.subject.name, 'fa') ?? 0);
+  }, [subjects]);
+  const selectedCourse = courseGroups.find((course) => course.name === selectedCourseName) ?? null;
   const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) ?? null;
   const selectedGrade = selectedSubject?.grades.find((grade) => grade.id === selectedGradeId) ?? null;
   const subjectTasks = useMemo(() => {
@@ -273,6 +375,46 @@ export default function MinimalAnalyticsView({
     name: `فصل ${toPersianDigits(chapter.chapterNo)}`,
     ...Object.fromEntries(chapter.activities.map((activity) => [activity.name, activity.minutes])),
   }));
+  const courseOverview = useMemo(() => {
+    if (!selectedCourse) return [];
+    const subjectIds = new Set(selectedCourse.books.map((book) => book.subject.id));
+    const completed = reportTasks.filter((task) =>
+      task.status === 'COMPLETED' && (
+        (task.subjectId ? subjectIds.has(task.subjectId) : courseName(task.subject) === selectedCourse.name)
+      ),
+    );
+    const minutesFor = (predicate: (task: Task) => boolean) => completed
+      .filter(predicate)
+      .reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
+    const books = selectedCourse.books.map((book, index) => ({
+      key: book.grade.id,
+      name: book.subject.name,
+      minutes: minutesFor((task) =>
+        task.subjectId === book.subject.id
+        && task.curriculumMode !== 'THEMATIC'
+        && !task.activityTypes?.includes('کلاس/ویدیو'),
+      ),
+      fill: COURSE_PART_COLORS[index % COURSE_PART_COLORS.length],
+      book,
+    }));
+    return [
+      ...books,
+      { key: 'thematic', name: 'مطالعه مبحثی', minutes: minutesFor((task) => task.curriculumMode === 'THEMATIC'), fill: '#F2B84B', book: null },
+      { key: 'class-video', name: 'کلاس/ویدیو', minutes: minutesFor((task) => Boolean(task.activityTypes?.includes('کلاس/ویدیو'))), fill: '#35C49A', book: null },
+    ];
+  }, [reportTasks, selectedCourse]);
+  const courseClassSessions = useMemo(() => {
+    if (!selectedCourse) return [];
+    const subjectIds = new Set(selectedCourse.books.map((book) => book.subject.id));
+    return reportTasks
+      .filter((task) => task.status === 'COMPLETED' && task.activityTypes?.includes('کلاس/ویدیو') && (
+        (task.subjectId ? subjectIds.has(task.subjectId) : courseName(task.subject) === selectedCourse.name)
+      ))
+      .map((task) => ({
+        ...task,
+        linked: Boolean(task.chapterId || task.topicId || task.topicIds?.length || task.topicModeId),
+      }));
+  }, [reportTasks, selectedCourse]);
 
   return (
     <div dir="rtl" className={`mx-auto max-w-4xl ${embedded ? 'px-0 py-0' : 'px-4 py-6 md:px-0 md:py-8'}`}>
@@ -359,7 +501,7 @@ export default function MinimalAnalyticsView({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2">{(Object.keys(ACTIVITY_COLORS) as ActivityType[]).map((activity) => <span key={activity} className="inline-flex items-center gap-1.5 text-[10px] text-[var(--foreground-muted)]"><span className="h-2 w-2 rounded-sm" style={{ backgroundColor: ACTIVITY_COLORS[activity] }} />{activity}</span>)}</div>
+            <ActivityColorLegend />
           </> : <EmptyReport icon={<Layers3 className="h-5 w-5" />} text="روش مطالعه‌ای برای این بازه ثبت نشده است." />
         )}
       </section>
@@ -367,7 +509,7 @@ export default function MinimalAnalyticsView({
       {!embedded && <section>
         <div className="mb-3">
           <h2 className="text-base font-bold text-[var(--foreground)]">تفکیک دروس و فصول</h2>
-          <p className="mt-1 text-xs text-[var(--foreground-muted)]">ابتدا درس و سپس پایه را انتخاب کنید.</p>
+          <p className="mt-1 text-xs text-[var(--foreground-muted)]">ابتدا درس را انتخاب کنید؛ سپس نمای جامع یا جزئیات هر کتاب را ببینید.</p>
         </div>
 
         {loading ? (
@@ -377,58 +519,116 @@ export default function MinimalAnalyticsView({
         ) : (
           <>
             <div className="mb-5 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {subjects.map((subject) => (
+              {courseGroups.map((course) => (
                 <button
-                  key={subject.id}
+                  key={course.name}
                   onClick={() => {
-                    setSelectedSubjectId(subject.id);
+                    setSelectedCourseName(course.name);
+                    setSelectedSubjectId(null);
                     setSelectedGradeId(null);
                     setExpandedChapterId(null);
                   }}
                   className={`shrink-0 rounded-lg border px-4 py-2 text-sm ${
-                    selectedSubjectId === subject.id
+                    selectedCourseName === course.name
                       ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                       : 'border-[var(--border)] text-[var(--foreground-muted)]'
                   }`}
                 >
-                  {subject.name}
+                  {course.name}
                 </button>
               ))}
             </div>
 
-            {!selectedSubject && (
+            {!selectedCourse && (
               <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--foreground-muted)]">
-                برای مشاهده گزارش فصل‌ها، یک درس را انتخاب کنید.
+                برای مشاهده گزارش جامع، یک درس را انتخاب کنید.
               </div>
             )}
 
-            {selectedSubject && (
-              <div className="mb-5">
-                <p className="mb-2 text-xs font-medium text-[var(--foreground-muted)]">پایه {selectedSubject.name}</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSubject.grades.map((grade) => (
+            {selectedCourse && !selectedSubject && (
+              <>
+                <div className="mb-5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--foreground)]">نمای جامع {selectedCourse.name}</h3>
+                      <p className="mt-1 text-[11px] text-[var(--foreground-muted)]">زمان واقعی کتاب‌ها، مطالعه مبحثی و کلاس/ویدیو</p>
+                    </div>
+                    <span className="shrink-0 text-xs text-[var(--foreground-muted)]">{minutesToHoursLabel(courseOverview.reduce((sum, item) => sum + item.minutes, 0))}</span>
+                  </div>
+                  {courseOverview.some((item) => item.minutes > 0) ? (
+                    <div className="h-64" dir="ltr">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={courseOverview} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+                          <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+                          <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                          <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                          <Bar dataKey="minutes" name="زمان" radius={[5, 5, 0, 0]} maxBarSize={42}>
+                            {courseOverview.map((item) => <Cell key={item.key} fill={item.fill} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="py-10 text-center text-xs text-[var(--foreground-muted)]">در این بازه فعالیت تکمیل‌شده‌ای برای این درس وجود ندارد.</p>
+                  )}
+                  <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
+                    {courseOverview.map((item) => <span key={item.key} className="inline-flex items-center gap-1.5 text-[10px] text-[var(--foreground-muted)]"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: item.fill }} />{item.name}</span>)}
+                  </div>
+                </div>
+
+                <div className="mb-5">
+                  <p className="mb-2 text-xs font-medium text-[var(--foreground-muted)]">جزئیات کتاب‌ها</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {selectedCourse.books.map((book) => (
                     <button
-                      key={grade.id}
+                      key={`${book.subject.id}:${book.grade.id}`}
                       onClick={() => {
-                        setSelectedGradeId(grade.id);
+                        setSelectedSubjectId(book.subject.id);
+                        setSelectedGradeId(book.grade.id);
                         setExpandedChapterId(null);
                       }}
-                      className={`rounded-lg border px-4 py-2 text-sm ${
-                        selectedGradeId === grade.id
-                          ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                          : 'border-[var(--border)] text-[var(--foreground-muted)]'
-                      }`}
+                      className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 text-right text-sm text-[var(--foreground)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--accent)]"
                     >
-                      {grade.grade}
+                      <span className="font-medium">{book.subject.name}</span>
+                      <span className="text-[10px] text-[var(--foreground-muted)]">{book.grade.grade}</span>
                     </button>
                   ))}
+                  </div>
                 </div>
-              </div>
+
+                {courseClassSessions.length > 0 && (
+                  <div className="mb-5 overflow-hidden rounded-xl border border-[#35C49A]/25 bg-[#35C49A]/[0.04]">
+                    <div className="flex items-center justify-between border-b border-[#35C49A]/20 px-4 py-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-[var(--foreground)]">جلسات کلاس/ویدیو</h3>
+                        <p className="mt-1 text-[10px] text-[var(--foreground-muted)]">جلسات متصل و بدون اتصال به محتوای درسی</p>
+                      </div>
+                      <div className="text-left text-[10px] text-[#72E0BF]"><p>{toPersianDigits(courseClassSessions.length)} جلسه</p><p className="mt-1">{minutesToHoursLabel(courseClassSessions.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0))}</p></div>
+                    </div>
+                    <div className="divide-y divide-[#35C49A]/15">
+                      {courseClassSessions.map((task) => (
+                        <div key={task.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium text-[var(--foreground)]">{task.teacherClassName || 'کلاس/ویدیو'}{task.sessionNumber ? ` · ${task.sessionNumber}` : ''}</p>
+                            <p className="mt-1 text-[10px] text-[var(--foreground-muted)]">{task.linked ? task.topic || 'متصل به محتوای درسی' : 'هنوز به کتاب یا مبحثی متصل نشده'}</p>
+                          </div>
+                          <span className="shrink-0 text-[10px] text-[#72E0BF]">{minutesToHoursLabel(task.actualTimeMinutes ?? 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
-            {selectedSubject && !selectedGrade && (
-              <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--foreground-muted)]">
-                پایه موردنظر را انتخاب کنید.
+            {selectedSubject && selectedGrade && (
+              <div className="mb-4 flex items-center gap-2">
+                <button type="button" onClick={() => { setSelectedSubjectId(null); setSelectedGradeId(null); setExpandedChapterId(null); }} className="icon-btn flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground-muted)]" aria-label="بازگشت به نمای جامع"><ArrowRight className="h-4 w-4" /></button>
+                <div>
+                  <p className="text-xs font-medium text-[var(--foreground)]">{selectedSubject.name}</p>
+                  <p className="text-[10px] text-[var(--foreground-muted)]">جزئیات فصل‌ها و گفتارها</p>
+                </div>
               </div>
             )}
 
@@ -443,7 +643,7 @@ export default function MinimalAnalyticsView({
                   <span className="shrink-0 text-xs text-[var(--foreground-muted)]">{minutesToHoursLabel(subjectMinutes)}</span>
                 </div>
                 {chapterChartData.some((chapter) => Object.values(chapter).some((value) => typeof value === 'number' && value > 0)) ? (
-                  <div className="h-64" dir="ltr">
+                  <><div className="h-64" dir="ltr">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chapterChartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                         <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
@@ -455,7 +655,7 @@ export default function MinimalAnalyticsView({
                         ))}
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
+                  </div><ActivityColorLegend /></>
                 ) : (
                   <p className="py-10 text-center text-xs text-[var(--foreground-muted)]">در این بازه فعالیت تکمیل‌شده‌ای برای نمودار وجود ندارد.</p>
                 )}
@@ -500,6 +700,19 @@ export default function MinimalAnalyticsView({
                           ))}
                         </div>
                       )}
+                      {chapter.classSessions.length > 0 && (
+                        <div className="mt-3 rounded-lg border border-[#35C49A]/20 bg-[#35C49A]/[0.04] p-3">
+                          <p className="mb-2 text-[10px] font-semibold text-[#72E0BF]">جلسات کلاس این فصل</p>
+                          <div className="space-y-1.5">
+                            {chapter.classSessions.map((session) => (
+                              <div key={session.id} className="flex items-center justify-between gap-3 text-[10px] text-[var(--foreground-muted)]">
+                                <span className="min-w-0 truncate">{session.teacherClassName} · {session.sessionNumber}</span>
+                                <ClassSessionMeta session={session} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {expanded && (
                         <div className="mt-4 border-t border-[var(--border)] pt-3">
                           <p className="mb-2 text-[11px] font-medium text-[var(--foreground-muted)]">گفتارها و زیرمبحث‌ها</p>
@@ -523,7 +736,7 @@ export default function MinimalAnalyticsView({
                                       {topic.tests > 0 && <p className="mt-1">{toPersianDigits(topic.tests)} تست</p>}
                                     </div>
                                   </div>
-                                  {topic.activities.length > 0 && (
+                                   {topic.activities.length > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-1.5">
                                       {topic.activities.map((activity) => (
                                         <span key={activity.name} className="rounded bg-[var(--bg-elevated)] px-1.5 py-1 text-[9px] text-[var(--foreground-muted)]">
@@ -531,7 +744,20 @@ export default function MinimalAnalyticsView({
                                         </span>
                                       ))}
                                     </div>
-                                  )}
+                                   )}
+                                   {topic.classSessions.length > 0 && (
+                                     <div className="mt-2 rounded-md border border-[#35C49A]/20 bg-[#35C49A]/[0.04] p-2">
+                                       <p className="mb-1.5 text-[9px] font-semibold text-[#72E0BF]">جلسات کلاس این گفتار</p>
+                                       <div className="space-y-1">
+                                         {topic.classSessions.map((session) => (
+                                           <div key={session.id} className="flex items-center justify-between gap-2 text-[9px] text-[var(--foreground-muted)]">
+                                             <span className="min-w-0 truncate">{session.teacherClassName} · {session.sessionNumber}</span>
+                                             <ClassSessionMeta session={session} />
+                                           </div>
+                                         ))}
+                                       </div>
+                                     </div>
+                                   )}
                                 </div>
                               ))}
                             </div>

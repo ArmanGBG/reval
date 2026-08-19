@@ -12,7 +12,7 @@ export interface CreateTaskPayload {
   studentId: string;
   subjectId: string;
   topic?: string | null;
-  fieldType: Task['fieldType'];
+  fieldType?: Task['fieldType'];
   activityTypes?: Task['activityTypes'];
   targetTimeMinutes?: number | null;
   actualTimeMinutes?: number | null;
@@ -97,6 +97,8 @@ function normalizeTask(raw: Record<string, unknown>): Task {
             : 'PENDING';
   return {
     id: raw.id as string,
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
     studentId: raw.studentId as string,
     subjectId: raw.subjectId as string,
     subject: raw.subject as string,

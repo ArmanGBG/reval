@@ -1,0 +1,1 @@
+ALTER TABLE "Task" ALTER COLUMN "fieldType" DROP NOT NULL;
