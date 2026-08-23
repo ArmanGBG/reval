@@ -354,7 +354,7 @@ export function PricingCalculator() {
             {/* CTA button */}
             <a
               href="#signup"
-              className="shine-sweep focus-ring-mint touch-target group/btn mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-mint px-6 py-3.5 text-sm font-bold text-[#06120c] shadow-[0_10px_36px_-8px_var(--mint)] transition-all duration-300 hover:shadow-[0_14px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02] sm:w-auto"
+              className="shine-sweep focus-ring-mint group/btn mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-mint h-12 px-6 text-sm font-semibold text-[#06120c] shadow-[0_10px_36px_-8px_var(--mint)] transition-all duration-300 hover:shadow-[0_14px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02] sm:w-auto"
             >
               شروع کن
               <ArrowLeft className="size-4 transition-transform duration-300 group-hover/btn:-translate-x-1" />

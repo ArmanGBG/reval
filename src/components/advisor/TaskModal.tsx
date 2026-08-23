@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Check, ClipboardPlus, UserRound } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import {
   Task,
@@ -297,63 +297,94 @@ export function TaskModal({
       }}
     >
       <DialogContent
-        className="bg-[var(--bg-overlay)] border-[var(--border-strong)] text-[var(--foreground)] max-h-[90vh] overflow-y-auto rounded-2xl"
+        className="max-h-[92dvh] gap-0 overflow-hidden rounded-2xl border-[var(--border-strong)] bg-[var(--bg-overlay)] p-0 text-[var(--foreground)] shadow-2xl sm:max-w-xl"
         dir="rtl"
       >
-        <DialogHeader>
-          <DialogTitle className="text-[var(--foreground)] text-base">
-            {isEdit ? 'ویرایش وظیفه' : 'افزودن وظیفه جدید'}
-          </DialogTitle>
-          <DialogDescription className="text-[var(--foreground-muted)]">
-            {isEdit
-              ? 'جزئیات وظیفه را ویرایش کنید'
-              : 'یک وظیفه جدید برای دانش‌آموز تعریف کنید'}
-          </DialogDescription>
+        <DialogHeader className="relative overflow-hidden border-b border-[var(--border)] bg-[var(--bg-elevated)] px-5 py-5 pr-14 text-right sm:px-6 sm:pr-14">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_0%,color-mix(in_srgb,var(--accent)_12%,transparent),transparent_48%)]" />
+          <div className="relative flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[var(--accent)]/20 bg-[var(--accent-soft)] text-[var(--accent)]">
+              <ClipboardPlus className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-bold leading-6 text-[var(--foreground)] sm:text-lg">
+                {isEdit ? 'ویرایش وظیفه' : 'افزودن وظیفه جدید'}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-xs leading-5 text-[var(--foreground-muted)]">
+                {isEdit
+                  ? 'جزئیات وظیفه را ویرایش و به‌روزرسانی کنید'
+                  : 'درس را انتخاب کنید؛ جزئیات تکمیلی بعداً قابل ثبت است'}
+              </DialogDescription>
+            </div>
+          </div>
+          {student && (
+            <div className="relative mt-4 flex w-fit items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-overlay)]/70 px-3 py-1.5 text-[11px] text-[var(--foreground-muted)]">
+              <UserRound className="size-3.5 text-[var(--accent)]" aria-hidden="true" />
+              <span>برای</span>
+              <span className="font-semibold text-[var(--foreground)]">{student.name}</span>
+              <span className="text-[var(--foreground-subtle)]">·</span>
+              <span>{studentGrade}، {studentMajor}</span>
+            </div>
+          )}
         </DialogHeader>
 
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 custom-scrollbar sm:px-6">
         {studentInfoMissing ? (
-          <div className="surface-1 rounded-xl p-4 flex items-start gap-3 border border-[var(--warning)]/30">
-            <AlertCircle className="w-5 h-5 text-[var(--warning)] shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/5 p-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--warning)]/10 text-[var(--warning)]">
+              <AlertCircle className="size-5" aria-hidden="true" />
+            </span>
             <div className="text-sm text-[var(--foreground)]">
               <p className="font-semibold mb-1">اطلاعات دانش‌آموز ناقص است</p>
-              <p className="text-[var(--foreground-muted)] text-xs">
+              <p className="text-xs leading-6 text-[var(--foreground-muted)]">
                 پایه یا رشته این دانش‌آموز در پروفایل ثبت نشده. لطفاً ابتدا
                 پروفایل دانش‌آموز را تکمیل کنید تا بتوانید برای او وظیفه تعریف کنید.
               </p>
             </div>
           </div>
         ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* Step 1: Field Type */}
-           {!isClassVideo && <div>
-            <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block font-medium">
-              حوزه
-            </label>
-            <div className="flex gap-2.5">
+           {!isClassVideo && <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/55 p-3.5 sm:p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)]">۱</span>
+              <div>
+                <p className="text-xs font-semibold text-[var(--foreground)]">انتخاب حوزه</p>
+                <p className="mt-0.5 text-[10px] text-[var(--foreground-subtle)]">نوع برنامه‌ریزی این وظیفه را مشخص کنید</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
               {(['کنکور', 'نهایی'] as FieldType[]).map((ft) => (
                 <button
                   key={ft}
+                  type="button"
                   onClick={() => {
                     setFieldType(ft);
                     setSelection({});
                   }}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium border btn-hover transition-all ${
+                  aria-pressed={fieldType === ft}
+                  className={`relative flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
                     fieldType === ft
-                      ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
-                      : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                      ? 'border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[var(--accent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_8%,transparent)]'
+                      : 'border-[var(--border)] bg-[var(--bg-overlay)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]'
                   }`}
                 >
+                  {fieldType === ft && <Check className="size-3.5" aria-hidden="true" />}
                   {ft}
                 </button>
               ))}
             </div>
-           </div>}
+           </section>}
 
           {/* Quick create stops at subject; edit retains the full form. */}
-          <div>
-            <label className="text-[11px] text-[var(--foreground-muted)] mb-1.5 block font-medium">
-               {isEdit ? 'درس و مبحث' : 'درس'}
-            </label>
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/55 p-3.5 sm:p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)]">{isClassVideo ? '۱' : '۲'}</span>
+              <div>
+                <p className="text-xs font-semibold text-[var(--foreground)]">{isEdit ? 'درس و مبحث' : 'انتخاب درس'}</p>
+                <p className="mt-0.5 text-[10px] text-[var(--foreground-subtle)]">از فهرست، محتوای موردنظر را انتخاب کنید</p>
+              </div>
+            </div>
            <TaskSubjectPicker
               fieldType={fieldType}
               grade={studentGrade}
@@ -374,20 +405,24 @@ export function TaskModal({
               allowClassCurriculumLink={isEdit}
               teacherClassSuggestions={teacherClassSuggestions}
             />
-          </div>
+          </section>
 
           {isEdit && !isClassVideo && <>
 
           {/* Activity Types */}
-          <div>
-            <label className="text-[11px] text-[var(--foreground-muted)] mb-2 block font-medium">
-              نوع فعالیت
-            </label>
+           <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/55 p-3.5 sm:p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)]">۳</span>
+              <div>
+                <p className="text-xs font-semibold text-[var(--foreground)]">نوع فعالیت</p>
+                <p className="mt-0.5 text-[10px] text-[var(--foreground-subtle)]">یک یا چند فعالیت را برای این وظیفه انتخاب کنید</p>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {ALL_ACTIVITY_TYPES.map((act) => (
                 <label
                   key={act}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border cursor-pointer nav-item-hover ${
+                  className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${
                     activityTypes.includes(act)
                       ? activitySelectedStyle(act)
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
@@ -402,7 +437,7 @@ export function TaskModal({
                 </label>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Class/Video details */}
           {activityTypes.includes('کلاس/ویدیو') && (
@@ -498,7 +533,15 @@ export function TaskModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/55 p-3.5 sm:p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex size-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)]">۴</span>
+            <div>
+              <p className="text-xs font-semibold text-[var(--foreground)]">هدف‌گذاری</p>
+              <p className="mt-0.5 text-[10px] text-[var(--foreground-subtle)]">زمان و تعداد تست مورد انتظار را مشخص کنید</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <ModalInput
                 label="زمان هدف (دقیقه)"
@@ -557,21 +600,25 @@ export function TaskModal({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+          </section>
           </>}
         </div>
         )}
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="border-t border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3 sm:px-6">
           <DialogClose asChild>
-            <button className="px-4 py-2.5 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] btn-hover rounded-lg">
+            <button type="button" className="h-11 rounded-lg px-4 text-sm text-[var(--foreground-muted)] transition-colors hover:bg-[var(--bg-overlay)] hover:text-[var(--foreground)]">
               انصراف
             </button>
           </DialogClose>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="px-6 py-2.5 bg-[var(--accent)] text-[var(--bg-deep)] rounded-lg text-sm font-semibold glow-hover disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-semibold text-[var(--bg-deep)] transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-elevated)] disabled:cursor-not-allowed disabled:opacity-40"
           >
+            <Check className="size-4" aria-hidden="true" />
             {isEdit ? 'ذخیره تغییرات' : 'افزودن وظیفه'}
           </button>
         </DialogFooter>

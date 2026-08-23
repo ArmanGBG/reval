@@ -174,13 +174,13 @@ export function GroupExamModal({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <DialogClose asChild>
-            <button className="px-4 py-2.5 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] btn-hover rounded-lg">
+            <button className="px-4 h-10 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] btn-hover rounded-lg">
               انصراف
             </button>
           </DialogClose>
           <button
             onClick={handleSubmit}
-            className="px-6 py-2.5 bg-[var(--accent)] text-white rounded-lg text-sm font-semibold btn-hover"
+            className="px-6 h-11 bg-[var(--accent)] text-white rounded-lg text-sm font-semibold btn-hover"
           >
             ثبت آزمون گروهی
           </button>

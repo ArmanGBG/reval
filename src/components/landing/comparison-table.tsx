@@ -287,7 +287,7 @@ export function ComparisonTable() {
                 <a
                   href="#signup"
                   className={cn(
-                    "shine-sweep inline-flex items-center justify-center rounded-full px-3 py-2 text-[11px] font-semibold transition-all duration-300 sm:text-xs",
+                    "shine-sweep inline-flex items-center justify-center rounded-full h-9 px-4 text-xs font-semibold transition-all duration-300",
                     i === 1
                       ? "bg-mint text-[#06120c] shadow-[0_4px_20px_-4px_var(--mint)] hover:brightness-110 hover:scale-105"
                       : "border border-border/60 bg-card/40 text-foreground hover:bg-card/70"

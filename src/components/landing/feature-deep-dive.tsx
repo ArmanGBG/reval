@@ -847,7 +847,7 @@ export function FeatureDeepDive() {
               </p>
               <a
                 href="#signup"
-                className="group mt-8 inline-flex items-center gap-2.5 rounded-full bg-mint px-7 py-3.5 text-sm font-semibold text-[#06120c] shadow-[0_14px_44px_-10px_var(--mint)] transition-all duration-300 hover:shadow-[0_18px_52px_-8px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02]"
+                className="group mt-8 inline-flex items-center gap-2.5 rounded-full bg-mint h-12 px-6 text-sm font-semibold text-[#06120c] shadow-[0_14px_44px_-10px_var(--mint)] transition-all duration-300 hover:shadow-[0_18px_52px_-8px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02]"
               >
                 شروع رایگان
                 <ChevronLeft className="size-4 transition-transform duration-300 group-hover:-translate-x-1" />

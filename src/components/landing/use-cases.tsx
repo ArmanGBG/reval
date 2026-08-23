@@ -223,7 +223,7 @@ export function UseCasesShowcase() {
               <a
                 href="#"
                 onClick={(e) => e.preventDefault()}
-                className="focus-ring-mint touch-target shine-sweep relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-xl bg-mint px-6 py-3 text-sm font-bold text-[#06120c] shadow-[0_0_24px_color-mix(in_oklch,var(--mint)_35%,transparent)] transition-all hover:scale-[1.03] hover:shadow-[0_0_32px_color-mix(in_oklch,var(--mint)_55%,transparent)]"
+                className="focus-ring-mint shine-sweep relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-full bg-mint h-12 px-6 text-sm font-semibold text-[#06120c] shadow-[0_0_24px_color-mix(in_oklch,var(--mint)_35%,transparent)] transition-all hover:scale-[1.03] hover:shadow-[0_0_32px_color-mix(in_oklch,var(--mint)_55%,transparent)]"
               >
                 با ما مشورت کن
                 <ArrowLeft className="size-4" />

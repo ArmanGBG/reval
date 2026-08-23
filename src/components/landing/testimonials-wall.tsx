@@ -466,7 +466,7 @@ export function TestimonialsWall() {
               onClick={(e) => e.preventDefault()}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
-              className="shine-sweep focus-ring-mint touch-target inline-flex items-center gap-2 rounded-xl bg-mint px-7 py-3.5 text-sm font-bold text-[#06120c] shadow-[0_0_24px_-6px_var(--mint)] transition-shadow duration-300 hover:shadow-[0_0_32px_-4px_var(--mint)]"
+              className="shine-sweep focus-ring-mint inline-flex items-center gap-2 rounded-full bg-mint h-12 px-6 text-sm font-semibold text-[#06120c] shadow-[0_0_24px_-6px_var(--mint)] transition-shadow duration-300 hover:shadow-[0_0_32px_-4px_var(--mint)]"
             >
               تجربه‌ات رو به اشتراک بذار
               <ArrowLeft className="size-4" />

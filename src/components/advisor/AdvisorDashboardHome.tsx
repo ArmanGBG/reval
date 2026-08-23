@@ -20,7 +20,7 @@ import { toPersianDigits, computeRisks, computeStudentStatus, STATUS_CONFIG, RIS
 
 // ===== ADVISOR VIEW 1: Dashboard (Global KPIs) =====
 export function AdvisorDashboardHome() {
-  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
+  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents, setCurrentView } = useAppStore();
   const students = advisorStudents;
 
   // Load real students from DB if not already loaded
@@ -48,7 +48,7 @@ export function AdvisorDashboardHome() {
   const atRiskCount = statusCounts['at-risk'] + statusCounts.critical;
 
   const kpis = [
-    { icon: <Users className="w-4 h-4" />, label: 'کل دانش‌آموزان', value: toPersianDigits(students.length), sub: 'تحت نظارت', accent: 'var(--accent)' },
+    { icon: <Users className="w-4 h-4" />, label: 'کل دانش‌آموزان', value: toPersianDigits(students.length), sub: 'تحت نظارت', accent: 'var(--accent)', view: 'advisor-students' as const },
     { icon: <AlertTriangle className="w-4 h-4" />, label: 'نیاز به مداخله', value: toPersianDigits(atRiskCount), sub: 'دانش‌آموز', accent: 'var(--danger)' },
     { icon: <Clock className="w-4 h-4" />, label: 'میانگین مطالعه', value: toPersianDigits(avgStudy), sub: 'ساعت در هفته', accent: 'var(--accent)' },
     { icon: <UserCheck className="w-4 h-4" />, label: 'میانگین رعایت', value: `${toPersianDigits(avgAdherence)}٪`, sub: 'تکمیل وظایف', accent: 'var(--warning)' },
@@ -65,12 +65,15 @@ export function AdvisorDashboardHome() {
       {/* Top row: KPI cards (mobile: 2-col grid, desktop: 4-col span 3 each) */}
       <div className="grid grid-cols-2 md:grid-cols-12 gap-3 md:gap-4">
         {kpis.map((kpi, i) => (
-          <motion.div
+          <motion.button
             key={kpi.label}
+            type="button"
+            onClick={() => kpi.view && setCurrentView(kpi.view)}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="md:col-span-3 surface-1 card-hover rounded-xl md:rounded-2xl p-4 md:p-5 edge-highlight"
+            className={`md:col-span-3 surface-1 card-hover rounded-xl md:rounded-2xl p-4 md:p-5 edge-highlight text-right ${kpi.view ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]' : ''}`}
+            aria-label={kpi.view ? 'نمایش فهرست دانش‌آموزان' : undefined}
           >
             <div className="flex items-center gap-2 mb-3">
               <span
@@ -85,7 +88,7 @@ export function AdvisorDashboardHome() {
               <p className="text-2xl md:text-3xl font-black text-[var(--foreground)] tabular-nums">{kpi.value}</p>
               <span className="text-[10px] md:text-[11px] text-[var(--foreground-subtle)]">{kpi.sub}</span>
             </div>
-          </motion.div>
+          </motion.button>
         ))}
       </div>
 

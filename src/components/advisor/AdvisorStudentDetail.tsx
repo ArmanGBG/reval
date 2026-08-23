@@ -73,7 +73,7 @@ export function AdvisorStudentDetail() {
     <div className="space-y-5" dir="rtl">
       <button
         onClick={() => { setSelectedStudentId(null); setCurrentView('advisor-students'); }}
-        className="flex min-h-[44px] items-center gap-2 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+        className="flex min-h-[44px] items-center gap-1.5 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
       >
         <ArrowRight className="w-4 h-4" />
         بازگشت به دانش‌آموزان
@@ -132,7 +132,7 @@ export function AdvisorStudentDetail() {
           <div className="space-y-3">
             <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="عنوان پیام" className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-overlay)] p-3 text-sm outline-none focus:border-[var(--accent)]/50" />
             <textarea value={body} onChange={(event) => setBody(event.target.value)} placeholder="متن پیام" rows={6} className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg-overlay)] p-3 text-sm outline-none focus:border-[var(--accent)]/50" />
-            <button disabled={sending} onClick={sendMessage} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-5 text-sm font-bold text-[var(--bg-deep)] disabled:opacity-50">
+            <button disabled={sending} onClick={sendMessage} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-6 text-sm font-bold text-[var(--bg-deep)] disabled:opacity-50">
               <Send className="w-4 h-4" />
               {sending ? 'در حال ارسال...' : 'ارسال پیام'}
             </button>

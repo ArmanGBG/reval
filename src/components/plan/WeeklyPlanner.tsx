@@ -289,19 +289,19 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
               <>
                 <button
                   onClick={() => setWeekOffset((v) => v - 1)}
-                  className="icon-btn w-7 h-7 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs"
+                  className="icon-btn size-9 rounded-md border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs"
                 >
                   {'<'}
                 </button>
                 <button
                   onClick={() => setWeekOffset(0)}
-                  className="btn-hover h-7 px-3 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs font-medium"
+                  className="btn-hover h-9 px-3 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs font-medium"
                 >
                   {weekOffset === 0 ? 'این هفته' : weekOffset > 0 ? `${toPersianDigits(weekOffset)} هفته بعد` : `${toPersianDigits(Math.abs(weekOffset))} هفته قبل`}
                 </button>
                 <button
                   onClick={() => setWeekOffset((v) => v + 1)}
-                  className="icon-btn w-7 h-7 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs"
+                  className="icon-btn size-9 rounded-md border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] text-xs"
                 >
                   {'>'}
                 </button>
@@ -309,7 +309,7 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
             )}
             <button
               onClick={() => onOpenChange(false)}
-              className="icon-btn w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] ml-1"
+              className="icon-btn size-9 rounded-md border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -418,7 +418,7 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
           </p>
           <button
             onClick={() => onOpenChange(false)}
-            className="btn-hover glow-hover h-10 px-6 rounded-xl bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm"
+            className="btn-hover glow-hover h-11 px-6 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm"
           >
             بستن
           </button>
@@ -669,7 +669,7 @@ function AddSubjectModal({
           </div>
           <button
             onClick={onClose}
-            className="icon-btn w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)]"
+            className="icon-btn size-9 rounded-md border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)]"
           >
             <X className="w-4 h-4" />
           </button>
@@ -690,7 +690,7 @@ function AddSubjectModal({
               <div className="space-y-3">
                 <button type="button" onClick={() => setClassVariant(null)} className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)]"><ChevronRight className="h-3.5 w-3.5" /> بازگشت</button>
                  <ClassSessionFields teacherClassName={teacherClassName} sessionNumber={sessionNumber} teacherSuggestions={teacherClassSuggestions} onTeacherClassNameChange={setTeacherClassName} onSessionNumberChange={setSessionNumber} />
-                <button type="button" disabled={!classSessionDetailsComplete(teacherClassName, sessionNumber)} onClick={() => onSelect({ ...classVariant, quickMode: 'CLASS_VIDEO', teacherClassName, sessionNumber })} className="h-11 w-full rounded-xl bg-[#35C49A] text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40">ثبت کلاس/ویدیو</button>
+                <button type="button" disabled={!classSessionDetailsComplete(teacherClassName, sessionNumber)} onClick={() => onSelect({ ...classVariant, quickMode: 'CLASS_VIDEO', teacherClassName, sessionNumber })} className="h-11 w-full rounded-lg bg-[#35C49A] text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40">ثبت کلاس/ویدیو</button>
               </div>
             ) : !selectedGroup ? (
               <div className="grid grid-cols-1 gap-2">

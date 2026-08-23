@@ -237,7 +237,7 @@ export default function ToolsHub() {
                 </div>
                 <button
                   onClick={handleClose}
-                  className="icon-btn w-9 h-9 rounded-full surface-1 border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                  className="icon-btn size-9 rounded-md surface-1 border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -579,7 +579,7 @@ function FlashcardsTool() {
       <div className="mb-4">
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="btn-hover flex items-center gap-2 bg-[var(--accent-soft)] text-[var(--accent)] rounded-[var(--radius)] px-4 py-2.5 text-sm font-medium min-h-[44px] hover:bg-[var(--accent-soft)] border border-[var(--border-strong)]"
+          className="btn-hover flex items-center gap-2 bg-[var(--accent-soft)] text-[var(--accent)] rounded-lg px-4 h-10 text-sm font-medium hover:bg-[var(--accent-soft)] border border-[var(--border-strong)]"
         >
           <Plus className="w-4 h-4" />
           افزودن کارت جدید
@@ -631,13 +631,13 @@ function FlashcardsTool() {
               <div className="flex gap-2">
                 <button
                   onClick={handleAddCard}
-                  className="btn-hover glow-hover flex-1 bg-[var(--accent)] text-[var(--bg-deep)] font-bold rounded-[var(--radius)] py-3 text-sm min-h-[44px] hover:bg-[var(--accent-hover)]"
+                  className="btn-hover glow-hover flex-1 bg-[var(--accent)] text-[var(--bg-deep)] font-bold rounded-lg h-11 text-sm hover:bg-[var(--accent-hover)]"
                 >
                   ذخیره کارت
                 </button>
                 <button
                   onClick={() => toast('آپلود تصویر به زودی!')}
-                  className="icon-btn w-12 h-12 surface-1 rounded-[var(--radius)] border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] shrink-0"
+                  className="icon-btn size-11 surface-1 rounded-lg border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)] shrink-0"
                 >
                   <ImagePlus className="w-5 h-5" />
                 </button>
@@ -798,7 +798,7 @@ function FlashcardsTool() {
             <button
               onClick={handlePrev}
               disabled={currentIndex === 0}
-              className="btn-hover flex items-center gap-1 surface-1 border border-[var(--border)] rounded-[var(--radius)] px-4 py-2.5 text-sm text-[var(--foreground)] disabled:opacity-30 min-h-[44px] hover:border-[var(--border-strong)]"
+              className="btn-hover flex items-center gap-2 surface-1 border border-[var(--border)] rounded-lg px-4 h-10 text-sm text-[var(--foreground)] disabled:opacity-30 hover:border-[var(--border-strong)]"
             >
               <ChevronRight className="w-4 h-4" />
               قبلی
@@ -806,7 +806,7 @@ function FlashcardsTool() {
             <button
               onClick={handleNext}
               disabled={currentIndex === filteredCards.length - 1}
-              className="btn-hover flex items-center gap-1 surface-1 border border-[var(--border)] rounded-[var(--radius)] px-4 py-2.5 text-sm text-[var(--foreground)] disabled:opacity-30 min-h-[44px] hover:border-[var(--border-strong)]"
+              className="btn-hover flex items-center gap-2 surface-1 border border-[var(--border)] rounded-lg px-4 h-10 text-sm text-[var(--foreground)] disabled:opacity-30 hover:border-[var(--border-strong)]"
             >
               بعدی
               <ChevronLeft className="w-4 h-4" />

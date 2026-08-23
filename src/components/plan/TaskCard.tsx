@@ -195,11 +195,11 @@ export default function TaskCard({
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
           {isDraft ? (
             <div className="flex items-center gap-2">
-              {canEdit && onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
+              {canEdit && onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-9 rounded-md bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
               {canDeleteDraft && canAction && <button
                 type="button"
                 onClick={(event) => { event.preventDefault(); event.stopPropagation(); onAction(task.id); }}
-                className="px-3 h-10 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger)] text-xs font-bold transition-colors hover:bg-[var(--danger)]/15"
+                className="px-3 h-9 rounded-md border border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--danger)] text-xs font-bold transition-colors hover:bg-[var(--danger)]/15"
               >
                 حذف تسک
               </button>}
@@ -217,14 +217,14 @@ export default function TaskCard({
                     },
                   });
                 }}
-                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] flex items-center justify-center hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]"
+                className="icon-btn size-10 rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] flex items-center justify-center hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]"
                 aria-label="انجام شد"
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
               </button>}
               {canAction && <button
                 onClick={() => onAction(task.id)}
-                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
+                className="icon-btn size-10 rounded-lg bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
                 aria-label="عملیات تسک"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -232,7 +232,7 @@ export default function TaskCard({
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
-                  className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  className="icon-btn size-10 rounded-lg bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   aria-label="ویرایش"
                 >
                   <Pencil className="w-4 h-4 md:w-5 md:h-5" />
@@ -240,7 +240,7 @@ export default function TaskCard({
               )}
               {canPartial && !isClassTask(task) && <button
                 onClick={() => onSettings(task.id)}
-                className="icon-btn w-10 h-10 md:w-11 md:h-11 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.08)]"
+                className="icon-btn size-10 rounded-lg bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.08)]"
                 aria-label="ثبت بخشی"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -263,7 +263,7 @@ export default function TaskCard({
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
-                  className="icon-btn w-9 h-9 rounded-[var(--radius)] bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  className="icon-btn size-9 rounded-md bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   aria-label="ویرایش جزئیات برنامه"
                 >
                   <Pencil className="w-4 h-4" />
@@ -281,7 +281,7 @@ export default function TaskCard({
                     },
                   });
                 }}
-                className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] flex items-center justify-center"
+                className="icon-btn size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] flex items-center justify-center"
                 aria-label="بازگشت به حالت قبل"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -289,13 +289,13 @@ export default function TaskCard({
               {/* Task action button (opens the 3-way dialog) */}
               {canAction && <button
                 onClick={() => onAction(task.id)}
-                className="icon-btn w-8 h-8 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
+                className="icon-btn size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
                 aria-label="عملیات تسک"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>}
             </div>
-          ) : canEdit && onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-10 rounded-lg bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button> : null}
+          ) : canEdit && onEdit ? <button onClick={() => onEdit(task.id)} className="px-3 h-9 rounded-md bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button> : null}
         </div>
       </div>
     </motion.div>

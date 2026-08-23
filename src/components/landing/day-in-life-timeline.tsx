@@ -398,7 +398,7 @@ export function DayInLifeTimeline() {
               </div>
               <a
                 href="#signup"
-                className="shine-sweep group inline-flex shrink-0 items-center gap-2 rounded-full bg-mint px-6 py-3.5 text-sm font-semibold text-[#06120c] shadow-[0_10px_36px_-8px_var(--mint)] transition-all duration-300 hover:shadow-[0_14px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02]"
+                className="shine-sweep group inline-flex shrink-0 items-center gap-2 rounded-full bg-mint h-12 px-6 text-sm font-semibold text-[#06120c] shadow-[0_10px_36px_-8px_var(--mint)] transition-all duration-300 hover:shadow-[0_14px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02]"
               >
                 شروع کنید
                 <Sunrise className="size-4 transition-transform duration-300 group-hover:rotate-12" />

@@ -79,14 +79,14 @@ export function CookieConsent() {
               <div className="flex shrink-0 items-center gap-3">
                 <button
                   onClick={handleSettings}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-4 py-2.5 text-xs font-medium text-muted-foreground/80 transition-all duration-300 hover:border-border hover:text-foreground hover:bg-card/40"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/50 h-11 px-4 text-sm font-medium text-muted-foreground/80 transition-all duration-300 hover:border-border hover:text-foreground hover:bg-card/40"
                 >
                   <Settings className="size-3.5" />
                   تنظیمات
                 </button>
                 <button
                   onClick={handleAccept}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-mint px-5 py-2.5 text-xs font-semibold text-[#06120c] shadow-[0_6px_24px_-4px_var(--mint)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_10px_32px_-4px_var(--mint-bright)] hover:scale-[1.02]"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-mint h-11 px-5 text-sm font-semibold text-[#06120c] shadow-[0_6px_24px_-4px_var(--mint)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_10px_32px_-4px_var(--mint-bright)] hover:scale-[1.02]"
                 >
                   پذیرش
                 </button>

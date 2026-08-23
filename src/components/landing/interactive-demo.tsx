@@ -187,7 +187,7 @@ export function InteractiveDemo() {
 
         <div className="mx-auto mt-14 max-w-2xl text-center">
           <p className="text-lg font-bold leading-8 text-foreground">می‌خوای تک‌تک تسک‌هاتو خودت اضافه کنی و این آنالیز دقیق رو برای خودت داشته باشی؟</p>
-          <Link href="#signup" className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-mint px-7 text-sm font-bold text-[#06120c] shadow-[0_14px_42px_-12px_var(--mint)] transition-all hover:brightness-110 focus-ring-mint"><LogIn className="size-4" aria-hidden="true" />ورود/ثبت‌نام</Link>
+          <Link href="#signup" className="mt-5 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-mint px-6 text-sm font-semibold text-[#06120c] shadow-[0_14px_42px_-12px_var(--mint)] transition-all hover:brightness-110 focus-ring-mint"><LogIn className="size-4" aria-hidden="true" />ورود/ثبت‌نام</Link>
         </div>
       </div>
       <TaskActionDialog

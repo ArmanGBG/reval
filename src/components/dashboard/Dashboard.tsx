@@ -173,7 +173,7 @@ function MotivationalQuoteCard() {
             {/* Bookmark button */}
             <button
               onClick={handleBookmark}
-              className="btn-hover flex items-center justify-center w-8 h-8 rounded-lg text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
+              className="btn-hover flex items-center justify-center size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
               aria-label={isBookmarked ? 'حذف از ذخیره‌شده‌ها' : 'ذخیره نقل قول'}
             >
               <Heart
@@ -184,7 +184,7 @@ function MotivationalQuoteCard() {
             {/* Share button */}
             <button
               onClick={handleShare}
-              className="btn-hover flex items-center justify-center w-8 h-8 rounded-lg text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
+              className="btn-hover flex items-center justify-center size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
               aria-label="اشتراک‌گذاری نقل قول"
             >
               <Share2 className="w-4 h-4" />
@@ -192,7 +192,7 @@ function MotivationalQuoteCard() {
             {/* Next quote button */}
             <button
               onClick={handleNext}
-              className="btn-hover flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-[var(--accent)] bg-[var(--accent-soft)] border border-[var(--border-strong)] hover:bg-[var(--accent-soft)] transition-colors min-h-[32px]"
+              className="btn-hover flex items-center gap-1.5 text-xs font-medium px-3 h-9 rounded-md text-[var(--accent)] bg-[var(--accent-soft)] border border-[var(--border-strong)] hover:bg-[var(--accent-soft)] transition-colors"
             >
               <span>نقل قول بعدی</span>
               <ChevronLeft className="w-3.5 h-3.5 flip-rtl" />
@@ -441,7 +441,7 @@ export default function Dashboard() {
           <p className="text-sm text-[var(--danger)] mb-3">{tasksError}</p>
           <button
             onClick={() => void loadTasksForStudent(studentId)}
-            className="h-9 px-4 rounded-lg border border-[var(--border)] text-xs text-[var(--foreground)]"
+            className="h-10 px-4 rounded-lg border border-[var(--border)] text-sm text-[var(--foreground)]"
           >
             تلاش مجدد
           </button>

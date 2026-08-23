@@ -229,7 +229,7 @@ export default function AdvisorMessages() {
           <button
             onClick={handleSend}
             disabled={sending || !title.trim() || !body.trim()}
-            className="btn-hover w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 h-11 text-sm font-semibold bg-[var(--accent)] text-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--accent-hover)] transition-colors"
+            className="btn-hover w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-6 h-11 text-sm font-semibold bg-[var(--accent)] text-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--accent-hover)] transition-colors"
           >
             {sending ? (
               <>

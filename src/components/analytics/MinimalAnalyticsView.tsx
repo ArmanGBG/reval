@@ -624,7 +624,7 @@ export default function MinimalAnalyticsView({
 
             {selectedSubject && selectedGrade && (
               <div className="mb-4 flex items-center gap-2">
-                <button type="button" onClick={() => { setSelectedSubjectId(null); setSelectedGradeId(null); setExpandedChapterId(null); }} className="icon-btn flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--foreground-muted)]" aria-label="بازگشت به نمای جامع"><ArrowRight className="h-4 w-4" /></button>
+                <button type="button" onClick={() => { setSelectedSubjectId(null); setSelectedGradeId(null); setExpandedChapterId(null); }} className="icon-btn flex size-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--foreground-muted)]" aria-label="بازگشت به نمای جامع"><ArrowRight className="h-4 w-4" /></button>
                 <div>
                   <p className="text-xs font-medium text-[var(--foreground)]">{selectedSubject.name}</p>
                   <p className="text-[10px] text-[var(--foreground-muted)]">جزئیات فصل‌ها و گفتارها</p>

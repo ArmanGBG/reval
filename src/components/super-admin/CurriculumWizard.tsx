@@ -927,7 +927,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
               <div className="mt-4 flex justify-start">
                 <button
                   onClick={() => setStep(1)}
-                  className="btn-hover h-9 px-3 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-xs flex items-center gap-1.5"
+                  className="btn-hover h-10 px-4 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-sm flex items-center gap-2"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   بازگشت
@@ -957,7 +957,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                   <p className="text-xs text-[var(--foreground)] mb-3">{subjectsError}</p>
                   <button
                     onClick={fetchSubjects}
-                    className="btn-hover h-9 px-4 rounded-lg border border-[var(--border-strong)] text-[var(--foreground)] text-xs font-medium inline-flex items-center gap-1.5"
+                    className="btn-hover h-10 px-4 rounded-lg border border-[var(--border-strong)] text-[var(--foreground)] text-sm font-medium inline-flex items-center gap-2"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     تلاش مجدد
@@ -1032,7 +1032,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                   <button
                     onClick={handleCreateNewSubject}
                     disabled={creatingSubject || !newSubjectName.trim()}
-                    className="btn-hover glow-hover-gold h-11 px-4 rounded-xl bg-[var(--gold)] text-white font-bold text-sm disabled:opacity-50 flex items-center gap-2"
+                    className="btn-hover glow-hover-gold h-11 px-6 rounded-lg bg-[var(--gold)] text-white font-bold text-sm disabled:opacity-50 flex items-center gap-2"
                   >
                     {creatingSubject ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1052,7 +1052,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
               <div className="flex justify-start">
                 <button
                   onClick={() => guardedAction(() => setStep(2))}
-                  className="btn-hover h-9 px-3 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-xs flex items-center gap-1.5"
+                  className="btn-hover h-10 px-4 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-sm flex items-center gap-2"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
                   بازگشت
@@ -1087,7 +1087,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                   <p className="text-xs text-[var(--foreground)] mb-3">{chaptersError}</p>
                   <button
                     onClick={() => gradeSubjectId && fetchChapters(gradeSubjectId)}
-                    className="btn-hover h-9 px-4 rounded-lg border border-[var(--border-strong)] text-[var(--foreground)] text-xs font-medium inline-flex items-center gap-1.5"
+                    className="btn-hover h-10 px-4 rounded-lg border border-[var(--border-strong)] text-[var(--foreground)] text-sm font-medium inline-flex items-center gap-2"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     تلاش مجدد
@@ -1120,7 +1120,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
 
                   <button
                     onClick={addChapterRow}
-                    className="btn-hover glow-hover-gold w-full h-11 rounded-xl border-2 border-dashed border-[var(--gold)]/30 text-[var(--gold)] font-bold text-sm flex items-center justify-center gap-2 hover:bg-[var(--gold-soft)]"
+                    className="btn-hover glow-hover-gold w-full h-11 rounded-lg border-2 border-dashed border-[var(--gold)]/30 text-[var(--gold)] font-bold text-sm flex items-center justify-center gap-2 hover:bg-[var(--gold-soft)]"
                   >
                     <Plus className="w-4 h-4" />
                     افزودن فصل
@@ -1129,7 +1129,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                   <div className="flex justify-between gap-2">
                     <button
                       onClick={() => guardedAction(() => setStep(3))}
-                      className="btn-hover h-10 px-4 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-xs flex items-center gap-1.5"
+                      className="btn-hover h-10 px-4 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-sm flex items-center gap-2"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
                       بازگشت
@@ -1137,7 +1137,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                     <button
                       onClick={() => setStep(5)}
                       disabled={chapters.length === 0 || chapters.some((c) => !c.id)}
-                      className="btn-hover glow-hover-gold h-10 px-4 rounded-lg bg-[var(--gold)] text-white font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
+                      className="btn-hover glow-hover-gold h-10 px-4 rounded-lg bg-[var(--gold)] text-white font-bold text-sm disabled:opacity-50 flex items-center gap-2"
                     >
                       گفتارها
                       <ArrowLeft className="w-3.5 h-3.5" />
@@ -1235,7 +1235,7 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                               )}
                               <button
                                 onClick={() => addTopicRow(chId)}
-                                className="btn-hover w-full h-9 rounded-lg border border-dashed border-[var(--border-strong)] text-[var(--foreground-muted)] text-xs flex items-center justify-center gap-1.5"
+                                className="btn-hover w-full h-9 rounded-md border border-dashed border-[var(--border-strong)] text-[var(--foreground-muted)] text-xs flex items-center justify-center gap-1.5"
                               >
                                 <Plus className="w-3.5 h-3.5" />
                                 افزودن گفتار
@@ -1291,13 +1291,13 @@ export function CurriculumWizard({ subjectId, initialGrade, initialMajor, onRefr
                   setShowUnsavedDialog(null);
                   action?.();
                 }}
-                className="flex-1 h-10 rounded-lg bg-[var(--danger)] text-white text-xs font-bold btn-hover"
+                className="flex-1 h-10 rounded-lg bg-[var(--danger)] text-white text-sm font-bold btn-hover"
               >
                 بله، ادامه بده
               </button>
               <button
                 onClick={() => setShowUnsavedDialog(null)}
-                className="flex-1 h-10 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-xs btn-hover"
+                className="flex-1 h-10 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] text-sm btn-hover"
               >
                 انصراف
               </button>
@@ -1415,7 +1415,7 @@ function ChapterRowCard({
           <button
             onClick={onSave}
             disabled={row.saving || !row.title.trim() || Boolean(row.pageStart) !== Boolean(row.pageEnd)}
-            className="btn-hover glow-hover-gold h-8 px-3 rounded-lg bg-[var(--gold)] text-white font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
+            className="btn-hover glow-hover-gold h-9 px-3 rounded-md bg-[var(--gold)] text-white font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
           >
             {row.saving ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -1428,7 +1428,7 @@ function ChapterRowCard({
           </button>
           <button
             onClick={onDelete}
-            className="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+            className="icon-btn size-9 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
             aria-label="حذف"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -1531,14 +1531,14 @@ function TopicRowCard({
           <button
             onClick={onSave}
             disabled={row.saving || !row.title.trim() || Boolean(row.pageStart) !== Boolean(row.pageEnd)}
-            className="btn-hover h-7 px-2.5 rounded-md bg-[var(--gold-soft)] border border-[var(--gold)]/30 text-[var(--gold)] font-bold text-[10px] disabled:opacity-50 flex items-center gap-1"
+            className="btn-hover h-9 px-3 rounded-md bg-[var(--gold-soft)] border border-[var(--gold)]/30 text-[var(--gold)] font-bold text-xs disabled:opacity-50 flex items-center gap-1.5"
           >
             {row.saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
             ذخیره
           </button>
           <button
             onClick={onDelete}
-            className="icon-btn w-7 h-7 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
+            className="icon-btn size-9 rounded-md flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--danger)]"
             aria-label="حذف گفتار"
           >
             <Trash2 className="w-3 h-3" />

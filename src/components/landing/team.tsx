@@ -102,7 +102,7 @@ export function Team() {
             href={`https://t.me/${TELEGRAM_HANDLE}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-mint px-5 text-sm font-bold text-[#06120c] transition-all hover:brightness-110 focus-ring-mint"
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-mint px-5 text-sm font-semibold text-[#06120c] transition-all hover:brightness-110 focus-ring-mint"
           >
             <Send className="size-4" aria-hidden="true" />
             @{TELEGRAM_HANDLE}

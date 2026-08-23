@@ -143,7 +143,7 @@ export default function SubjectMasteryCard({ tasks, onSelectSubject }: Props) {
           <button
             type="button"
             onClick={() => setShowFormula((v) => !v)}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+            className="size-9 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] hover:bg-[rgba(255,255,255,0.04)] transition-colors"
             aria-label="نحوه محاسبه تسلط"
             aria-expanded={showFormula}
           >

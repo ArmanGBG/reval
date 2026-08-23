@@ -70,7 +70,7 @@ export function Header() {
             <Link
               href="#signup"
               onClick={onConfetti}
-              className="group relative touch-target inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-mint px-5 py-2.5 text-sm font-semibold text-[#06120c] shadow-[0_8px_32px_-8px_var(--mint)] transition-all duration-300 hover:shadow-[0_12px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02] focus-ring-mint"
+              className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-mint h-11 px-5 text-sm font-semibold text-[#06120c] shadow-[0_8px_32px_-8px_var(--mint)] transition-all duration-300 hover:shadow-[0_12px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02] focus-ring-mint"
             >
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-l from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               ثبت‌نام رایگان
@@ -133,14 +133,14 @@ export function Header() {
                 <Link
                   href="#login"
                   onClick={() => setOpen(false)}
-                  className="touch-target rounded-full border border-border px-5 py-3 text-center text-sm font-medium text-foreground transition-all hover:bg-white/[0.06] focus-ring-mint"
+                  className="flex h-11 items-center justify-center rounded-full border border-border px-5 text-sm font-medium text-foreground transition-all hover:bg-white/[0.06] focus-ring-mint"
                 >
                   ورود
                 </Link>
                 <Link
                   href="#signup"
                   onClick={() => setOpen(false)}
-                  className="touch-target rounded-full bg-mint px-5 py-3 text-center text-sm font-semibold text-[#06120c] shadow-[0_8px_24px_-6px_var(--mint)] focus-ring-mint"
+                  className="flex h-11 items-center justify-center rounded-full bg-mint px-5 text-sm font-semibold text-[#06120c] shadow-[0_8px_24px_-6px_var(--mint)] focus-ring-mint"
                 >
                   ثبت‌نام رایگان
                 </Link>

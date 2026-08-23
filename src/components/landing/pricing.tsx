@@ -439,7 +439,7 @@ export function Pricing() {
                 href="#signup"
                 onClick={onConfetti}
                 className={cn(
-                  "mt-8 shine-sweep inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold transition-all duration-300",
+                  "mt-8 shine-sweep inline-flex items-center justify-center gap-2 rounded-full h-12 px-6 text-sm font-semibold transition-all duration-300",
                   plan.featured
                     ? "bg-mint text-[#06120c] shadow-[0_10px_36px_-8px_var(--mint)] hover:shadow-[0_14px_44px_-6px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02]"
                     : "border border-border/60 bg-card/50 text-foreground hover:bg-card/80 hover:border-border"

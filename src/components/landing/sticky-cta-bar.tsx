@@ -84,7 +84,7 @@ export function StickyCTABar() {
               <a
                 href="#signup"
                 onClick={onConfetti}
-                className="group touch-target relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-mint px-5 py-2.5 text-sm font-semibold text-[#06120c] shadow-[0_8px_28px_-6px_var(--mint)] transition-all duration-300 hover:shadow-[0_12px_36px_-4px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02] focus-ring-mint"
+                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-mint h-11 px-5 text-sm font-semibold text-[#06120c] shadow-[0_8px_28px_-6px_var(--mint)] transition-all duration-300 hover:shadow-[0_12px_36px_-4px_var(--mint-bright)] hover:brightness-110 hover:scale-[1.02] focus-ring-mint"
               >
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-l from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                 ثبت‌نام رایگان

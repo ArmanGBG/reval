@@ -254,7 +254,7 @@ export function KeyboardShortcuts() {
                 <span>برای بستن، خارج از پنجره را کلیک کنید</span>
                 <button
                   onClick={() => setHelpOpen(false)}
-                  className="rounded-full bg-mint px-4 py-1.5 text-[11px] font-semibold text-[#06120c] transition-all duration-200 hover:brightness-110"
+                  className="rounded-full bg-mint h-9 px-4 text-xs font-semibold text-[#06120c] transition-all duration-200 hover:brightness-110"
                 >
                   بستن
                 </button>

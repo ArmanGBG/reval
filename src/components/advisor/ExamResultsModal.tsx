@@ -241,7 +241,7 @@ export function ExamResultsModal({
           <button
             type="button"
             onClick={autoRank}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[var(--border-strong)] bg-[var(--bg-overlay)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors"
+            className="flex items-center gap-1.5 px-3 h-9 rounded-md border border-[var(--border-strong)] bg-[var(--bg-overlay)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors"
           >
             <Medal className="w-3.5 h-3.5" />
             رتبه‌بندی خودکار
@@ -336,7 +336,7 @@ export function ExamResultsModal({
           <DialogClose asChild>
             <button
               type="button"
-              className="px-4 py-2 rounded-lg border border-[var(--border-strong)] bg-[var(--bg-overlay)] text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors"
+              className="px-4 h-10 rounded-lg border border-[var(--border-strong)] bg-[var(--bg-overlay)] text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground-muted)] transition-colors"
             >
               انصراف
             </button>
@@ -345,7 +345,7 @@ export function ExamResultsModal({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] text-sm font-medium hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-6 h-11 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] text-sm font-medium hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Save className="w-4 h-4" />
             {saving ? 'در حال ذخیره...' : 'ذخیره نتایج'}

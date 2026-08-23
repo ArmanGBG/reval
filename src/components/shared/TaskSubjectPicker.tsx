@@ -733,7 +733,7 @@ export function TaskSubjectPicker({
     return (
       <div className="space-y-3" dir="rtl">
         <div className="surface-1 rounded-xl p-3 flex items-center gap-2">
-          {!linkingClassVideo && <button onClick={handleClearSubject} className="btn-hover icon-btn w-8 h-8 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به درس‌ها"><ArrowRight className="w-4 h-4" /></button>}
+          {!linkingClassVideo && <button onClick={handleClearSubject} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به درس‌ها"><ArrowRight className="w-4 h-4" /></button>}
           <span className="text-xs text-[var(--foreground-muted)]">{selectedCourse.name}</span>
         </div>
         <div className="space-y-2">
@@ -742,8 +742,8 @@ export function TaskSubjectPicker({
             <div key={`${book.subject.id}:${book.gradeSubject.id}`} className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border)] surface-1 px-3">
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--foreground)]">{bookLabel(selectedCourse, book.gradeSubject.grade)}</span>
               <div className="flex shrink-0 gap-1">
-                {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectBookField(book, 'کنکور')} className="rounded-md border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-2 py-1 text-[9px] font-semibold text-[#C39DFF]">کنکور</button>}
-                {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectBookField(book, 'نهایی')} className="rounded-md border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-2 py-1 text-[9px] font-semibold text-[#79BDFF]">نهایی</button>}
+                {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectBookField(book, 'کنکور')} className="min-h-9 rounded-md border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-3 text-xs font-semibold text-[#C39DFF]">کنکور</button>}
+                {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectBookField(book, 'نهایی')} className="min-h-9 rounded-md border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-3 text-xs font-semibold text-[#79BDFF]">نهایی</button>}
               </div>
             </div>
           ))}</div>
@@ -755,8 +755,8 @@ export function TaskSubjectPicker({
               <div key={mode.id} className="flex items-center gap-2 rounded-xl border border-[var(--border)] surface-1 p-3">
                 <span className="min-w-0 flex-1 text-right text-sm"><span className="block truncate">{mode.title}</span><span className="mt-1 block text-[10px] text-[var(--foreground-subtle)]">{bookLabel(selectedCourse, book.gradeSubject.grade)} · {toPersianDigits(mode.subtopics?.length ?? 0)} زیرمبحث</span></span>
                 <div className="flex shrink-0 gap-1">
-                  {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'کنکور')} className="rounded-md border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-2 py-1 text-[9px] font-semibold text-[#C39DFF]">کنکور</button>}
-                  {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'نهایی')} className="rounded-md border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-2 py-1 text-[9px] font-semibold text-[#79BDFF]">نهایی</button>}
+                  {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'کنکور')} className="min-h-9 rounded-md border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-3 text-xs font-semibold text-[#C39DFF]">کنکور</button>}
+                  {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'نهایی')} className="min-h-9 rounded-md border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-3 text-xs font-semibold text-[#79BDFF]">نهایی</button>}
                 </div>
               </div>
             ))}</div>
@@ -781,7 +781,7 @@ export function TaskSubjectPicker({
     return (
       <div className="space-y-3" dir="rtl">
         <div className="surface-1 rounded-xl p-3 flex items-center gap-2">
-          <button onClick={handleBackFromClassVideo} className="btn-hover icon-btn w-8 h-8 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به گزینه‌های درس"><ArrowRight className="w-4 h-4" /></button>
+          <button onClick={handleBackFromClassVideo} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به گزینه‌های درس"><ArrowRight className="w-4 h-4" /></button>
           <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]"><Video className="w-4 h-4 text-[var(--accent)]" />کلاس/ویدیو · {selectedCourse?.name ?? selectedSubject.name}</div>
         </div>
         <ClassSessionFields
@@ -815,7 +815,7 @@ export function TaskSubjectPicker({
       <div className="space-y-3" dir="rtl">
         <div className="surface-1 rounded-xl p-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0"><div className="w-9 h-9 rounded-lg flex items-center justify-center text-base shrink-0" style={{ backgroundColor: `${selectedSubject.color}22` }}>{selectedSubject.icon || '📚'}</div><div className="min-w-0"><p className="text-sm font-semibold text-[var(--foreground)] truncate">{selectedSubject.name}</p><p className="text-[10px] text-[var(--foreground-subtle)]">{grade} · {major}</p></div></div>
-          <button onClick={handleClearSubject} className="btn-hover icon-btn text-[11px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] shrink-0">تغییر درس</button>
+          <button onClick={handleClearSubject} className="btn-hover icon-btn text-xs px-3 h-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] shrink-0">تغییر درس</button>
         </div>
         <p className="text-xs text-[var(--foreground-muted)]">پایه مورد نظر را انتخاب کنید</p>
         {availableGrades.length === 0 ? (<div className="surface-1 rounded-xl p-6 text-center text-xs text-[var(--foreground-muted)]">هیچ پایه‌ای برای این درس در این رشته یافت نشد</div>) : (<div className="flex flex-wrap gap-2">{availableGrades.map((g) => (<button key={g.grade} onClick={() => handleSelectGrade(g.grade)} className="btn-hover h-11 px-4 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--foreground)] hover:border-[var(--accent)]/40 hover:text-[var(--accent)]">{g.grade}</button>))}</div>)}
@@ -827,7 +827,7 @@ export function TaskSubjectPicker({
     return (
       <div className="space-y-3" dir="rtl">
         <div className="surface-1 rounded-xl p-3 flex items-center gap-2">
-          <button onClick={handleBackFromGrade} className="btn-hover icon-btn w-8 h-8 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center"><ArrowRight className="w-4 h-4" /></button>
+          <button onClick={handleBackFromGrade} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center"><ArrowRight className="w-4 h-4" /></button>
           <span className="text-xs text-[var(--foreground-muted)]">{selectedSubject.name} · {selectedGrade}</span>
         </div>
         <p className="text-xs text-[var(--foreground-muted)]">روش انتخاب محتوا را مشخص کنید</p>
@@ -862,7 +862,7 @@ export function TaskSubjectPicker({
     return (
       <div className="space-y-3" dir="rtl">
         <div className="surface-1 rounded-xl p-3 flex items-center gap-2">
-          <button onClick={handleBackFromGrade} className="btn-hover icon-btn w-8 h-8 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] flex items-center justify-center" aria-label="بازگشت به پایه‌ها"><ArrowRight className="w-4 h-4" /></button>
+          <button onClick={handleBackFromGrade} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] flex items-center justify-center" aria-label="بازگشت به پایه‌ها"><ArrowRight className="w-4 h-4" /></button>
           <div className="flex items-center gap-2 min-w-0"><span className="text-xs text-[var(--foreground-muted)]">{selectedSubject.name} · {selectedGrade}</span></div>
         </div>
         {chapters.length > 0 && (
@@ -892,7 +892,7 @@ export function TaskSubjectPicker({
     return (
       <div className="space-y-3" dir="rtl">
         <div className="surface-1 rounded-xl p-3 flex items-center gap-2">
-          <button onClick={handleBackFromChapter} className="btn-hover icon-btn w-8 h-8 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به فصل‌ها"><ArrowRight className="w-4 h-4" /></button>
+          <button onClick={handleBackFromChapter} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به فصل‌ها"><ArrowRight className="w-4 h-4" /></button>
           <span className="text-xs text-[var(--foreground-muted)] truncate">{selectedSubject.name} · {selectedGrade} · فصل {toPersianDigits(selectedChapter.chapterNo)}: {bareTitle(selectedChapter.title)}</span>
         </div>
       </div>
@@ -902,7 +902,7 @@ export function TaskSubjectPicker({
   return (
     <div className="space-y-3" dir="rtl">
       <div className="surface-1 rounded-xl p-3 flex items-center gap-2">
-        <button onClick={handleBackFromChapter} className="btn-hover icon-btn w-8 h-8 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] flex items-center justify-center" aria-label="بازگشت به فصل‌ها"><ArrowRight className="w-4 h-4" /></button>
+        <button onClick={handleBackFromChapter} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] flex items-center justify-center" aria-label="بازگشت به فصل‌ها"><ArrowRight className="w-4 h-4" /></button>
         <div className="flex items-center gap-2 min-w-0 flex-1"><span className="text-xs text-[var(--foreground-muted)] truncate">{selectedSubject.name} · {selectedGrade} · فصل {toPersianDigits(selectedChapter.chapterNo)}: {bareTitle(selectedChapter.title)}</span></div>
         {selectedTopicIds.length > 0 && (<span className="text-[10px] px-2 py-1 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] font-semibold shrink-0">{toPersianDigits(selectedTopicIds.length)} گفتار</span>)}
       </div>
@@ -919,8 +919,8 @@ export function TaskSubjectPicker({
       )}
       {topics.length > 0 && (
         <div className="flex items-center gap-2">
-          <button onClick={handleSelectAllTopics} className="text-[10px] px-2.5 py-1 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/40 transition-colors">انتخاب همه</button>
-          {selectedTopicIds.length > 0 && (<button onClick={handleClearAllTopics} className="text-[10px] px-2.5 py-1 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:border-[var(--danger)]/40 transition-colors flex items-center gap-1"><X className="w-3 h-3" />پاک کردن انتخاب‌ها</button>)}
+          <button onClick={handleSelectAllTopics} className="text-xs px-2.5 h-7 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/40 transition-colors">انتخاب همه</button>
+          {selectedTopicIds.length > 0 && (<button onClick={handleClearAllTopics} className="text-xs px-2.5 h-7 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:border-[var(--danger)]/40 transition-colors flex items-center gap-1"><X className="w-3 h-3" />پاک کردن انتخاب‌ها</button>)}
         </div>
       )}
       <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">{topics.map((tp) => { const isSelected = selectedTopicIds.includes(tp.id); return (<button key={tp.id} onClick={() => handleToggleTopic(tp)} className={`btn-hover w-full text-right p-3 rounded-lg border flex items-center gap-3 transition-all ${isSelected ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]' : 'border-[var(--border)] surface-1 text-[var(--foreground)]'}`}><span className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${isSelected ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'bg-[var(--bg-elevated)] text-[var(--foreground-muted)]'}`}>{isSelected ? <CheckCircle2 className="w-3.5 h-3.5" /> : toPersianDigits(tp.topicNo)}</span><span className="flex-1 text-sm font-medium truncate">{tp.title}</span><span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{formatPageRange(tp)}</span></button>); })}</div>

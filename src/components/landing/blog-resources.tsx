@@ -233,7 +233,7 @@ export function BlogResources() {
         >
           <a
             href="#blog"
-            className="shine-sweep focus-ring-mint touch-target group/cta inline-flex items-center gap-2 rounded-full bg-mint px-6 py-3 text-sm font-bold text-background shadow-[0_10px_30px_-10px_var(--mint)] transition-all duration-300 hover:shadow-[0_14px_40px_-10px_var(--mint)]"
+            className="shine-sweep focus-ring-mint group/cta inline-flex items-center gap-2 rounded-full bg-mint h-12 px-6 text-sm font-semibold text-background shadow-[0_10px_30px_-10px_var(--mint)] transition-all duration-300 hover:shadow-[0_14px_40px_-10px_var(--mint)]"
           >
             مشاهده همه مقالات
             <ArrowLeft className="size-4 transition-transform duration-300 group-hover/cta:-translate-x-1" />
