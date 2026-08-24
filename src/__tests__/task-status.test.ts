@@ -5,6 +5,7 @@ import {
   isAdvisorMoveTaskPatch,
   isAdvisorPlanTaskPatch,
   isStudentAdvisorTaskPatch,
+  isStudentClassDraftCompletionPatch,
   moveTaskToDateTransition,
   moveTaskToIncompleteTransition,
   validateTaskLifecycle,
@@ -118,6 +119,22 @@ describe('advisor-created task student permissions', () => {
     expect(isStudentAdvisorTaskPatch({ chapterId: 'chapter-1' })).toBe(false);
     expect(isStudentAdvisorTaskPatch({})).toBe(false);
   });
+
+  it('allows only a complete class draft transition', () => {
+    expect(isStudentClassDraftCompletionPatch({
+      subjectId: 'subject-1', activityTypes: ['کلاس/ویدیو'], status: 'PENDING', detailsCompleted: true, completed: null,
+      teacherClassName: 'استاد رضایی', sessionNumber: 'جلسه ۲', actualTimeMinutes: 90, actualTestCount: 0,
+      fieldType: null, targetTimeMinutes: null, targetTestCount: null, chapterId: null, topicId: null,
+      topicIds: [], topicModeId: null, topicModeSubtopicIds: [], curriculumMode: null,
+      pageStart: null, pageEnd: null, bookName: null, testDescription: null,
+    })).toBe(true);
+    expect(isStudentClassDraftCompletionPatch({
+      activityTypes: ['مطالعه'], status: 'PENDING', detailsCompleted: true, completed: null,
+    })).toBe(false);
+    expect(isStudentClassDraftCompletionPatch({
+      activityTypes: ['کلاس/ویدیو'], status: 'DRAFT', detailsCompleted: false, completed: null,
+    })).toBe(false);
+  });
 });
 
 describe('task topic relation patches', () => {
@@ -172,5 +189,20 @@ describe('task details update payload', () => {
     expect(updates.detailsCompleted).toBe(true);
     expect(updates.targetTimeMinutes).toBe(60);
     expect(updates.targetTestCount).toBe(10);
+  });
+
+  it('does not send response metadata when completing a class draft', () => {
+    const draftTask = { ...completedTask, status: 'DRAFT' as const, completed: null, detailsCompleted: false, createdAt: '2026-08-24T10:00:00.000Z', updatedAt: '2026-08-24T10:00:00.000Z' };
+    const updates = buildTaskDetailsUpdate(draftTask, {
+      ...draftTask,
+      activityTypes: ['کلاس/ویدیو'],
+      status: 'PENDING',
+      detailsCompleted: true,
+    });
+
+    expect(updates).not.toHaveProperty('createdAt');
+    expect(updates).not.toHaveProperty('updatedAt');
+    expect(updates).not.toHaveProperty('topics');
+    expect(updates).not.toHaveProperty('topicModeSubtopics');
   });
 });

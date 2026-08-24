@@ -52,6 +52,10 @@ export function buildTaskDetailsUpdate(task: Task, nextTask: Task): UpdateTaskPa
     subject: _subject,
     subjectColor: _subjectColor,
     topic: _topic,
+    topics: _topics,
+    topicModeSubtopics: _topicModeSubtopics,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
     date: _date,
     order: _order,
     ...draftUpdates

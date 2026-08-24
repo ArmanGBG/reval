@@ -9,6 +9,13 @@ export const ADVISOR_PLAN_TASK_PATCH_FIELDS = [
   'topicModeId', 'topicModeSubtopicIds', 'curriculumMode', 'pageStart', 'pageEnd',
   'teacherClassName', 'sessionNumber', 'bookName', 'testDescription',
 ] as const;
+export const STUDENT_CLASS_DRAFT_COMPLETION_FIELDS = [
+  'subjectId', 'fieldType', 'activityTypes', 'targetTimeMinutes', 'actualTimeMinutes',
+  'targetTestCount', 'actualTestCount', 'completed', 'status', 'detailsCompleted',
+  'chapterId', 'topicId', 'topicIds', 'topicModeId', 'topicModeSubtopicIds',
+  'curriculumMode', 'pageStart', 'pageEnd', 'teacherClassName', 'sessionNumber',
+  'bookName', 'testDescription',
+] as const;
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === 'string' && TASK_STATUSES.includes(value as TaskStatus);
@@ -55,6 +62,15 @@ export function isTaskVisibleOnScheduledDay(status: TaskStatus | undefined, deta
 export function isStudentAdvisorTaskPatch(body: Record<string, unknown>): boolean {
   const allowed = new Set<string>(STUDENT_ADVISOR_TASK_PATCH_FIELDS);
   return Object.keys(body).length > 0 && Object.keys(body).every((key) => allowed.has(key));
+}
+
+export function isStudentClassDraftCompletionPatch(body: Record<string, unknown>): boolean {
+  const allowed = new Set<string>(STUDENT_CLASS_DRAFT_COMPLETION_FIELDS);
+  if (Object.keys(body).length === 0 || !Object.keys(body).every((key) => allowed.has(key))) return false;
+  if (body.status !== 'PENDING' || body.detailsCompleted !== true || body.completed !== null) return false;
+  return Array.isArray(body.activityTypes)
+    && body.activityTypes.length === 1
+    && body.activityTypes[0] === 'کلاس/ویدیو';
 }
 
 export function isAdvisorPlanTaskPatch(body: Record<string, unknown>): boolean {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, canModifyTask, canDeleteTask, canEditAssignedStudentPlan, canViewStudentTasks, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
-import { isAdvisorMoveTaskPatch, isAdvisorPlanTaskPatch, isStudentAdvisorTaskPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
+import { isAdvisorMoveTaskPatch, isAdvisorPlanTaskPatch, isStudentAdvisorTaskPatch, isStudentClassDraftCompletionPatch, isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskPatchData, taskTopicInclude } from '@/lib/task-api';
 import { classSessionDetailsComplete, isClassActivityTypes } from '@/lib/class-task';
 
@@ -63,7 +63,19 @@ export async function PATCH(
     const canModify = await canModifyTask(ctx, taskId);
     const canEditAdvisorPlan = await canEditAssignedStudentPlan(ctx, existing.studentId);
     const isStudentLifecycleUpdate = ctx.user.role === 'STUDENT' && ctx.userId === existing.studentId && existing.createdBy === 'advisor';
-    if (!canModify && (!canEditAdvisorPlan || !isAdvisorPlanTaskPatch(body)) && (!isStudentLifecycleUpdate || !isStudentAdvisorTaskPatch(body))) {
+    let existingActivityTypes: unknown = null;
+    if (existing.activityTypes) {
+      try {
+        existingActivityTypes = JSON.parse(existing.activityTypes);
+      } catch {
+        existingActivityTypes = null;
+      }
+    }
+    const isStudentClassDraftCompletion = isStudentLifecycleUpdate
+      && existing.status === 'DRAFT'
+      && isClassActivityTypes(existingActivityTypes)
+      && isStudentClassDraftCompletionPatch(body);
+    if (!canModify && (!canEditAdvisorPlan || !isAdvisorPlanTaskPatch(body)) && (!isStudentClassDraftCompletion && (!isStudentLifecycleUpdate || !isStudentAdvisorTaskPatch(body)))) {
       return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
     }
     if (!(await canViewStudentTasks(ctx, existing.studentId))) return NextResponse.json({ error: 'دسترسی به این تسک مجاز نیست' }, { status: 403 });
@@ -187,7 +199,7 @@ export async function PATCH(
     if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
     const detailsCompleted = body.detailsCompleted !== undefined ? body.detailsCompleted : existing.detailsCompleted;
     if (typeof detailsCompleted !== 'boolean') return NextResponse.json({ error: 'detailsCompleted باید boolean باشد' }, { status: 400 });
-    let existingActivityTypes: unknown = null;
+    existingActivityTypes = null;
     if (existing.activityTypes) {
       try {
         existingActivityTypes = JSON.parse(existing.activityTypes);

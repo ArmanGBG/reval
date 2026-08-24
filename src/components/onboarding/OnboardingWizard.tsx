@@ -105,8 +105,8 @@ function StepPhone({
         <Phone className="w-8 h-8 text-mint" />
       </div>
 
-      <h1 className="text-2xl font-bold text-foreground mb-2">ورود به روال</h1>
-      <p className="text-muted-foreground">شماره موبایلت رو وارد کن</p>
+      <h1 className="text-2xl font-bold text-foreground mb-2">خوش اومدی به روال!</h1>
+      <p className="text-muted-foreground">اولین باره که میای؟ برای شروع شماره موبایلت رو وارد کن</p>
       <p className="mb-8 mt-3 text-sm font-semibold text-[var(--warning)]">لطفاً VPNات رو قطع کن! ممنون</p>
 
       {!showOtp ? (

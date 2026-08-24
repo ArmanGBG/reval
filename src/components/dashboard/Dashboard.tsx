@@ -29,6 +29,7 @@ import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
 import { TaskActionDialog } from '@/components/plan/TaskActionDialog';
 import { useCelebration } from '@/hooks/use-celebration';
+import { isClassTask } from '@/lib/class-task';
 import NotificationCenter from '@/components/shared/NotificationCenter';
 
 // ===== Motivational Quotes =====
@@ -224,7 +225,7 @@ export default function Dashboard() {
   // ===== Today's tasks (clean home — today only, no date-range clutter) =====
   const todayISO = toISODate(new Date());
   const todayTasks = useMemo(
-    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId && t.status !== 'DRAFT'),
+    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId && (t.status !== 'DRAFT' || (t.createdBy === 'advisor' && isClassTask(t)))),
     [tasks, todayISO, studentId]
   );
   const todayCompletedCount = useMemo(
