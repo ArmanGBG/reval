@@ -10,6 +10,8 @@ import MinimalAnalyticsView from '@/components/analytics/MinimalAnalyticsView';
 
 type WorkspaceTab = 'plan' | 'analytics' | 'message';
 
+const TASK_REFRESH_INTERVAL_MS = 60_000;
+
 const TABS: Array<{ id: WorkspaceTab; label: string; icon: typeof CalendarDays }> = [
   { id: 'plan', label: 'برنامه و تسک‌ها', icon: CalendarDays },
   { id: 'analytics', label: 'گزارش کامل', icon: BarChart3 },
@@ -40,10 +42,25 @@ export function AdvisorStudentDetail() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (selectedStudentId && selectedStudentId !== loadedStudentId) {
-      void loadTasksForStudent(selectedStudentId);
-    }
-  }, [selectedStudentId, loadedStudentId, loadTasksForStudent]);
+    if (!selectedStudentId || tab !== 'plan') return;
+
+    const refreshTasks = () => {
+      if (document.visibilityState === 'visible') {
+        void loadTasksForStudent(selectedStudentId);
+      }
+    };
+
+    refreshTasks();
+    window.addEventListener('focus', refreshTasks);
+    document.addEventListener('visibilitychange', refreshTasks);
+    const interval = window.setInterval(refreshTasks, TASK_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener('focus', refreshTasks);
+      document.removeEventListener('visibilitychange', refreshTasks);
+      window.clearInterval(interval);
+    };
+  }, [selectedStudentId, tab, loadTasksForStudent]);
 
   useEffect(() => {
     setTab('plan');
