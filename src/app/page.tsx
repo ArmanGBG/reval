@@ -27,9 +27,10 @@ import LandingPage from '@/components/landing/LandingPage';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import SessionGuard from '@/components/shared/SessionGuard';
 import { UserRole } from '@/lib/types';
+import { decodeNavigationState, replaceNavigation } from '@/lib/navigation';
 
 export default function Home() {
-  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete, theme, setTheme } = useAppStore();
+  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete, restoreNavigation, theme, setTheme } = useAppStore();
   // Track whether we've validated the persisted session with the server
   const [authValidated, setAuthValidated] = useState(false);
 
@@ -82,6 +83,9 @@ export default function Home() {
             assignedAdvisorId: data.user.assignedAdvisorId || null,
           });
           setOnboardingComplete(true);
+          const navigation = decodeNavigationState(window.location, role);
+          restoreNavigation(navigation);
+          replaceNavigation(navigation);
 
           // Load role-specific data in the background
           const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
@@ -99,6 +103,10 @@ export default function Home() {
           // user can use the app offline; API calls will fail individually
           // if the cookie is actually expired.
           hydrateAuth();
+          const hydratedRole = useAppStore.getState().userRole;
+          const navigation = decodeNavigationState(window.location, hydratedRole);
+          restoreNavigation(navigation);
+          replaceNavigation(navigation);
         })
         .finally(() => {
           setAuthValidated(true);
@@ -106,17 +114,21 @@ export default function Home() {
     } else {
       setAuthValidated(true);
     }
-  }, [hydrateAuth, logout, setCurrentView, setOnboardingComplete, setUser, setUserRole]);
+  }, [hydrateAuth, logout, restoreNavigation, setCurrentView, setOnboardingComplete, setUser, setUserRole]);
 
   useEffect(() => {
-    const syncPublicViewFromHistory = () => {
-      if (useAppStore.getState().onboardingComplete) return;
+    const syncViewFromHistory = () => {
+      const state = useAppStore.getState();
+      if (state.onboardingComplete) {
+        state.restoreNavigation(decodeNavigationState(window.location, state.userRole));
+        return;
+      }
       const hash = window.location.hash;
-      setCurrentView(hash === '#login' ? 'login' : hash === '#signup' ? 'onboarding' : 'landing');
+      state.setCurrentView(hash === '#login' ? 'login' : hash === '#signup' ? 'onboarding' : 'landing');
     };
-    window.addEventListener('popstate', syncPublicViewFromHistory);
-    return () => window.removeEventListener('popstate', syncPublicViewFromHistory);
-  }, [setCurrentView]);
+    window.addEventListener('popstate', syncViewFromHistory);
+    return () => window.removeEventListener('popstate', syncViewFromHistory);
+  }, []);
 
   // Sync theme attribute on the <html> element so CSS variables update live.
   useEffect(() => {

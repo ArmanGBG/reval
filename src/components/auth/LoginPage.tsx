@@ -8,6 +8,7 @@ import type { UserRole } from '@/lib/types';
 import { isIranianMobileInput, numericInput } from '@/lib/phone';
 import { Logo } from '@/components/landing/logo';
 import { FloatingLines } from '@/components/landing/floating-lines';
+import { replaceNavigation } from '@/lib/navigation';
 
 export default function LoginPage() {
   const { setUserRole, setUser, setOnboardingComplete, setCurrentView } = useAppStore();
@@ -60,6 +61,7 @@ export default function LoginPage() {
         assignedAdvisorId: data.user.assignedAdvisorId || null,
       });
       setOnboardingComplete(true);
+      replaceNavigation({ view: role === 'ADVISOR' ? 'advisor-dashboard' : role === 'INSTITUTE_MANAGER' ? 'institute-dashboard' : role === 'SUPER_ADMIN' ? 'sa-dashboard' : 'dashboard' });
       const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
       if (role === 'STUDENT') {
         loadTasksForStudent(data.user.id).catch(() => {});

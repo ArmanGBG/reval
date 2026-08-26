@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 export default function SuperAdminInstitutes() {
-  const { platformInstitutes, addPlatformInstitute, updatePlatformInstitute, deletePlatformInstitute, loadPlatformInstitutes, setCurrentView, setSelectedInstituteId } = useAppStore();
+  const { platformInstitutes, addPlatformInstitute, updatePlatformInstitute, deletePlatformInstitute, loadPlatformInstitutes, navigateTo } = useAppStore();
   useEffect(() => { loadPlatformInstitutes().catch(() => {}); }, [loadPlatformInstitutes]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -98,8 +98,7 @@ export default function SuperAdminInstitutes() {
   };
 
   const handleGodView = (id: string) => {
-    setSelectedInstituteId(id);
-    setCurrentView('sa-institute-detail');
+    navigateTo({ view: 'sa-institute-detail', selectedInstituteId: id });
   };
 
   return (

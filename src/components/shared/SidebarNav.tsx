@@ -64,7 +64,7 @@ const ROLE_LABEL: Record<UserRole, { label: string; sub: string }> = {
 };
 
 export default function SidebarNav() {
-  const { currentView, setCurrentView, userRole, user, logout } = useAppStore();
+  const { currentView, navigateTo, userRole, user, logout } = useAppStore();
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems =
@@ -128,7 +128,7 @@ export default function SidebarNav() {
             return (
               <li key={item.view}>
                 <button
-                  onClick={() => setCurrentView(item.view)}
+                  onClick={() => navigateTo({ view: item.view })}
                   className={`group relative w-full flex items-center gap-3 rounded-xl px-3 h-11 ${
                     isActive
                       ? `${accentText} font-semibold`

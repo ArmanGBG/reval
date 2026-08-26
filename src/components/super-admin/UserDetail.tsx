@@ -35,7 +35,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 export default function UserDetail() {
-  const { selectedGlobalUserId, globalUsers, updateGlobalUser, assignGlobalStudentAdvisor, loadGlobalUsers, setCurrentView } = useAppStore();
+  const { selectedGlobalUserId, globalUsers, updateGlobalUser, assignGlobalStudentAdvisor, loadGlobalUsers, navigateTo } = useAppStore();
   useEffect(() => { if (globalUsers.length === 0) loadGlobalUsers().catch(() => {}); }, [globalUsers.length, loadGlobalUsers]);
 
   const user = useMemo(() =>
@@ -43,6 +43,11 @@ export default function UserDetail() {
     [selectedGlobalUserId, globalUsers]
   );
   const [saving, setSaving] = useState(false);
+
+  const goBack = () => {
+    if (window.history.state?.revalEntry) window.history.back();
+    else navigateTo({ view: 'sa-users' });
+  };
 
   const mutate = async (action: () => Promise<void>, success: string) => {
     setSaving(true);
@@ -62,7 +67,7 @@ export default function UserDetail() {
         <UserCheck className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
         <p className="text-muted-foreground mb-4">کاربری انتخاب نشده</p>
         <button
-          onClick={() => setCurrentView('sa-users')}
+          onClick={goBack}
           className="btn-hover text-gold text-sm font-bold"
         >
           بازگشت به لیست کاربران
@@ -79,7 +84,7 @@ export default function UserDetail() {
       {/* ============ Back Header ============ */}
       <header className="flex items-center justify-between gap-3">
         <button
-          onClick={() => setCurrentView('sa-users')}
+          onClick={goBack}
           className="nav-item-hover flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-3 py-2 rounded-[10px] -mr-3"
         >
           <ChevronRight className="w-4 h-4 flip-rtl" />

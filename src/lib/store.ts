@@ -5,6 +5,8 @@ import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
 import { initSRSFields } from '@/lib/spaced-repetition';
 import { AuthError } from '@/lib/api-client';
+import { navigationUrl, pushNavigation } from '@/lib/navigation';
+import type { NavigationTarget } from '@/lib/navigation';
 
 // ====================================================================
 // Flashcards persistence (localStorage)
@@ -174,6 +176,8 @@ interface AppState {
   // Navigation
   currentView: ViewName;
   setCurrentView: (view: ViewName) => void;
+  navigateTo: (target: NavigationTarget) => void;
+  restoreNavigation: (target: NavigationTarget) => void;
 
   // Advisor: selected student for detail view
   selectedStudentId: string | null;
@@ -417,6 +421,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     return 'landing' as ViewName;
   })(),
   setCurrentView: (view) => set({ currentView: view }),
+  navigateTo: (target) => {
+    const nextState = {
+      currentView: target.view,
+      selectedStudentId: target.view === 'advisor-student-detail' ? target.selectedStudentId ?? null : null,
+      selectedInstituteId: target.view === 'sa-institute-detail' ? target.selectedInstituteId ?? null : null,
+      selectedGlobalUserId: target.view === 'sa-user-detail' ? target.selectedGlobalUserId ?? null : null,
+      currentTool: target.view === 'tools' ? ('currentTool' in target ? target.currentTool ?? null : get().currentTool) : null,
+    };
+    const navigationTarget = {
+      view: nextState.currentView,
+      selectedStudentId: nextState.selectedStudentId,
+      selectedInstituteId: nextState.selectedInstituteId,
+      selectedGlobalUserId: nextState.selectedGlobalUserId,
+      currentTool: nextState.currentTool,
+    };
+    set(nextState);
+    if (`${window.location.pathname}${window.location.search}` !== navigationUrl(navigationTarget)) {
+      pushNavigation(navigationTarget);
+    }
+  },
+  restoreNavigation: (target) => set({
+    currentView: target.view,
+    selectedStudentId: target.view === 'advisor-student-detail' ? target.selectedStudentId ?? null : null,
+    selectedInstituteId: target.view === 'sa-institute-detail' ? target.selectedInstituteId ?? null : null,
+    selectedGlobalUserId: target.view === 'sa-user-detail' ? target.selectedGlobalUserId ?? null : null,
+    currentTool: target.view === 'tools' ? target.currentTool ?? null : null,
+  }),
 
   // Advisor: selected student
   selectedStudentId: null,
@@ -470,6 +501,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Logout — clear localStorage auth and reset store to unauthenticated state
   logout: () => {
     clearAuthStorage();
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({ revalView: 'landing' }, '', window.location.pathname);
+    }
     set({
       userRole: 'STUDENT',
       user: null,

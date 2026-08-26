@@ -22,8 +22,7 @@ export function AdvisorStudentDetail() {
   const {
     user,
     selectedStudentId,
-    setCurrentView,
-    setSelectedStudentId,
+    navigateTo,
     tasks,
     advisorStudents,
     loadTasksForStudent,
@@ -40,6 +39,11 @@ export function AdvisorStudentDetail() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+
+  const goBack = () => {
+    if (window.history.state?.revalEntry) window.history.back();
+    else navigateTo({ view: 'advisor-students' });
+  };
 
   useEffect(() => {
     if (!selectedStudentId || tab !== 'plan') return;
@@ -89,7 +93,7 @@ export function AdvisorStudentDetail() {
   return (
     <div className="space-y-5" dir="rtl">
       <button
-        onClick={() => { setSelectedStudentId(null); setCurrentView('advisor-students'); }}
+        onClick={goBack}
         className="flex min-h-[44px] items-center gap-1.5 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
       >
         <ArrowRight className="w-4 h-4" />
