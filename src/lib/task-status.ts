@@ -54,8 +54,7 @@ export function moveTaskToIncompleteTransition() {
 }
 
 export function isTaskVisibleOnScheduledDay(status: TaskStatus | undefined, detailsCompleted: boolean | undefined): boolean {
-  if (status === 'INCOMPLETE') return false;
-  if (status === 'DRAFT' || status === 'PENDING' || status === 'COMPLETED' || status === 'SKIPPED') return true;
+  if (status === 'DRAFT' || status === 'PENDING' || status === 'COMPLETED' || status === 'SKIPPED' || status === 'INCOMPLETE') return true;
   return detailsCompleted !== false;
 }
 

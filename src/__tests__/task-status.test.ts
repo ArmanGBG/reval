@@ -61,10 +61,10 @@ describe('task lifecycle transitions', () => {
     expect(validateTaskLifecycle('INCOMPLETE', false, null)).not.toBeNull();
   });
 
-  it('shows dated drafts in the daily plan but excludes incompletes', () => {
+  it('shows dated drafts and incompletes in the daily plan', () => {
     expect(isTaskVisibleOnScheduledDay('DRAFT', false)).toBe(true);
     expect(isTaskVisibleOnScheduledDay('PENDING', true)).toBe(true);
-    expect(isTaskVisibleOnScheduledDay('INCOMPLETE', true)).toBe(false);
+    expect(isTaskVisibleOnScheduledDay('INCOMPLETE', true)).toBe(true);
   });
 
   it('allows advisors to edit plan fields without writing student execution', () => {

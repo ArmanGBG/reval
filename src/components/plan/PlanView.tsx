@@ -32,6 +32,7 @@ import { TaskActionDialog } from './TaskActionDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import TaskStatsWidget from './TaskStatsWidget';
 import { canMoveTaskToDate, isTaskVisibleOnScheduledDay, moveTaskToDateTransition, moveTaskToIncompleteTransition } from '@/lib/task-status';
+import { studentCanEditTask } from '@/lib/class-task';
 import { clearTaskFormDraft, listCreateTaskFormDrafts, type StoredTaskFormDraft } from '@/lib/task-form-draft';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
@@ -143,7 +144,14 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   const studentId = targetStudent?.id ?? currentStudentId;
   const isAdvisorWorkspace = actor?.role === 'ADVISOR';
   const getTaskCapabilities = useCallback((task: Task): TaskCardCapabilities => {
-    if (!isAdvisorWorkspace) return {};
+    if (!isAdvisorWorkspace) {
+      // Students cannot edit advisor-created tasks (no pencil) — they can
+      // only complete, move to incompletes, or log actual metrics. The
+      // exception: advisor class drafts, whose session details the student
+      // must fill in.
+      if (task.createdBy !== 'advisor') return {};
+      return { edit: studentCanEditTask(task), deleteDraft: false };
+    }
     const ownsTask = task.createdBy === 'advisor'
       && task.createdById === actor?.id
       && task.status !== 'COMPLETED'
@@ -196,7 +204,10 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
   // Filter tasks for current student + selected date.
   // Dated drafts stay visible on their scheduled day so weekly-plan placeholders
-  // can be completed in context. INCOMPLETE tasks live only in their own tab.
+  // can be completed in context. INCOMPLETE tasks also stay visible on their
+  // scheduled day (with the «ناقص» tag) so students and advisors can see how
+  // many tasks were done and how many remain; they additionally live in the
+  // "ناقصی‌ها" tab.
   // Sort: pending first (by order), then completed/skipped at the bottom
   const filteredTasks = useMemo(() => {
     return tasks

@@ -10,6 +10,14 @@ export function isClassTask(task: Pick<Task, 'activityTypes'>): boolean {
   return isClassActivityTypes(task.activityTypes);
 }
 
+// Students cannot edit advisor-created task details — they can only complete,
+// move to incompletes, or log actual metrics. The exception is advisor-created
+// class drafts: the student must fill in the class session details.
+export function studentCanEditTask(task: Pick<Task, 'createdBy' | 'status' | 'activityTypes'>): boolean {
+  if (task.createdBy !== 'advisor') return true;
+  return task.status === 'DRAFT' && isClassTask(task);
+}
+
 export function withoutClassActivity(activityTypes: ActivityType[] | null | undefined): ActivityType[] {
   return (activityTypes ?? []).filter((activity) => activity !== 'کلاس/ویدیو');
 }
