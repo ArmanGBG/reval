@@ -61,7 +61,7 @@ export function useKeyboardShortcuts(): void {
   const onboardingComplete = useAppStore((s) => s.onboardingComplete);
   const currentView = useAppStore((s) => s.currentView);
   const currentTool = useAppStore((s) => s.currentTool);
-  const setCurrentView = useAppStore((s) => s.setCurrentView);
+  const navigateTo = useAppStore((s) => s.navigateTo);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
 
   useEffect(() => {
@@ -129,7 +129,7 @@ export function useKeyboardShortcuts(): void {
         if (match) {
           e.preventDefault();
           const idx = parseInt(match[1], 10) - 1;
-          setCurrentView(STUDENT_VIEWS[idx]);
+          navigateTo({ view: STUDENT_VIEWS[idx] });
           return;
         }
       }
@@ -137,5 +137,5 @@ export function useKeyboardShortcuts(): void {
 
     window.addEventListener('keydown', handler, { passive: false });
     return () => window.removeEventListener('keydown', handler);
-  }, [userRole, onboardingComplete, currentView, setCurrentView, toggleFocusMode]);
+  }, [userRole, onboardingComplete, currentView, navigateTo, toggleFocusMode]);
 }

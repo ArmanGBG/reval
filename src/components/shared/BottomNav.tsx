@@ -49,7 +49,7 @@ const SUPER_ADMIN_NAV: { view: ViewName; label: string; icon: React.ComponentTyp
 ];
 
 export default function BottomNav() {
-  const { currentView, setCurrentView, userRole, logout } = useAppStore();
+  const { currentView, navigateTo, userRole, logout } = useAppStore();
 
   const navItems =
     userRole === 'SUPER_ADMIN'
@@ -82,7 +82,7 @@ export default function BottomNav() {
           return (
             <button
               key={item.view}
-              onClick={() => setCurrentView(item.view)}
+              onClick={() => navigateTo({ view: item.view })}
               className={`nav-item-hover relative flex flex-col items-center justify-center gap-1 flex-1 min-w-[56px] min-h-[48px] rounded-xl ${
                 isActive ? accentText : 'text-[var(--foreground-subtle)]'
               }`}

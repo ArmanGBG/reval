@@ -97,22 +97,22 @@ const ACCENT_COLORS: Record<
 
 function buildCommands(args: {
   role: UserRole;
-  setCurrentView: (v: ViewName) => void;
+  navigateTo: (target: { view: ViewName; currentTool?: string | null }) => void;
   setCurrentTool: (t: string | null) => void;
   closePalette: () => void;
   openHelp: () => void;
   logout: () => void;
   exportData: () => void;
 }): Command[] {
-  const { role, setCurrentView, setCurrentTool, closePalette, openHelp, logout, exportData } = args;
+  const { role, navigateTo, setCurrentTool, closePalette, openHelp, logout, exportData } = args;
 
   const go = (view: ViewName) => {
-    setCurrentView(view);
+    navigateTo({ view });
     closePalette();
   };
 
   const openTool = (tool: string) => {
-    setCurrentView('tools');
+    navigateTo({ view: 'tools', currentTool: tool });
     setCurrentTool(tool);
     closePalette();
   };
@@ -412,7 +412,7 @@ export default function CommandPalette() {
   const pushRecent = useCommandPaletteStore((s) => s.pushRecent);
 
   const role = useAppStore((s) => s.userRole);
-  const setCurrentView = useAppStore((s) => s.setCurrentView);
+  const navigateTo = useAppStore((s) => s.navigateTo);
   const setCurrentTool = useAppStore((s) => s.setCurrentTool);
   const setHelpOpen = useKeyboardHelpStore((s) => s.setHelpOpen);
 
@@ -444,7 +444,7 @@ export default function CommandPalette() {
     () =>
       buildCommands({
         role,
-        setCurrentView,
+        navigateTo,
         setCurrentTool,
         closePalette,
         openHelp: () => setHelpOpen(true),
@@ -453,7 +453,7 @@ export default function CommandPalette() {
       }),
     [
       role,
-      setCurrentView,
+      navigateTo,
       setCurrentTool,
       closePalette,
       setHelpOpen,

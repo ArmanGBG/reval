@@ -43,7 +43,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 };
 
 export default function SuperAdminUsers() {
-  const { globalUsers, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, setCurrentView, setSelectedGlobalUserId } = useAppStore();
+  const { globalUsers, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, navigateTo } = useAppStore();
   useEffect(() => {
     loadGlobalUsers().catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری کاربران انجام نشد'));
     loadPlatformInstitutes().catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری آموزشگاه‌ها انجام نشد'));
@@ -96,8 +96,7 @@ export default function SuperAdminUsers() {
   }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus]);
 
   const handleViewUser = (id: string) => {
-    setSelectedGlobalUserId(id);
-    setCurrentView('sa-user-detail');
+    navigateTo({ view: 'sa-user-detail', selectedGlobalUserId: id });
   };
 
   return (

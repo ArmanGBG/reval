@@ -124,7 +124,7 @@ function EmptyStateStudents({ hasStudents }: { hasStudents: boolean }) {
 
 // ===== ADVISOR VIEW 2: Students List =====
 export function AdvisorStudentsList() {
-  const { setCurrentView, setSelectedStudentId, advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
+  const { navigateTo, advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
   const students = advisorStudents;
 
   // Load real students from DB if not already loaded
@@ -142,8 +142,7 @@ export function AdvisorStudentsList() {
   }, [students, searchQuery]);
 
   const handleStudentClick = (studentId: string) => {
-    setSelectedStudentId(studentId);
-    setCurrentView('advisor-student-detail');
+    navigateTo({ view: 'advisor-student-detail', selectedStudentId: studentId });
   };
 
   return (

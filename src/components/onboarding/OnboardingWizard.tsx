@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ArrowRight, Phone, User as UserIcon, GraduationCap, Loader2, Shield, Building2, BookOpen } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useAppStore } from '@/lib/store';
+import { replaceNavigation } from '@/lib/navigation';
 import { AVATARS } from '@/lib/constants/avatars';
 import type { Grade, Major, User, UserRole } from '@/lib/types';
 import { isIranianMobileInput, numericInput } from '@/lib/phone';
@@ -621,10 +622,10 @@ export default function OnboardingWizard() {
       setUser(realUser);
       setUserRole(u.role as UserRole);
       setOnboardingComplete(true);
+      replaceNavigation({ view: 'dashboard' });
 
       // Kick off background data loads based on role (mirrors LoginPage behaviour).
       const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
-      setCurrentView('dashboard');
       loadTasksForStudent(realUser.id).catch(() => {});
       loadExams({ studentId: realUser.id }).catch(() => {});
 
@@ -637,7 +638,7 @@ export default function OnboardingWizard() {
       });
       setSubmitting(false);
     }
-  }, [canProceed, submitting, name, selectedAvatar, role, grade, major, instituteName, phone, setUser, setUserRole, setOnboardingComplete, setCurrentView]);
+  }, [canProceed, submitting, name, selectedAvatar, role, grade, major, instituteName, phone, setUser, setUserRole, setOnboardingComplete]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">

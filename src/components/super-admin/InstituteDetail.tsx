@@ -35,13 +35,18 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 };
 
 export default function InstituteDetail() {
-  const { selectedInstituteId, platformInstitutes, globalUsers, loadPlatformInstitutes, loadGlobalUsers, setCurrentView } = useAppStore();
+  const { selectedInstituteId, platformInstitutes, globalUsers, loadPlatformInstitutes, loadGlobalUsers, navigateTo } = useAppStore();
   useEffect(() => { if (platformInstitutes.length === 0) loadPlatformInstitutes().catch(() => {}); if (globalUsers.length === 0) loadGlobalUsers().catch(() => {}); }, [platformInstitutes.length, globalUsers.length, loadPlatformInstitutes, loadGlobalUsers]);
 
   const institute = useMemo(() =>
     platformInstitutes.find((i) => i.id === selectedInstituteId),
     [selectedInstituteId, platformInstitutes]
   );
+
+  const goBack = () => {
+    if (window.history.state?.revalEntry) window.history.back();
+    else navigateTo({ view: 'sa-institutes' });
+  };
 
   const instituteUsers = useMemo(() =>
     globalUsers.filter((u) => u.instituteId === selectedInstituteId),
@@ -64,7 +69,7 @@ export default function InstituteDetail() {
         <Building2 className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
         <p className="text-muted-foreground mb-4">موسسه‌ای انتخاب نشده</p>
         <button
-          onClick={() => setCurrentView('sa-institutes')}
+          onClick={goBack}
           className="btn-hover text-gold text-sm font-bold"
         >
           بازگشت به لیست موسسات
@@ -81,7 +86,7 @@ export default function InstituteDetail() {
       {/* ============ Back Header ============ */}
       <header className="flex items-center justify-between gap-3">
         <button
-          onClick={() => setCurrentView('sa-institutes')}
+          onClick={goBack}
           className="nav-item-hover flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-3 py-2 rounded-[10px] -mr-3"
         >
           <ChevronRight className="w-4 h-4 flip-rtl" />

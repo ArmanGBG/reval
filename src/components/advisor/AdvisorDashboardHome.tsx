@@ -20,7 +20,7 @@ import { toPersianDigits, computeRisks, computeStudentStatus, STATUS_CONFIG, RIS
 
 // ===== ADVISOR VIEW 1: Dashboard (Global KPIs) =====
 export function AdvisorDashboardHome() {
-  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents, setCurrentView } = useAppStore();
+  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents, navigateTo } = useAppStore();
   const students = advisorStudents;
 
   // Load real students from DB if not already loaded
@@ -68,7 +68,7 @@ export function AdvisorDashboardHome() {
           <motion.button
             key={kpi.label}
             type="button"
-            onClick={() => kpi.view && setCurrentView(kpi.view)}
+            onClick={() => kpi.view && navigateTo({ view: kpi.view })}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
