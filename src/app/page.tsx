@@ -120,7 +120,16 @@ export default function Home() {
     const syncViewFromHistory = () => {
       const state = useAppStore.getState();
       if (state.onboardingComplete) {
-        state.restoreNavigation(decodeNavigationState(window.location, state.userRole));
+        const target = decodeNavigationState(window.location, state.userRole);
+        state.restoreNavigation(target);
+        // A logged-in user can pop into stale pre-login entries (`/#login`,
+        // `/#signup`, or the bare landing URL) left in the history stack from
+        // before authentication. Keep them inside the app and rewrite the
+        // entry with the proper panel URL so back/forward stays consistent.
+        const hasViewParam = new URLSearchParams(window.location.search).get('view');
+        if (!hasViewParam || window.location.hash === '#login' || window.location.hash === '#signup') {
+          replaceNavigation(target);
+        }
         return;
       }
       const hash = window.location.hash;
