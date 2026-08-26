@@ -15,7 +15,7 @@ import {
 import { useAppStore } from '@/lib/store';
 import type { ActivityType, Task } from '@/lib/types';
 import { buildActivityBreakdown, buildDailyTrend, buildSubjectDistribution, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
-import { minutesToHoursLabel, toPersianDigits } from '@/lib/persian-date';
+import { minutesToHoursLabel, toISODate, toPersianDigits } from '@/lib/persian-date';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import { ACTIVITY_COLORS } from '@/lib/activity-styles';
 
@@ -427,7 +427,16 @@ export default function MinimalAnalyticsView({
         {TIME_FILTERS.map((filter) => (
           <button
             key={filter}
-            onClick={() => setTimeFilter(filter)}
+            onClick={() => {
+              if (filter === 'بازه دلخواه' && !customRange) {
+                // Default range starts today (7-day window); the user can move it freely
+                const today = new Date();
+                const end = new Date(today);
+                end.setDate(today.getDate() + 6);
+                setCustomRange({ start: toISODate(today), end: toISODate(end) });
+              }
+              setTimeFilter(filter);
+            }}
             className={`shrink-0 rounded-lg border px-3 py-2 text-xs transition-colors ${
               timeFilter === filter
                 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'

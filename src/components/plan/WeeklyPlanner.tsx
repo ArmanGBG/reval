@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw } from 'lucide-react';
+import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -270,7 +270,7 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-1rem)] sm:max-w-4xl max-h-[92vh] overflow-hidden flex flex-col rounded-2xl p-0" dir="rtl">
+      <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-1rem)] sm:max-w-6xl max-h-[92vh] overflow-hidden flex flex-col rounded-2xl p-0" dir="rtl">
         {/* ===== Header ===== */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center gap-3">
@@ -328,11 +328,12 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                 onClick={() => {
                   setRangeMode(mode.key);
                   if (mode.key === 'custom' && !customStartDate) {
-                    // Initialize custom range to current week
+                    // Default range starts today (7-day window); the user can move it freely
                     const today = new Date();
-                    const weekD = getWeekDays(today);
-                    setCustomStartDate(weekD[0]);
-                    setCustomEndDate(weekD[6]);
+                    const end = new Date(today);
+                    end.setDate(today.getDate() + 6);
+                    setCustomStartDate(today);
+                    setCustomEndDate(end);
                   }
                 }}
                 className={`btn-hover h-8 min-w-[4.5rem] px-3 rounded-lg text-xs font-semibold ${
@@ -362,13 +363,8 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
 
         {/* ===== Days grid ===== */}
         <div className="flex-1 overflow-y-auto px-5 py-4 custom-scrollbar">
-          <div className={`grid gap-3 ${
-            displayDays.length <= 4
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-              : displayDays.length <= 7
-                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-          }`}>
+          {/* Auto-fill grid guarantees every day column keeps a readable minimum width */}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-4">
             {weekPlan.map((dayPlan) => (
               <DayColumn
                 key={dayPlan.dateStr}
@@ -480,27 +476,29 @@ function DayColumn({
       <button
         type="button"
         onClick={onSelectDay}
-        className="btn-hover flex w-full items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 text-right hover:bg-[var(--bg-overlay)]"
+        className="btn-hover flex w-full items-center justify-between gap-2 border-b border-[var(--border)] px-3.5 py-3 text-right hover:bg-[var(--bg-overlay)]"
         aria-label={`مشاهده برنامه روزانه ${dayName} ${dateLabel}`}
       >
-        <span>
+        <span className="min-w-0">
           <span className="flex items-center gap-2">
             <span className="text-sm font-bold text-[var(--foreground)]">{dayName}</span>
             {isTodayCell && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
                 امروز
               </span>
             )}
           </span>
-          <span className="mt-0.5 block text-[10px] text-[var(--foreground-subtle)]">{dateLabel}</span>
+          <span className="mt-1 block text-[11px] text-[var(--foreground-muted)]">{dateLabel}</span>
         </span>
-        <ChevronLeft className="h-3.5 w-3.5 shrink-0 text-[var(--foreground-subtle)]" />
+        <ChevronLeft className="h-4 w-4 shrink-0 text-[var(--foreground-subtle)]" />
       </button>
 
       {/* Tasks list */}
-      <div className="p-2 space-y-1.5 min-h-[60px]">
+      <div className="p-3 space-y-2 min-h-[88px]">
         {dayPlan.tasks.length === 0 ? (
-          <p className="text-[10px] text-[var(--foreground-subtle)] text-center py-3">خالی</p>
+          <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-4 border border-dashed border-[var(--border)] rounded-lg">
+            درسی ثبت نشده
+          </p>
         ) : (
           dayPlan.tasks.map((task) => (
             <TaskChip
@@ -520,10 +518,10 @@ function DayColumn({
       {/* Add button */}
       <button
         onClick={onAdd}
-        className="btn-hover w-full flex items-center justify-center gap-1.5 py-2 border-t border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-[11px] font-medium"
+        className="btn-hover w-full flex items-center justify-center gap-1.5 min-h-[40px] border-t border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-xs font-medium"
       >
-        <Plus className="w-3 h-3" />
-        درس
+        <Plus className="w-3.5 h-3.5" />
+        افزودن درس
       </button>
     </div>
   );
@@ -553,62 +551,75 @@ function TaskChip({
   const isDone = task.completed === true;
   const isDraft = task.status === 'DRAFT';
 
-  return (
-    <div className="group flex items-center gap-1.5">
-      {/* Complete toggle */}
-      {canComplete && <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleComplete();
-        }}
-        className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-          isDone
-            ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--bg-deep)]'
-            : 'border-[var(--border-strong)] text-transparent hover:border-[var(--accent)]'
-        }`}
-      >
-         {hasDetails ? <Check className="w-3 h-3" /> : null}
-      </button>}
+  // Left padding reserves room for the overlaid action buttons (RTL end side)
+  const actionPad = canComplete ? 'pl-12' : canManage ? 'pl-7' : 'pl-4';
 
-      {/* Subject chip — click to edit */}
+  return (
+    <div className="group relative">
+      {/* Subject chip — click to edit, full width for the subject name */}
       <button
         onClick={canEdit ? onClick : undefined}
-        className={`btn-hover relative overflow-hidden flex-1 px-2.5 py-2.5 rounded-lg border text-right ${
+        title={task.subject}
+        className={`btn-hover relative block w-full overflow-hidden rounded-lg border pr-4 text-right ${actionPad} ${
           hasDetails
             ? 'bg-[var(--accent-soft)] border-[var(--accent)]/20'
             : 'bg-[var(--bg-elevated)] border-[var(--border)]'
         } ${isDone ? 'opacity-50 line-through' : ''}`}
       >
-        <span aria-hidden className="absolute top-0 left-0 right-0 h-[2px]" style={{ backgroundColor: task.subjectColor }} />
-        <span className="flex items-center gap-2">
-          <span className="text-xs font-medium text-[var(--foreground)] truncate flex-1">{task.subject}</span>
-          {hasDetails && !isDone && <Check className="w-3 h-3 text-[var(--accent)] shrink-0" />}
-          {!hasDetails && <span className="text-[9px] text-[var(--warning)] shrink-0">تکمیل جزئیات</span>}
+        {/* Color strip — right edge in RTL */}
+        <span aria-hidden className="absolute top-2 bottom-2 right-1.5 w-[3px] rounded-full" style={{ backgroundColor: task.subjectColor }} />
+
+        <span className="block py-2">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--foreground)]">{task.subject}</span>
+            {hasDetails && !isDone && <Check className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />}
+            {!hasDetails && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--warning)]" role="img" aria-label="جزئیات تکمیل نشده" />}
+          </span>
+
+          {(task.teacherClassName || task.bookName) && (
+            <span className="mt-0.5 block truncate text-[11px] text-[var(--foreground-muted)]" title={[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}>
+              {[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}
+            </span>
+          )}
         </span>
-        {(task.teacherClassName || task.bookName) && <span className="mt-1 block text-[9px] text-[var(--foreground-subtle)] truncate">{[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}</span>}
       </button>
 
-      {isDraft && canEdit && <button
-        type="button"
-        onClick={(event) => { event.stopPropagation(); onClick(); }}
-        className="h-8 shrink-0 rounded-md bg-[var(--warning)]/10 px-2 text-[10px] font-bold text-[var(--warning)]"
-        aria-label="تکمیل جزئیات کلاس"
-      >
-        تکمیل
-      </button>}
+      {/* Complete toggle — overlaid on the chip's left edge */}
+      {canComplete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleComplete();
+          }}
+          className={`absolute left-6 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border transition-colors ${
+            isDone
+              ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--bg-deep)]'
+              : 'border-[var(--border-strong)] bg-[var(--bg-elevated)] text-transparent hover:border-[var(--accent)]'
+          }`}
+          aria-label={isDone ? 'برگرداندن به در حال انجام' : 'تکمیل تسک'}
+        >
+          {hasDetails ? <Check className="h-3 w-3" /> : null}
+        </button>
+      )}
 
-      {/* Remove */}
-      {canManage && <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className={`icon-btn w-7 h-7 rounded flex items-center justify-center hover:text-rose-400 transition-opacity ${isDraft ? 'text-[var(--danger)] opacity-100' : 'text-[var(--foreground-subtle)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}
-        aria-label={isDraft ? 'حذف پیش‌نویس' : 'حذف تسک'}
-        title={isDraft ? 'حذف پیش‌نویس' : 'حذف تسک'}
-      >
-        <X className="w-3 h-3" />
-      </button>}
+      {/* Remove — overlaid, revealed on hover/focus (always visible for drafts) */}
+      {canManage && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className={`icon-btn absolute left-1 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded transition-opacity ${
+            isDraft
+              ? 'text-[var(--danger)] opacity-100'
+              : 'text-[var(--foreground-subtle)] opacity-100 hover:text-rose-400 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100'
+          }`}
+          aria-label={isDraft ? 'حذف پیش‌نویس' : 'حذف تسک'}
+          title={isDraft ? 'حذف پیش‌نویس' : 'حذف تسک'}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 }
