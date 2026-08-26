@@ -252,6 +252,29 @@ export async function canEditAssignedStudentPlan(
   return ctx.user.role === 'ADVISOR' && await canViewStudentTasks(ctx, studentId);
 }
 
+// Reordering only rewrites the `order` field, so it is plan-level editing
+// rather than task modification: the student may reorder their own plan and an
+// assigned advisor may reorder their student's plan — including tasks created
+// by the other party. Without this, reordering a day that mixes student- and
+// advisor-created tasks always fails with 403.
+export async function canReorderTask(
+  ctx: AuthContext,
+  taskId: string,
+): Promise<boolean> {
+  if (ctx.user.role === 'SUPER_ADMIN') return true;
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    select: { studentId: true },
+  });
+
+  if (!task) return false;
+
+  if (ctx.user.role === 'STUDENT') return task.studentId === ctx.userId;
+  if (ctx.user.role === 'ADVISOR') return canViewStudentTasks(ctx, task.studentId);
+  return false;
+}
+
 // ===== Chapter / Topic ownership checks =====
 // These prevent cross-subject access via URL manipulation (bug 9 + 10):
 // e.g. /api/subjects/subjectA/chapters/chapter-of-B/topics must NOT work.

@@ -129,11 +129,10 @@ export function SortableTaskList({
     const newIndex = tasks.findIndex((t) => t.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reordered = arrayMove(tasks, oldIndex, newIndex);
-    // Update order field
-    reordered.forEach((t, i) => {
-      t.order = i;
-    });
+    const reordered = arrayMove(tasks, oldIndex, newIndex).map((t, i) => ({
+      ...t,
+      order: i,
+    }));
     onReorder(reordered);
   };
 
