@@ -216,6 +216,27 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     fetchSuggestions();
   }, [selection.subjectId, activities, isClassVideo, studentId]);
 
+  const removeTeacherClassSuggestion = async (suggestion: string) => {
+    if (!selection.subjectId) return;
+
+    setTeacherClassSuggestions((current) => current.filter((value) => value !== suggestion));
+    try {
+      const response = await fetch('/api/task-suggestions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, subjectId: selection.subjectId, type: 'teacherClass', value: suggestion }),
+      });
+      if (!response.ok) throw new Error('Failed to remove teacher suggestion');
+      if (selection.teacherClassName === suggestion) {
+        setTeacherClassName('');
+        setSelection((current) => ({ ...current, teacherClassName: '' }));
+      }
+    } catch {
+      setTeacherClassSuggestions((current) => current.includes(suggestion) ? current : [...current, suggestion]);
+      toast.error('حذف نام دبیر انجام نشد');
+    }
+  };
+
   // Can quick-save once subject is selected
   const classTeacherName = selection.teacherClassName ?? teacherClassName;
   const classSessionNumber = selection.sessionNumber ?? sessionNumber;
@@ -402,8 +423,9 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                     setFieldType(null);
                   }}
                   allowClassCurriculumLink={mode !== 'create'}
-                  teacherClassSuggestions={teacherClassSuggestions}
-                 draftState={pickerDraft}
+                   teacherClassSuggestions={teacherClassSuggestions}
+                   onTeacherSuggestionRemove={removeTeacherClassSuggestion}
+                  draftState={pickerDraft}
                   onDraftStateChange={setPickerDraft}
                 />
                 {isClassVideo && mode !== 'create' && (

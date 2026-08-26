@@ -109,6 +109,7 @@ interface TaskSubjectPickerProps {
   onClassVideoExited?: () => void;
   allowClassCurriculumLink?: boolean;
   teacherClassSuggestions?: string[];
+  onTeacherSuggestionRemove?: (value: string) => void;
 }
 
 type ApiSubject = Subject;
@@ -161,6 +162,7 @@ export function TaskSubjectPicker({
   onClassVideoExited,
   allowClassCurriculumLink = false,
   teacherClassSuggestions = [],
+  onTeacherSuggestionRemove,
 }: TaskSubjectPickerProps) {
   const [subjects, setSubjects] = useState<ApiSubject[]>([]);
   const [loading, setLoading] = useState(false);
@@ -790,6 +792,7 @@ export function TaskSubjectPicker({
           onTeacherClassNameChange={(teacherClassName) => updateClassVideoDetails({ teacherClassName })}
           onSessionNumberChange={(sessionNumber) => updateClassVideoDetails({ sessionNumber })}
           teacherSuggestions={teacherClassSuggestions}
+          onTeacherSuggestionRemove={onTeacherSuggestionRemove}
         />
         {allowClassCurriculumLink && (fieldType === null ? (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3">

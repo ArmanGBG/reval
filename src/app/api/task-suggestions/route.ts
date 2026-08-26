@@ -74,3 +74,29 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true }, { status: 201 });
 }
+
+export async function DELETE(request: NextRequest) {
+  const { ctx, error } = await requireAuth(request);
+  if (error || !ctx) return error;
+
+  const body = await request.json();
+  const { studentId, subjectId, type, value } = body;
+
+  if (!studentId || !subjectId || !type || typeof value !== 'string' || value.trim() === '') {
+    return NextResponse.json({ error: 'studentId، subjectId، type و value معتبر الزامی هستند' }, { status: 400 });
+  }
+
+  if (!['teacherClass', 'book'].includes(type)) {
+    return NextResponse.json({ error: 'type معتبر نیست' }, { status: 400 });
+  }
+
+  if (!(await canViewStudentTasks(ctx, studentId))) {
+    return NextResponse.json({ error: 'دسترسی به تسک‌های این دانش‌آموز مجاز نیست' }, { status: 403 });
+  }
+
+  await db.taskDetailSuggestion.deleteMany({
+    where: { studentId, subjectId, type, value: value.trim() },
+  });
+
+  return NextResponse.json({ success: true });
+}

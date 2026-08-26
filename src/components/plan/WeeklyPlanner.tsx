@@ -642,7 +642,7 @@ function AddSubjectModal({
   const selectedGroup = groups.find((group) => group.name === selectedGroupName) ?? null;
 
   useEffect(() => {
-    const subjectId = selectedGroup?.variants[0]?.id;
+    const subjectId = classVariant?.id;
     if (!subjectId) {
       setTeacherClassSuggestions([]);
       return;
@@ -651,7 +651,25 @@ function AddSubjectModal({
       .then((response) => response.ok ? response.json() : { values: [] })
       .then((data) => setTeacherClassSuggestions(Array.isArray(data.values) ? data.values : []))
       .catch(() => setTeacherClassSuggestions([]));
-  }, [selectedGroup, studentId]);
+  }, [classVariant?.id, studentId]);
+
+  const removeTeacherClassSuggestion = async (suggestion: string) => {
+    if (!classVariant) return;
+
+    setTeacherClassSuggestions((current) => current.filter((value) => value !== suggestion));
+    try {
+      const response = await fetch('/api/task-suggestions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, subjectId: classVariant.id, type: 'teacherClass', value: suggestion }),
+      });
+      if (!response.ok) throw new Error('Failed to remove teacher suggestion');
+      if (teacherClassName === suggestion) setTeacherClassName('');
+    } catch {
+      setTeacherClassSuggestions((current) => current.includes(suggestion) ? current : [...current, suggestion]);
+      toast.error('حذف نام دبیر انجام نشد');
+    }
+  };
 
   const selectVariant = (variant: QuickSubject, quickMode: QuickMode, topicModeId?: string) => {
     onSelect({ ...variant, quickMode, topicModeId });
@@ -689,7 +707,7 @@ function AddSubjectModal({
             {classVariant ? (
               <div className="space-y-3">
                 <button type="button" onClick={() => setClassVariant(null)} className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)]"><ChevronRight className="h-3.5 w-3.5" /> بازگشت</button>
-                 <ClassSessionFields teacherClassName={teacherClassName} sessionNumber={sessionNumber} teacherSuggestions={teacherClassSuggestions} onTeacherClassNameChange={setTeacherClassName} onSessionNumberChange={setSessionNumber} />
+                 <ClassSessionFields teacherClassName={teacherClassName} sessionNumber={sessionNumber} teacherSuggestions={teacherClassSuggestions} onTeacherClassNameChange={setTeacherClassName} onSessionNumberChange={setSessionNumber} onTeacherSuggestionRemove={removeTeacherClassSuggestion} />
                 <button type="button" disabled={!classSessionDetailsComplete(teacherClassName, sessionNumber)} onClick={() => onSelect({ ...classVariant, quickMode: 'CLASS_VIDEO', teacherClassName, sessionNumber })} className="h-11 w-full rounded-lg bg-[#35C49A] text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40">ثبت کلاس/ویدیو</button>
               </div>
             ) : !selectedGroup ? (

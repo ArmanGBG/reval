@@ -1,17 +1,21 @@
 'use client';
 
+import { X } from 'lucide-react';
+
 export function ClassSessionFields({
   teacherClassName,
   sessionNumber,
   onTeacherClassNameChange,
   onSessionNumberChange,
   teacherSuggestions = [],
+  onTeacherSuggestionRemove,
 }: {
   teacherClassName: string;
   sessionNumber: string;
   onTeacherClassNameChange: (value: string) => void;
   onSessionNumberChange: (value: string) => void;
   teacherSuggestions?: string[];
+  onTeacherSuggestionRemove?: (value: string) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -20,14 +24,29 @@ export function ClassSessionFields({
         {teacherSuggestions.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {teacherSuggestions.map((suggestion) => (
-              <button
+              <div
                 key={suggestion}
-                type="button"
-                onClick={() => onTeacherClassNameChange(suggestion)}
-                className={`rounded-md border px-2.5 py-1 text-[11px] transition-colors ${teacherClassName === suggestion ? 'border-[#35C49A]/40 bg-[#35C49A]/15 text-[#72E0BF]' : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'}`}
+                className={`flex items-center overflow-hidden rounded-md border text-[11px] transition-colors ${teacherClassName === suggestion ? 'border-[#35C49A]/40 bg-[#35C49A]/15 text-[#72E0BF]' : 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)]'}`}
               >
-                {suggestion}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => onTeacherClassNameChange(suggestion)}
+                  className="px-2.5 py-1"
+                >
+                  {suggestion}
+                </button>
+                {onTeacherSuggestionRemove && (
+                  <button
+                    type="button"
+                    onClick={() => onTeacherSuggestionRemove(suggestion)}
+                    aria-label={`حذف پیشنهاد ${suggestion}`}
+                    title="حذف از پیشنهادها"
+                    className="flex size-7 items-center justify-center border-r border-current/15 opacity-70 transition-opacity hover:opacity-100"
+                  >
+                    <X className="size-3" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
