@@ -2,6 +2,7 @@
 
 import { Subject } from '@/lib/subjects-types';
 import { ChevronLeft, BookOpen, Layers, MessageSquare, Sparkles, Award } from 'lucide-react';
+import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -137,13 +138,13 @@ export function SubjectCard({ subject, onClick }: { subject: Subject; onClick: (
       {/* Assessment and completeness badges */}
       <div className="flex flex-wrap gap-1.5 mb-3">
         {hasKonkur && (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[var(--gold-soft)] text-[var(--gold)] border-[var(--gold)]/30 flex items-center gap-1">
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${FIELD_TYPE_STYLES['کنکور'].badge}`}>
             <Award className="w-2.5 h-2.5" />
             کنکور
           </span>
         )}
         {hasFinal && (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/30">
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${FIELD_TYPE_STYLES['نهایی'].badge}`}>
             نهایی
           </span>
         )}

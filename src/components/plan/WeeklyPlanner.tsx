@@ -34,6 +34,8 @@ import {
   getTodayJalali,
 } from '@/lib/persian-date';
 import { useCurrentStudentId } from '@/lib/student-utils';
+import { supportsFinalAssessment } from '@/lib/subject-eligibility';
+import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
 import { activitySelectedStyle } from '@/lib/activity-styles';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
@@ -60,11 +62,11 @@ type QuickMode = 'BOOK' | 'THEMATIC' | 'CLASS_VIDEO';
 type QuickSubject = Subject & { resolvedFieldType: FieldType; quickMode?: QuickMode; topicModeId?: string; teacherClassName?: string; sessionNumber?: string };
 type QuickSubjectGroup = { name: string; color: string; icon: string | null; variants: QuickSubject[] };
 
-function hasEligibleOffering(subject: Subject, fieldType: FieldType, grade: string, major: string): boolean {
+function hasEligibleOffering(subject: Subject, fieldType: FieldType, major: string): boolean {
   return (subject.grades ?? []).some((offering) =>
     offering.isActive &&
     offering.major === major &&
-    (fieldType === 'کنکور' ? offering.isKonkur : offering.isFinal && offering.grade === grade),
+    (fieldType === 'کنکور' ? offering.isKonkur : offering.isFinal && supportsFinalAssessment(offering.grade)),
   );
 }
 
@@ -183,21 +185,25 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
     try {
       const grade = targetStudent?.grade ?? user?.grade ?? 'دوازدهم';
       const major = targetStudent?.major ?? user?.major ?? 'تجربی';
+      // Match TaskSubjectPicker: load every eligible grade so books outside the
+      // student's current grade (e.g. زیست‌شناسی ۲ for a دوازدهم student) keep
+      // their نهایی variant here too, not just in single-task entry.
+      const suffix = `grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}&allGrades=true`;
       const [konkurRes, finalRes] = await Promise.all([
-        fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('کنکور')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
-        fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('نهایی')}&grade=${encodeURIComponent(grade)}&major=${encodeURIComponent(major)}`),
+        fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('کنکور')}&${suffix}`),
+        fetch(`/api/subjects/for-task?fieldType=${encodeURIComponent('نهایی')}&${suffix}`),
       ]);
       const konkurData = await konkurRes.json();
       const finalData = await finalRes.json();
       if (!konkurRes.ok || !finalRes.ok) throw new Error(konkurData.error || finalData.error);
       const resolved = new Map<string, QuickSubject>();
       for (const subject of konkurData.subjects || []) {
-        if (hasEligibleOffering(subject, 'کنکور', grade, major)) {
+        if (hasEligibleOffering(subject, 'کنکور', major)) {
           resolved.set(`${subject.id}:کنکور`, { ...subject, resolvedFieldType: 'کنکور' });
         }
       }
       for (const subject of finalData.subjects || []) {
-        if (hasEligibleOffering(subject, 'نهایی', grade, major)) {
+        if (hasEligibleOffering(subject, 'نهایی', major)) {
           resolved.set(`${subject.id}:نهایی`, { ...subject, resolvedFieldType: 'نهایی' });
         }
       }
@@ -741,7 +747,7 @@ function AddSubjectModal({
                     <div key={subjectId} className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5">
                       <span className="min-w-0 flex-1 truncate text-right text-xs text-[var(--foreground)]">{variants[0].name}</span>
                       <div className="flex shrink-0 gap-1">
-                        {variants.map((variant) => <button key={variant.resolvedFieldType} type="button" onClick={() => selectVariant(variant, 'BOOK')} className={`rounded-md border px-2 py-1 text-[9px] font-semibold ${variant.resolvedFieldType === 'کنکور' ? 'border-[#B07CFF]/35 bg-[#B07CFF]/10 text-[#C39DFF]' : 'border-[#4DA3FF]/35 bg-[#4DA3FF]/10 text-[#79BDFF]'}`}>{variant.resolvedFieldType}</button>)}
+                        {variants.map((variant) => <button key={variant.resolvedFieldType} type="button" onClick={() => selectVariant(variant, 'BOOK')} className={`rounded-md border px-2 py-1 text-[9px] font-semibold ${FIELD_TYPE_STYLES[variant.resolvedFieldType].badge}`}>{variant.resolvedFieldType}</button>)}
                       </div>
                     </div>
                   ))}
@@ -756,7 +762,7 @@ function AddSubjectModal({
                     const modes = (variant.grades ?? []).flatMap((grade) => (grade.topicModes ?? []).map((mode) => ({ grade, mode })));
                     return (
                       <div key={`extras:${variant.id}:${variant.resolvedFieldType}`} className="mb-2 space-y-1.5">
-                        {modes.map(({ grade, mode }) => <button key={mode.id} type="button" onClick={() => selectVariant(variant, 'THEMATIC', mode.id)} className="btn-hover flex w-full items-center justify-between rounded-lg border border-[#F2B84B]/30 bg-[#F2B84B]/10 px-3 py-2.5 text-right text-xs text-[#FFD27A]">{mode.title}<span className="text-[9px] opacity-70">مبحثی · {grade.grade}</span></button>)}
+                        {modes.map(({ grade, mode }) => <button key={mode.id} type="button" onClick={() => selectVariant(variant, 'THEMATIC', mode.id)} className="btn-hover flex w-full items-center justify-between rounded-lg border border-[#F2845B]/30 bg-[#F2845B]/10 px-3 py-2.5 text-right text-xs text-[#F5A882]">{mode.title}<span className="text-[9px] opacity-70">مبحثی · {grade.grade}</span></button>)}
                       </div>
                     );
                   })}
@@ -1125,7 +1131,7 @@ function EditTaskModal({
                   onClick={() => onUpdate({ fieldType: ft })}
                   className={`btn-hover flex-1 h-9 rounded-lg text-xs font-medium border ${
                     task.fieldType === ft
-                      ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                      ? FIELD_TYPE_STYLES[ft].selected
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)]'
                   }`}
                 >

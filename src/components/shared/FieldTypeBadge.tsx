@@ -1,15 +1,18 @@
 import type { FieldType } from '@/lib/types';
 
+// Single source of truth for field-type (کنکور/نهایی) colors across the app:
+// کنکور = purple, نهایی = blue. Every badge, chip, and toggle must use these
+// styles so the two field types stay visually consistent everywhere.
 export const FIELD_TYPE_STYLES: Record<FieldType, { badge: string; selected: string; marker: string }> = {
   'کنکور': {
-    badge: 'border-[var(--accent)]/25 bg-[var(--accent-soft)] text-[var(--accent)]',
-    selected: 'border-[var(--accent)] bg-[var(--accent)] text-[var(--bg-deep)]',
-    marker: 'bg-[var(--accent)]',
+    badge: 'border-[#B07CFF]/35 bg-[#B07CFF]/10 text-[#C39DFF]',
+    selected: 'border-[#B07CFF]/60 bg-[#B07CFF]/20 text-[#C39DFF]',
+    marker: 'bg-[#B07CFF]',
   },
   'نهایی': {
-    badge: 'border-[var(--warning)]/30 bg-[var(--warning)]/10 text-[var(--warning)]',
-    selected: 'border-[var(--warning)] bg-[var(--warning)] text-[var(--bg-deep)]',
-    marker: 'bg-[var(--warning)]',
+    badge: 'border-[#4DA3FF]/35 bg-[#4DA3FF]/10 text-[#79BDFF]',
+    selected: 'border-[#4DA3FF]/60 bg-[#4DA3FF]/20 text-[#79BDFF]',
+    marker: 'bg-[#4DA3FF]',
   },
 };
 

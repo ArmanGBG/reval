@@ -29,7 +29,7 @@ import SessionGuard from '@/components/shared/SessionGuard';
 import { UserRole } from '@/lib/types';
 
 export default function Home() {
-  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete } = useAppStore();
+  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete, theme, setTheme } = useAppStore();
   // Track whether we've validated the persisted session with the server
   const [authValidated, setAuthValidated] = useState(false);
 
@@ -117,6 +117,11 @@ export default function Home() {
     window.addEventListener('popstate', syncPublicViewFromHistory);
     return () => window.removeEventListener('popstate', syncPublicViewFromHistory);
   }, [setCurrentView]);
+
+  // Sync theme attribute on the <html> element so CSS variables update live.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   // Not logged in yet → show login / landing / onboarding (no chrome)
   const isLoggedIn = onboardingComplete && userRole !== undefined;

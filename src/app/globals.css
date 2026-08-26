@@ -191,6 +191,92 @@
   --sidebar-ring: var(--accent);
 }
 
+/* ============================================================
+   Light Theme Override
+   ============================================================ */
+[data-theme="light"] {
+  --bg-deep: #F0F1F2;
+  --bg-base: #FFFFFF;
+  --bg-elevated: #F7F8F8;
+  --bg-overlay: #F0F1F2;
+  --surface-glass: rgba(0, 0, 0, 0.02);
+  --surface-glass-strong: rgba(0, 0, 0, 0.04);
+
+  --foreground: #0B0C0E;
+  --foreground-muted: #5C6066;
+  --foreground-subtle: #8A8F98;
+
+  --accent: #2D8A5E;
+  --accent-hover: #34A872;
+  --accent-soft: rgba(45, 138, 94, 0.10);
+  --accent-glow: transparent;
+
+  --mint: #5A9E7E;
+  --mint-bright: #6DB893;
+  --mint-soft: rgba(90, 158, 126, 0.10);
+
+  --gold: var(--accent);
+  --gold-soft: var(--accent-soft);
+  --gold-glow: transparent;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+
+  --success: #2D9F6E;
+  --warning: #B87A1A;
+  --danger: #D93B3B;
+  --info: #2D8A5E;
+
+  --background: var(--bg-base);
+  --foreground: #0B0C0E;
+  --card: var(--bg-elevated);
+  --card-foreground: #0B0C0E;
+  --popover: var(--bg-overlay);
+  --popover-foreground: #0B0C0E;
+  --primary: var(--accent);
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0F1F2;
+  --secondary-foreground: #0B0C0E;
+  --muted: #F0F1F2;
+  --muted-foreground: #5C6066;
+  --accent: #2D8A5E;
+  --accent-foreground: #FFFFFF;
+  --destructive: #D93B3B;
+  --input: rgba(0, 0, 0, 0.08);
+  --ring: var(--accent);
+  --chart-1: #2D8A5E;
+  --chart-2: #5A9E7E;
+  --chart-3: #2D9F6E;
+  --chart-4: #B87A1A;
+  --chart-5: #D93B3B;
+  --sidebar: var(--bg-deep);
+  --sidebar-foreground: #0B0C0E;
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(0, 0, 0, 0.04);
+  --sidebar-accent-foreground: #0B0C0E;
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-ring: var(--accent);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.20);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+[data-theme="light"] .edge-highlight::before {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.04) 0%,
+    transparent 50%
+  );
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

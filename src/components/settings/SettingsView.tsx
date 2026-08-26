@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Pencil, LogOut, MessageSquarePlus, ChevronLeft,
-  User, LifeBuoy, Info,
+  User, LifeBuoy, Info, Sun, Moon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -41,9 +41,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 // ===== Section config for desktop nav =====
-type SectionId = 'profile' | 'support' | 'about';
+type SectionId = 'profile' | 'appearance' | 'support' | 'about';
 const SECTIONS: { id: SectionId; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'پروفایل و هویت', icon: User },
+  { id: 'appearance', label: 'ظاهر و تم', icon: Sun },
   { id: 'support', label: 'پشتیبانی', icon: LifeBuoy },
   { id: 'about', label: 'درباره اپ', icon: Info },
 ];
@@ -266,6 +267,45 @@ function SupportSection({
   );
 }
 
+// ===== Appearance Section =====
+function AppearanceSection({ theme, setTheme, toggleTheme }: {
+  theme: 'dark' | 'light';
+  setTheme: (theme: 'dark' | 'light') => void;
+  toggleTheme: () => void;
+}) {
+  return (
+    <SectionCard id="appearance" title="ظاهر و تم" icon={Sun}>
+      <div className="space-y-3">
+        <p className="text-xs text-[var(--foreground-muted)]">تم برنامه را انتخاب کنید:</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setTheme('light')}
+            className={`btn-hover flex flex-col items-center gap-2 rounded-xl border p-4 transition-all min-h-[80px] ${
+              theme === 'light'
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Sun className="w-5 h-5" />
+            <span className="text-sm font-semibold">روشن</span>
+          </button>
+          <button
+            onClick={() => setTheme('dark')}
+            className={`btn-hover flex flex-col items-center gap-2 rounded-xl border p-4 transition-all min-h-[80px] ${
+              theme === 'dark'
+                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            <Moon className="w-5 h-5" />
+            <span className="text-sm font-semibold">تاریک</span>
+          </button>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 // ===== About Section =====
 function AboutSection() {
   return (
@@ -373,6 +413,7 @@ export default function SettingsView() {
     tickets,
     addTicket,
   } = useAppStore();
+  const { theme, setTheme } = useAppStore();
 
   // Local state for profile editing
   const [displayName, setDisplayName] = useState(user?.name || '');
@@ -472,6 +513,7 @@ export default function SettingsView() {
         <div className="space-y-6">
           <ProfileSection {...profileProps} />
           <ConnectionManager role="STUDENT" />
+          <AppearanceSection theme={theme} setTheme={setTheme} toggleTheme={() => useAppStore.getState().toggleTheme()} />
           <SupportSection {...supportProps} />
           <AboutSection />
         </div>
@@ -537,6 +579,7 @@ export default function SettingsView() {
               >
                 {activeSection === 'profile' && <ProfileSection {...profileProps} />}
                 {activeSection === 'profile' && <div className="mt-6"><ConnectionManager role="STUDENT" /></div>}
+                {activeSection === 'appearance' && <AppearanceSection theme={theme} setTheme={setTheme} toggleTheme={() => useAppStore.getState().toggleTheme()} />}
                 {activeSection === 'support' && <SupportSection {...supportProps} />}
                 {activeSection === 'about' && <AboutSection />}
               </motion.div>

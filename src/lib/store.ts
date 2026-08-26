@@ -145,6 +145,27 @@ function clearAuthStorage() {
  */
 export { loadAuthFromStorage, clearAuthStorage, AUTH_STORAGE_KEY };
 
+// ====================================================================
+// Theme persistence (localStorage)
+// ====================================================================
+const THEME_STORAGE_KEY = 'reval:theme:v1';
+
+function loadThemeFromStorage(): 'dark' | 'light' | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (raw === 'dark' || raw === 'light') return raw;
+  } catch {}
+  return null;
+}
+
+function saveThemeToStorage(theme: 'dark' | 'light') {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {}
+}
+
 interface AppState {
   // ===== Role-Based Access Control =====
   userRole: UserRole;
@@ -245,6 +266,11 @@ interface AppState {
   focusMode: boolean;
   setFocusMode: (on: boolean) => void;
   toggleFocusMode: () => void;
+
+  // Theme — dark (default) or light
+  theme: 'dark' | 'light';
+  setTheme: (theme: 'dark' | 'light') => void;
+  toggleTheme: () => void;
 
   // ===== Institute Manager State =====
   instituteProfile: InstituteProfile;
@@ -790,6 +816,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   focusMode: false,
   setFocusMode: (on) => set({ focusMode: on }),
   toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
+
+  // Theme — dark by default, persisted in localStorage
+  theme: (() => {
+    if (typeof window !== 'undefined') {
+      const stored = loadThemeFromStorage();
+      if (stored) return stored;
+    }
+    return 'dark';
+  })(),
+  setTheme: (theme) => {
+    set({ theme });
+    saveThemeToStorage(theme);
+  },
+  toggleTheme: () => set((s) => {
+    const next = s.theme === 'dark' ? 'light' : 'dark';
+    saveThemeToStorage(next);
+    return { theme: next };
+  }),
 
   // ===== Institute Manager State =====
   instituteProfile: {

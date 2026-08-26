@@ -34,6 +34,7 @@ import { Chapter, GradeSubject, Subject, Topic, TopicMode, TopicModeSubtopic } f
 import { FieldType } from '@/lib/types';
 import { apiFetch, AuthError } from '@/lib/api-client';
 import { ClassSessionFields } from '@/components/shared/ClassSessionFields';
+import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -403,16 +404,22 @@ export function TaskSubjectPicker({
     setSelectedCourseName(null);
     setSelectedGrade(null);
     resetContentSelection();
-    if (selectedSubject) {
+    if (value.contentType === 'CLASS_VIDEO') {
       onChange({
-        subjectId: selectedSubject.id,
-        subjectName: selectedSubject.name,
-        subjectColor: selectedSubject.color,
-        contentType: value.contentType,
+        subjectId: selectedSubject?.id ?? value.subjectId,
+        subjectName: selectedSubject?.name ?? value.subjectName,
+        subjectColor: selectedSubject?.color ?? value.subjectColor,
+        contentType: 'CLASS_VIDEO',
         teacherClassName: value.teacherClassName,
         sessionNumber: value.sessionNumber,
       });
+      return;
     }
+    // Returning to the course list must drop the selected book and its field
+    // tag, otherwise the picker re-renders the same screen (subject-only
+    // drafts land here with no grade chosen yet) and the button is a no-op.
+    onFieldTypeChange?.(null, {});
+    if (!onFieldTypeChange) onChange({});
   };
   const handleSelectGrade = (g: string) => {
     setSelectedGrade(g);
@@ -744,8 +751,8 @@ export function TaskSubjectPicker({
             <div key={`${book.subject.id}:${book.gradeSubject.id}`} className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border)] surface-1 px-3">
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--foreground)]">{bookLabel(selectedCourse, book.gradeSubject.grade)}</span>
               <div className="flex shrink-0 gap-1">
-                {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectBookField(book, 'کنکور')} className="min-h-9 rounded-md border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-3 text-xs font-semibold text-[#C39DFF]">کنکور</button>}
-                {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectBookField(book, 'نهایی')} className="min-h-9 rounded-md border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-3 text-xs font-semibold text-[#79BDFF]">نهایی</button>}
+                {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectBookField(book, 'کنکور')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['کنکور'].badge}`}>کنکور</button>}
+                {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectBookField(book, 'نهایی')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['نهایی'].badge}`}>نهایی</button>}
               </div>
             </div>
           ))}</div>
@@ -757,8 +764,8 @@ export function TaskSubjectPicker({
               <div key={mode.id} className="flex items-center gap-2 rounded-xl border border-[var(--border)] surface-1 p-3">
                 <span className="min-w-0 flex-1 text-right text-sm"><span className="block truncate">{mode.title}</span><span className="mt-1 block text-[10px] text-[var(--foreground-subtle)]">{bookLabel(selectedCourse, book.gradeSubject.grade)} · {toPersianDigits(mode.subtopics?.length ?? 0)} زیرمبحث</span></span>
                 <div className="flex shrink-0 gap-1">
-                  {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'کنکور')} className="min-h-9 rounded-md border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-3 text-xs font-semibold text-[#C39DFF]">کنکور</button>}
-                  {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'نهایی')} className="min-h-9 rounded-md border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-3 text-xs font-semibold text-[#79BDFF]">نهایی</button>}
+                  {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'کنکور')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['کنکور'].badge}`}>کنکور</button>}
+                  {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'نهایی')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['نهایی'].badge}`}>نهایی</button>}
                 </div>
               </div>
             ))}</div>
@@ -799,8 +806,8 @@ export function TaskSubjectPicker({
             <p className="mb-2 text-xs font-semibold text-[var(--foreground)]">اتصال اختیاری به محتوای درسی</p>
             <p className="mb-3 text-[10px] text-[var(--foreground-muted)]">ابتدا حوزه را انتخاب کنید؛ سپس همه کتاب‌ها و مباحث آن حوزه نمایش داده می‌شوند.</p>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => beginClassCurriculumLink('کنکور')} className="rounded-lg border border-[#B07CFF]/35 bg-[#B07CFF]/10 px-3 py-2 text-xs font-semibold text-[#C39DFF]">کنکور</button>
-              <button type="button" onClick={() => beginClassCurriculumLink('نهایی')} className="rounded-lg border border-[#4DA3FF]/35 bg-[#4DA3FF]/10 px-3 py-2 text-xs font-semibold text-[#79BDFF]">نهایی</button>
+              <button type="button" onClick={() => beginClassCurriculumLink('کنکور')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${FIELD_TYPE_STYLES['کنکور'].badge}`}>کنکور</button>
+              <button type="button" onClick={() => beginClassCurriculumLink('نهایی')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${FIELD_TYPE_STYLES['نهایی'].badge}`}>نهایی</button>
             </div>
           </div>
         ) : (

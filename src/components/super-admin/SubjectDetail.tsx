@@ -285,7 +285,7 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
                       selectedGradeSubject[field] &&
                       !selectedGradeSubject[field === 'isKonkur' ? 'isFinal' : 'isKonkur']
                     )}
-                    className="data-[state=checked]:bg-[var(--gold)] data-[state=unchecked]:bg-[var(--border-strong)]"
+                    className={`${field === 'isKonkur' ? 'data-[state=checked]:bg-[#B07CFF]' : 'data-[state=checked]:bg-[#4DA3FF]'} data-[state=unchecked]:bg-[var(--border-strong)]`}
                   />
                 </label>
               ))}

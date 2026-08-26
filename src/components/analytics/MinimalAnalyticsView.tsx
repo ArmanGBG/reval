@@ -399,7 +399,7 @@ export default function MinimalAnalyticsView({
     }));
     return [
       ...books,
-      { key: 'thematic', name: 'مطالعه مبحثی', minutes: minutesFor((task) => task.curriculumMode === 'THEMATIC'), fill: '#F2B84B', book: null },
+      { key: 'thematic', name: 'مطالعه مبحثی', minutes: minutesFor((task) => task.curriculumMode === 'THEMATIC'), fill: '#F2845B', book: null },
       { key: 'class-video', name: 'کلاس/ویدیو', minutes: minutesFor((task) => Boolean(task.activityTypes?.includes('کلاس/ویدیو'))), fill: '#35C49A', book: null },
     ];
   }, [reportTasks, selectedCourse]);

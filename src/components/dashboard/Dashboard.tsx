@@ -14,6 +14,7 @@ import {
   TaskSubjectPicker,
   TaskSelection,
 } from '@/components/shared/TaskSubjectPicker';
+import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { getRandomSuccessMessage, getRandomFailureMessage, getGreeting } from '@/lib/constants/feedbackMessages';
 import {
   toPersianDigits,
@@ -729,7 +730,7 @@ function EditTaskModal({
                   onClick={() => onUpdate({ fieldType: ft })}
                   className={`btn-hover flex-1 h-9 rounded-lg text-xs font-medium border ${
                     task.fieldType === ft
-                      ? 'bg-[var(--accent-soft)] border-[var(--accent)]/30 text-[var(--accent)]'
+                      ? FIELD_TYPE_STYLES[ft].selected
                       : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground-muted)]'
                   }`}
                 >

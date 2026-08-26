@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { ModalInput } from './advisor-ui';
 import { ALL_ACTIVITY_TYPES } from './advisor-helpers';
 import { activitySelectedStyle } from '@/lib/activity-styles';
+import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { buildClassDraft, classSessionDetailsComplete, isClassTask } from '@/lib/class-task';
 
 const TIME_QUICK_PICKS = [60, 90, 120];
@@ -365,7 +366,7 @@ export function TaskModal({
                   aria-pressed={fieldType === ft}
                   className={`relative flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
                     fieldType === ft
-                      ? 'border-[var(--accent)]/35 bg-[var(--accent-soft)] text-[var(--accent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_8%,transparent)]'
+                      ? FIELD_TYPE_STYLES[ft].selected
                       : 'border-[var(--border)] bg-[var(--bg-overlay)] text-[var(--foreground-muted)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]'
                   }`}
                 >

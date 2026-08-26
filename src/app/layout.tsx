@@ -34,6 +34,11 @@ export default function RootLayout({
           color: "var(--foreground)",
         }}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { const t = localStorage.getItem('reval:theme:v1'); if (t === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch {} })()`,
+          }}
+        />
         {children}
         <Toaster />
       </body>
