@@ -28,6 +28,7 @@ import { ALL_ACTIVITY_TYPES } from './advisor-helpers';
 import { activitySelectedStyle } from '@/lib/activity-styles';
 import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { buildClassDraft, classSessionDetailsComplete, isClassTask } from '@/lib/class-task';
+import { normalizeNumericInput } from '@/lib/digits';
 
 const TIME_QUICK_PICKS = [60, 90, 120];
 const TEST_QUICK_PICKS = [20, 30, 40];
@@ -546,10 +547,11 @@ export function TaskModal({
             <div>
               <ModalInput
                 label="زمان هدف (دقیقه)"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={targetTimeMinutes}
-                onChange={(e) => setTargetTimeMinutes(Number(e.target.value))}
-                min={1}
+                onChange={(e) => setTargetTimeMinutes(Number(normalizeNumericInput(e.target.value)))}
               />
               <div className="flex gap-1.5 mt-2">
                 {TIME_QUICK_PICKS.map((m) => (
@@ -571,10 +573,11 @@ export function TaskModal({
             <div>
               <ModalInput
                 label="تعداد تست هدف"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
                 value={targetTestCount}
-                onChange={(e) => setTargetTestCount(Number(e.target.value))}
-                min={0}
+                onChange={(e) => setTargetTestCount(Number(normalizeNumericInput(e.target.value)))}
               />
               <div className="flex gap-1.5 mt-2">
                 {TEST_QUICK_PICKS.map((t) => (

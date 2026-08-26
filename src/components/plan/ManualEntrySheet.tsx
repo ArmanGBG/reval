@@ -11,6 +11,7 @@ import { AuthError } from '@/lib/api-client';
 import { ChevronLeft, Save, ArrowLeft } from 'lucide-react';
 import { FieldTypeBadge } from '@/components/shared/FieldTypeBadge';
 import { clearTaskFormDraft, readTaskFormDraft, taskFormDraftKey, writeTaskFormDraft } from '@/lib/task-form-draft';
+import { normalizeNumericInput, toEnglishDigits } from '@/lib/digits';
 import { activitySelectedStyle } from '@/lib/activity-styles';
 import { buildClassDraft, CLASS_ACTIVITY_TYPES, classSessionDetailsComplete, isClassTask, withoutClassActivity } from '@/lib/class-task';
 
@@ -145,8 +146,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
       setSelection(draft.selection);
       setPickerDraft(draft.picker);
       setActivities(draft.activities);
-      setMinutes(draft.minutes);
-      setTests(draft.tests);
+      setMinutes(toEnglishDigits(draft.minutes));
+      setTests(toEnglishDigits(draft.tests));
       setTeacherClassName(draft.teacherClassName);
       setSessionNumber(draft.sessionNumber);
       setBookName(draft.bookName);
@@ -434,11 +435,11 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                     <div className="grid grid-cols-2 gap-3">
                       <label className="text-xs text-[var(--foreground-muted)]">
                         زمان واقعی (دقیقه)
-                        <input
-                          type="number"
-                          min="1"
+                         <input
+                          type="text"
+                          inputMode="numeric"
                           value={minutes}
-                          onChange={(event) => setMinutes(event.target.value)}
+                          onChange={(event) => setMinutes(normalizeNumericInput(event.target.value))}
                           placeholder="اختیاری"
                           className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
                           dir="ltr"
@@ -446,11 +447,11 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                       </label>
                       <label className="text-xs text-[var(--foreground-muted)]">
                         تعداد تمرین/تست
-                        <input
-                          type="number"
-                          min="0"
+                         <input
+                          type="text"
+                          inputMode="numeric"
                           value={tests}
-                          onChange={(event) => setTests(event.target.value)}
+                          onChange={(event) => setTests(normalizeNumericInput(event.target.value))}
                           placeholder="اختیاری"
                           className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
                           dir="ltr"
@@ -575,15 +576,15 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                <div className="grid grid-cols-2 gap-3">
                  <label className="text-xs text-[var(--foreground-muted)]">
                    {isClassVideo ? 'زمان کلاس (دقیقه) - اختیاری' : 'زمان مطالعه (دقیقه) *'}
-                   <input
-                     type="number"
-                     min="1"
-                     value={minutes}
-                     onChange={e => setMinutes(e.target.value)}
-                     placeholder="مثلاً ۶۰"
-                     className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
-                     dir="ltr"
-                   />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={minutes}
+                      onChange={e => setMinutes(normalizeNumericInput(e.target.value))}
+                      placeholder="مثلاً ۶۰"
+                      className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                      dir="ltr"
+                    />
                    <div className="flex gap-1.5 mt-2">
                      {TIME_QUICK_PICKS.map((m) => (
                        <button
@@ -603,15 +604,15 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                  </label>
                  <label className="text-xs text-[var(--foreground-muted)]">
                    {isClassVideo ? 'تعداد تست - اختیاری' : 'تعداد تست هدف'}
-                   <input
-                     type="number"
-                     min="0"
-                     value={tests}
-                     onChange={e => setTests(e.target.value)}
-                     placeholder="اختیاری"
-                     className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
-                     dir="ltr"
-                   />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={tests}
+                      onChange={e => setTests(normalizeNumericInput(e.target.value))}
+                      placeholder="اختیاری"
+                      className="mt-1.5 w-full h-11 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] px-3 text-[var(--foreground)] text-sm focus:border-[var(--accent)] focus:outline-none transition-colors"
+                      dir="ltr"
+                    />
                    <div className="flex gap-1.5 mt-2">
                      {TEST_QUICK_PICKS.map((t) => (
                        <button

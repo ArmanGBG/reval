@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { KeyboardLayoutHint } from "@/components/shared/KeyboardLayoutHint";
 
 export const metadata: Metadata = {
   title: "روال | Reval — مسیر مطالعه‌ات رو هموار کن",
@@ -40,6 +41,7 @@ export default function RootLayout({
           }}
         />
         {children}
+        <KeyboardLayoutHint />
         <Toaster />
       </body>
     </html>
