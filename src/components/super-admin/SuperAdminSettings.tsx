@@ -1,5 +1,6 @@
 'use client';
 
+import { useAppStore } from '@/lib/store';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,6 +14,8 @@ import {
   Palette,
   AlertTriangle,
   Server,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 function toPersianDigits(num: number | string): string {
@@ -21,6 +24,7 @@ function toPersianDigits(num: number | string): string {
 }
 
 export default function SuperAdminSettings() {
+  const { theme, setTheme } = useAppStore();
   const [saved, setSaved] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [allowNewRegistrations, setAllowNewRegistrations] = useState(true);
@@ -210,15 +214,22 @@ export default function SuperAdminSettings() {
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-soft)] flex items-center justify-center">
-                  <span className="text-xs font-bold text-[var(--accent)]">م</span>
+                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${theme === 'light' ? 'bg-[#4DA3FF]/15' : 'bg-[var(--accent-soft)]'}`}>
+                  {theme === 'light' ? <Sun className="w-4 h-4 text-[#79BDFF]" /> : <Moon className="w-4 h-4 text-[var(--accent)]" />}
                 </div>
                 <div>
-                  <p className="text-sm text-foreground font-medium">تم تیره</p>
-                  <p className="text-[11px] text-muted-foreground">حالت سینمایی</p>
+                  <p className="text-sm text-foreground font-medium">{theme === 'light' ? 'تم روشن' : 'تم تاریک'}</p>
+                  <p className="text-[11px] text-muted-foreground">{theme === 'light' ? 'حالت روز' : 'حالت سینمایی'}</p>
                 </div>
               </div>
-              <span className="text-[10px] px-2 py-1 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] font-medium">فعال</span>
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
+                  theme === 'light' ? 'bg-[#4DA3FF]' : 'bg-[var(--accent)]'
+                }`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${theme === 'light' ? 'translate-x-0.5' : 'translate-x-6'}`} />
+              </button>
             </div>
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <div className="flex items-center gap-3">

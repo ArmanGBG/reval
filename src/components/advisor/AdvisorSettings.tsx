@@ -5,6 +5,8 @@ import {
   Shield,
   Sparkles,
   FileText,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Card, SectionHeader } from './advisor-ui';
 import { toPersianDigits, computeStudentStatus } from './advisor-helpers';
@@ -12,7 +14,7 @@ import { useEffect } from 'react';
 
 // ===== Advisor Settings =====
 export function AdvisorSettings() {
-  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
+  const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents, theme, setTheme } = useAppStore();
 
   const realStudents = advisorStudents;
 
@@ -61,6 +63,30 @@ export function AdvisorSettings() {
           </div>
         </Card>
       </div>
+
+      {/* Theme */}
+      <Card>
+        <SectionHeader icon={<Sun className="w-4 h-4" />} title="ظاهر" />
+        <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${theme === 'light' ? 'bg-[#4DA3FF]/15' : 'bg-[var(--accent-soft)]'}`}>
+              {theme === 'light' ? <Sun className="w-4 h-4 text-[#79BDFF]" /> : <Moon className="w-4 h-4 text-[var(--accent)]" />}
+            </div>
+            <div>
+              <p className="text-sm text-foreground font-medium">{theme === 'light' ? 'تم روشن' : 'تم تاریک'}</p>
+              <p className="text-[11px] text-muted-foreground">{theme === 'light' ? 'حالت روز' : 'حالت سینمایی'}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
+              theme === 'light' ? 'bg-[#4DA3FF]' : 'bg-[var(--accent)]'
+            }`}
+          >
+            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${theme === 'light' ? 'translate-x-0.5' : 'translate-x-6'}`} />
+          </button>
+        </div>
+      </Card>
 
       {/* About */}
       <Card>
