@@ -22,7 +22,7 @@ const VARIANT_ICON_CONFIG = {
   },
   warning: {
     color: 'var(--warning)',
-    bg: 'rgba(216, 150, 20, 0.10)',
+    bg: 'var(--warning-soft)',
     Icon: AlertTriangle,
   },
   info: {

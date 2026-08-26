@@ -12,7 +12,7 @@ interface SubjectSettingsPanelProps {
 }
 
 const COLORS = [
-  '#3EBA8C', '#D89614', '#E5484D', '#5E6AD2',
+  '#3EBA8C', '#C9A24D', '#E5484D', '#5E6AD2',
   '#EC4899', '#6E7AE0', '#F97316', '#14B8A6',
   '#A855F7', '#6366F1', '#D946EF', '#84CC16',
   '#A16207', '#0EA5E9',

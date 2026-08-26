@@ -220,7 +220,7 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
             onClick={handleStartPause}
             className={`w-8 h-8 rounded-md flex items-center justify-center border transition-all active:scale-95 ${
               running
-                ? 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)] border-[rgba(216,150,20,0.25)] hover:bg-[rgba(216,150,20,0.18)]'
+                ? 'bg-[var(--warning)]/12 text-[var(--warning)] border-[var(--warning)]/25 hover:bg-[var(--warning)]/18'
                 : 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--border-strong)] hover:bg-[var(--accent-soft)]'
             }`}
             aria-label={running ? 'توقف تایمر' : 'شروع تایمر'}

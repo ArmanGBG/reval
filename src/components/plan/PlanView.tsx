@@ -802,7 +802,7 @@ function EmptyState() {
 function IncompleteEmptyState({ draft = false }: { draft?: boolean }) {
   return (
     <div className="surface-1 rounded-2xl p-10 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-[rgba(216,150,20,0.12)] flex items-center justify-center mx-auto mb-3">
+      <div className="w-12 h-12 rounded-2xl bg-[var(--warning)]/12 flex items-center justify-center mx-auto mb-3">
         <Inbox className="w-5 h-5 text-[var(--warning)]" />
       </div>
       <p className="text-sm text-[var(--foreground)] font-medium mb-1">{draft ? 'پیش‌نویسی وجود ندارد' : 'تسک ناقصی وجود ندارد'}</p>

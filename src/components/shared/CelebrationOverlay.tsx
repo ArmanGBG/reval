@@ -45,7 +45,7 @@ const CONFETTI_COLORS = [
   '#F7F8F8', // foreground
   '#8A8F98', // foreground-muted
   '#3EBA8C', // success
-  '#D89614', // warning
+  '#C9A24D', // warning
 ] as const;
 
 type ParticleShape = 'circle' | 'square';

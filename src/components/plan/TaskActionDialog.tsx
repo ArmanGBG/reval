@@ -153,9 +153,9 @@ export function TaskActionDialog({
               {canMoveToIncomplete && task?.status !== 'DRAFT' && <button
                 onClick={handleMoveToIncomplete}
                 disabled={submitting}
-                className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--warning)]/40 hover:bg-[rgba(216,150,20,0.08)] transition-all text-right min-h-[56px]"
+                className="group w-full flex items-center gap-3 p-3.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--warning)]/40 hover:bg-[var(--warning)]/8 transition-all text-right min-h-[56px]"
               >
-                <div className="w-10 h-10 rounded-lg bg-[rgba(216,150,20,0.12)] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-[var(--warning)]/12 flex items-center justify-center shrink-0">
                   <Inbox className="w-5 h-5 text-[var(--warning)]" />
                 </div>
                 <div className="flex-1 min-w-0">

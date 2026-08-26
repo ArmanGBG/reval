@@ -3,10 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 import { useConfettiOnClick } from "./use-confetti";
+import { useAppStore } from "@/lib/store";
 
 const NAV = [
   { label: "دموی محصول", href: "#features" },
@@ -16,6 +17,9 @@ const NAV = [
 export function Header() {
   const [open, setOpen] = React.useState(false);
   const onConfetti = useConfettiOnClick(45);
+  const theme = useAppStore((s) => s.theme);
+  const toggleTheme = useAppStore((s) => s.toggleTheme);
+  const isLight = theme === "light";
 
   React.useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -36,7 +40,7 @@ export function Header() {
           {/* Logo */}
           <Link
             href="#top"
-            className="group flex items-center gap-2.5 rounded-xl outline-none transition-all duration-300 hover:bg-white/[0.03] px-2 py-1.5"
+            className="group flex items-center gap-2.5 rounded-xl outline-none transition-all duration-300 hover:bg-foreground/[0.04] px-2 py-1.5"
             aria-label="روال — خانه"
           >
             <span className="transition-transform duration-500 group-hover:rotate-[8deg] group-hover:scale-110">
@@ -50,7 +54,7 @@ export function Header() {
               <Link
                 key={item.label}
                 href={item.href}
-                className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-white/[0.04] hover:text-foreground"
+                className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.05] hover:text-foreground"
               >
                 {item.label}
               </Link>
@@ -61,9 +65,19 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            {/* Theme toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground focus-ring-mint"
+              aria-label={isLight ? "تغییر به تم تاریک" : "تغییر به تم روشن"}
+              title={isLight ? "تغییر به تم تاریک" : "تغییر به تم روشن"}
+            >
+              {isLight ? <Moon className="size-5" /> : <Sun className="size-5" />}
+            </button>
             <Link
               href="#login"
-              className="hidden touch-target rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-white/[0.04] hover:text-foreground focus-ring-mint sm:inline-flex"
+              className="hidden touch-target rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.05] hover:text-foreground focus-ring-mint sm:inline-flex"
             >
               ورود
             </Link>
@@ -76,7 +90,7 @@ export function Header() {
               ثبت‌نام رایگان
             </Link>
             <button
-              className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-white/[0.06] hover:text-foreground focus-ring-mint lg:hidden"
+              className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.06] hover:text-foreground focus-ring-mint lg:hidden"
               onClick={() => setOpen(true)}
               aria-label="باز کردن منو"
             >
@@ -110,7 +124,7 @@ export function Header() {
               <div className="flex items-center justify-between">
                 <Logo size={26} />
                 <button
-                  className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-white/[0.06] hover:text-foreground focus-ring-mint"
+                  className="inline-flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-foreground/[0.06] hover:text-foreground focus-ring-mint"
                   onClick={() => setOpen(false)}
                   aria-label="بستن منو"
                 >
@@ -123,7 +137,7 @@ export function Header() {
                     key={item.label}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-white/[0.06] focus-ring-mint"
+                    className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-foreground/[0.06] focus-ring-mint"
                   >
                     {item.label}
                   </Link>
@@ -133,7 +147,7 @@ export function Header() {
                 <Link
                   href="#login"
                   onClick={() => setOpen(false)}
-                  className="flex h-11 items-center justify-center rounded-full border border-border px-5 text-sm font-medium text-foreground transition-all hover:bg-white/[0.06] focus-ring-mint"
+                  className="flex h-11 items-center justify-center rounded-full border border-border px-5 text-sm font-medium text-foreground transition-all hover:bg-foreground/[0.06] focus-ring-mint"
                 >
                   ورود
                 </Link>

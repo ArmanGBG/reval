@@ -64,7 +64,7 @@ function urgencyStyle(days: number): {
     return {
       border: 'border-[var(--warning)]/30',
       glow: '',
-      badge: 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)]',
+      badge: 'bg-[var(--warning)]/12 text-[var(--warning)]',
       label: `${toPersianDigits(days)} روز دیگر`,
     };
   }

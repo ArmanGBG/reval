@@ -45,7 +45,7 @@ const INITIAL_TASKS: Task[] = [
     studentId: "landing-demo",
     subjectId: "landing-physics-subject",
     subject: "فیزیک ۳",
-    subjectColor: "#D89614",
+    subjectColor: "#C9A24D",
     topic: "فصل ۲: دینامیک",
     fieldType: "کنکور",
     activityTypes: ["کلاس/ویدیو"],

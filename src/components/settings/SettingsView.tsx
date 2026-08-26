@@ -37,7 +37,7 @@ const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
 const TICKET_TOPICS = ['مشکل فنی', 'پیشنهاد', 'سوال', 'شکایت'] as const;
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  open: { label: 'باز', color: 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)]' },
+  open: { label: 'باز', color: 'bg-[var(--warning)]/12 text-[var(--warning)]' },
   answered: { label: 'پاسخ داده شده', color: 'bg-[var(--accent-soft)] text-[var(--accent)]' },
   closed: { label: 'بسته شده', color: 'bg-[var(--surface-glass-strong)] text-[var(--foreground-muted)] border border-[var(--border)]' },
 };

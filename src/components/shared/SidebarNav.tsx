@@ -96,7 +96,7 @@ export default function SidebarNav() {
           {isSuperAdmin ? (
             <Crown className="w-5 h-5 text-white" />
           ) : (
-            <LogoMark size={32} className="text-white" />
+            <LogoMark size={32} variant="dark" className="text-white" />
           )}
           <span className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
         </div>

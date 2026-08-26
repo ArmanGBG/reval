@@ -395,7 +395,7 @@ export function computeInsights(tasks: Task[]): {
   const least = nonZero[nonZero.length - 1];
   const leastStudied: InsightDatum = least
     ? { title: 'کمترین مطالعه', value: `${least[0]} - ${fmtDuration(least[1].minutes)}`, color: least[1].color }
-    : { title: 'کمترین مطالعه', value: 'داده‌ای نیست', color: '#D89614' };
+    : { title: 'کمترین مطالعه', value: 'داده‌ای نیست', color: '#C9A24D' };
 
   // 3. Most consistent (highest completion rate, min 3 tasks)
   const withMin = entries.filter(([, v]) => v.total >= 3);

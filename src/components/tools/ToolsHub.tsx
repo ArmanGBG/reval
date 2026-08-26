@@ -558,7 +558,7 @@ function FlashcardsTool() {
           className={`btn-hover shrink-0 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium transition-colors border ${
             masteryFilter === 'review'
               ? 'bg-[var(--warning)] text-[var(--bg-deep)] border-transparent'
-              : 'bg-[rgba(216,150,20,0.08)] text-[var(--warning)] border-[rgba(216,150,20,0.2)]'
+              : 'bg-[var(--warning)]/8 text-[var(--warning)] border-[var(--warning)]/20'
           }`}
         >
           مرور ({toPersianNum(reviewCount)})
@@ -770,7 +770,7 @@ function FlashcardsTool() {
                   </button>
                   <button
                     onClick={() => handleMastery('review')}
-                    className="btn-hover flex-1 bg-[rgba(216,150,20,0.12)] text-[var(--warning)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[rgba(216,150,20,0.18)] border border-[rgba(216,150,20,0.2)]"
+                    className="btn-hover flex-1 bg-[var(--warning)]/12 text-[var(--warning)] rounded-[var(--radius)] py-3 text-sm font-medium min-h-[44px] hover:bg-[var(--warning)]/18 border border-[var(--warning)]/20"
                   >
                     مرور
                   </button>

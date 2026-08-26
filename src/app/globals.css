@@ -149,11 +149,14 @@
   --border: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.10);
 
-  /* Status — desaturated, used only for status dots/badges */
+  /* Status — desaturated, used only for status dots/badges.
+     Warning is a muted antique gold (hsl 41°, 53%) that matches the
+     palette's calm saturation instead of a vivid neon yellow. */
   --success: #3EBA8C;
-  --warning: #D89614;
+  --warning: #C9A24D;
   --danger: #E5484D;
   --info: #3E9F70;
+  --warning-soft: rgba(201, 162, 77, 0.12);
 
   /* Radius — tighter, more architectural */
   --radius: 8px;
@@ -179,7 +182,7 @@
   --chart-1: #3E9F70;
   --chart-2: #7DC499;
   --chart-3: #3EBA8C;
-  --chart-4: #D89614;
+  --chart-4: #C9A24D;
   --chart-5: #E5484D;
   --sidebar: var(--bg-deep);
   --sidebar-foreground: #F7F8F8;
@@ -223,9 +226,10 @@
   --border-strong: rgba(0, 0, 0, 0.12);
 
   --success: #2D9F6E;
-  --warning: #B87A1A;
+  --warning: #8E6D29;
   --danger: #D93B3B;
   --info: #2D8A5E;
+  --warning-soft: rgba(142, 109, 41, 0.10);
 
   --background: var(--bg-base);
   --foreground: #0B0C0E;
@@ -247,7 +251,7 @@
   --chart-1: #2D8A5E;
   --chart-2: #5A9E7E;
   --chart-3: #2D9F6E;
-  --chart-4: #B87A1A;
+  --chart-4: #8E6D29;
   --chart-5: #D93B3B;
   --sidebar: var(--bg-deep);
   --sidebar-foreground: #0B0C0E;
@@ -275,6 +279,16 @@
     rgba(0, 0, 0, 0.04) 0%,
     transparent 50%
   );
+}
+
+/* Logo theme variants — the wordmark is white in the default logo, so a
+   dark-wordmark variant is swapped in whenever the theme is light. The
+   default (no attribute, SSR first paint) is dark. */
+[data-theme="light"] .theme-logo-dark {
+  display: none;
+}
+html:not([data-theme="light"]) .theme-logo-light {
+  display: none;
 }
 
 @layer base {
@@ -837,6 +851,31 @@
     transform: translateY(-3px) scale(1.005);
   }
 
+  /* Light mode: replace the dark glass surface with a light elevated card */
+  [data-theme="light"] .surface {
+    background:
+      linear-gradient(
+        180deg,
+        oklch(0 0 0 / 2%) 0%,
+        oklch(0 0 0 / 1%) 100%
+      ),
+      var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 60%) inset,
+      0 20px 50px -24px oklch(0 0 0 / 0.18),
+      0 0 0 1px oklch(0 0 0 / 2%);
+    border-top: 1px solid var(--border-strong);
+  }
+  [data-theme="light"] .surface-hover:hover {
+    border-color: color-mix(in oklch, var(--mint) 35%, var(--border-strong));
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 70%) inset,
+      0 28px 70px -32px color-mix(in oklch, var(--mint) 28%, transparent),
+      0 0 0 1px color-mix(in oklch, var(--mint) 15%, transparent);
+    transform: translateY(-3px) scale(1.005);
+  }
+
   .glow-mint {
     box-shadow:
       0 0 0 1px color-mix(in oklch, var(--mint) 30%, transparent),
@@ -1061,12 +1100,13 @@
     transform: translateY(-4px) scale(1.015);
   }
 
-  /* Glass blur effect */
+  /* Glass blur effect — theme-aware: dark glass on dark surfaces, light
+     glass in light mode (the hardcoded white border becomes a dark hairline) */
   .glass {
-    background: color-mix(in oklch, oklch(0.16 0.006 264) 60%, transparent);
+    background: color-mix(in oklch, var(--bg-overlay) 72%, transparent);
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
-    border: 1px solid color-mix(in oklch, oklch(1 0 0) 8%, transparent);
+    border: 1px solid color-mix(in oklch, var(--border-strong) 60%, transparent);
   }
 
   /* Conic spin for badges */
