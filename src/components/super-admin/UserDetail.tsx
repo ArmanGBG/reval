@@ -4,6 +4,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
+import { formatPersianDateFromISO } from '@/lib/persian-date';
 import {
   ChevronRight,
   Crown,
@@ -140,7 +141,7 @@ export default function UserDetail() {
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                   <Calendar className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                  <span className="text-xs text-muted-foreground">عضویت: <span className="text-foreground/80 tabular-nums">{toPersianDigits(user.joinDate)}</span></span>
+                   <span className="text-xs text-muted-foreground">عضویت: <span className="text-foreground/80 tabular-nums">{formatPersianDateFromISO(user.joinDate)}</span></span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                   <Phone className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
@@ -166,7 +167,7 @@ export default function UserDetail() {
                 <div className="w-2 h-2 rounded-full bg-muted-foreground mt-1.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-foreground">تاریخ عضویت</p>
-                  <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{toPersianDigits(user.joinDate)}</p>
+                   <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{formatPersianDateFromISO(user.joinDate)}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">

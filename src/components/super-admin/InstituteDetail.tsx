@@ -3,6 +3,7 @@
 import { useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { formatPersianDateFromISO } from '@/lib/persian-date';
 import {
   ChevronRight,
   Building2,
@@ -126,7 +127,7 @@ export default function InstituteDetail() {
                 </div>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Calendar className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                  <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.createdAt)}</span>
+                   <span className="text-xs text-muted-foreground tabular-nums">{formatPersianDateFromISO(institute.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <GraduationCap className="w-3.5 h-3.5 text-mint shrink-0" />
@@ -388,7 +389,7 @@ export default function InstituteDetail() {
               </div>
               <div className="flex items-center justify-between p-2.5 bg-[var(--bg-overlay)] rounded-[10px]">
                 <span className="text-xs text-muted-foreground">تاریخ ثبت</span>
-                <span className="text-xs text-foreground font-medium tabular-nums">{toPersianDigits(institute.createdAt)}</span>
+                 <span className="text-xs text-foreground font-medium tabular-nums">{formatPersianDateFromISO(institute.createdAt)}</span>
               </div>
             </div>
           </motion.div>
