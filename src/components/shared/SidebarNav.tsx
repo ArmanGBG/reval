@@ -89,23 +89,17 @@ export default function SidebarNav() {
       }`}
     >
       {/* ===== Brand / Logo ===== */}
-      <div className="h-16 flex items-center gap-3 px-5 border-b border-[var(--border)]">
+      <div className="h-16 flex items-center justify-center px-5 border-b border-[var(--border)]">
         <div
-          className={`relative w-9 h-9 rounded-lg ${accentBg} flex items-center justify-center overflow-hidden`}
+          className={`relative h-11 rounded-lg ${accentBg} flex items-center justify-center overflow-hidden`}
         >
           {isSuperAdmin ? (
             <Crown className="w-5 h-5 text-white" />
           ) : (
-            <LogoMark size={20} className="text-white" />
+            <LogoMark size={32} className="text-white" />
           )}
           <span className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
         </div>
-        {!collapsed && (
-          <div className="flex flex-col leading-tight">
-            <span className="text-base font-bold text-[var(--foreground)]">روال</span>
-            <span className={`text-[10px] font-medium ${accentText}`}>Reval</span>
-          </div>
-        )}
       </div>
 
       {/* ===== Role badge ===== */}
