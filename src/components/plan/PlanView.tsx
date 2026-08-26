@@ -157,7 +157,10 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
       && task.status !== 'COMPLETED'
       && task.status !== 'SKIPPED';
     const canDeleteStudentDraft = task.createdBy === 'student' && task.status === 'DRAFT';
-    return { complete: false, reset: false, partial: false, action: ownsTask || canDeleteStudentDraft, edit: true, deleteDraft: ownsTask || canDeleteStudentDraft, drag: false };
+    // Advisors reorder the whole daily plan via drag and drop; the persisted
+    // order is exactly what the student sees, so drag stays enabled for every
+    // task in the advisor workspace.
+    return { complete: false, reset: false, partial: false, action: ownsTask || canDeleteStudentDraft, edit: true, deleteDraft: ownsTask || canDeleteStudentDraft, drag: true };
   }, [actor?.id, isAdvisorWorkspace]);
 
   // Local state
@@ -388,10 +391,14 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
   const handleReorder = useCallback(
     (reordered: Task[]) => {
-      if (isAdvisorWorkspace) return;
-      reorderTasks(reordered);
+      // Persists the new order (0..n-1) for every task in the visible list.
+      // The student view sorts by this `order`, so the priority shown to the
+      // student exactly matches the advisor's drag-and-drop arrangement.
+      reorderTasks(reordered).catch(() => {
+        toast.error('ذخیره ترتیب جدید ناموفق بود');
+      });
     },
-    [isAdvisorWorkspace, reorderTasks]
+    [reorderTasks]
   );
 
   const handleManualSubmit = useCallback(
@@ -473,7 +480,6 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   onReorder={handleReorder}
                   onEdit={setDetailsTaskId}
                   getCapabilities={getTaskCapabilities}
-                  sortable={!isAdvisorWorkspace}
                 />
               )}
             </div>
@@ -600,7 +606,6 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   onReorder={handleReorder}
                   onEdit={setDetailsTaskId}
                   getCapabilities={getTaskCapabilities}
-                  sortable={!isAdvisorWorkspace}
                 />
               )}
             </div>

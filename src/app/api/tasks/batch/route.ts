@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, canCreateTaskForStudent, canModifyTask, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
+import { requireAuth, canCreateTaskForStudent, canReorderTask, isTaskFieldType, validateTaskCurriculum } from '@/lib/api-auth';
 import { isTaskStatus, legacyTaskStatus, validateTaskLifecycle } from '@/lib/task-status';
 import { parseTaskResponse, taskTopicInclude } from '@/lib/task-api';
 import { classSessionDetailsComplete, isClassActivityTypes } from '@/lib/class-task';
@@ -206,8 +206,9 @@ export async function POST(request: NextRequest) {
 // PATCH /api/tasks/batch
 // Reorder multiple tasks at once.
 // Body: { tasks: { id: string, order: number }[] }
-// Authorization: caller must be able to modify ALL tasks in the batch
-// (owner of each, assigned advisor, or super admin).
+// Authorization: only the `order` field is written, which is plan-level
+// editing — the owning student or their assigned advisor may reorder any task
+// in that plan (see canReorderTask).
 export async function PATCH(request: NextRequest) {
   const { ctx, error: authError } = await requireAuth(request);
   if (authError || !ctx) return authError;
@@ -238,9 +239,9 @@ export async function PATCH(request: NextRequest) {
           { status: 400 },
         );
       }
-      // Ownership check for each task
-      const canModify = await canModifyTask(ctx, t.id);
-      if (!canModify) {
+      // Plan-level permission for each task (order-only update)
+      const canReorder = await canReorderTask(ctx, t.id);
+      if (!canReorder) {
         return NextResponse.json(
           { error: `tasks[${i}]: دسترسی به این تسک مجاز نیست` },
           { status: 403 },

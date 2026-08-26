@@ -100,11 +100,12 @@ export default function TaskCard({
       <div className="flex items-start justify-between gap-2 md:gap-3 relative">
         {/* ===== Drag Handle + Task Info (right side in RTL) ===== */}
         <div className="flex items-start gap-1.5 flex-1 min-w-0">
-          {/* Drag handle (desktop only) */}
+          {/* Drag handle (works on touch devices too; touch-none lets the
+              pointer sensor own the gesture without scrolling the page) */}
           {dragHandleProps && canDrag && (
             <button
               {...dragHandleProps}
-              className="hidden md:flex shrink-0 cursor-grab active:cursor-grabbing text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] transition-colors pt-1"
+              className="flex shrink-0 cursor-grab active:cursor-grabbing touch-none text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] transition-colors pt-1"
               aria-label="جابجایی"
               onClick={(e) => e.stopPropagation()}
             >
