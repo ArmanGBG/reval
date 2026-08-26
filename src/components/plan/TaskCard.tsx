@@ -123,7 +123,7 @@ export default function TaskCard({
                 className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium shrink-0 ${
                   task.createdBy === 'advisor'
                     ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-                    : 'bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)]'
+                    : 'bg-[var(--surface-glass)] text-[var(--foreground-muted)]'
                 }`}
               >
                 {task.createdBy === 'advisor' ? 'مشاور' : 'خودم'}
@@ -146,7 +146,7 @@ export default function TaskCard({
               {(task.activityTypes ?? []).map((at) => (
                 <span
                   key={at}
-                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)]"
+                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)]"
                 >
                   {at}
                 </span>
@@ -232,7 +232,7 @@ export default function TaskCard({
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
-                  className="icon-btn size-10 rounded-lg bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  className="icon-btn size-10 rounded-lg bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   aria-label="ویرایش"
                 >
                   <Pencil className="w-4 h-4 md:w-5 md:h-5" />
@@ -240,7 +240,7 @@ export default function TaskCard({
               )}
               {canPartial && !isClassTask(task) && <button
                 onClick={() => onSettings(task.id)}
-                className="icon-btn size-10 rounded-lg bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.08)]"
+                className="icon-btn size-10 rounded-lg bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[var(--surface-glass-strong)]"
                 aria-label="ثبت بخشی"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
@@ -263,7 +263,7 @@ export default function TaskCard({
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
-                  className="icon-btn size-9 rounded-md bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  className="icon-btn size-9 rounded-md bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   aria-label="ویرایش جزئیات برنامه"
                 >
                   <Pencil className="w-4 h-4" />

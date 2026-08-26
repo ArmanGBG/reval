@@ -14,9 +14,8 @@ import {
   Palette,
   AlertTriangle,
   Server,
-  Sun,
-  Moon,
 } from 'lucide-react';
+import { AppearanceSection } from '@/components/settings/AppearanceSection';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -212,25 +211,7 @@ export default function SuperAdminSettings() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${theme === 'light' ? 'bg-[#4DA3FF]/15' : 'bg-[var(--accent-soft)]'}`}>
-                  {theme === 'light' ? <Sun className="w-4 h-4 text-[#79BDFF]" /> : <Moon className="w-4 h-4 text-[var(--accent)]" />}
-                </div>
-                <div>
-                  <p className="text-sm text-foreground font-medium">{theme === 'light' ? 'تم روشن' : 'تم تاریک'}</p>
-                  <p className="text-[11px] text-muted-foreground">{theme === 'light' ? 'حالت روز' : 'حالت سینمایی'}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
-                  theme === 'light' ? 'bg-[#4DA3FF]' : 'bg-[var(--accent)]'
-                }`}
-              >
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${theme === 'light' ? 'translate-x-0.5' : 'translate-x-6'}`} />
-              </button>
-            </div>
+            <AppearanceSection theme={theme} setTheme={setTheme} />
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-[10px] bg-gold/15 flex items-center justify-center">

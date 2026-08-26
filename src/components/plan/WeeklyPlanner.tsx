@@ -41,7 +41,7 @@ import { activitySelectedStyle } from '@/lib/activity-styles';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import type { PlanActor, PlanTargetStudent } from './PlanView';
 import { ClassSessionFields } from '@/components/shared/ClassSessionFields';
-import { buildClassDraft, classSessionDetailsComplete } from '@/lib/class-task';
+import { buildClassDraft, classSessionDetailsComplete, studentCanEditTask } from '@/lib/class-task';
 
 // ===== Types =====
 interface WeekdayPlan {
@@ -111,9 +111,11 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
       && task.status !== 'SKIPPED')
     || (task.createdBy === 'student' && task.status === 'DRAFT')
   ), [actor?.id, isAdvisorWorkspace]);
-  // The assigned advisor can edit plan details for every task. Destructive
-  // actions remain guarded by canManageTask and task ownership.
-  const canEditTask = useCallback((_task: Task) => true, []);
+  // The assigned advisor can edit plan details for every task. Students may
+  // only edit their own tasks — advisor-created tasks are off-limits except
+  // class drafts, whose session details the student must complete.
+  // Destructive actions remain guarded by canManageTask and task ownership.
+  const canEditTask = useCallback((task: Task) => isAdvisorWorkspace || studentCanEditTask(task), [isAdvisorWorkspace]);
 
   // Available subjects
   const [subjects, setSubjects] = useState<QuickSubject[]>([]);
@@ -395,19 +397,21 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                 onToggleComplete={(taskId) => {
                   const task = tasks.find((t) => t.id === taskId);
                    if (task && !isAdvisorWorkspace) {
-                     if (!task.detailsCompleted) setEditingTaskId(task.id);
-                      else if (task.status === 'PENDING' || (task.status === undefined && task.completed === null)) {
-                        updateTask(taskId, {
-                          status: 'COMPLETED',
-                          completed: true,
-                          actualTimeMinutes: task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0,
-                          actualTestCount: task.actualTestCount ?? task.targetTestCount ?? 0,
-                        });
-                    } else {
-                      resetTask(taskId);
+                     if (!task.detailsCompleted) {
+                      if (canEditTask(task)) setEditingTaskId(task.id);
                     }
-                  }
-                }}
+                    else if (task.status === 'PENDING' || (task.status === undefined && task.completed === null)) {
+                       updateTask(taskId, {
+                         status: 'COMPLETED',
+                         completed: true,
+                         actualTimeMinutes: task.actualTimeMinutes ?? task.targetTimeMinutes ?? 0,
+                         actualTestCount: task.actualTestCount ?? task.targetTestCount ?? 0,
+                       });
+                     } else {
+                       resetTask(taskId);
+                     }
+                   }
+                 }}
               />
             ))}
           </div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Pencil, LogOut, MessageSquarePlus, ChevronLeft,
-  User, LifeBuoy, Info, Sun, Moon,
+  User, LifeBuoy, Info, Sun,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -29,6 +29,8 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
+import { SectionCard } from './SectionCard';
+import { AppearanceSection } from './AppearanceSection';
 
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل'];
 const MAJORS: Major[] = ['تجربی', 'ریاضی', 'انسانی'];
@@ -37,7 +39,7 @@ const TICKET_TOPICS = ['مشکل فنی', 'پیشنهاد', 'سوال', 'شکا�
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   open: { label: 'باز', color: 'bg-[rgba(216,150,20,0.12)] text-[var(--warning)]' },
   answered: { label: 'پاسخ داده شده', color: 'bg-[var(--accent-soft)] text-[var(--accent)]' },
-  closed: { label: 'بسته شده', color: 'bg-[rgba(255,255,255,0.06)] text-[var(--foreground-muted)]' },
+  closed: { label: 'بسته شده', color: 'bg-[var(--surface-glass-strong)] text-[var(--foreground-muted)] border border-[var(--border)]' },
 };
 
 // ===== Section config for desktop nav =====
@@ -68,30 +70,6 @@ function SelectPill<T extends string>({
     >
       {children}
     </button>
-  );
-}
-
-// ===== Section Card =====
-function SectionCard({
-  id, title, icon: Icon, children,
-}: {
-  id?: string;
-  title: string;
-  icon: typeof User;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--accent-soft)] flex items-center justify-center">
-          <Icon className="w-4 h-4 text-[var(--accent)]" />
-        </div>
-        <h2 className="text-base font-bold text-[var(--foreground)]">{title}</h2>
-      </div>
-      <div className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-4 md:p-5 space-y-4">
-        {children}
-      </div>
-    </section>
   );
 }
 
@@ -164,12 +142,12 @@ function ProfileSection({
       {/* Display Name */}
       <div className="space-y-2">
         <Label className="text-[var(--foreground-muted)] text-sm">چی صدات کنیم؟</Label>
-        <Input
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="bg-[rgba(255,255,255,0.04)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
-          placeholder="نام نمایشی"
-        />
+          <Input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
+            placeholder="نام نمایشی"
+          />
       </div>
 
       {/* Grade Selector */}
@@ -267,45 +245,6 @@ function SupportSection({
   );
 }
 
-// ===== Appearance Section =====
-function AppearanceSection({ theme, setTheme, toggleTheme }: {
-  theme: 'dark' | 'light';
-  setTheme: (theme: 'dark' | 'light') => void;
-  toggleTheme: () => void;
-}) {
-  return (
-    <SectionCard id="appearance" title="ظاهر و تم" icon={Sun}>
-      <div className="space-y-3">
-        <p className="text-xs text-[var(--foreground-muted)]">تم برنامه را انتخاب کنید:</p>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setTheme('light')}
-            className={`btn-hover flex flex-col items-center gap-2 rounded-xl border p-4 transition-all min-h-[80px] ${
-              theme === 'light'
-                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <Sun className="w-5 h-5" />
-            <span className="text-sm font-semibold">روشن</span>
-          </button>
-          <button
-            onClick={() => setTheme('dark')}
-            className={`btn-hover flex flex-col items-center gap-2 rounded-xl border p-4 transition-all min-h-[80px] ${
-              theme === 'dark'
-                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                : 'surface-1 border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            <Moon className="w-5 h-5" />
-            <span className="text-sm font-semibold">تاریک</span>
-          </button>
-        </div>
-      </div>
-    </SectionCard>
-  );
-}
-
 // ===== About Section =====
 function AboutSection() {
   return (
@@ -369,7 +308,7 @@ function TicketDrawer({
             <Input
               value={ticketSubject}
               onChange={(e) => setTicketSubject(e.target.value)}
-              className="bg-[rgba(255,255,255,0.04)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
+              className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
               placeholder="عنوان تیکت"
             />
           </div>
@@ -379,7 +318,7 @@ function TicketDrawer({
             <Textarea
               value={ticketMessage}
               onChange={(e) => setTicketMessage(e.target.value)}
-              className="bg-[rgba(255,255,255,0.04)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] min-h-[100px]"
+              className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] min-h-[100px]"
               placeholder="پیام خود را بنویسید..."
             />
           </div>
@@ -513,7 +452,7 @@ export default function SettingsView() {
         <div className="space-y-6">
           <ProfileSection {...profileProps} />
           <ConnectionManager role="STUDENT" />
-          <AppearanceSection theme={theme} setTheme={setTheme} toggleTheme={() => useAppStore.getState().toggleTheme()} />
+          <AppearanceSection theme={theme} setTheme={setTheme} />
           <SupportSection {...supportProps} />
           <AboutSection />
         </div>
@@ -579,7 +518,7 @@ export default function SettingsView() {
               >
                 {activeSection === 'profile' && <ProfileSection {...profileProps} />}
                 {activeSection === 'profile' && <div className="mt-6"><ConnectionManager role="STUDENT" /></div>}
-                {activeSection === 'appearance' && <AppearanceSection theme={theme} setTheme={setTheme} toggleTheme={() => useAppStore.getState().toggleTheme()} />}
+                {activeSection === 'appearance' && <AppearanceSection theme={theme} setTheme={setTheme} />}
                 {activeSection === 'support' && <SupportSection {...supportProps} />}
                 {activeSection === 'about' && <AboutSection />}
               </motion.div>

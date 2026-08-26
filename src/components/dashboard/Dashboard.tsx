@@ -26,11 +26,12 @@ import {
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { activitySelectedStyle } from '@/lib/activity-styles';
 import { SortableTaskList } from '@/components/plan/SortableTaskList';
+import type { TaskCardCapabilities } from '@/components/plan/TaskCard';
 import { PartialCompletionSheet } from './PartialCompletionSheet';
 import { TaskDetailsDialog } from '@/components/plan/TaskDetailsDialog';
 import { TaskActionDialog } from '@/components/plan/TaskActionDialog';
 import { useCelebration } from '@/hooks/use-celebration';
-import { isClassTask } from '@/lib/class-task';
+import { isClassTask, studentCanEditTask } from '@/lib/class-task';
 import NotificationCenter from '@/components/shared/NotificationCenter';
 
 // ===== Motivational Quotes =====
@@ -279,6 +280,15 @@ export default function Dashboard() {
     await updateTask(taskId, { status: 'INCOMPLETE', completed: null });
   }, [updateTask]);
 
+  // Advisor-created tasks: students may only complete them, move them to
+  // incompletes, or log actual metrics — no editing plan details and no
+  // deleting. Advisor class drafts stay editable so the student can fill in
+  // the class session details.
+  const getTaskCapabilities = useCallback((task: Task): TaskCardCapabilities => ({
+    edit: studentCanEditTask(task),
+    deleteDraft: task.createdBy !== 'advisor',
+  }), []);
+
   const handlePartialOpen = useCallback((id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (task) {
@@ -509,6 +519,7 @@ export default function Dashboard() {
             onReset={handleReset}
             onReorder={reorderTasks}
             onEdit={handleEdit}
+            getCapabilities={getTaskCapabilities}
           />
         </motion.div>
       )}
@@ -530,7 +541,9 @@ export default function Dashboard() {
         onMoveDate={handleMoveDate}
         onMoveToIncomplete={handleMoveToIncomplete}
         onDelete={handleDelete}
-        capabilities={{ moveDate: true, moveToIncomplete: true, delete: true }}
+        capabilities={actionTask?.createdBy === 'advisor'
+          ? { moveDate: false, moveToIncomplete: actionTask.status !== 'DRAFT', delete: false }
+          : { moveDate: true, moveToIncomplete: true, delete: true }}
       />
     </div>
   );

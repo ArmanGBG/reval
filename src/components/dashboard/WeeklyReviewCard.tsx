@@ -194,7 +194,7 @@ function WeeklyReviewContent({
       style={{
         background:
           'linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-elevated) 60%, var(--accent-soft) 100%)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        boxShadow: 'inset 0 1px 0 var(--surface-glass)',
       }}
     >
       {/* Decorative accent radial (subtle) */}
@@ -338,7 +338,7 @@ function KpiPill({
   return (
     <div
       className="rounded-[var(--radius)] p-2.5 border border-[var(--border)] flex items-center gap-2"
-      style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+      style={{ backgroundColor: 'var(--surface-glass)' }}
     >
       <div
         className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"

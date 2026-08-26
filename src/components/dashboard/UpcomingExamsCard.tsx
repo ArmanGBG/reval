@@ -40,7 +40,7 @@ function urgencyStyle(days: number): {
     return {
       border: 'border-[var(--foreground-subtle)]/30',
       glow: '',
-      badge: 'bg-[rgba(255,255,255,0.04)] text-[var(--foreground-muted)]',
+      badge: 'bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)]',
       label: 'گذشته',
     };
   }

@@ -548,7 +548,7 @@ export default function CommandPalette() {
                 />
                 <kbd
                   dir="ltr"
-                  className="hidden sm:inline-flex items-center justify-center h-6 px-1.5 rounded-md border border-[var(--border-strong)] bg-[rgba(255,255,255,0.04)] text-[10px] font-mono text-[var(--foreground-muted)]"
+                  className="hidden sm:inline-flex items-center justify-center h-6 px-1.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-glass)] text-[10px] font-mono text-[var(--foreground-muted)]"
                 >
                   ESC
                 </kbd>
@@ -654,7 +654,7 @@ function CommandRow({
     <CommandPrimitive.Item
       value={`${cmd.label} ${cmd.hint ?? ''} ${cmd.keywords ?? ''}`}
       onSelect={() => onRun(cmd)}
-      className="group relative flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg cursor-pointer outline-none data-[selected=true]:bg-[rgba(255,255,255,0.04)] transition-colors"
+      className="group relative flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg cursor-pointer outline-none data-[selected=true]:bg-[var(--surface-glass)] transition-colors"
     >
       {/* Icon */}
       <span
@@ -681,7 +681,7 @@ function CommandRow({
           {cmd.shortcut.map((k, i) => (
             <kbd
               key={i}
-              className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded border border-[var(--border-strong)] bg-[rgba(255,255,255,0.04)] text-[10px] font-mono text-[var(--foreground-muted)]"
+              className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded border border-[var(--border-strong)] bg-[var(--surface-glass)] text-[10px] font-mono text-[var(--foreground-muted)]"
             >
               {k}
             </kbd>

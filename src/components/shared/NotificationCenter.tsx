@@ -54,7 +54,7 @@ function NotificationItem({
       className={`group w-full flex items-start gap-3 rounded-xl p-3 text-right transition-colors duration-150 ${
         notification.read
           ? 'opacity-60 hover:opacity-80'
-          : 'hover:bg-[rgba(255,255,255,0.03)]'
+          : 'hover:bg-[var(--surface-glass)]'
       }`}
     >
       {/* Left color stripe (right side in RTL, so we use border-r) */}
@@ -204,7 +204,7 @@ export default function NotificationCenter() {
                 اعلان‌ها
               </h3>
               {unreadNotificationCount > 0 && (
-                <span className="text-[10px] font-medium text-[var(--foreground-muted)] bg-[rgba(255,255,255,0.06)] px-2 py-0.5 rounded-md">
+                <span className="text-[10px] font-medium text-[var(--foreground-muted)] bg-[var(--surface-glass-strong)] px-2 py-0.5 rounded-md">
                   {toPersianDigits(unreadNotificationCount)} جدید
                 </span>
               )}

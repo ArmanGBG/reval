@@ -94,7 +94,7 @@ export default function FocusMode({ children }: FocusModeProps) {
               </span>
               <kbd
                 dir="ltr"
-                className="hidden sm:inline-flex items-center justify-center h-4 px-1 rounded border border-[var(--border-strong)] bg-[rgba(255,255,255,0.04)] text-[9px] font-mono text-[var(--foreground-muted)]"
+                className="hidden sm:inline-flex items-center justify-center h-4 px-1 rounded border border-[var(--border-strong)] bg-[var(--surface-glass)] text-[9px] font-mono text-[var(--foreground-muted)]"
               >
                 F
               </kbd>

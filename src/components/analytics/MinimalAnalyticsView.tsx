@@ -470,11 +470,11 @@ export default function MinimalAnalyticsView({
         {reportView === 'روند مطالعه' && (
           <div className="h-60" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="day" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+               <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="day" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
                 <Bar dataKey="hours" name="ساعت مطالعه" fill="var(--accent)" radius={[5, 5, 0, 0]} maxBarSize={34} />
               </BarChart>
             </ResponsiveContainer>
@@ -483,11 +483,11 @@ export default function MinimalAnalyticsView({
         {reportView === 'تفکیک دروس' && (
           subjectDistribution.length > 0 ? <div className="h-64" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={subjectDistribution} layout="vertical" margin={{ top: 4, right: 8, left: 28, bottom: 0 }}>
-                <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.06)" />
-                <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={90} tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+               <BarChart data={subjectDistribution} layout="vertical" margin={{ top: 4, right: 8, left: 28, bottom: 0 }}>
+                <CartesianGrid horizontal={false} stroke="var(--border)" />
+                <XAxis type="number" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fill: 'var(--foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
                 <Bar dataKey="value" name="ساعت مطالعه" radius={[0, 5, 5, 0]} maxBarSize={24}>{subjectDistribution.map((subject) => <Cell key={subject.name} fill={subject.fill} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -497,11 +497,11 @@ export default function MinimalAnalyticsView({
           dailyActivities.some((day) => day.مطالعه + day.مرور + day.تست_آموزشی + day.تست_سنجشی + day.کلاس_ویدیو > 0) ? <>
             <div className="h-64" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyActivities} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                 <BarChart data={dailyActivities} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'var(--border)' }} />
                   <Bar dataKey="مطالعه" name="مطالعه" stackId="method" fill={ACTIVITY_COLORS['مطالعه']} maxBarSize={42} />
                   <Bar dataKey="مرور" name="مرور" stackId="method" fill={ACTIVITY_COLORS['مرور']} maxBarSize={42} />
                   <Bar dataKey="تست_آموزشی" name="تست آموزشی" stackId="method" fill={ACTIVITY_COLORS['تست آموزشی']} maxBarSize={42} />
@@ -567,11 +567,11 @@ export default function MinimalAnalyticsView({
                   {courseOverview.some((item) => item.minutes > 0) ? (
                     <div className="h-64" dir="ltr">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={courseOverview} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                          <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                          <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
-                          <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                         <BarChart data={courseOverview} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                          <CartesianGrid vertical={false} stroke="var(--border)" />
+                          <XAxis dataKey="name" tick={{ fill: 'var(--foreground)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+                          <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                          <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'var(--border)' }} />
                           <Bar dataKey="minutes" name="زمان" radius={[5, 5, 0, 0]} maxBarSize={42}>
                             {courseOverview.map((item) => <Cell key={item.key} fill={item.fill} />)}
                           </Bar>
@@ -654,11 +654,11 @@ export default function MinimalAnalyticsView({
                 {chapterChartData.some((chapter) => Object.values(chapter).some((value) => typeof value === 'number' && value > 0)) ? (
                   <><div className="h-64" dir="ltr">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chapterChartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                        <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<ReportTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                       <BarChart data={chapterChartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke="var(--border)" />
+                        <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<ReportTooltip />} cursor={{ fill: 'var(--border)' }} />
                         {(Object.keys(ACTIVITY_COLORS) as ActivityType[]).map((activity) => (
                           <Bar key={activity} dataKey={activity} name={activity} stackId="activity" fill={ACTIVITY_COLORS[activity]} maxBarSize={42} />
                         ))}

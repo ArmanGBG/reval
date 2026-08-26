@@ -206,7 +206,7 @@ export default function StudySessionTimer({ taskId, savedMinutes }: StudySession
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="flex items-center gap-1.5 px-2.5 h-8 rounded-md bg-[rgba(255,255,255,0.04)] border border-[var(--border)] font-mono text-sm tabular-nums"
+                className="flex items-center gap-1.5 px-2.5 h-8 rounded-md bg-[var(--surface-glass)] border border-[var(--border)] font-mono text-sm tabular-nums"
                 style={{ color: running ? 'var(--accent)' : 'var(--foreground)' }}
                 dir="ltr"
               >

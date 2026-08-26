@@ -87,7 +87,7 @@ function EmptyStateStudents({ hasStudents }: { hasStudents: boolean }) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 60% 70% at 50% 30%, rgba(255,255,255,0.03), transparent)',
+          background: 'radial-gradient(ellipse 60% 70% at 50% 30%, var(--surface-glass), transparent)',
         }}
       />
       <div className="relative z-10 flex flex-col items-center">

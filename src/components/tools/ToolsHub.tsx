@@ -618,15 +618,15 @@ function FlashcardsTool() {
                 type="text"
                 value={newFront}
                 onChange={(e) => setNewFront(e.target.value)}
-                placeholder="روی کارت (سوال)"
-                className="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--border)] rounded-[var(--radius)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--accent)] transition-colors"
-              />
-              <input
-                type="text"
-                value={newBack}
-                onChange={(e) => setNewBack(e.target.value)}
-                placeholder="پشت کارت (جواب)"
-                className="w-full bg-[rgba(255,255,255,0.04)] border border-[var(--border)] rounded-[var(--radius)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                 placeholder="روی کارت (سوال)"
+                 className="w-full bg-[var(--surface-glass)] border border-[var(--border)] rounded-[var(--radius)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+               />
+               <input
+                 type="text"
+                 value={newBack}
+                 onChange={(e) => setNewBack(e.target.value)}
+                 placeholder="پشت کارت (جواب)"
+                 className="w-full bg-[var(--surface-glass)] border border-[var(--border)] rounded-[var(--radius)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)] focus:outline-none focus:border-[var(--accent)] transition-colors"
               />
               <div className="flex gap-2">
                 <button
@@ -665,7 +665,7 @@ function FlashcardsTool() {
                 </span>
               )}
               {/* Next-review badge */}
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[rgba(255,255,255,0.04)] border border-[var(--border)] text-[var(--foreground-muted)]">
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[var(--surface-glass)] border border-[var(--border)] text-[var(--foreground-muted)]">
                 <Calendar className="w-3 h-3" />
                 {formatNextReview(currentCard)}
               </span>
@@ -735,7 +735,7 @@ function FlashcardsTool() {
             {/* Retention strength bar */}
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-[var(--foreground-subtle)] uppercase tracking-wider">قدرت حافظه</span>
-              <div className="flex-1 h-1.5 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
+              <div className="flex-1 h-1.5 rounded-full bg-[var(--surface-glass-strong)] overflow-hidden">
                 <motion.div
                   key={`${currentCard.id}-${retentionStrength(currentCard)}`}
                   initial={{ width: 0 }}

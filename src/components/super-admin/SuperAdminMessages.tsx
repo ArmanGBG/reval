@@ -270,7 +270,7 @@ export default function SuperAdminMessages() {
               <h2 className="text-sm font-bold text-[var(--foreground)]">پیام‌های ارسالی</h2>
             </div>
             {sent.length > 0 && (
-              <span className="text-[10px] font-medium text-[var(--foreground-muted)] bg-[rgba(255,255,255,0.04)] px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-medium text-[var(--foreground-muted)] bg-[var(--surface-glass)] px-2 py-0.5 rounded-md">
                 {toPersianDigits(sent.length)}
               </span>
             )}

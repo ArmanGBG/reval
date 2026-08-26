@@ -114,7 +114,7 @@ export default function SubjectMasteryCard({ tasks, onSelectSubject }: Props) {
       className="relative rounded-[var(--radius-lg)] p-4 md:p-5 overflow-hidden border border-[var(--border)] mb-5"
       style={{
         backgroundColor: 'var(--bg-elevated)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        boxShadow: 'inset 0 1px 0 var(--surface-glass)',
       }}
     >
       {/* Backdrop accent glow */}
@@ -143,7 +143,7 @@ export default function SubjectMasteryCard({ tasks, onSelectSubject }: Props) {
           <button
             type="button"
             onClick={() => setShowFormula((v) => !v)}
-            className="size-9 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+            className="size-9 rounded-md flex items-center justify-center text-[var(--foreground-subtle)] hover:text-[var(--foreground-muted)] hover:bg-[var(--surface-glass)] transition-colors"
             aria-label="نحوه محاسبه تسلط"
             aria-expanded={showFormula}
           >
@@ -161,7 +161,7 @@ export default function SubjectMasteryCard({ tasks, onSelectSubject }: Props) {
               transition={{ duration: 0.2 }}
               className="overflow-hidden mb-4"
             >
-              <div className="text-[11px] text-[var(--foreground-muted)] leading-relaxed bg-[rgba(255,255,255,0.03)] border border-[var(--border)] rounded-[var(--radius)] p-3 space-y-1">
+              <div className="text-[11px] text-[var(--foreground-muted)] leading-relaxed bg-[var(--surface-glass)] border border-[var(--border)] rounded-[var(--radius)] p-3 space-y-1">
                 <p className="font-bold text-[var(--foreground)] text-xs mb-1">نحوه محاسبه تسلط</p>
                 <p>• <span className="text-[var(--accent)]">۵۰٪</span> — نرخ انجام تسک‌ها (تسک‌های انجام‌شده تقسیم بر کل، بدون احتساب رد‌شده‌ها)</p>
                 <p>• <span className="text-[var(--accent)]">۳۰٪</span> — پایبندی به زمان مطالعه (واقعی تقسیم بر هدف)</p>
@@ -259,7 +259,7 @@ function SubjectBar({
         </div>
       </div>
       {/* Progress bar */}
-      <div className="relative h-2 rounded-full bg-[rgba(255,255,255,0.05)] overflow-hidden">
+      <div className="relative h-2 rounded-full bg-[var(--surface-glass-strong)] overflow-hidden">
         <motion.div
           className="h-full rounded-full relative"
           style={{
@@ -273,7 +273,7 @@ function SubjectBar({
           <motion.div
             className="absolute inset-0 opacity-30"
             style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+              background: 'linear-gradient(90deg, transparent, var(--surface-glass-strong), transparent)',
             }}
             initial={{ x: '-100%' }}
             animate={{ x: '200%' }}
