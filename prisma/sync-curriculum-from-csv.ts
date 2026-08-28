@@ -34,7 +34,24 @@ export const BOOK_CSV_HEADERS = [
   'یادداشت',
 ] as const;
 
+const LEGACY_BOOK_CSV_HEADERS = [
+  'subject',
+  'grade',
+  'major',
+  'chapterTitle',
+  'chapterNo',
+  'topicTitle',
+  'topicNo',
+  'pageStart',
+  'pageEnd',
+] as const;
+
+const LEGACY_SUBJECT_DEFAULTS: Record<string, { assessmentType: AssessmentType; color: string; sortOrder: number }> = {
+  'زمین‌شناسی': { assessmentType: 'کنکور', color: '#8B6F47', sortOrder: 6 },
+};
+
 const DEFAULT_CSV_PATH = path.join(process.cwd(), 'seed - Data.csv');
+const DEFAULT_SUPPLEMENTAL_CSV_PATHS = [path.join(process.cwd(), 'public', 'zamin.csv')];
 const VALID_GRADES = new Set(['دهم', 'یازدهم', 'دوازدهم']);
 const VALID_MAJORS = new Set(['تجربی', 'ریاضی', 'انسانی']);
 const VALID_ASSESSMENTS = new Set(['کنکور', 'نهایی', 'هر دو']);
@@ -186,8 +203,11 @@ function sameSet(values: Set<string>, expected: string): boolean {
 export function parseBookCurriculumCsv(content: string, fileName = 'seed - Data.csv'): BookCurriculumRow[] {
   const lines = content.replace(/^\uFEFF/, '').split(/\r?\n/);
   const header = lines[0]?.split(',').map((cell) => cell.trim()) ?? [];
+  if (header.length === LEGACY_BOOK_CSV_HEADERS.length && header.every((cell, index) => cell === LEGACY_BOOK_CSV_HEADERS[index])) {
+    return parseLegacyBookCurriculumCsv(lines, fileName);
+  }
   if (header.length !== BOOK_CSV_HEADERS.length || header.some((cell, index) => cell !== BOOK_CSV_HEADERS[index])) {
-    fail(fileName, 1, `header باید دقیقاً شامل ${BOOK_CSV_HEADERS.length} ستون قرارداد کتابی باشد`);
+    fail(fileName, 1, `header باید قالب ${BOOK_CSV_HEADERS.length} ستونی کتابی یا قالب ${LEGACY_BOOK_CSV_HEADERS.length} ستونی قدیمی باشد`);
   }
 
   const rows: BookCurriculumRow[] = [];
@@ -274,6 +294,92 @@ export function parseBookCurriculumCsv(content: string, fileName = 'seed - Data.
   }
 
   if (rows.length === 0) fail(fileName, null, 'هیچ ردیف داده‌ای وجود ندارد');
+  validateBookCurriculumRows(rows, fileName);
+  return rows;
+}
+
+function parseLegacyBookCurriculumCsv(lines: string[], fileName: string): BookCurriculumRow[] {
+  type LegacyRow = {
+    rowNumber: number;
+    subjectName: string;
+    grade: string;
+    major: string;
+    chapterTitle: string;
+    chapterNo: number;
+    topicTitle: string;
+    topicNo: number;
+    topicPageStart: number;
+    topicPageEnd: number;
+  };
+
+  const legacyRows: LegacyRow[] = [];
+  for (let index = 1; index < lines.length; index++) {
+    const line = lines[index];
+    const rowNumber = index + 1;
+    if (!line.trim()) continue;
+    if (/^\s*,+\s*$/.test(line)) fail(fileName, rowNumber, 'ردیف خالی کامایی مجاز نیست');
+
+    const cells = line.split(',').map((cell) => cell.trim());
+    if (cells.length !== LEGACY_BOOK_CSV_HEADERS.length) {
+      fail(fileName, rowNumber, `تعداد ستون‌ها ${cells.length} است؛ باید ${LEGACY_BOOK_CSV_HEADERS.length} باشد`);
+    }
+    const [subjectName, grade, major, chapterTitle, chapterNo, topicTitle, topicNo, pageStart, pageEnd] = cells;
+    if (!subjectName || !chapterTitle || !topicTitle) fail(fileName, rowNumber, 'نام درس، فصل و گفتار الزامی است');
+    if (!VALID_GRADES.has(grade)) fail(fileName, rowNumber, `پایه «${grade}» معتبر نیست`);
+    if (!VALID_MAJORS.has(major)) fail(fileName, rowNumber, `رشته «${major}» معتبر نیست`);
+    if (!LEGACY_SUBJECT_DEFAULTS[subjectName]) fail(fileName, rowNumber, `برای درس «${subjectName}» تنظیمات تبدیل قالب قدیمی تعریف نشده است`);
+
+    const topicPageStart = parsePositiveInteger(pageStart, fileName, rowNumber, 'شروع صفحه گفتار');
+    const topicPageEnd = parsePositiveInteger(pageEnd, fileName, rowNumber, 'پایان صفحه گفتار');
+    if (topicPageEnd < topicPageStart) fail(fileName, rowNumber, 'پایان صفحه گفتار کمتر از شروع آن است');
+    legacyRows.push({
+      rowNumber,
+      subjectName,
+      grade,
+      major,
+      chapterTitle,
+      chapterNo: parseNonNegativeInteger(chapterNo, fileName, rowNumber, 'شماره فصل'),
+      topicTitle,
+      topicNo: parseNonNegativeInteger(topicNo, fileName, rowNumber, 'شماره گفتار'),
+      topicPageStart,
+      topicPageEnd,
+    });
+  }
+  if (legacyRows.length === 0) fail(fileName, null, 'هیچ ردیف داده‌ای وجود ندارد');
+
+  const chapterRanges = new Map<string, { start: number; end: number }>();
+  for (const row of legacyRows) {
+    const key = `${row.subjectName}|${row.grade}|${row.major}|${row.chapterNo}`;
+    const range = chapterRanges.get(key);
+    chapterRanges.set(key, {
+      start: Math.min(range?.start ?? row.topicPageStart, row.topicPageStart),
+      end: Math.max(range?.end ?? row.topicPageEnd, row.topicPageEnd),
+    });
+  }
+
+  const rows = legacyRows.map((row): BookCurriculumRow => {
+    const defaults = LEGACY_SUBJECT_DEFAULTS[row.subjectName];
+    const range = chapterRanges.get(`${row.subjectName}|${row.grade}|${row.major}|${row.chapterNo}`)!;
+    return {
+      rowNumber: row.rowNumber,
+      subjectName: row.subjectName,
+      normalizedSubjectName: normalizePersianText(row.subjectName),
+      grade: row.grade,
+      major: row.major,
+      assessmentType: defaults.assessmentType,
+      chapterNo: row.chapterNo,
+      chapterTitle: row.chapterTitle,
+      chapterPageStart: range.start,
+      chapterPageEnd: range.end,
+      topicNo: row.topicNo,
+      topicTitle: row.topicTitle,
+      topicPageStart: row.topicPageStart,
+      topicPageEnd: row.topicPageEnd,
+      color: defaults.color,
+      sortOrder: defaults.sortOrder,
+      isActive: true,
+    };
+  });
   validateBookCurriculumRows(rows, fileName);
   return rows;
 }
@@ -609,13 +715,22 @@ function readArgument(name: string): string | null {
 export async function runBookCurriculumImport(): Promise<void> {
   const apply = process.argv.includes('--apply');
   const onlyIfEmpty = process.argv.includes('--if-empty');
-  const csvPath = path.resolve(readArgument('file') ?? DEFAULT_CSV_PATH);
-  const fileName = path.basename(csvPath);
-  const content = await fs.readFile(csvPath, 'utf8');
-  const rows = parseBookCurriculumCsv(content, fileName);
+  const requestedFile = readArgument('file');
+  const csvPaths = requestedFile
+    ? [path.resolve(requestedFile)]
+    : [DEFAULT_CSV_PATH, ...DEFAULT_SUPPLEMENTAL_CSV_PATHS];
+  const rowGroups = await Promise.all(csvPaths.map(async (csvPath) => {
+    const fileName = path.basename(csvPath);
+    const content = await fs.readFile(csvPath, 'utf8');
+    const rows = parseBookCurriculumCsv(content, fileName);
+    console.log(`Book curriculum validation passed: ${fileName}`);
+    return rows;
+  }));
+  const rows = rowGroups.flat();
+  validateBookCurriculumRows(rows, csvPaths.map((csvPath) => path.basename(csvPath)).join(' + '));
   const summary = summarizeBookCurriculum(rows);
 
-  console.log(`Book curriculum validation passed: ${fileName}`);
+  console.log(`Book curriculum sources: ${csvPaths.map((csvPath) => path.basename(csvPath)).join(', ')}`);
   console.table(summary);
   if (!apply) {
     console.log('Dry run only. No database writes were performed.');
@@ -632,10 +747,16 @@ export async function runBookCurriculumImport(): Promise<void> {
 }
 
 export async function bootstrapBookCurriculumIfEmpty(): Promise<void> {
-  const content = await fs.readFile(DEFAULT_CSV_PATH, 'utf8');
-  const fileName = path.basename(DEFAULT_CSV_PATH);
-  const rows = parseBookCurriculumCsv(content, fileName);
-  console.log(`Book curriculum validation passed: ${fileName}`);
+  const csvPaths = [DEFAULT_CSV_PATH, ...DEFAULT_SUPPLEMENTAL_CSV_PATHS];
+  const rowGroups = await Promise.all(csvPaths.map(async (csvPath) => {
+    const fileName = path.basename(csvPath);
+    const content = await fs.readFile(csvPath, 'utf8');
+    const rows = parseBookCurriculumCsv(content, fileName);
+    console.log(`Book curriculum validation passed: ${fileName}`);
+    return rows;
+  }));
+  const rows = rowGroups.flat();
+  validateBookCurriculumRows(rows, csvPaths.map((csvPath) => path.basename(csvPath)).join(' + '));
   console.table(summarizeBookCurriculum(rows));
 
   const report = await importBookCurriculum(rows, { onlyIfEmpty: true });

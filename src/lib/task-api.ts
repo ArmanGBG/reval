@@ -7,6 +7,9 @@ type TaskTopicModeSubtopicRow = {
 };
 
 export const taskTopicInclude = {
+  chapter: {
+    select: { id: true, title: true, chapterNo: true },
+  },
   topics: {
     include: { topic: { select: { id: true, title: true, topicNo: true, chapterId: true } } },
   },
@@ -35,6 +38,7 @@ export function parseTaskResponse(task: Record<string, unknown> & { topics?: Tas
     sessionNumber: (task.sessionNumber as string | null) ?? null,
     bookName: (task.bookName as string | null) ?? null,
     testDescription: (task.testDescription as string | null) ?? null,
+    advisorNote: (task.advisorNote as string | null) ?? null,
   };
 }
 

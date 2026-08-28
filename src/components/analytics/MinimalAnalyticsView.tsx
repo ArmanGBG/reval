@@ -18,6 +18,8 @@ import { buildActivityBreakdown, buildDailyTrend, buildSubjectDistribution, filt
 import { minutesToHoursLabel, toISODate, toPersianDigits } from '@/lib/persian-date';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import { ACTIVITY_COLORS } from '@/lib/activity-styles';
+import { ExamHistory } from '@/components/exams/ExamHistory';
+import { useCurrentStudentId } from '@/lib/student-utils';
 
 const TIME_FILTERS = ['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'] as const;
 type TimeFilter = (typeof TIME_FILTERS)[number];
@@ -252,6 +254,8 @@ interface MinimalAnalyticsViewProps {
   initialTimeFilter?: TimeFilter;
   initialReportView?: ReportView;
   academicContext?: { grade: string; major: string };
+  studentId?: string;
+  isAdvisor?: boolean;
 }
 
 export default function MinimalAnalyticsView({
@@ -260,9 +264,13 @@ export default function MinimalAnalyticsView({
   initialTimeFilter = 'هفته جاری',
   initialReportView = 'روند مطالعه',
   academicContext,
+  studentId: studentIdProp,
+  isAdvisor = false,
 }: MinimalAnalyticsViewProps = {}) {
   const { tasks: storeTasks, user } = useAppStore();
   const tasks = tasksOverride ?? storeTasks;
+  const ownStudentId = useCurrentStudentId();
+  const studentId = studentIdProp ?? ownStudentId;
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(initialTimeFilter);
   const [reportView, setReportView] = useState<ReportView>(initialReportView);
   const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
@@ -456,6 +464,8 @@ export default function MinimalAnalyticsView({
         <div className="text-center"><p className="text-lg font-bold">{toPersianDigits(totals.totalTests)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تست حل‌شده</p></div>
         <div className="text-center"><p className="text-lg font-bold">{toPersianDigits(completedCount)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تسک تکمیل‌شده</p></div>
       </section>
+
+      {!embedded && <section className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"><div className="mb-4"><h2 className="text-base font-bold text-[var(--foreground)]">آزمون‌ها</h2><p className="mt-1 text-xs text-[var(--foreground-muted)]">تاریخچه آزمون‌ها و وضعیت تحلیل هر آزمون</p></div><ExamHistory studentId={studentId} isAdvisor={isAdvisor} embedded /></section>}
 
       <section className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
         <div className="mb-4">

@@ -15,6 +15,17 @@ describe('authenticated navigation', () => {
     });
   });
 
+  it('restores the student exam history view', () => {
+    expect(decodeNavigationState({ search: '?view=exam-history' }, 'STUDENT')).toEqual({
+      view: 'exam-history',
+      currentTool: null,
+    });
+    expect(decodeNavigationState({ search: '?view=exam-history' }, 'ADVISOR')).toEqual({
+      view: 'advisor-dashboard',
+      currentTool: null,
+    });
+  });
+
   it('restores advisor and super-admin detail identifiers', () => {
     expect(decodeNavigationState({ search: '?view=advisor-student-detail&student=student-1' }, 'ADVISOR')).toEqual({
       view: 'advisor-student-detail',

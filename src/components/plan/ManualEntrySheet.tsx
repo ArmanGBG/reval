@@ -2,23 +2,23 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FieldType, ActivityType, Task } from '@/lib/types';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { TaskSubjectPicker, TaskSelection, TaskSubjectPickerDraftState } from '@/components/shared/TaskSubjectPicker';
 import { useAppStore } from '@/lib/store';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import { AuthError } from '@/lib/api-client';
-import { ChevronLeft, Save, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, Save, ArrowLeft, X } from 'lucide-react';
 import { FieldTypeBadge } from '@/components/shared/FieldTypeBadge';
 import { clearTaskFormDraft, readTaskFormDraft, taskFormDraftKey, writeTaskFormDraft } from '@/lib/task-form-draft';
 import { normalizeNumericInput, toEnglishDigits } from '@/lib/digits';
 import { activitySelectedStyle } from '@/lib/activity-styles';
-import { buildClassDraft, CLASS_ACTIVITY_TYPES, classSessionDetailsComplete, isClassTask, withoutClassActivity } from '@/lib/class-task';
+import { buildClassTask, CLASS_ACTIVITY_TYPES, classSessionDetailsComplete, isClassTask, withoutClassActivity } from '@/lib/class-task';
 
 const ACTIVITIES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی'];
 
 const TIME_QUICK_PICKS = [60, 90, 120];
-const TEST_QUICK_PICKS = [20, 30, 40];
+const TEST_QUICK_PICKS = [0, 20, 30, 40];
 
 const EMPTY_PICKER_DRAFT: TaskSubjectPickerDraftState = {
   selectedGrade: null,
@@ -42,13 +42,14 @@ const EMPTY_PICKER_DRAFT: TaskSubjectPickerDraftState = {
  * User can do a "quick save" after step 2 (subject selected) → creates draft with detailsCompleted=false.
  * Or continue to step 3 and save a complete task with detailsCompleted=true.
  */
-export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, onDraftChange, draftSessionId, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null, persistFormDraft = true, allowDraftSave = true }: {
+export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, onDraftChange, draftSessionId, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null, persistFormDraft = true, allowDraftSave = true, canEditAdvisorNote = createdBy === 'advisor' }: {
   open: boolean; onOpenChange: (open: boolean) => void; selectedDate: string;
   existingTaskCount: number; onSubmit: (task: Task) => Promise<void> | void;
   studentId?: string; grade?: string; major?: string; createdBy?: 'student' | 'advisor'; createdById?: string | null;
   mode?: 'create' | 'complete-draft' | 'edit'; initialTask?: Task | null;
   persistFormDraft?: boolean;
   allowDraftSave?: boolean;
+  canEditAdvisorNote?: boolean;
   onSaved?: (task: Task) => void;
   onDraftChange?: () => void;
   draftSessionId?: string;
@@ -83,12 +84,13 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   const [selection, setSelection] = useState<TaskSelection>(initialSelection);
   const [activities, setActivities] = useState<ActivityType[]>(initialTask?.activityTypes ?? []);
   const initialIsClassVideo = Boolean(initialTask && isClassTask(initialTask));
-  const [minutes, setMinutes] = useState(initialIsClassVideo ? (initialTask?.actualTimeMinutes == null ? '' : String(initialTask.actualTimeMinutes)) : (initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes)));
-  const [tests, setTests] = useState(initialIsClassVideo ? (initialTask?.actualTestCount == null ? '' : String(initialTask.actualTestCount)) : (initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount)));
+  const [minutes, setMinutes] = useState(initialIsClassVideo ? (initialTask?.actualTimeMinutes == null ? '0' : String(initialTask.actualTimeMinutes)) : (initialTask?.targetTimeMinutes == null ? '0' : String(initialTask.targetTimeMinutes)));
+  const [tests, setTests] = useState(initialIsClassVideo ? (initialTask?.actualTestCount == null ? '0' : String(initialTask.actualTestCount)) : (initialTask?.targetTestCount == null ? '0' : String(initialTask.targetTestCount)));
   const [teacherClassName, setTeacherClassName] = useState(initialTask?.teacherClassName ?? '');
   const [sessionNumber, setSessionNumber] = useState(initialTask?.sessionNumber ?? '');
   const [bookName, setBookName] = useState(initialTask?.bookName ?? '');
   const [testDescription, setTestDescription] = useState(initialTask?.testDescription ?? '');
+  const [advisorNote, setAdvisorNote] = useState(initialTask?.advisorNote ?? '');
   const [pickerDraft, setPickerDraft] = useState<TaskSubjectPickerDraftState>(EMPTY_PICKER_DRAFT);
   const [saving, setSaving] = useState(false);
   const hydratedDraftKeyRef = useRef<string | null>(null);
@@ -105,12 +107,13 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     setActivities(initialTask?.activityTypes ?? []);
     setClassVideoMode(Boolean(initialTask && isClassTask(initialTask)));
     const resettingClass = Boolean(initialTask && isClassTask(initialTask));
-    setMinutes(resettingClass ? (initialTask?.actualTimeMinutes == null ? '' : String(initialTask.actualTimeMinutes)) : (initialTask?.targetTimeMinutes == null ? '' : String(initialTask.targetTimeMinutes)));
-    setTests(resettingClass ? (initialTask?.actualTestCount == null ? '' : String(initialTask.actualTestCount)) : (initialTask?.targetTestCount == null ? '' : String(initialTask.targetTestCount)));
+    setMinutes(resettingClass ? (initialTask?.actualTimeMinutes == null ? '0' : String(initialTask.actualTimeMinutes)) : (initialTask?.targetTimeMinutes == null ? '0' : String(initialTask.targetTimeMinutes)));
+    setTests(resettingClass ? (initialTask?.actualTestCount == null ? '0' : String(initialTask.actualTestCount)) : (initialTask?.targetTestCount == null ? '0' : String(initialTask.targetTestCount)));
     setTeacherClassName(initialTask?.teacherClassName ?? '');
     setSessionNumber(initialTask?.sessionNumber ?? '');
     setBookName(initialTask?.bookName ?? '');
     setTestDescription(initialTask?.testDescription ?? '');
+    setAdvisorNote(initialTask?.advisorNote ?? '');
     setPickerDraft(EMPTY_PICKER_DRAFT);
     setTeacherClassSuggestions([]);
     setBookSuggestions([]);
@@ -146,8 +149,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
       setSelection(draft.selection);
       setPickerDraft(draft.picker);
       setActivities(draft.activities);
-      setMinutes(toEnglishDigits(draft.minutes));
-      setTests(toEnglishDigits(draft.tests));
+      setMinutes(toEnglishDigits(draft.minutes) || '0');
+      setTests(toEnglishDigits(draft.tests) || '0');
       setTeacherClassName(draft.teacherClassName);
       setSessionNumber(draft.sessionNumber);
       setBookName(draft.bookName);
@@ -238,6 +241,21 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     }
   };
 
+  // Full-screen overlay: lock background scroll and close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onOpenChange(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open, onOpenChange]);
+
   // Can quick-save once subject is selected
   const classTeacherName = selection.teacherClassName ?? teacherClassName;
   const classSessionNumber = selection.sessionNumber ?? sessionNumber;
@@ -248,16 +266,21 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     (selection.curriculumMode === 'THEMATIC' && !!selection.topicModeId)
   );
 
-  // Can full-save once subject + activity + time are set
+  // Zero is a valid default for both time and test count.
   const effectiveActivities = isClassVideo
     ? CLASS_ACTIVITY_TYPES
     : activities.filter((activity) => activity !== 'کلاس/ویدیو');
-  const canFullSave = canQuickSave && effectiveActivities.length > 0 && (isClassVideo || Number(minutes) > 0);
+  const canFullSave = canQuickSave && effectiveActivities.length > 0 && Number(minutes) >= 0 && Number(tests) >= 0;
+  const classCurriculumCompleted = selection.curriculumMode === 'BOOK'
+    ? Boolean(selection.chapterId)
+    : selection.curriculumMode === 'THEMATIC'
+      ? Boolean(selection.topicModeId)
+      : false;
 
   // Build task object from current state
   const buildTask = (detailsCompleted: boolean): Task => {
     if (isClassVideo && mode === 'create') {
-      return buildClassDraft({
+      return buildClassTask({
         id: initialTask?.id ?? crypto.randomUUID(),
         studentId,
         subjectId: selection.subjectId!,
@@ -265,6 +288,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
         subjectColor: selection.subjectColor ?? 'var(--accent)',
         teacherClassName: classTeacherName,
         sessionNumber: classSessionNumber,
+        actualTimeMinutes: Number(minutes) > 0 ? Number(minutes) : null,
+        advisorNote: canEditAdvisorNote ? advisorNote.trim() || null : initialTask?.advisorNote ?? null,
         date: initialTask?.date ?? selectedDate,
         order: initialTask?.order ?? existingTaskCount + 1,
         createdBy: initialTask?.createdBy ?? createdBy,
@@ -302,7 +327,10 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     sessionNumber: isClassVideo ? (selection.sessionNumber !== undefined ? selection.sessionNumber : sessionNumber).trim() : null,
     bookName: bookName || null,
     testDescription: testDescription || null,
-      detailsCompleted: mode === 'edit' ? initialTask?.detailsCompleted ?? true : detailsCompleted,
+    advisorNote: canEditAdvisorNote ? advisorNote.trim() || null : initialTask?.advisorNote ?? null,
+      detailsCompleted: isClassVideo
+        ? classCurriculumCompleted
+        : mode === 'edit' ? initialTask?.detailsCompleted ?? true : detailsCompleted,
     };
   };
 
@@ -364,7 +392,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   // Step labels
   const stepLabel = isClassVideo ? 'ثبت کلاس/ویدیو' : step === 2 ? 'انتخاب درس و نوع تسک' : 'جزئیات مطالعه';
   const stepIndicator = (
-    <div className="flex items-center justify-center gap-1.5 mb-2">
+    <div className="flex items-center gap-1.5">
       {[2, 3].map(s => (
         <div
           key={s}
@@ -377,35 +405,62 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   );
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
-      <DrawerContent className="surface-2 border-t border-[var(--border-strong)] text-[var(--foreground)] max-h-[88vh]">
-        <DrawerHeader className="text-right pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <DrawerTitle>افزودن تسک</DrawerTitle>
-              <p className="text-xs text-[var(--foreground-subtle)] mt-0.5">{stepLabel}</p>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[70] flex items-end justify-center md:items-center md:p-6"
+          onClick={() => onOpenChange(false)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="relative flex h-dvh w-full flex-col overflow-hidden surface-2 md:h-auto md:max-h-[88vh] md:max-w-lg md:rounded-[var(--radius-xl)] md:border md:border-[var(--border-strong)] text-[var(--foreground)] shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="افزودن تسک"
+          >
+        <div className="shrink-0 border-b border-[var(--border)] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-right md:pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="text-base font-semibold text-[var(--foreground)]">افزودن تسک</h2>
+              {fieldType && <FieldTypeBadge value={fieldType} />}
             </div>
-            {step === 3 && (
+            <div className="flex shrink-0 items-center gap-3">
+              {stepIndicator}
+              {step === 3 && (
+                <button
+                  onClick={handlePrevious}
+                  className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  قبلی
+                </button>
+              )}
               <button
-                onClick={handlePrevious}
-                className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+                type="button"
+                onClick={() => onOpenChange(false)}
+                aria-label="بستن"
+                className="flex size-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                قبلی
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
-          {stepIndicator}
-        </DrawerHeader>
+          <p className="mt-0.5 text-xs text-[var(--foreground-subtle)]">{stepLabel}</p>
+        </div>
 
-        <div className="px-4 pb-2 overflow-y-auto flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {/* ===== Step 2: Subject Picker ===== */}
           {step === 2 && (
             <div className="space-y-3">
-              {/* Field type badge */}
-              <div className="flex items-center gap-2">
-                {fieldType && <FieldTypeBadge value={fieldType} />}
-              </div>
                 <TaskSubjectPicker
                   fieldType={fieldType}
                  grade={grade ?? user?.grade ?? 'دوازدهم'}
@@ -429,12 +484,12 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                   draftState={pickerDraft}
                   onDraftStateChange={setPickerDraft}
                 />
-                {isClassVideo && mode !== 'create' && (
+                {isClassVideo && (
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
                     <p className="mb-3 text-xs font-semibold text-[var(--foreground)]">زمان و تمرین این جلسه</p>
                     <div className="grid grid-cols-2 gap-3">
                       <label className="text-xs text-[var(--foreground-muted)]">
-                        زمان واقعی (دقیقه)
+                        زمان جلسه (دقیقه)
                          <input
                           type="text"
                           inputMode="numeric"
@@ -459,8 +514,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                       </label>
                     </div>
                   </div>
-                )}
-             </div>
+           )}
+         </div>
           )}
 
            {/* ===== Step 3: Details (Activity + Time + Tests) ===== */}
@@ -473,8 +528,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                      className="w-3 h-3 rounded-full shrink-0"
                      style={{ backgroundColor: selection.subjectColor || 'var(--accent)' }}
                    />
-                   <span className="text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
-                    {fieldType ? <FieldTypeBadge value={fieldType} className="mr-auto" /> : <span className="mr-auto rounded-md border border-[#35C49A]/30 bg-[#35C49A]/10 px-2 py-0.5 text-[10px] font-semibold text-[#72E0BF]">کلاس</span>}
+                    <span className="min-w-0 truncate text-sm font-semibold text-[var(--foreground)]">{selection.subjectName}</span>
+                     {fieldType ? <FieldTypeBadge value={fieldType} /> : <span className="shrink-0 rounded-md border border-[#35C49A]/30 bg-[#35C49A]/10 px-2 py-0.5 text-[10px] font-semibold text-[#72E0BF]">کلاس</span>}
                  </div>
                  {selection.topicNames && selection.topicNames.length > 0 && (
                    <div className="flex flex-wrap gap-1">
@@ -495,12 +550,12 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                  {selection.displayText && (!selection.topicNames || selection.topicNames.length === 0) && (
                    <p className="text-xs text-[var(--foreground-muted)]">{selection.displayText}</p>
                  )}
-                 {selection.pageStart != null && selection.pageEnd != null && (
-                   <p className="text-[10px] text-[var(--foreground-subtle)]">
-                     صفحات {selection.pageStart} تا {selection.pageEnd}
-                   </p>
-                 )}
-               </div>
+                  {selection.pageStart != null && selection.pageEnd != null && (
+                    <p className="text-[10px] text-[var(--foreground-subtle)]">
+                      صفحات {selection.pageStart} تا {selection.pageEnd}
+                    </p>
+                  )}
+                </div>
 
                 {!isClassVideo && (
                   <div>
@@ -633,10 +688,22 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                </div>
              </div>
            )}
-        </div>
+           {canEditAdvisorNote && (
+             <label className="mt-4 block text-xs text-[var(--foreground-muted)]">
+               یادداشت برای دانش‌آموز (اختیاری)
+               <textarea
+                 value={advisorNote}
+                 onChange={(event) => setAdvisorNote(event.target.value)}
+                 rows={3}
+                 placeholder="پیامی که دانش‌آموز روی این تسک می‌بیند"
+                 className="mt-1.5 w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
+               />
+             </label>
+           )}
+         </div>
 
-        <DrawerFooter className="flex-col gap-2 pt-2">
-          {step === 2 && (
+         <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--border)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+           {step === 2 && (
             <>
               {/* Primary: continue to details */}
               {!isClassVideo && <button
@@ -662,7 +729,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
                 <button
                   disabled={saving}
                   onClick={() => doSave(false)}
-                  className="w-full h-10 rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] text-sm hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-all flex items-center justify-center gap-2"
+                  className="w-full h-11 rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] text-sm hover:border-[var(--border-strong)] hover:text-[var(--foreground)] transition-all flex items-center justify-center gap-2"
                 >
                   <Save className="w-3.5 h-3.5" />
                   ثبت اولیه (تکمیل بعدی)
@@ -680,8 +747,10 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
               {saving ? 'در حال ثبت...' : mode === 'complete-draft' ? 'ذخیره و تکمیل جزئیات' : 'ثبت تسک'}
             </button>
           )}
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+         </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, type Variants } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil, UserRound, BookOpen } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil, UserRound, BookOpen, MessageSquareText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Task } from '@/lib/types';
 import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constants/feedbackMessages';
@@ -9,6 +9,8 @@ import { toPersianDigits, minutesToHoursLabel } from '@/lib/persian-date';
 import { formatTaskCurriculum } from '@/lib/task-summary';
 import { FieldTypeBadge } from '@/components/shared/FieldTypeBadge';
 import { isClassTask } from '@/lib/class-task';
+import { LifecycleStatusBadge } from '@/components/shared/LifecycleStatusBadge';
+import { legacyTaskStatus } from '@/lib/task-status';
 
 // ===== Animation Variants =====
 const cardVariants: Variants = {
@@ -60,11 +62,13 @@ export default function TaskCard({
   dragHandleProps,
   capabilities,
 }: TaskCardProps) {
-  const isCompleted = task.completed === true;
-  const isSkipped = task.completed === false;
-  const isPending = task.completed === null;
-  const isDraft = task.status === 'DRAFT';
-  const isIncomplete = task.status === 'INCOMPLETE';
+  const lifecycleStatus = task.status ?? legacyTaskStatus(task.detailsCompleted ?? true, task.completed ?? null);
+  const isCompleted = lifecycleStatus === 'COMPLETED';
+  const isSkipped = lifecycleStatus === 'SKIPPED';
+  const isPending = lifecycleStatus === 'PENDING' || lifecycleStatus === 'INCOMPLETE';
+  const isDraft = lifecycleStatus === 'DRAFT';
+  const isActionableClassDraft = isDraft && isClassTask(task);
+  const isIncomplete = lifecycleStatus === 'INCOMPLETE';
   const curriculumSummary = formatTaskCurriculum(task);
   const canComplete = capabilities?.complete ?? true;
   const canAction = capabilities?.action ?? true;
@@ -129,16 +133,22 @@ export default function TaskCard({
               >
                 {task.createdBy === 'advisor' ? 'مشاور' : 'خودم'}
               </span>
+              <LifecycleStatusBadge status={lifecycleStatus} />
             </div>
 
-            {isDraft && (canEdit ? <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس · تکمیل جزئیات</button> : <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">پیش‌نویس</span>)}
-            {isIncomplete && <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">ناقص</span>}
+            {(isDraft || task.detailsCompleted === false) && (canEdit ? <button onClick={() => onEdit?.(task.id)} className="mb-2 text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">تکمیل جزئیات</button> : <span className="mb-2 inline-block text-xs font-bold text-[var(--warning)] bg-[var(--warning)]/10 px-2 py-1 rounded-md">جزئیات اختیاری</span>)}
             {curriculumSummary && <p className="text-[var(--foreground-muted)] text-xs md:text-sm mb-2 line-clamp-2">{curriculumSummary}</p>}
 
             {(task.teacherClassName || task.bookName) && (
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--foreground-muted)] mb-2">
                 {task.teacherClassName && <span className="flex items-center gap-1"><UserRound className="w-3 h-3" />دبیر: {task.teacherClassName}{task.sessionNumber ? ` · ${task.sessionNumber}` : ''}</span>}
                 {task.bookName && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />کتاب: {task.bookName}{task.testDescription ? ` · ${task.testDescription}` : ''}</span>}
+              </div>
+            )}
+            {task.advisorNote && (
+              <div className="mb-2 flex items-start gap-2 rounded-lg border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-3 py-2 text-xs leading-5 text-[var(--foreground)]">
+                <MessageSquareText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
+                <span><span className="font-semibold text-[var(--accent)]">یادداشت مشاور:</span> {task.advisorNote}</span>
               </div>
             )}
 
@@ -170,6 +180,12 @@ export default function TaskCard({
                 </>
               )}
             </div>}
+            {isClassTask(task) && !isCompleted && task.actualTimeMinutes != null && (
+              <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
+                <Clock className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
+                زمان جلسه: {minutesToHoursLabel(task.actualTimeMinutes)}
+              </div>
+            )}
 
             {/* Actual Metrics (if completed) */}
             {isCompleted && (task.actualTimeMinutes !== null || task.actualTestCount !== null) && (
@@ -194,7 +210,7 @@ export default function TaskCard({
 
         {/* ===== Action Buttons (left side in RTL) ===== */}
         <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-          {isDraft ? (
+          {isDraft && !isActionableClassDraft ? (
             <div className="flex items-center gap-2">
               {canEdit && onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-9 rounded-md bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
               {canDeleteDraft && canAction && <button
@@ -205,7 +221,7 @@ export default function TaskCard({
                 حذف تسک
               </button>}
             </div>
-          ) : isPending && task.detailsCompleted ? (
+          ) : isPending ? (
             <>
               {canComplete && <button
                 onClick={async () => {
@@ -249,18 +265,6 @@ export default function TaskCard({
             </>
           ) : !isPending ? (
             <div className="flex items-center gap-1.5">
-              {/* Status badge */}
-              {isCompleted ? (
-                <span className="text-[var(--accent)] text-xs font-bold flex items-center gap-1 bg-[var(--accent-soft)] px-2 py-1 rounded-md border border-[var(--border-strong)]">
-                  <Check className="w-3 h-3" />
-                  انجام شد
-                </span>
-              ) : (
-                <span className="text-[var(--danger)] text-xs font-bold flex items-center gap-1 bg-[rgba(229,72,77,0.12)] px-2 py-1 rounded-md border border-[rgba(229,72,77,0.2)]">
-                  <X className="w-3 h-3" />
-                  انجام نشد
-                </span>
-              )}
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}

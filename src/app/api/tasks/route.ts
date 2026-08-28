@@ -25,6 +25,12 @@ export async function POST(request: NextRequest) {
   if (error || !ctx) return error;
   try {
     const body = await request.json();
+    if ('advisorNote' in body && ctx.user.role !== 'ADVISOR') {
+      return NextResponse.json({ error: 'فقط مشاور می‌تواند برای تسک یادداشت ثبت کند' }, { status: 403 });
+    }
+    if (body.advisorNote !== undefined && body.advisorNote !== null && typeof body.advisorNote !== 'string') {
+      return NextResponse.json({ error: 'یادداشت مشاور باید متن یا null باشد' }, { status: 400 });
+    }
     const hasClassVideo = isClassActivityTypes(body.activityTypes);
     if (typeof body.studentId !== 'string' || typeof body.subjectId !== 'string' || typeof body.date !== 'string' || (!isTaskFieldType(body.fieldType) && !(hasClassVideo && body.fieldType == null))) {
       return NextResponse.json({ error: 'studentId، subjectId و date معتبر الزامی هستند و نوع ارزیابی برای غیرکلاس الزامی است' }, { status: 400 });
@@ -39,12 +45,9 @@ export async function POST(request: NextRequest) {
     }
     const permission = await canCreateTaskForStudent(ctx, body.studentId);
     if (!permission.allowed || !permission.createdBy) return NextResponse.json({ error: 'اجازه ایجاد تسک برای این دانش‌آموز را ندارید' }, { status: 403 });
-    const status = hasClassVideo ? 'DRAFT' : body.status ?? legacyTaskStatus(body.detailsCompleted, body.completed ?? null);
-    if (hasClassVideo && body.detailsCompleted !== false) {
-      return NextResponse.json({ error: 'کلاس/ویدیو در مرحله ایجاد باید به‌صورت پیش‌نویس ثبت شود' }, { status: 400 });
-    }
+    const status = body.status ?? legacyTaskStatus(body.detailsCompleted, body.completed ?? null);
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
-    const lifecycleError = validateTaskLifecycle(status, body.detailsCompleted, body.completed ?? null);
+    const lifecycleError = validateTaskLifecycle(status, body.detailsCompleted, body.completed ?? null, hasClassVideo);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
     const curriculum = await validateTaskCurriculum({
       ...body,
@@ -56,14 +59,14 @@ export async function POST(request: NextRequest) {
     });
     if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
     const invalidClassMetrics = hasClassVideo && (
-      (body.targetTimeMinutes != null && (typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes <= 0))
+      (body.targetTimeMinutes != null && (typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes < 0))
       || (body.targetTestCount != null && (typeof body.targetTestCount !== 'number' || body.targetTestCount < 0))
     );
-    const invalidStandardMetrics = !hasClassVideo && status !== 'DRAFT' && (!Array.isArray(body.activityTypes) || body.activityTypes.length === 0 || typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes <= 0 || typeof body.targetTestCount !== 'number' || body.targetTestCount < 0);
+    const invalidStandardMetrics = !hasClassVideo && status !== 'DRAFT' && (!Array.isArray(body.activityTypes) || body.activityTypes.length === 0 || typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes < 0 || typeof body.targetTestCount !== 'number' || body.targetTestCount < 0);
     if (invalidClassMetrics || invalidStandardMetrics) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
-    if (!body.detailsCompleted && body.completed != null) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
+    if (!body.detailsCompleted && body.completed != null && !hasClassVideo) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
     const hasTestDetails = Array.isArray(body.activityTypes) && (body.activityTypes.includes('تست آموزشی') || body.activityTypes.includes('تست سنجشی'));
     const task = await db.task.create({ data: {
       studentId: body.studentId, subjectId: curriculum.subject.id, subject: curriculum.subject.name, subjectColor: curriculum.subject.color,
@@ -79,6 +82,7 @@ export async function POST(request: NextRequest) {
       sessionNumber: hasClassVideo && typeof body.sessionNumber === 'string' ? body.sessionNumber.trim() || null : null,
       bookName: hasTestDetails && typeof body.bookName === 'string' ? body.bookName.trim() || null : null,
       testDescription: hasTestDetails && typeof body.testDescription === 'string' ? body.testDescription.trim() || null : null,
+      advisorNote: permission.createdBy === 'advisor' && typeof body.advisorNote === 'string' ? body.advisorNote.trim() || null : null,
       topics: { create: curriculum.topicIds.map((topicId) => ({ topicId })) },
       topicModeSubtopics: { create: curriculum.subtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId })) },
     }, include: taskTopicInclude });

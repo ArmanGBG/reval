@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox,
+  Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox, ClipboardCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -32,8 +32,12 @@ import { TaskActionDialog } from './TaskActionDialog';
 import { useCurrentStudentId, parseLocalDate } from '@/lib/student-utils';
 import TaskStatsWidget from './TaskStatsWidget';
 import { canMoveTaskToDate, isTaskVisibleOnScheduledDay, moveTaskToDateTransition, moveTaskToIncompleteTransition } from '@/lib/task-status';
-import { studentCanEditTask } from '@/lib/class-task';
+import { isClassTask, studentCanEditTask } from '@/lib/class-task';
 import { clearTaskFormDraft, listCreateTaskFormDrafts, type StoredTaskFormDraft } from '@/lib/task-form-draft';
+import { ExamModal } from '@/components/advisor/ExamModal';
+import { ExamCard, ExamCenter } from '@/components/exams/ExamCenter';
+import { getExamParticipantStatus } from '@/lib/exam-lifecycle';
+import { ExamAnalysisTaskCard } from '@/components/exams/ExamAnalysisTaskCard';
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -66,16 +70,23 @@ function PlanTabToggle({
   draftCount,
   incompleteCount,
 }: {
-  tab: 'daily' | 'draft' | 'incomplete';
-  onChange: (t: 'daily' | 'draft' | 'incomplete') => void;
+  tab: 'daily' | 'draft' | 'incomplete' | 'exams';
+  onChange: (t: 'daily' | 'draft' | 'incomplete' | 'exams') => void;
   draftCount: number;
   incompleteCount: number;
 }) {
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border)]">
+    <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1 no-scrollbar">
+      <button
+        onClick={() => onChange('exams')}
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${tab === 'exams' ? 'bg-[#E57373] text-[#241315]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+      >
+        <ClipboardCheck className="w-3.5 h-3.5" />
+        آزمون‌ها
+      </button>
       <button
         onClick={() => onChange('daily')}
-        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
           tab === 'daily'
             ? 'bg-[var(--accent)] text-[var(--bg-deep)]'
             : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
@@ -86,13 +97,13 @@ function PlanTabToggle({
       </button>
       <button
         onClick={() => onChange('draft')}
-        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${tab === 'draft' ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${tab === 'draft' ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
       >
         پیش‌نویس‌ها{draftCount > 0 ? ` ${toPersianDigits(draftCount)}` : ''}
       </button>
       <button
         onClick={() => onChange('incomplete')}
-        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
           tab === 'incomplete'
             ? 'bg-[var(--warning)] text-[var(--bg-deep)]'
             : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
@@ -139,6 +150,8 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
     loadTasksForStudent,
     selectedDate,
     setSelectedDate,
+    exams,
+    loadExams,
   } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
@@ -165,10 +178,11 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
   // Local state
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [examModalOpen, setExamModalOpen] = useState(false);
   const [weeklyPlannerOpen, setWeeklyPlannerOpen] = useState(false);
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
-  const [planTab, setPlanTab] = useState<'daily' | 'draft' | 'incomplete'>('daily');
+  const [planTab, setPlanTab] = useState<'daily' | 'draft' | 'incomplete' | 'exams'>('daily');
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [draftSessionId, setDraftSessionId] = useState<string | null>(null);
   const [resumingLocalDraft, setResumingLocalDraft] = useState<StoredTaskFormDraft | null>(null);
@@ -185,6 +199,10 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   useEffect(() => {
     refreshLocalDrafts();
   }, [refreshLocalDrafts]);
+
+  useEffect(() => {
+    void loadExams(isAdvisorWorkspace ? { studentId } : { studentId });
+  }, [isAdvisorWorkspace, loadExams, studentId]);
 
   const openNewTask = useCallback(() => {
     setResumingLocalDraft(null);
@@ -240,6 +258,10 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   const draftTasks = useMemo(() => tasks.filter((t) => t.studentId === studentId && t.status === 'DRAFT'), [tasks, studentId]);
   const totalDraftCount = draftTasks.length + localDrafts.length;
   const secondaryTabTasks = planTab === 'draft' ? draftTasks : incompleteTasks;
+  const dailyExams = useMemo(() => exams.filter((exam) => exam.date === selectedDate && exam.studentIds.includes(studentId)), [exams, selectedDate, studentId]);
+  const incompleteExams = useMemo(() => exams.filter((exam) => exam.studentIds.includes(studentId) && getExamParticipantStatus(exam, studentId) === 'INCOMPLETE'), [exams, studentId]);
+  const dailyAnalysisTasks = useMemo(() => exams.flatMap((exam) => (exam.analysisTasks ?? []).filter((task) => task.studentId === studentId && task.date === selectedDate).map((task) => ({ exam, task }))), [exams, selectedDate, studentId]);
+  const incompleteAnalysisTasks = useMemo(() => exams.flatMap((exam) => (exam.analysisTasks ?? []).filter((task) => task.studentId === studentId && task.status === 'INCOMPLETE').map((task) => ({ exam, task }))), [exams, studentId]);
 
   // Dynamic header title
   const headerTitle = useMemo(() => {
@@ -265,13 +287,13 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
   // Task stats for the widget
   const taskStats = useMemo(() => {
-    const totalTasks = filteredTasks.length;
-    const completedCount = filteredTasks.filter((t) => t.completed === true).length;
-    const totalActualMinutes = filteredTasks.reduce((sum, t) => sum + (t.actualTimeMinutes ?? 0), 0);
+    const totalTasks = filteredTasks.length + dailyAnalysisTasks.length;
+    const completedCount = filteredTasks.filter((t) => t.completed === true).length + dailyAnalysisTasks.filter(({ task }) => task.status === 'COMPLETED').length;
+    const totalActualMinutes = filteredTasks.reduce((sum, t) => sum + (t.actualTimeMinutes ?? 0), 0) + dailyAnalysisTasks.reduce((sum, { task }) => sum + (task.actualTimeMinutes ?? 0), 0);
     const totalStudyHours = minutesToHours(totalActualMinutes);
     const totalTestsTaken = filteredTasks.reduce((sum, t) => sum + (t.actualTestCount ?? 0), 0);
     return { totalTasks, completedCount, totalStudyHours, totalTests: totalTestsTaken };
-  }, [filteredTasks]);
+  }, [dailyAnalysisTasks, filteredTasks]);
 
   // Task counts per date (for calendar indicators)
   const taskCountByDate = useMemo(() => {
@@ -281,8 +303,14 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         map[t.date] = (map[t.date] || 0) + 1;
       }
     }
+    for (const exam of exams) {
+      if (exam.studentIds.includes(studentId)) map[exam.date] = (map[exam.date] || 0) + 1;
+      for (const task of exam.analysisTasks ?? []) {
+        if (task.studentId === studentId) map[task.date] = (map[task.date] || 0) + 1;
+      }
+    }
     return map;
-  }, [tasks]);
+  }, [exams, studentId, tasks]);
 
   const completedCountByDate = useMemo(() => {
     const map: Record<string, number> = {};
@@ -359,7 +387,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
     async (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
       if (!task) throw new Error('تسک یافت نشد');
-      if (task.status === 'DRAFT' || !task.detailsCompleted) throw new Error('ابتدا جزئیات پیش‌نویس را تکمیل کنید');
+      if ((task.status === 'DRAFT' || !task.detailsCompleted) && !isClassTask(task)) throw new Error('ابتدا جزئیات پیش‌نویس را تکمیل کنید');
       await updateTask(taskId, moveTaskToIncompleteTransition());
       toast('تسک به ناقصی‌ها منتقل شد', {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
@@ -421,12 +449,12 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
           <motion.h1
-            key={planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+            key={planTab === 'exams' ? 'آزمون‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl font-bold text-[var(--foreground)]"
           >
-            {planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+            {planTab === 'exams' ? 'آزمون‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
           </motion.h1>
           <div className="flex items-center gap-2">
             {planTab === 'daily' && (
@@ -441,12 +469,12 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
           </div>
         </div>
         <p className="text-xs text-[var(--foreground-muted)] mb-3">
-          {planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+          {planTab === 'exams' ? 'تاریخ، جزئیات و عملکرد آزمون‌ها' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
         </p>
 
         {/* Plan Tab Toggle */}
         <div className="mb-4">
-          <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length} />
+          <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length + incompleteExams.length + incompleteAnalysisTasks.length} />
         </div>
 
         {planTab === 'daily' ? (
@@ -466,9 +494,11 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
             {/* Task Cards */}
             <div className="space-y-3">
-              {filteredTasks.length === 0 ? (
+              {dailyExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
+              {dailyAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
+              {filteredTasks.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
                 <EmptyState />
-              ) : (
+              ) : filteredTasks.length > 0 ? (
                 <SortableTaskList
                   tasks={filteredTasks}
                   onComplete={handleComplete}
@@ -481,16 +511,20 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   onEdit={setDetailsTaskId}
                   getCapabilities={getTaskCapabilities}
                 />
-              )}
+              ) : null}
             </div>
           </>
+        ) : planTab === 'exams' ? (
+          <ExamCenter studentId={studentId} grade={targetStudent?.grade} major={targetStudent?.major} isAdvisor={isAdvisorWorkspace} />
         ) : (
           /* Draft and incomplete tasks tabs */
           <div className="space-y-3">
+            {planTab === 'incomplete' && incompleteExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
+            {planTab === 'incomplete' && incompleteAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
             {planTab === 'draft' && localDrafts.map((draft) => (
               <LocalDraftCard key={draft.key} draft={draft} onResume={() => resumeLocalDraft(draft)} onDelete={() => deleteLocalDraft(draft)} />
             ))}
-            {secondaryTabTasks.length === 0 && (planTab !== 'draft' || localDrafts.length === 0) && (
+            {secondaryTabTasks.length === 0 && (planTab !== 'draft' || localDrafts.length === 0) && (planTab !== 'incomplete' || (incompleteExams.length === 0 && incompleteAnalysisTasks.length === 0)) && (
               <IncompleteEmptyState draft={planTab === 'draft'} />
             )}
             {secondaryTabTasks.length > 0 && (
@@ -513,7 +547,8 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
         {/* FAB: Add Task (daily tab only) */}
         {planTab === 'daily' && (
-          <motion.button
+          <>
+              <motion.button
             whileTap={{ scale: 0.92 }}
             onClick={openNewTask}
             className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
@@ -522,6 +557,15 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
             <Plus className="w-5 h-5" />
             <span>تسک جدید</span>
           </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setExamModalOpen(true)}
+            className="fixed bottom-24 right-4 z-40 flex min-h-[48px] items-center gap-2 rounded-2xl border border-[#E57373]/30 bg-[#E57373]/15 px-4 py-3 text-sm font-bold text-[#EF9A9A]"
+          >
+            <ClipboardCheck className="w-5 h-5" />
+            آزمون
+          </motion.button>
+          </>
         )}
       </div>
 
@@ -535,22 +579,22 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
               <span>برنامه‌ریزی</span>
               <ChevronLeft className="w-3 h-3 flip-rtl" />
-              <span className="text-[var(--accent)]">{planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
+              <span className={planTab === 'exams' ? 'text-[#EF9A9A]' : 'text-[var(--accent)]'}>{planTab === 'exams' ? 'آزمون‌ها' : planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
             </div>
             <motion.h1
-              key={planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+              key={planTab === 'exams' ? 'آزمون‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-3xl md:text-4xl font-bold text-[var(--foreground)]"
             >
-              {planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+              {planTab === 'exams' ? 'آزمون‌ها' : planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
             </motion.h1>
             <p className="text-sm text-[var(--foreground-muted)]">
-              {planTab === 'draft' ? 'پیش‌نویس‌های نیازمند تکمیل جزئیات' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+              {planTab === 'exams' ? 'تاریخ، جزئیات و عملکرد آزمون‌ها' : planTab === 'draft' ? 'پیش‌نویس‌های نیازمند تکمیل جزئیات' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length} />
+            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length + incompleteExams.length + incompleteAnalysisTasks.length} />
             {planTab === 'daily' && (
               <button
                 onClick={() => setWeeklyPlannerOpen(true)}
@@ -584,6 +628,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   <Plus className="w-4 h-4" />
                   تسک جدید
                 </button>
+                <button onClick={() => setExamModalOpen(true)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-[#E57373]/30 bg-[#E57373]/10 text-sm font-semibold text-[#EF9A9A]"><ClipboardCheck className="w-4 h-4" />آزمون جدید</button>
               </div>
 
               {/* Task Stats Widget (desktop sidebar) */}
@@ -592,9 +637,11 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
             {/* ===== Right: Task List ===== */}
             <div className="lg:col-span-2 space-y-3">
-              {filteredTasks.length === 0 ? (
+              {dailyExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
+              {dailyAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
+              {filteredTasks.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
                 <EmptyState />
-              ) : (
+              ) : filteredTasks.length > 0 ? (
                 <SortableTaskList
                   tasks={filteredTasks}
                   onComplete={handleComplete}
@@ -607,16 +654,20 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   onEdit={setDetailsTaskId}
                   getCapabilities={getTaskCapabilities}
                 />
-              )}
+              ) : null}
             </div>
           </div>
+        ) : planTab === 'exams' ? (
+          <ExamCenter studentId={studentId} grade={targetStudent?.grade} major={targetStudent?.major} isAdvisor={isAdvisorWorkspace} />
         ) : (
           /* Draft or incomplete tasks tab — full width */
           <div className="max-w-3xl mx-auto space-y-3">
+            {planTab === 'incomplete' && incompleteExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
+            {planTab === 'incomplete' && incompleteAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
             {planTab === 'draft' && localDrafts.map((draft) => (
               <LocalDraftCard key={draft.key} draft={draft} onResume={() => resumeLocalDraft(draft)} onDelete={() => deleteLocalDraft(draft)} />
             ))}
-            {secondaryTabTasks.length === 0 && (planTab !== 'draft' || localDrafts.length === 0) && (
+            {secondaryTabTasks.length === 0 && (planTab !== 'draft' || localDrafts.length === 0) && (planTab !== 'incomplete' || (incompleteExams.length === 0 && incompleteAnalysisTasks.length === 0)) && (
               <IncompleteEmptyState draft={planTab === 'draft'} />
             )}
             {secondaryTabTasks.length > 0 && (
@@ -668,6 +719,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         persistFormDraft={!isAdvisorWorkspace}
         allowDraftSave={!isAdvisorWorkspace}
       />
+      <ExamModal open={examModalOpen} onOpenChange={setExamModalOpen} studentId={studentId} selectedDate={selectedDate} grade={targetStudent?.grade} major={targetStudent?.major} />
 
 
       <WeeklyPlanner
@@ -687,6 +739,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         onOpenChange={(nextOpen) => !nextOpen && setDetailsTaskId(null)}
         grade={targetStudent?.grade ?? useAppStore.getState().user?.grade ?? 'دوازدهم'}
         major={targetStudent?.major ?? useAppStore.getState().user?.major ?? 'تجربی'}
+        canEditAdvisorNote={isAdvisorWorkspace}
         onSave={async (updates) => {
           if (!detailsTaskId) return;
           if (isAdvisorWorkspace) {
@@ -719,7 +772,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                 <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">زمان واقعی (دقیقه)</label>
                 <input
                   type="number"
-                  value={settingsTask.actualTimeMinutes ?? ''}
+                  value={settingsTask.actualTimeMinutes ?? 0}
                   onChange={(e) => updateTask(settingsTask.id, { actualTimeMinutes: Number(e.target.value) || null })}
                   className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                   dir="ltr"
@@ -729,7 +782,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                 <label className="text-xs text-[var(--foreground-muted)] mb-1.5 block">تعداد تست واقعی</label>
                 <input
                   type="number"
-                  value={settingsTask.actualTestCount ?? ''}
+                  value={settingsTask.actualTestCount ?? 0}
                   onChange={(e) => updateTask(settingsTask.id, { actualTestCount: Number(e.target.value) || null })}
                   className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                   dir="ltr"

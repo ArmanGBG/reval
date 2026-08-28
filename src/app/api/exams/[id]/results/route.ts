@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/api-auth';
+import { canViewStudentTasks, requireAuth } from '@/lib/api-auth';
 import type { ExamResult } from '@/lib/types';
 
 // =================================================================
@@ -33,7 +33,7 @@ export async function PUT(
       createdById: true,
       instituteId: true,
       totalScore: true,
-      participants: { select: { studentId: true } },
+      participants: { select: { studentId: true, lifecycleStatus: true } },
     },
   });
 
@@ -50,8 +50,11 @@ export async function PUT(
   const isManagerOfInstitute =
     ctx.user.role === 'INSTITUTE_MANAGER' &&
     existing.instituteId === ctx.user.instituteId;
+  const isAssignedAdvisor = ctx.user.role === 'ADVISOR' && await Promise.all(
+    existing.participants.map((participant) => canViewStudentTasks(ctx, participant.studentId)),
+  ).then((access) => access.length > 0 && access.every(Boolean));
 
-  if (!isCreator && !isSuperAdmin && !isManagerOfInstitute) {
+  if (!isCreator && !isSuperAdmin && !isManagerOfInstitute && !isAssignedAdvisor) {
     return NextResponse.json(
       { error: 'دسترسی غیرمجاز' },
       { status: 403 },
@@ -171,7 +174,7 @@ export async function GET(
       id: true,
       createdById: true,
       instituteId: true,
-      participants: { select: { studentId: true } },
+      participants: { select: { studentId: true, lifecycleStatus: true } },
       results: { select: { studentId: true, score: true, rank: true } },
     },
   });
@@ -192,8 +195,11 @@ export async function GET(
   const isParticipant =
     ctx.user.role === 'STUDENT' &&
     exam.participants.some((p) => p.studentId === ctx.userId);
+  const isAssignedAdvisor = ctx.user.role === 'ADVISOR' && await Promise.all(
+    exam.participants.map((participant) => canViewStudentTasks(ctx, participant.studentId)),
+  ).then((access) => access.length > 0 && access.every(Boolean));
 
-  if (!isCreator && !isSuperAdmin && !isManagerOfInstitute && !isParticipant) {
+  if (!isCreator && !isSuperAdmin && !isManagerOfInstitute && !isParticipant && !isAssignedAdvisor) {
     return NextResponse.json(
       { error: 'دسترسی غیرمجاز' },
       { status: 403 },

@@ -5,6 +5,7 @@
 
 import { Task } from '@/lib/types';
 import { apiFetch, parseError } from '@/lib/api-client';
+import { isClassTask } from '@/lib/class-task';
 
 // Types for API payloads — what the client sends to the API.
 // Note: `id` is NOT in the create payload (the DB generates it).
@@ -37,6 +38,7 @@ export interface CreateTaskPayload {
   sessionNumber?: string | null;
   bookName?: string | null;
   testDescription?: string | null;
+  advisorNote?: string | null;
 }
 
 export type UpdateTaskPayload = Omit<Partial<CreateTaskPayload>, 'studentId' | 'createdBy' | 'createdById' | 'subjectId' | 'topic'> & {
@@ -64,9 +66,13 @@ export function buildTaskDetailsUpdate(task: Task, nextTask: Task): UpdateTaskPa
   if (task.status === 'COMPLETED' || task.status === 'SKIPPED') {
     delete updates.status;
     delete updates.completed;
-    delete updates.actualTimeMinutes;
-    delete updates.actualTestCount;
-    delete updates.detailsCompleted;
+    if (isClassTask(task)) {
+      updates.detailsCompleted = nextTask.detailsCompleted;
+    } else {
+      delete updates.actualTimeMinutes;
+      delete updates.actualTestCount;
+      delete updates.detailsCompleted;
+    }
   }
   return updates;
 }
@@ -129,6 +135,9 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     createdBy: raw.createdBy as Task['createdBy'],
     createdById: (raw.createdById as string | null) ?? null,
     chapterId: (raw.chapterId as string | null) ?? null,
+    chapter: raw.chapter && typeof raw.chapter === 'object'
+      ? raw.chapter as { id: string; title: string; chapterNo: number }
+      : null,
     topicId: (raw.topicId as string | null) ?? null,
     topicIds: Array.isArray(raw.topicIds)
       ? raw.topicIds.filter((id): id is string => typeof id === 'string')
@@ -158,6 +167,7 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     sessionNumber: (raw.sessionNumber as string | null) ?? null,
     bookName: (raw.bookName as string | null) ?? null,
     testDescription: (raw.testDescription as string | null) ?? null,
+    advisorNote: (raw.advisorNote as string | null) ?? null,
   };
 }
 

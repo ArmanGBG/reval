@@ -18,6 +18,7 @@ import {
   BookOpen,
   Send,
   LogOut,
+  History,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -28,6 +29,7 @@ import NotificationCenter from './NotificationCenter';
 const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'خانه', icon: Home },
   { view: 'plan', label: 'برنامه من', icon: ClipboardList },
+  { view: 'exam-history', label: 'سابقه آزمون‌ها', icon: History },
   { view: 'tools', label: 'ابزارها', icon: Wrench },
   { view: 'analytics', label: 'گزارش', icon: BarChart3 },
   { view: 'settings', label: 'پروفایل', icon: User },

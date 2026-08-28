@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canMoveTaskToDate,
+  completedValueForTaskStatus,
   isTaskVisibleOnScheduledDay,
   isAdvisorMoveTaskPatch,
   isAdvisorPlanTaskPatch,
@@ -61,6 +62,13 @@ describe('task lifecycle transitions', () => {
     expect(validateTaskLifecycle('INCOMPLETE', false, null)).not.toBeNull();
   });
 
+  it('derives the legacy completed value from the canonical status', () => {
+    expect(completedValueForTaskStatus('COMPLETED')).toBe(true);
+    expect(completedValueForTaskStatus('SKIPPED')).toBe(false);
+    expect(completedValueForTaskStatus('PENDING')).toBeNull();
+    expect(completedValueForTaskStatus('INCOMPLETE')).toBeNull();
+  });
+
   it('shows dated drafts and incompletes in the daily plan', () => {
     expect(isTaskVisibleOnScheduledDay('DRAFT', false)).toBe(true);
     expect(isTaskVisibleOnScheduledDay('PENDING', true)).toBe(true);
@@ -82,7 +90,7 @@ describe('task lifecycle transitions', () => {
       actualTestCount: null,
     })).toBe(true);
     expect(isAdvisorPlanTaskPatch({ status: 'COMPLETED', completed: true, actualTimeMinutes: 90 })).toBe(false);
-    expect(isAdvisorPlanTaskPatch({ actualTestCount: 20 })).toBe(false);
+    expect(isAdvisorPlanTaskPatch({ actualTimeMinutes: 90, actualTestCount: 20 })).toBe(true);
   });
 
   it('rejects display-derived fields that the API resolves from curriculum', () => {
@@ -99,6 +107,7 @@ describe('task lifecycle transitions', () => {
       targetTestCount: 0,
       bookName: 'کتاب جدید',
     })).toBe(true);
+    expect(isAdvisorPlanTaskPatch({ advisorNote: 'مرور نکات جلسه قبل' })).toBe(true);
   });
 
   it('recognizes only the exact advisor move transition', () => {
@@ -131,6 +140,9 @@ describe('advisor-created task student permissions', () => {
     expect(isStudentClassDraftCompletionPatch({
       activityTypes: ['مطالعه'], status: 'PENDING', detailsCompleted: true, completed: null,
     })).toBe(false);
+    expect(isStudentClassDraftCompletionPatch({
+      activityTypes: ['کلاس/ویدیو'], status: 'PENDING', detailsCompleted: false, completed: null,
+    })).toBe(true);
     expect(isStudentClassDraftCompletionPatch({
       activityTypes: ['کلاس/ویدیو'], status: 'DRAFT', detailsCompleted: false, completed: null,
     })).toBe(false);
@@ -189,6 +201,20 @@ describe('task details update payload', () => {
     expect(updates.detailsCompleted).toBe(true);
     expect(updates.targetTimeMinutes).toBe(60);
     expect(updates.targetTestCount).toBe(10);
+  });
+
+  it('keeps editable class metrics on finalized class tasks', () => {
+    const classTask = { ...completedTask, activityTypes: ['کلاس/ویدیو'] as Task['activityTypes'], detailsCompleted: false };
+    const updates = buildTaskDetailsUpdate(classTask, {
+      ...classTask,
+      activityTypes: ['کلاس/ویدیو'],
+      actualTimeMinutes: 120,
+    });
+
+    expect(updates.actualTimeMinutes).toBe(120);
+    expect(updates).not.toHaveProperty('status');
+    expect(updates).not.toHaveProperty('completed');
+    expect(isAdvisorPlanTaskPatch(updates as Record<string, unknown>)).toBe(true);
   });
 
   it('does not send response metadata when completing a class draft', () => {

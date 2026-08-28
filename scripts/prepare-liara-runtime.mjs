@@ -17,6 +17,7 @@ const copyDirectory = (source, destination) => {
 
 copyDirectory(path.join(root, 'prisma'), path.join(standalone, 'prisma'));
 copyDirectory(path.join(root, 'seed - Data.csv'), path.join(standalone, 'seed - Data.csv'));
+copyDirectory(path.join(root, 'public', 'zamin.csv'), path.join(standalone, 'public', 'zamin.csv'));
 copyDirectory(path.join(root, 'liara_bootstrap_manual.sh'), path.join(standalone, 'bootstrap-database.sh'));
 chmodSync(path.join(standalone, 'bootstrap-database.sh'), 0o755);
 

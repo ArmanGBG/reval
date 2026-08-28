@@ -29,19 +29,22 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   // Relations
-  institute                  Institute?          @relation("InstituteMembers", fields: [instituteId], references: [id])
-  managedInstitute           Institute?          @relation("InstituteManager")
-  assignedAdvisor            User?               @relation("AdvisorStudents", fields: [assignedAdvisorId], references: [id])
-  students                   User[]              @relation("AdvisorStudents")
+  institute                  Institute?            @relation("InstituteMembers", fields: [instituteId], references: [id])
+  managedInstitute           Institute?            @relation("InstituteManager")
+  assignedAdvisor            User?                 @relation("AdvisorStudents", fields: [assignedAdvisorId], references: [id])
+  students                   User[]                @relation("AdvisorStudents")
   tasks                      Task[]
   examParticipants           ExamParticipant[]
   examResults                ExamResult[]
-  createdTasks               Task[]              @relation("TaskCreator")
-  createdExams               Exam[]              @relation("ExamCreator")
-  sentMessages               Message[]           @relation("SentMessages")
-  readMessages               MessageRead[]       @relation("ReadMessages")
-  sentConnectionRequests     ConnectionRequest[] @relation("ConnectionRequestStudent")
-  receivedConnectionRequests ConnectionRequest[] @relation("ConnectionRequestAdvisor")
+  examAnalysisTasks          ExamAnalysisTask[]    @relation("ExamAnalysisTaskStudent")
+  createdExamAnalysisTasks   ExamAnalysisTask[]    @relation("ExamAnalysisTaskCreator")
+  examSubjectAnalyses        ExamSubjectAnalysis[]
+  createdTasks               Task[]                @relation("TaskCreator")
+  createdExams               Exam[]                @relation("ExamCreator")
+  sentMessages               Message[]             @relation("SentMessages")
+  readMessages               MessageRead[]         @relation("ReadMessages")
+  sentConnectionRequests     ConnectionRequest[]   @relation("ConnectionRequestStudent")
+  receivedConnectionRequests ConnectionRequest[]   @relation("ConnectionRequestAdvisor")
 }
 
 model OtpChallenge {
@@ -160,6 +163,7 @@ model Task {
   // Educational Test details
   bookName          String?
   testDescription   String?
+  advisorNote       String?
   // FK links to curriculum structure (all optional — task may reference chapter, topic, or topic mode)
   chapterId         String?
   topicId           String?
@@ -193,31 +197,45 @@ model TaskTopic {
 
 // ===== Exam =====
 model Exam {
-  id           String   @id @default(cuid())
-  title        String
-  subject      String
-  subjectColor String
-  date         String
-  startTime    String
-  duration     Int
-  totalScore   Int
-  status       String   @default("upcoming") // upcoming, in-progress, completed
-  createdById  String
-  instituteId  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String          @id @default(cuid())
+  title           String
+  subject         String
+  subjectColor    String
+  scope           String          @default("COMPREHENSIVE") // COMPREHENSIVE | SUBJECT
+  description     String?
+  subjectId       String?
+  fieldType       String?
+  chapterId       String?
+  topicId         String?
+  topicModeId     String?
+  curriculumMode  CurriculumMode?
+  curriculumLabel String?
+  pageStart       Int?
+  pageEnd         Int?
+  date            String
+  startTime       String
+  duration        Int
+  totalScore      Int
+  status          String          @default("upcoming") // upcoming, in-progress, completed
+  createdById     String
+  instituteId     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
-  creator      User              @relation("ExamCreator", fields: [createdById], references: [id])
-  institute    Institute?        @relation(fields: [instituteId], references: [id])
-  participants ExamParticipant[]
-  results      ExamResult[]
+  creator         User                  @relation("ExamCreator", fields: [createdById], references: [id])
+  institute       Institute?            @relation(fields: [instituteId], references: [id])
+  participants    ExamParticipant[]
+  results         ExamResult[]
+  analysisTasks   ExamAnalysisTask[]
+  subjectAnalyses ExamSubjectAnalysis[]
 }
 
 // ===== Exam Participant =====
 model ExamParticipant {
-  id        String @id @default(cuid())
-  examId    String
-  studentId String
+  id              String @id @default(cuid())
+  examId          String
+  studentId       String
+  lifecycleStatus String @default("PENDING") // PENDING | COMPLETED | INCOMPLETE
 
   exam    Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
   student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -237,6 +255,45 @@ model ExamResult {
   student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentId])
+}
+
+model ExamAnalysisTask {
+  id                String     @id @default(cuid())
+  examId            String
+  studentId         String
+  date              String
+  status            TaskStatus @default(PENDING)
+  completed         Boolean?
+  actualTimeMinutes Int?
+  advisorNote       String?
+  createdBy         String
+  createdById       String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  exam    Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User  @relation("ExamAnalysisTaskStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  creator User? @relation("ExamAnalysisTaskCreator", fields: [createdById], references: [id])
+
+  @@unique([examId, studentId])
+  @@index([studentId, date])
+}
+
+model ExamSubjectAnalysis {
+  id          String   @id @default(cuid())
+  examId      String
+  studentId   String
+  subjectName String
+  analyzed    Boolean  @default(false)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exam    Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId, subjectName])
+  @@index([studentId, updatedAt])
 }
 
 // ===== Subject Management System (Super Admin) =====
@@ -384,4 +441,14 @@ model TaskDetailSuggestion {
 
   @@unique([studentId, subjectId, type, value])
   @@index([studentId, subjectId, type])
+}
+
+model ExamTitleSuggestion {
+  id        String   @id @default(cuid())
+  studentId String
+  value     String
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, value])
+  @@index([studentId, createdAt])
 }

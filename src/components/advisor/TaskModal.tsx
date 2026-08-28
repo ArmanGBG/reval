@@ -27,11 +27,11 @@ import { ModalInput } from './advisor-ui';
 import { ALL_ACTIVITY_TYPES } from './advisor-helpers';
 import { activitySelectedStyle } from '@/lib/activity-styles';
 import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
-import { buildClassDraft, classSessionDetailsComplete, isClassTask } from '@/lib/class-task';
+import { buildClassTask, classSessionDetailsComplete, isClassTask } from '@/lib/class-task';
 import { normalizeNumericInput } from '@/lib/digits';
 
 const TIME_QUICK_PICKS = [60, 90, 120];
-const TEST_QUICK_PICKS = [20, 30, 40];
+const TEST_QUICK_PICKS = [0, 20, 30, 40];
 
 // ===== Task Modal (Add / Edit) — New Flow (Task 12-c):
 // field type → TaskSubjectPicker (subject + chapter/topic/topicMode) →
@@ -78,6 +78,9 @@ export function TaskModal({
           topicModeId: editTask.topicModeId ?? undefined,
           curriculumMode: editTask.curriculumMode ?? undefined,
           topicModeSubtopicIds: editTask.topicModeSubtopicIds ?? [],
+          contentType: isClassTask(editTask) ? 'CLASS_VIDEO' : editTask.curriculumMode === 'THEMATIC' ? 'THEMATIC' : 'BOOK',
+          teacherClassName: editTask.teacherClassName ?? '',
+          sessionNumber: editTask.sessionNumber ?? '',
         }
       : {},
   );
@@ -85,10 +88,10 @@ export function TaskModal({
     editTask?.activityTypes ?? [],
   );
   const [targetTimeMinutes, setTargetTimeMinutes] = useState(
-    editTask?.targetTimeMinutes ?? 60,
+    editTask && isClassTask(editTask) ? editTask.actualTimeMinutes ?? 0 : editTask?.targetTimeMinutes ?? 0,
   );
   const [targetTestCount, setTargetTestCount] = useState(
-    editTask?.targetTestCount ?? 20,
+    editTask?.targetTestCount ?? 0,
   );
   const [date, setDate] = useState(
     editTask?.date ?? new Date().toISOString().split('T')[0],
@@ -97,9 +100,15 @@ export function TaskModal({
   const [sessionNumber, setSessionNumber] = useState(editTask?.sessionNumber ?? '');
   const [bookName, setBookName] = useState(editTask?.bookName ?? '');
   const [testDescription, setTestDescription] = useState(editTask?.testDescription ?? '');
+  const [advisorNote, setAdvisorNote] = useState(editTask?.advisorNote ?? '');
   const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
   const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
   const isClassVideo = selection.contentType === 'CLASS_VIDEO' || Boolean(editTask && isClassTask(editTask));
+  const classCurriculumCompleted = selection.curriculumMode === 'BOOK'
+    ? Boolean(selection.chapterId)
+    : selection.curriculumMode === 'THEMATIC'
+      ? Boolean(selection.topicModeId)
+      : false;
 
   // Reset form (called on dialog close so the next open starts fresh).
   const resetForm = useCallback(() => {
@@ -120,17 +129,21 @@ export function TaskModal({
             topicModeId: editTask.topicModeId ?? undefined,
             curriculumMode: editTask.curriculumMode ?? undefined,
             topicModeSubtopicIds: editTask.topicModeSubtopicIds ?? [],
+            contentType: isClassTask(editTask) ? 'CLASS_VIDEO' : editTask.curriculumMode === 'THEMATIC' ? 'THEMATIC' : 'BOOK',
+            teacherClassName: editTask.teacherClassName ?? '',
+            sessionNumber: editTask.sessionNumber ?? '',
           }
         : {},
     );
     setActivityTypes(editTask?.activityTypes ?? []);
-    setTargetTimeMinutes(editTask?.targetTimeMinutes ?? 60);
-    setTargetTestCount(editTask?.targetTestCount ?? 20);
+    setTargetTimeMinutes(editTask && isClassTask(editTask) ? editTask.actualTimeMinutes ?? 0 : editTask?.targetTimeMinutes ?? 0);
+    setTargetTestCount(editTask?.targetTestCount ?? 0);
     setDate(editTask?.date ?? new Date().toISOString().split('T')[0]);
     setTeacherClassName(editTask?.teacherClassName ?? '');
     setSessionNumber(editTask?.sessionNumber ?? '');
     setBookName(editTask?.bookName ?? '');
     setTestDescription(editTask?.testDescription ?? '');
+    setAdvisorNote(editTask?.advisorNote ?? '');
     setTeacherClassSuggestions([]);
     setBookSuggestions([]);
   }, [editTask]);
@@ -199,7 +212,7 @@ export function TaskModal({
         toast.error('نام کلاس و شماره جلسه را وارد کنید');
         return;
       }
-      await addTask(buildClassDraft({
+      await addTask(buildClassTask({
         id: crypto.randomUUID(),
         studentId,
         subjectId: selection.subjectId!,
@@ -207,6 +220,8 @@ export function TaskModal({
         subjectColor,
         teacherClassName: selection.teacherClassName!,
         sessionNumber: selection.sessionNumber!,
+        actualTimeMinutes: targetTimeMinutes || null,
+        advisorNote: advisorNote.trim() || null,
         date,
         order: 0,
         createdBy: 'advisor',
@@ -222,7 +237,8 @@ export function TaskModal({
         subjectId: selection.subjectId ?? editTask.subjectId ?? null,
         fieldType: isClassVideo ? editTask.fieldType : fieldType,
         activityTypes: isClassVideo ? ['کلاس/ویدیو'] : activityTypes,
-        targetTimeMinutes: isClassVideo ? (targetTimeMinutes || null) : targetTimeMinutes,
+        targetTimeMinutes: isClassVideo ? null : targetTimeMinutes,
+        actualTimeMinutes: isClassVideo ? (targetTimeMinutes || null) : editTask.actualTimeMinutes,
         targetTestCount: isClassVideo ? (targetTestCount || null) : targetTestCount,
         date,
         chapterId: selection.chapterId ?? null,
@@ -237,9 +253,9 @@ export function TaskModal({
         sessionNumber: isClassVideo ? (selection.sessionNumber || sessionNumber || null) : sessionNumber || null,
         bookName: bookName || null,
         testDescription: testDescription || null,
-        detailsCompleted: true,
-        status: 'PENDING',
-        completed: null,
+        advisorNote: advisorNote.trim() || null,
+        detailsCompleted: isClassVideo ? classCurriculumCompleted : true,
+        ...(editTask.status === 'DRAFT' ? { status: 'PENDING' as const, completed: null } : {}),
       });
       toast.success('وظیفه با موفقیت ویرایش شد');
     } else {
@@ -271,6 +287,7 @@ export function TaskModal({
         pageStart: selection.pageStart ?? null,
         pageEnd: selection.pageEnd ?? null,
         detailsCompleted: false,
+        advisorNote: advisorNote.trim() || null,
       };
       await addTask(newTask);
       toast.success('وظیفه جدید با موفقیت اضافه شد');
@@ -283,11 +300,11 @@ export function TaskModal({
       !studentInfoMissing &&
       (!!selection.subjectId || !!selection.subjectName) &&
       (isClassVideo
-        ? classSessionDetailsComplete(selection.teacherClassName, selection.sessionNumber)
+        ? classSessionDetailsComplete(selection.teacherClassName ?? teacherClassName, selection.sessionNumber ?? sessionNumber)
         : ((selection.curriculumMode === 'BOOK' && !!selection.chapterId) ||
         (selection.curriculumMode === 'THEMATIC' && !!selection.topicModeId)) &&
       (!isEdit || activityTypes.length > 0)),
-    [isClassVideo, studentInfoMissing, selection.subjectId, selection.subjectName, selection.curriculumMode, selection.chapterId, selection.topicModeId, selection.teacherClassName, selection.sessionNumber, activityTypes.length, isEdit],
+    [isClassVideo, studentInfoMissing, selection.subjectId, selection.subjectName, selection.curriculumMode, selection.chapterId, selection.topicModeId, selection.teacherClassName, selection.sessionNumber, teacherClassName, sessionNumber, activityTypes.length, isEdit],
   );
 
   return (
@@ -408,6 +425,19 @@ export function TaskModal({
               teacherClassSuggestions={teacherClassSuggestions}
             />
           </section>
+
+          {isClassVideo && (
+            <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]/55 p-3.5 sm:p-4">
+              <ModalInput
+                label="زمان جلسه (دقیقه)"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                value={targetTimeMinutes}
+                onChange={(e) => setTargetTimeMinutes(Number(normalizeNumericInput(e.target.value)))}
+              />
+            </section>
+          )}
 
           {isEdit && !isClassVideo && <>
 
@@ -606,6 +636,10 @@ export function TaskModal({
           />
           </section>
           </>}
+          <label className="block text-xs text-[var(--foreground-muted)]">
+            یادداشت برای دانش‌آموز (اختیاری)
+            <textarea value={advisorNote} onChange={(event) => setAdvisorNote(event.target.value)} rows={3} placeholder="پیامی که دانش‌آموز روی این تسک می‌بیند" className="mt-1.5 w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg-overlay)] p-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]" />
+          </label>
         </div>
         )}
         </div>

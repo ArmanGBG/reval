@@ -5,13 +5,14 @@ import type { UpdateTaskPayload } from '@/lib/task-service';
 import { buildTaskDetailsUpdate } from '@/lib/task-service';
 import ManualEntrySheet from './ManualEntrySheet';
 
-export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSave }: {
+export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSave, canEditAdvisorNote = false }: {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   grade: string;
   major: string;
   onSave: (updates: UpdateTaskPayload) => Promise<void> | void;
+  canEditAdvisorNote?: boolean;
 }) {
   if (!task) return null;
   return (
@@ -25,10 +26,13 @@ export function TaskDetailsDialog({ task, open, onOpenChange, grade, major, onSa
       major={major}
       createdBy={task.createdBy}
       createdById={task.createdById ?? null}
-      mode={task.status === 'DRAFT' || task.detailsCompleted === false ? 'complete-draft' : 'edit'}
+      canEditAdvisorNote={canEditAdvisorNote}
+      mode={task.status === 'DRAFT' ? 'complete-draft' : 'edit'}
       initialTask={task}
       onSubmit={async (nextTask) => {
-        await onSave(buildTaskDetailsUpdate(task, nextTask));
+        const updates = buildTaskDetailsUpdate(task, nextTask);
+        if (!canEditAdvisorNote) delete updates.advisorNote;
+        await onSave(updates);
       }}
     />
   );

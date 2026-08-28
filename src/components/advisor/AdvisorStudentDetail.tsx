@@ -1,19 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, BarChart3, CalendarDays, Send, UserRound } from 'lucide-react';
+import { ArrowRight, BarChart3, CalendarDays, History, Send, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import * as messageService from '@/lib/message-service';
 import PlanView from '@/components/plan/PlanView';
 import MinimalAnalyticsView from '@/components/analytics/MinimalAnalyticsView';
+import { ExamHistory } from '@/components/exams/ExamHistory';
 
-type WorkspaceTab = 'plan' | 'analytics' | 'message';
+type WorkspaceTab = 'plan' | 'exam-history' | 'analytics' | 'message';
 
 const TASK_REFRESH_INTERVAL_MS = 60_000;
 
 const TABS: Array<{ id: WorkspaceTab; label: string; icon: typeof CalendarDays }> = [
   { id: 'plan', label: 'برنامه و تسک‌ها', icon: CalendarDays },
+  { id: 'exam-history', label: 'سابقه آزمون‌ها', icon: History },
   { id: 'analytics', label: 'گزارش کامل', icon: BarChart3 },
   { id: 'message', label: 'ارسال پیام', icon: Send },
 ];
@@ -139,10 +141,14 @@ export function AdvisorStudentDetail() {
           targetStudent={{ id: student.id, grade: student.grade, major: student.major }}
           actor={{ role: 'ADVISOR', id: user.id }}
         />
+      ) : tab === 'exam-history' ? (
+        <ExamHistory studentId={student.id} isAdvisor />
       ) : tab === 'analytics' ? (
         <MinimalAnalyticsView
           tasksOverride={studentTasks}
           academicContext={{ grade: student.grade, major: student.major }}
+          studentId={student.id}
+          isAdvisor
         />
       ) : (
         <section className="surface-1 mx-auto max-w-2xl rounded-2xl border border-[var(--border)] p-5 sm:p-6">

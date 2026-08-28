@@ -1,17 +1,28 @@
 // Client-side exam service — wraps fetch calls to /api/exams.
 // Used by the Zustand store so components don't deal with fetch directly.
 
-import type { Exam, ExamResult } from '@/lib/types';
+import type { Exam, ExamAnalysisTask, ExamParticipantStatus, ExamResult, ExamScope, ExamSubjectAnalysis, FieldType } from '@/lib/types';
 import { apiFetch } from '@/lib/api-client';
 
 export interface CreateExamInput {
   title: string;
   subject: string;
   subjectColor: string;
+  scope?: ExamScope;
+  description?: string | null;
+  subjectId?: string | null;
+  fieldType?: FieldType | null;
+  chapterId?: string | null;
+  topicId?: string | null;
+  topicModeId?: string | null;
+  curriculumMode?: 'BOOK' | 'THEMATIC' | null;
+  curriculumLabel?: string | null;
+  pageStart?: number | null;
+  pageEnd?: number | null;
   date: string;
   startTime: string;
   duration: number;
-  totalScore: number;
+  totalScore?: number;
   studentIds: string[];
   status?: Exam['status'];
 }
@@ -68,6 +79,57 @@ export async function updateExam(
   if (!res.ok) throw new Error(await parseError(res));
   const data = await res.json();
   return data.exam as Exam;
+}
+
+export async function updateExamParticipantStatus(
+  id: string,
+  status: ExamParticipantStatus,
+): Promise<void> {
+  const res = await apiFetch(`/api/exams/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ participantStatus: status }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+}
+
+export async function createExamAnalysisTask(
+  examId: string,
+  input: { studentId: string; date: string; advisorNote?: string | null },
+): Promise<ExamAnalysisTask> {
+  const res = await apiFetch(`/api/exams/${examId}/analysis`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return (await res.json()).task as ExamAnalysisTask;
+}
+
+export async function updateExamAnalysisTask(
+  examId: string,
+  input: { studentId: string; date?: string; advisorNote?: string | null; status?: ExamAnalysisTask['status']; actualTimeMinutes?: number | null },
+): Promise<ExamAnalysisTask> {
+  const res = await apiFetch(`/api/exams/${examId}/analysis`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return (await res.json()).task as ExamAnalysisTask;
+}
+
+export async function saveExamSubjectAnalysis(
+  examId: string,
+  input: { studentId: string; subjectName: string; analyzed: boolean; note?: string | null },
+): Promise<ExamSubjectAnalysis> {
+  const res = await apiFetch(`/api/exams/${examId}/subject-analyses`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return (await res.json()).analysis as ExamSubjectAnalysis;
 }
 
 // Delete an exam.

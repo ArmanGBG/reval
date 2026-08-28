@@ -227,7 +227,7 @@ export default function Dashboard() {
   // ===== Today's tasks (clean home — today only, no date-range clutter) =====
   const todayISO = toISODate(new Date());
   const todayTasks = useMemo(
-    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId && (t.status !== 'DRAFT' || (t.createdBy === 'advisor' && isClassTask(t)))),
+    () => tasks.filter((t) => t.date === todayISO && t.studentId === studentId && (t.status !== 'DRAFT' || isClassTask(t))),
     [tasks, todayISO, studentId]
   );
   const todayCompletedCount = useMemo(
@@ -680,7 +680,7 @@ function EditTaskModal({
               </label>
               <input
                 type="number"
-                value={task.targetTimeMinutes ?? ''}
+                value={task.targetTimeMinutes ?? 0}
                 onChange={(e) => onUpdate({ targetTimeMinutes: Number(e.target.value) })}
                 className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                 dir="ltr"
@@ -708,7 +708,7 @@ function EditTaskModal({
               </label>
               <input
                 type="number"
-                value={task.targetTestCount ?? ''}
+                value={task.targetTestCount ?? 0}
                 onChange={(e) => onUpdate({ targetTestCount: Number(e.target.value) })}
                 className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                 dir="ltr"

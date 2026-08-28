@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildClassDraft, classSessionDetailsComplete, isClassTask, studentCanEditTask, withoutClassActivity } from '@/lib/class-task';
+import { buildClassTask, classSessionDetailsComplete, isClassTask, studentCanEditTask, withoutClassActivity } from '@/lib/class-task';
 
 describe('class/video task contract', () => {
   it('recognizes a class as a standalone activity', () => {
@@ -16,8 +16,8 @@ describe('class/video task contract', () => {
     expect(classSessionDetailsComplete(null, 'جلسه ۱')).toBe(false);
   });
 
-  it('builds the same subject-only draft for every creation surface', () => {
-    const task = buildClassDraft({
+  it('builds the same actionable subject-only class for every creation surface', () => {
+    const task = buildClassTask({
       id: 'temp', studentId: 'student', subjectId: 'biology', subject: 'زیست', subjectColor: '#4CAF50',
       teacherClassName: ' استاد رضایی ', sessionNumber: ' جلسه ۱ ', date: '2026-08-19', order: 0,
       createdBy: 'student', createdById: null,
@@ -25,7 +25,7 @@ describe('class/video task contract', () => {
     expect(task).toMatchObject({
       fieldType: null,
       activityTypes: ['کلاس/ویدیو'],
-      status: 'DRAFT',
+      status: 'PENDING',
       detailsCompleted: false,
       curriculumMode: null,
       chapterId: null,
@@ -37,7 +37,7 @@ describe('class/video task contract', () => {
   });
 
   it('keeps class creation independent from curriculum details', () => {
-    const task = buildClassDraft({
+    const task = buildClassTask({
       id: 'weekly-temp', studentId: 'student', subjectId: 'chemistry', subject: 'شیمی', subjectColor: '#4CAF50',
       teacherClassName: 'کلاس آنلاین', sessionNumber: 'جلسه ۲', date: '2026-08-19', order: 1,
       createdBy: 'student', createdById: null,
@@ -55,14 +55,14 @@ describe('class/video task contract', () => {
   });
 
   it('lets students edit own tasks and advisor class drafts only', () => {
-    expect(studentCanEditTask({ createdBy: 'student', status: 'DRAFT', activityTypes: ['مطالعه'] })).toBe(true);
-    expect(studentCanEditTask({ createdBy: 'student', status: 'PENDING', activityTypes: ['مطالعه'] })).toBe(true);
-    expect(studentCanEditTask({ createdBy: 'student', status: 'COMPLETED', activityTypes: ['کلاس/ویدیو'] })).toBe(true);
-    expect(studentCanEditTask({ createdBy: 'advisor', status: 'PENDING', activityTypes: ['مطالعه'] })).toBe(false);
-    expect(studentCanEditTask({ createdBy: 'advisor', status: 'COMPLETED', activityTypes: ['مطالعه'] })).toBe(false);
-    expect(studentCanEditTask({ createdBy: 'advisor', status: 'SKIPPED', activityTypes: ['مطالعه'] })).toBe(false);
-    expect(studentCanEditTask({ createdBy: 'advisor', status: 'DRAFT', activityTypes: ['کلاس/ویدیو'] })).toBe(true);
-    expect(studentCanEditTask({ createdBy: 'advisor', status: 'PENDING', activityTypes: ['کلاس/ویدیو'] })).toBe(false);
-    expect(studentCanEditTask({ createdBy: 'advisor', status: 'DRAFT', activityTypes: ['مطالعه'] })).toBe(false);
+    expect(studentCanEditTask({ createdBy: 'student', status: 'DRAFT', activityTypes: ['مطالعه'], detailsCompleted: false })).toBe(true);
+    expect(studentCanEditTask({ createdBy: 'student', status: 'PENDING', activityTypes: ['مطالعه'], detailsCompleted: true })).toBe(true);
+    expect(studentCanEditTask({ createdBy: 'student', status: 'COMPLETED', activityTypes: ['کلاس/ویدیو'], detailsCompleted: false })).toBe(true);
+    expect(studentCanEditTask({ createdBy: 'advisor', status: 'PENDING', activityTypes: ['مطالعه'], detailsCompleted: false })).toBe(false);
+    expect(studentCanEditTask({ createdBy: 'advisor', status: 'COMPLETED', activityTypes: ['مطالعه'], detailsCompleted: true })).toBe(false);
+    expect(studentCanEditTask({ createdBy: 'advisor', status: 'SKIPPED', activityTypes: ['مطالعه'], detailsCompleted: true })).toBe(false);
+    expect(studentCanEditTask({ createdBy: 'advisor', status: 'PENDING', activityTypes: ['کلاس/ویدیو'], detailsCompleted: false })).toBe(true);
+    expect(studentCanEditTask({ createdBy: 'advisor', status: 'PENDING', activityTypes: ['کلاس/ویدیو'], detailsCompleted: true })).toBe(false);
+    expect(studentCanEditTask({ createdBy: 'advisor', status: 'DRAFT', activityTypes: ['مطالعه'], detailsCompleted: false })).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, StudentProfile, Notification, NotificationType } from '@/lib/types';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType } from '@/lib/types';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
@@ -19,6 +19,7 @@ import type { NavigationTarget } from '@/lib/navigation';
 
 const FLASHCARDS_STORAGE_KEY = 'reval:flashcards:v2';
 let taskLoadRequestSequence = 0;
+let examLoadRequestSequence = 0;
 
 function loadFlashcardsFromStorage(): Flashcard[] {
   if (typeof window === 'undefined') return [];
@@ -315,6 +316,10 @@ interface AppState {
   addExam: (input: examService.CreateExamInput) => Promise<Exam>;
   /** Updates an exam via the API. Updates cache on success. */
   updateExam: (id: string, updates: Partial<examService.CreateExamInput & { status: Exam['status'] }>) => Promise<void>;
+  updateExamParticipantStatus: (id: string, studentId: string, status: import('@/lib/types').ExamParticipantStatus) => Promise<void>;
+  createExamAnalysisTask: (examId: string, input: { studentId: string; date: string; advisorNote?: string | null }) => Promise<ExamAnalysisTask>;
+  updateExamAnalysisTask: (examId: string, input: { studentId: string; date?: string; advisorNote?: string | null; status?: ExamAnalysisTask['status']; actualTimeMinutes?: number | null }) => Promise<ExamAnalysisTask>;
+  saveExamSubjectAnalysis: (examId: string, input: { studentId: string; subjectName: string; analyzed: boolean; note?: string | null }) => Promise<ExamSubjectAnalysis>;
   /** Deletes an exam via the API. Removes from cache on success. */
   deleteExam: (id: string) => Promise<void>;
   /** Saves exam results (bulk upsert). Updates cache + marks exam completed. */
@@ -590,6 +595,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessionNumber: task.sessionNumber ?? null,
       bookName: task.bookName ?? null,
       testDescription: task.testDescription ?? null,
+      ...(task.createdBy === 'advisor' ? { advisorNote: task.advisorNote ?? null } : {}),
     };
 
     try {
@@ -641,6 +647,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessionNumber: task.sessionNumber ?? null,
       bookName: task.bookName ?? null,
       testDescription: task.testDescription ?? null,
+      ...(task.createdBy === 'advisor' ? { advisorNote: task.advisorNote ?? null } : {}),
     }));
 
     try {
@@ -972,11 +979,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   examsLoading: false,
   examsError: null,
   loadExams: async (opts) => {
+    const requestSequence = ++examLoadRequestSequence;
     set({ examsLoading: true, examsError: null });
     try {
       const exams = await examService.loadExams(opts);
+      if (requestSequence !== examLoadRequestSequence) return;
       set({ exams, examsLoading: false });
     } catch (e) {
+      if (requestSequence !== examLoadRequestSequence) return;
       set({
         examsLoading: false,
         examsError: e instanceof Error ? e.message : 'خطا در بارگذاری آزمون‌ها',
@@ -1007,10 +1017,139 @@ export const useAppStore = create<AppState>((set, get) => ({
       throw e;
     }
   },
+  updateExamParticipantStatus: async (id, studentId, status) => {
+    const previous = get().exams;
+    // Optimistic update — instant feedback in every view (plan, history, report)
+    set((state) => ({
+      examsLoading: false,
+      exams: state.exams.map((exam) => exam.id === id ? {
+        ...exam,
+        participantStates: (exam.participantStates ?? []).some((participant) => participant.studentId === studentId)
+          ? (exam.participantStates ?? []).map((participant) => participant.studentId === studentId ? { ...participant, status } : participant)
+          : [...(exam.participantStates ?? []), { studentId, status }],
+      } : exam),
+    }));
+    // Invalidate in-flight loads so stale responses can't overwrite this update
+    examLoadRequestSequence += 1;
+    try {
+      await examService.updateExamParticipantStatus(id, status);
+    } catch (error) {
+      set({ exams: previous });
+      throw error;
+    }
+  },
+  createExamAnalysisTask: async (examId, input) => {
+    const previous = get().exams;
+    const optimisticTask: ExamAnalysisTask = {
+      id: `temp-${examId}-${input.studentId}`,
+      examId,
+      studentId: input.studentId,
+      date: input.date,
+      status: 'PENDING',
+      completed: null,
+      actualTimeMinutes: null,
+      advisorNote: input.advisorNote ?? null,
+      createdBy: get().userRole === 'ADVISOR' ? 'advisor' : 'student',
+      createdById: get().userRole === 'ADVISOR' ? get().user?.id ?? null : null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      examsLoading: false,
+      exams: state.exams.map((exam) => exam.id === examId
+        ? { ...exam, analysisTasks: [...(exam.analysisTasks ?? []).filter((item) => item.studentId !== input.studentId), optimisticTask] }
+        : exam),
+    }));
+    examLoadRequestSequence += 1;
+    try {
+      const task = await examService.createExamAnalysisTask(examId, input);
+      set((state) => ({
+        exams: state.exams.map((exam) => exam.id === examId
+          ? { ...exam, analysisTasks: (exam.analysisTasks ?? []).map((item) => item.studentId === input.studentId ? task : item) }
+          : exam),
+      }));
+      return task;
+    } catch (error) {
+      set({ exams: previous });
+      throw error;
+    }
+  },
+  updateExamAnalysisTask: async (examId, input) => {
+    const previous = get().exams;
+    // Optimistic update — instantly syncs plan, history, and report views
+    set((state) => ({
+      examsLoading: false,
+      exams: state.exams.map((exam) => exam.id === examId
+        ? {
+            ...exam,
+            analysisTasks: (exam.analysisTasks ?? []).map((item) => {
+              if (item.studentId !== input.studentId) return item;
+              const merged: ExamAnalysisTask = { ...item, ...input };
+              if (input.status !== undefined) merged.completed = input.status === 'COMPLETED' ? true : null;
+              return merged;
+            }),
+          }
+        : exam),
+    }));
+    examLoadRequestSequence += 1;
+    try {
+      const task = await examService.updateExamAnalysisTask(examId, input);
+      set((state) => ({
+        exams: state.exams.map((exam) => exam.id === examId
+          ? { ...exam, analysisTasks: (exam.analysisTasks ?? []).map((item) => item.studentId === input.studentId ? task : item) }
+          : exam),
+      }));
+      return task;
+    } catch (error) {
+      set({ exams: previous });
+      throw error;
+    }
+  },
+  saveExamSubjectAnalysis: async (examId, input) => {
+    const previous = get().exams;
+    set((state) => ({
+      examsLoading: false,
+      exams: state.exams.map((exam) => exam.id === examId
+        ? {
+            ...exam,
+            subjectAnalyses: [
+              ...(exam.subjectAnalyses ?? []).filter((item) => !(item.studentId === input.studentId && item.subjectName === input.subjectName)),
+              {
+                id: `temp-${examId}-${input.subjectName}`,
+                examId,
+                studentId: input.studentId,
+                subjectName: input.subjectName,
+                analyzed: input.analyzed,
+                note: input.note ?? null,
+                updatedAt: new Date().toISOString(),
+              },
+            ],
+          }
+        : exam),
+    }));
+    examLoadRequestSequence += 1;
+    try {
+      const analysis = await examService.saveExamSubjectAnalysis(examId, input);
+      set((state) => ({
+        exams: state.exams.map((exam) => exam.id === examId
+          ? {
+              ...exam,
+              subjectAnalyses: (exam.subjectAnalyses ?? []).map((item) =>
+                item.studentId === input.studentId && item.subjectName === input.subjectName ? analysis : item),
+            }
+          : exam),
+      }));
+      return analysis;
+    } catch (error) {
+      set({ exams: previous });
+      throw error;
+    }
+  },
   deleteExam: async (id) => {
     // Optimistic remove
     const prev = get().exams;
-    set((state) => ({ exams: state.exams.filter((e) => e.id !== id) }));
+    set((state) => ({ exams: state.exams.filter((e) => e.id !== id), examsLoading: false }));
+    examLoadRequestSequence += 1;
     try {
       await examService.deleteExam(id);
     } catch (e) {

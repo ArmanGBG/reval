@@ -64,6 +64,34 @@ function formatPageRange(entity: {
   return `ص ${toPersianDigits(entity.pageStart)}–${toPersianDigits(entity.pageEnd)}`;
 }
 
+// Joined two-option (کنکور/نهایی) segmented control that fills the available
+// row width, so book/grade rows never end up with large empty areas.
+function FieldTypeSegment({ konkur, final, onPick, className = '' }: { konkur: boolean; final: boolean; onPick: (fieldType: FieldType) => void; className?: string }) {
+  if (!konkur && !final) return null;
+  return (
+    <div className={`flex h-11 min-w-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-base)] ${className}`} role="group" aria-label="انتخاب حوزه">
+      {konkur && (
+        <button
+          type="button"
+          onClick={() => onPick('کنکور')}
+          className={`flex min-h-11 flex-1 items-center justify-center px-3 text-xs font-semibold transition-colors ${FIELD_TYPE_STYLES['کنکور'].segment} ${final ? 'border-e border-[var(--border)]' : ''}`}
+        >
+          کنکور
+        </button>
+      )}
+      {final && (
+        <button
+          type="button"
+          onClick={() => onPick('نهایی')}
+          className={`flex min-h-11 flex-1 items-center justify-center px-3 text-xs font-semibold transition-colors ${FIELD_TYPE_STYLES['نهایی'].segment}`}
+        >
+          نهایی
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ===== Public types =====
 export interface TaskSelection {
   subjectId?: string;
@@ -112,6 +140,8 @@ interface TaskSubjectPickerProps {
   allowClassCurriculumLink?: boolean;
   teacherClassSuggestions?: string[];
   onTeacherSuggestionRemove?: (value: string) => void;
+  allowClassVideo?: boolean;
+  allowSubjectOnlySelection?: boolean;
 }
 
 type ApiSubject = Subject;
@@ -165,6 +195,8 @@ export function TaskSubjectPicker({
   allowClassCurriculumLink = false,
   teacherClassSuggestions = [],
   onTeacherSuggestionRemove,
+  allowClassVideo = true,
+  allowSubjectOnlySelection = false,
 }: TaskSubjectPickerProps) {
   const [subjects, setSubjects] = useState<ApiSubject[]>([]);
   const [loading, setLoading] = useState(false);
@@ -443,7 +475,12 @@ export function TaskSubjectPicker({
     setSelectedCourseName(group.name);
     setSelectedGrade(null);
     resetContentSelection();
-    onChange({});
+    const representative = group.books.find((book) => book.gradeSubject.grade === grade) ?? group.books[0];
+    onChange(allowSubjectOnlySelection && representative ? {
+      subjectId: representative.subject.id,
+      subjectName: group.name,
+      subjectColor: representative.subject.color,
+    } : {});
   };
   const handleSelectBook = (book: CourseBookOption) => {
     setSelectedCourseName(courseName(book.subject.name));
@@ -738,7 +775,7 @@ export function TaskSubjectPicker({
     );
   }
 
-  if (selectedCourse && (!selectedSubject || linkingClassVideo) && !selectedGrade && (value.contentType !== 'CLASS_VIDEO' || linkingClassVideo)) {
+  if (selectedCourse && (allowSubjectOnlySelection || !selectedSubject || linkingClassVideo) && !selectedGrade && (value.contentType !== 'CLASS_VIDEO' || linkingClassVideo)) {
     const thematicOptions = selectedCourse.books.flatMap((book) => (book.gradeSubject.topicModes ?? []).map((mode) => ({ book, mode })));
     return (
       <div className="space-y-3" dir="rtl">
@@ -746,15 +783,18 @@ export function TaskSubjectPicker({
           {!linkingClassVideo && <button onClick={handleClearSubject} className="btn-hover icon-btn size-9 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] flex items-center justify-center" aria-label="بازگشت به درس‌ها"><ArrowRight className="w-4 h-4" /></button>}
           <span className="text-xs text-[var(--foreground-muted)]">{selectedCourse.name}</span>
         </div>
+        {allowSubjectOnlySelection && <div className="rounded-xl border border-[#E57373]/25 bg-[#E57373]/[0.06] px-3 py-2 text-[10px] leading-5 text-[var(--foreground-muted)]">درس انتخاب شد. انتخاب کتاب، فصل یا مبحث در ادامه اختیاری است.</div>}
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]"><BookOpen className="w-3.5 h-3.5" /><span>کتاب را انتخاب کن</span></div>
           <div className="grid grid-cols-1 gap-2">{selectedCourse.books.map((book) => (
-            <div key={`${book.subject.id}:${book.gradeSubject.id}`} className="flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border)] surface-1 px-3">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--foreground)]">{bookLabel(selectedCourse, book.gradeSubject.grade)}</span>
-              <div className="flex shrink-0 gap-1">
-                {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectBookField(book, 'کنکور')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['کنکور'].badge}`}>کنکور</button>}
-                {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectBookField(book, 'نهایی')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['نهایی'].badge}`}>نهایی</button>}
-              </div>
+            <div key={`${book.subject.id}:${book.gradeSubject.id}`} className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--border)] surface-1 px-3 py-1.5">
+              <span className="min-w-0 shrink-0 truncate text-sm font-medium text-[var(--foreground)]">{bookLabel(selectedCourse, book.gradeSubject.grade)}</span>
+              <FieldTypeSegment
+                konkur={book.gradeSubject.isKonkur}
+                final={book.gradeSubject.isFinal}
+                onPick={(nextFieldType) => handleSelectBookField(book, nextFieldType)}
+                className="flex-1"
+              />
             </div>
           ))}</div>
         </div>
@@ -762,17 +802,19 @@ export function TaskSubjectPicker({
           <div className="space-y-2 border-t border-[var(--border)] pt-3">
             <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]"><Layers className="w-3.5 h-3.5" /><span>خواندن مبحثی</span></div>
             <div className="space-y-2">{thematicOptions.map(({ book, mode }) => (
-              <div key={mode.id} className="flex items-center gap-2 rounded-xl border border-[var(--border)] surface-1 p-3">
-                <span className="min-w-0 flex-1 text-right text-sm"><span className="block truncate">{mode.title}</span><span className="mt-1 block text-[10px] text-[var(--foreground-subtle)]">{bookLabel(selectedCourse, book.gradeSubject.grade)} · {toPersianDigits(mode.subtopics?.length ?? 0)} زیرمبحث</span></span>
-                <div className="flex shrink-0 gap-1">
-                  {book.gradeSubject.isKonkur && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'کنکور')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['کنکور'].badge}`}>کنکور</button>}
-                  {book.gradeSubject.isFinal && <button type="button" onClick={() => handleSelectTopicField(mode, book, 'نهایی')} className={`min-h-9 rounded-md border px-3 text-xs font-semibold ${FIELD_TYPE_STYLES['نهایی'].badge}`}>نهایی</button>}
-                </div>
+              <div key={mode.id} className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--border)] surface-1 p-3">
+                <span className="min-w-0 shrink-0 text-right text-sm"><span className="block truncate">{mode.title}</span><span className="mt-1 block text-[10px] text-[var(--foreground-subtle)]">{bookLabel(selectedCourse, book.gradeSubject.grade)} · {toPersianDigits(mode.subtopics?.length ?? 0)} زیرمبحث</span></span>
+                <FieldTypeSegment
+                  konkur={book.gradeSubject.isKonkur}
+                  final={book.gradeSubject.isFinal}
+                  onPick={(nextFieldType) => handleSelectTopicField(mode, book, nextFieldType)}
+                  className="flex-1"
+                />
               </div>
             ))}</div>
           </div>
         )}
-        {!linkingClassVideo && <button onClick={handleSelectClassVideo} className="btn-hover flex items-center gap-3 w-full rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] p-3 text-right text-sm text-[var(--accent)]"><Video className="w-5 h-5 shrink-0" /><span><span className="block font-semibold">کلاس/ویدیو</span><span className="block mt-1 text-[10px] opacity-75">ثبت جلسه بدون انتخاب کتاب یا مبحث</span></span></button>}
+        {allowClassVideo && !linkingClassVideo && <button onClick={handleSelectClassVideo} className="btn-hover flex items-center gap-3 w-full rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] p-3 text-right text-sm text-[var(--accent)]"><Video className="w-5 h-5 shrink-0" /><span><span className="block font-semibold">کلاس/ویدیو</span><span className="block mt-1 text-[10px] opacity-75">ثبت جلسه بدون انتخاب کتاب یا مبحث</span></span></button>}
       </div>
     );
   }
@@ -806,10 +848,12 @@ export function TaskSubjectPicker({
           <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3">
             <p className="mb-2 text-xs font-semibold text-[var(--foreground)]">اتصال اختیاری به محتوای درسی</p>
             <p className="mb-3 text-[10px] text-[var(--foreground-muted)]">ابتدا حوزه را انتخاب کنید؛ سپس همه کتاب‌ها و مباحث آن حوزه نمایش داده می‌شوند.</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => beginClassCurriculumLink('کنکور')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${FIELD_TYPE_STYLES['کنکور'].badge}`}>کنکور</button>
-              <button type="button" onClick={() => beginClassCurriculumLink('نهایی')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${FIELD_TYPE_STYLES['نهایی'].badge}`}>نهایی</button>
-            </div>
+            <FieldTypeSegment
+              konkur
+              final
+              onPick={beginClassCurriculumLink}
+              className="w-full"
+            />
           </div>
         ) : (
           <button type="button" onClick={handleLinkClassVideo} className="btn-hover w-full rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-3 text-right text-xs text-[var(--foreground)] hover:border-[var(--accent)]/40">
@@ -888,7 +932,7 @@ export function TaskSubjectPicker({
         )}
         <p className="text-xs text-[var(--foreground-muted)]">یا فصل رو دستی انتخاب کن:</p>
         {chapters.length === 0 ? (<div className="surface-1 rounded-xl p-6 text-center text-xs text-[var(--foreground-muted)]">فصلی برای این پایه ثبت نشده</div>) : (
-          <div className="space-y-1.5 max-h-60 overflow-y-auto custom-scrollbar">{chapters.map((ch) => {
+          <div className="space-y-1.5">{chapters.map((ch) => {
             const rangeS = parseInt(pageRangeStart, 10); const rangeE = parseInt(pageRangeEnd, 10);
             const isInRange = !isNaN(rangeS) && !isNaN(rangeE) && rangeS > 0 && rangeE > 0 && rangeS <= rangeE && ch.pageStart !== null && ch.pageEnd !== null && ch.pageStart <= rangeE && rangeS <= ch.pageEnd;
             return (<button key={ch.id} onClick={() => handleSelectChapter(ch)} className={`btn-hover w-full text-right p-3 rounded-lg border flex items-center gap-3 transition-all ${isInRange ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40' : 'border-[var(--border)] surface-1'}`}><span className={`w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 ${isInRange ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'bg-[var(--bg-elevated)] text-[var(--foreground-muted)]'}`}>{toPersianDigits(ch.chapterNo)}</span><span className={`flex-1 text-sm font-medium truncate ${isInRange ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}>{bareTitle(ch.title)}</span><span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{formatPageRange(ch)}</span>{ch.topics && ch.topics.length > 0 && (<span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{toPersianDigits(ch.topics.length)} گفتار</span>)}</button>);
@@ -934,7 +978,7 @@ export function TaskSubjectPicker({
           {selectedTopicIds.length > 0 && (<button onClick={handleClearAllTopics} className="text-xs px-2.5 h-7 rounded-md border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--danger)] hover:border-[var(--danger)]/40 transition-colors flex items-center gap-1"><X className="w-3 h-3" />پاک کردن انتخاب‌ها</button>)}
         </div>
       )}
-      <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">{topics.map((tp) => { const isSelected = selectedTopicIds.includes(tp.id); return (<button key={tp.id} onClick={() => handleToggleTopic(tp)} className={`btn-hover w-full text-right p-3 rounded-lg border flex items-center gap-3 transition-all ${isSelected ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]' : 'border-[var(--border)] surface-1 text-[var(--foreground)]'}`}><span className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${isSelected ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'bg-[var(--bg-elevated)] text-[var(--foreground-muted)]'}`}>{isSelected ? <CheckCircle2 className="w-3.5 h-3.5" /> : toPersianDigits(tp.topicNo)}</span><span className="flex-1 text-sm font-medium truncate">{tp.title}</span><span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{formatPageRange(tp)}</span></button>); })}</div>
+      <div className="space-y-1.5">{topics.map((tp) => { const isSelected = selectedTopicIds.includes(tp.id); return (<button key={tp.id} onClick={() => handleToggleTopic(tp)} className={`btn-hover w-full text-right p-3 rounded-lg border flex items-center gap-3 transition-all ${isSelected ? 'bg-[var(--accent-soft)] border-[var(--accent)]/40 text-[var(--accent)]' : 'border-[var(--border)] surface-1 text-[var(--foreground)]'}`}><span className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${isSelected ? 'bg-[var(--accent)] text-[var(--bg-deep)]' : 'bg-[var(--bg-elevated)] text-[var(--foreground-muted)]'}`}>{isSelected ? <CheckCircle2 className="w-3.5 h-3.5" /> : toPersianDigits(tp.topicNo)}</span><span className="flex-1 text-sm font-medium truncate">{tp.title}</span><span className="text-[10px] text-[var(--foreground-subtle)] shrink-0">{formatPageRange(tp)}</span></button>); })}</div>
     </div>
   );
 }

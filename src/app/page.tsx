@@ -10,6 +10,8 @@ import PlanView from '@/components/plan/PlanView';
 import ToolsHub from '@/components/tools/ToolsHub';
 import AdvisorPanel from '@/components/advisor/AdvisorDashboard';
 import AnalyticsView from '@/components/analytics/MinimalAnalyticsView';
+import { ExamHistory } from '@/components/exams/ExamHistory';
+import { useCurrentStudentId } from '@/lib/student-utils';
 import SettingsView from '@/components/settings/SettingsView';
 import InstituteDashboard from '@/components/institute/InstituteDashboard';
 import InstituteAdvisors from '@/components/institute/InstituteAdvisors';
@@ -33,6 +35,7 @@ export default function Home() {
   const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete, restoreNavigation, theme, setTheme } = useAppStore();
   // Track whether we've validated the persisted session with the server
   const [authValidated, setAuthValidated] = useState(false);
+  const currentStudentId = useCurrentStudentId();
 
   useEffect(() => {
     // On mount, check if there's a persisted session in localStorage.
@@ -244,6 +247,7 @@ export default function Home() {
     // Student
     if (currentView === 'dashboard') return <Dashboard />;
     if (currentView === 'plan') return <PlanView />;
+    if (currentView === 'exam-history') return <ExamHistory studentId={currentStudentId} isAdvisor={false} />;
     if (currentView === 'tools') return <ToolsHub />;
     if (currentView === 'analytics') return <AnalyticsView />;
     if (currentView === 'settings') return <SettingsView />;

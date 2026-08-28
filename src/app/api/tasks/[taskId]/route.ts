@@ -58,6 +58,9 @@ export async function PATCH(
 
   try {
     const body = await request.json();
+    if ('advisorNote' in body && ctx.user.role !== 'ADVISOR') {
+      return NextResponse.json({ error: 'فقط مشاور می‌تواند یادداشت تسک را تغییر دهد' }, { status: 403 });
+    }
     const existing = await db.task.findUnique({ where: { id: taskId }, include: taskTopicInclude });
     if (!existing) return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
     const canModify = await canModifyTask(ctx, taskId);
@@ -72,7 +75,7 @@ export async function PATCH(
       }
     }
     const isStudentClassDraftCompletion = isStudentLifecycleUpdate
-      && existing.status === 'DRAFT'
+      && (existing.status === 'DRAFT' || (existing.status === 'PENDING' && existing.detailsCompleted === false))
       && isClassActivityTypes(existingActivityTypes)
       && isStudentClassDraftCompletionPatch(body);
     if (!canModify && (!canEditAdvisorPlan || !isAdvisorPlanTaskPatch(body)) && (!isStudentClassDraftCompletion && (!isStudentLifecycleUpdate || !isStudentAdvisorTaskPatch(body)))) {
@@ -112,11 +115,12 @@ export async function PATCH(
       'sessionNumber',
       'bookName',
       'testDescription',
+      'advisorNote',
     ];
 
     const data = taskPatchData(body, allowed);
 
-    for (const field of ['teacherClassName', 'sessionNumber', 'bookName', 'testDescription'] as const) {
+    for (const field of ['teacherClassName', 'sessionNumber', 'bookName', 'testDescription', 'advisorNote'] as const) {
       if (field in body) {
         if (body[field] !== null && typeof body[field] !== 'string') {
           return NextResponse.json({ error: `${field} باید متن یا null باشد` }, { status: 400 });
@@ -210,19 +214,21 @@ export async function PATCH(
     const activityTypes = body.activityTypes !== undefined ? body.activityTypes : existingActivityTypes;
     const targetTimeMinutes = body.targetTimeMinutes !== undefined ? body.targetTimeMinutes : existing.targetTimeMinutes;
     const targetTestCount = body.targetTestCount !== undefined ? body.targetTestCount : existing.targetTestCount;
-    const status = body.status ?? legacyTaskStatus(detailsCompleted, body.completed !== undefined ? body.completed : existing.completed);
+    const status = body.status ?? (body.completed !== undefined
+      ? body.completed === true ? 'COMPLETED' : body.completed === false ? 'SKIPPED' : hasClassVideoRequested ? 'PENDING' : legacyTaskStatus(detailsCompleted, null)
+      : existing.status ?? legacyTaskStatus(detailsCompleted, existing.completed));
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
-    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed !== undefined ? body.completed : existing.completed);
+    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed !== undefined ? body.completed : existing.completed, hasClassVideoRequested);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
     const invalidClassMetrics = hasClassVideoRequested && (
-      (targetTimeMinutes != null && (typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0))
+      (targetTimeMinutes != null && (typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0))
       || (targetTestCount != null && (typeof targetTestCount !== 'number' || targetTestCount < 0))
     );
-    const invalidStandardMetrics = !hasClassVideoRequested && status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes <= 0 || typeof targetTestCount !== 'number' || targetTestCount < 0);
+    const invalidStandardMetrics = !hasClassVideoRequested && status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0 || typeof targetTestCount !== 'number' || targetTestCount < 0);
     if (invalidClassMetrics || invalidStandardMetrics) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
-    if ((body.completed === true || body.completed === false) && !detailsCompleted) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
+    if ((body.completed === true || body.completed === false) && !detailsCompleted && !hasClassVideoRequested) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
     if (status === 'COMPLETED') {
       if (body.actualTimeMinutes === undefined && existing.actualTimeMinutes === null) {
         data.actualTimeMinutes = typeof targetTimeMinutes === 'number' ? targetTimeMinutes : 0;

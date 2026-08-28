@@ -13,9 +13,9 @@ export function isClassTask(task: Pick<Task, 'activityTypes'>): boolean {
 // Students cannot edit advisor-created task details — they can only complete,
 // move to incompletes, or log actual metrics. The exception is advisor-created
 // class drafts: the student must fill in the class session details.
-export function studentCanEditTask(task: Pick<Task, 'createdBy' | 'status' | 'activityTypes'>): boolean {
+export function studentCanEditTask(task: Pick<Task, 'createdBy' | 'status' | 'activityTypes' | 'detailsCompleted'>): boolean {
   if (task.createdBy !== 'advisor') return true;
-  return task.status === 'DRAFT' && isClassTask(task);
+  return task.detailsCompleted === false && isClassTask(task);
 }
 
 export function withoutClassActivity(activityTypes: ActivityType[] | null | undefined): ActivityType[] {
@@ -29,7 +29,7 @@ export function classSessionDetailsComplete(teacherClassName: unknown, sessionNu
     && sessionNumber.trim().length > 0;
 }
 
-export function buildClassDraft({
+export function buildClassTask({
   id,
   studentId,
   subjectId,
@@ -37,6 +37,8 @@ export function buildClassDraft({
   subjectColor,
   teacherClassName,
   sessionNumber,
+  actualTimeMinutes,
+  advisorNote,
   date,
   order,
   createdBy,
@@ -49,6 +51,8 @@ export function buildClassDraft({
   subjectColor: string;
   teacherClassName: string;
   sessionNumber: string;
+  actualTimeMinutes?: number | null;
+  advisorNote?: string | null;
   date: string;
   order: number;
   createdBy: Task['createdBy'];
@@ -64,10 +68,10 @@ export function buildClassDraft({
     fieldType: null,
     activityTypes: CLASS_ACTIVITY_TYPES,
     targetTimeMinutes: null,
-    actualTimeMinutes: null,
+    actualTimeMinutes: actualTimeMinutes ?? null,
     targetTestCount: null,
     actualTestCount: null,
-    status: 'DRAFT',
+    status: 'PENDING',
     completed: null,
     date,
     order,
@@ -84,5 +88,6 @@ export function buildClassDraft({
     teacherClassName: teacherClassName.trim(),
     sessionNumber: sessionNumber.trim(),
     detailsCompleted: false,
+    advisorNote: advisorNote?.trim() || null,
   };
 }

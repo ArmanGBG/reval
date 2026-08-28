@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle } from 'lucide-react';
+import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -41,7 +41,11 @@ import { activitySelectedStyle } from '@/lib/activity-styles';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import type { PlanActor, PlanTargetStudent } from './PlanView';
 import { ClassSessionFields } from '@/components/shared/ClassSessionFields';
-import { buildClassDraft, classSessionDetailsComplete, studentCanEditTask } from '@/lib/class-task';
+import { buildClassTask, classSessionDetailsComplete, isClassTask, studentCanEditTask } from '@/lib/class-task';
+import { normalizeNumericInput } from '@/lib/digits';
+import { ExamModal } from '@/components/advisor/ExamModal';
+import { ExamCard } from '@/components/exams/ExamCenter';
+import { ExamAnalysisTaskCard } from '@/components/exams/ExamAnalysisTaskCard';
 
 // ===== Types =====
 interface WeekdayPlan {
@@ -59,7 +63,7 @@ interface WeeklyPlannerProps {
 }
 
 type QuickMode = 'BOOK' | 'THEMATIC' | 'CLASS_VIDEO';
-type QuickSubject = Subject & { resolvedFieldType: FieldType; quickMode?: QuickMode; topicModeId?: string; teacherClassName?: string; sessionNumber?: string };
+type QuickSubject = Subject & { resolvedFieldType: FieldType; quickMode?: QuickMode; topicModeId?: string; teacherClassName?: string; sessionNumber?: string; actualTimeMinutes?: number | null; advisorNote?: string | null };
 type QuickSubjectGroup = { name: string; color: string; icon: string | null; variants: QuickSubject[] };
 
 function hasEligibleOffering(subject: Subject, fieldType: FieldType, major: string): boolean {
@@ -94,13 +98,13 @@ interface JalaliYMD {
 const ACTIVITY_TYPES: ActivityType[] = ['مطالعه', 'مرور', 'تست آموزشی', 'تست سنجشی', 'کلاس/ویدیو'];
 
 const TIME_QUICK_PICKS = [60, 90, 120];
-const TEST_QUICK_PICKS = [20, 30, 40];
+const TEST_QUICK_PICKS = [0, 20, 30, 40];
 
 // ============================================================
 // Main Component — reads REAL tasks from store, immediate sync
 // ============================================================
 export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, actor }: WeeklyPlannerProps) {
-  const { user, tasks, addTask, updateTask, deleteTask, resetTask } = useAppStore();
+  const { user, tasks, exams, loadExams, addTask, updateTask, deleteTask, resetTask } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
   const isAdvisorWorkspace = actor?.role === 'ADVISOR';
@@ -123,6 +127,7 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
 
   // Which day's "add subject" picker is open
   const [addingToDay, setAddingToDay] = useState<string | null>(null); // dateStr
+  const [addingExamToDay, setAddingExamToDay] = useState<string | null>(null);
 
   // Which subject is being edited
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -221,10 +226,14 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
     if (open) fetchSubjects();
   }, [open, fetchSubjects]);
 
+  useEffect(() => {
+    if (open) void loadExams({ studentId });
+  }, [loadExams, open, studentId]);
+
   // ===== Add subject to a day (IMMEDIATE — creates real task) =====
   const addSubjectToDay = async (dateStr: string, subject: QuickSubject) => {
     const existingCount = tasks.filter((t) => t.date === dateStr && t.studentId === (studentId)).length;
-    const newTask: Task = subject.quickMode === 'CLASS_VIDEO' ? buildClassDraft({
+    const newTask: Task = subject.quickMode === 'CLASS_VIDEO' ? buildClassTask({
       id: crypto.randomUUID(),
       studentId,
       subjectId: subject.id,
@@ -232,6 +241,8 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
       subjectColor: subject.color,
       teacherClassName: subject.teacherClassName ?? '',
       sessionNumber: subject.sessionNumber ?? '',
+      actualTimeMinutes: subject.actualTimeMinutes ?? null,
+      advisorNote: isAdvisorWorkspace ? subject.advisorNote ?? null : null,
       date: dateStr,
       order: existingCount,
       createdBy: isAdvisorWorkspace ? 'advisor' : 'student',
@@ -377,7 +388,11 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
               <DayColumn
                 key={dayPlan.dateStr}
                  dayPlan={dayPlan}
-                 onAdd={() => setAddingToDay(dayPlan.dateStr)}
+                 exams={exams.filter((exam) => exam.date === dayPlan.dateStr && exam.studentIds.includes(studentId))}
+                 analysisTasks={exams.flatMap((exam) => (exam.analysisTasks ?? []).filter((task) => task.studentId === studentId && task.date === dayPlan.dateStr).map((task) => ({ exam, task })))}
+                 studentId={studentId}
+                  onAdd={() => setAddingToDay(dayPlan.dateStr)}
+                  onAddExam={() => setAddingExamToDay(dayPlan.dateStr)}
                   canManage={canManageTask}
                   canEdit={canEditTask}
                   canComplete={!isAdvisorWorkspace}
@@ -397,7 +412,7 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                 onToggleComplete={(taskId) => {
                   const task = tasks.find((t) => t.id === taskId);
                    if (task && !isAdvisorWorkspace) {
-                     if (!task.detailsCompleted) {
+                     if (!task.detailsCompleted && !isClassTask(task)) {
                       if (canEditTask(task)) setEditingTaskId(task.id);
                     }
                     else if (task.status === 'PENDING' || (task.status === undefined && task.completed === null)) {
@@ -440,13 +455,15 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
             loading={subjectsLoading}
             onClose={() => setAddingToDay(null)}
             onSelect={(subject) => addSubjectToDay(addingToDay, subject)}
+            allowAdvisorNote={isAdvisorWorkspace}
           />
         )}
 
         {/* ===== Edit Task Details Modal ===== */}
         {editingTaskId && (
-           <TaskDetailsDialog task={tasks.find(t => t.id === editingTaskId) ?? null} open grade={targetStudent?.grade ?? user?.grade ?? 'دوازدهم'} major={targetStudent?.major ?? user?.major ?? 'تجربی'} onOpenChange={v => !v && setEditingTaskId(null)} onSave={updates => updateTask(editingTaskId, updates)} />
+           <TaskDetailsDialog task={tasks.find(t => t.id === editingTaskId) ?? null} open grade={targetStudent?.grade ?? user?.grade ?? 'دوازدهم'} major={targetStudent?.major ?? user?.major ?? 'تجربی'} onOpenChange={v => !v && setEditingTaskId(null)} onSave={updates => updateTask(editingTaskId, updates)} canEditAdvisorNote={isAdvisorWorkspace} />
         )}
+        <ExamModal open={Boolean(addingExamToDay)} onOpenChange={(next) => { if (!next) setAddingExamToDay(null); }} studentId={studentId} selectedDate={addingExamToDay ?? undefined} grade={targetStudent?.grade ?? user?.grade} major={targetStudent?.major ?? user?.major} />
       </DialogContent>
     </Dialog>
   );
@@ -457,21 +474,29 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
 // ============================================================
 function DayColumn({
   dayPlan,
+  exams,
+  analysisTasks,
+  studentId,
   canManage,
   canEdit,
   canComplete,
   onSelectDay,
   onAdd,
+  onAddExam,
   onRemove,
   onEdit,
   onToggleComplete,
 }: {
   dayPlan: WeekdayPlan;
+  exams: import('@/lib/types').Exam[];
+  analysisTasks: Array<{ exam: import('@/lib/types').Exam; task: import('@/lib/types').ExamAnalysisTask }>;
+  studentId: string;
   canManage: (task: Task) => boolean;
   canEdit: (task: Task) => boolean;
   canComplete: boolean;
   onSelectDay: () => void;
   onAdd: () => void;
+  onAddExam: () => void;
   onRemove: (taskId: string) => void;
   onEdit: (taskId: string) => void;
   onToggleComplete: (taskId: string) => void;
@@ -505,7 +530,11 @@ function DayColumn({
 
       {/* Tasks list */}
       <div className="p-3 space-y-2 min-h-[88px]">
-        {dayPlan.tasks.length === 0 ? (
+        {exams.map((exam) => (
+          <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={!canComplete} compact />
+        ))}
+        {analysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={!canComplete} compact />)}
+        {dayPlan.tasks.length === 0 && exams.length === 0 && analysisTasks.length === 0 ? (
           <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-4 border border-dashed border-[var(--border)] rounded-lg">
             درسی ثبت نشده
           </p>
@@ -526,13 +555,10 @@ function DayColumn({
       </div>
 
       {/* Add button */}
-      <button
-        onClick={onAdd}
-        className="btn-hover w-full flex items-center justify-center gap-1.5 min-h-[40px] border-t border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-xs font-medium"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        افزودن درس
-      </button>
+      <div className="grid grid-cols-2 border-t border-[var(--border)]">
+        <button onClick={onAdd} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 border-l border-[var(--border)] text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)]"><Plus className="w-3.5 h-3.5" />افزودن درس</button>
+        <button onClick={onAddExam} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 text-xs font-medium text-[#EF9A9A]"><ClipboardCheck className="w-3.5 h-3.5" />آزمون</button>
+      </div>
     </div>
   );
 }
@@ -645,6 +671,7 @@ function AddSubjectModal({
   loading,
   onClose,
   onSelect,
+  allowAdvisorNote,
 }: {
   dayLabel: string;
   dateLabel: string;
@@ -653,11 +680,14 @@ function AddSubjectModal({
   loading: boolean;
   onClose: () => void;
   onSelect: (subject: QuickSubject) => void;
+  allowAdvisorNote: boolean;
 }) {
   const [selectedGroupName, setSelectedGroupName] = useState<string | null>(null);
   const [classVariant, setClassVariant] = useState<QuickSubject | null>(null);
   const [teacherClassName, setTeacherClassName] = useState('');
   const [sessionNumber, setSessionNumber] = useState('');
+  const [minutes, setMinutes] = useState('');
+  const [advisorNote, setAdvisorNote] = useState('');
   const [teacherClassSuggestions, setTeacherClassSuggestions] = useState<string[]>([]);
   const groups = useMemo(() => groupQuickSubjects(subjects), [subjects]);
   const selectedGroup = groups.find((group) => group.name === selectedGroupName) ?? null;
@@ -693,7 +723,7 @@ function AddSubjectModal({
   };
 
   const selectVariant = (variant: QuickSubject, quickMode: QuickMode, topicModeId?: string) => {
-    onSelect({ ...variant, quickMode, topicModeId });
+    onSelect({ ...variant, quickMode, topicModeId, advisorNote: allowAdvisorNote ? advisorNote.trim() || null : null });
   };
 
   return (
@@ -729,7 +759,11 @@ function AddSubjectModal({
               <div className="space-y-3">
                 <button type="button" onClick={() => setClassVariant(null)} className="flex items-center gap-1 text-xs text-[var(--foreground-muted)] hover:text-[var(--accent)]"><ChevronRight className="h-3.5 w-3.5" /> بازگشت</button>
                  <ClassSessionFields teacherClassName={teacherClassName} sessionNumber={sessionNumber} teacherSuggestions={teacherClassSuggestions} onTeacherClassNameChange={setTeacherClassName} onSessionNumberChange={setSessionNumber} onTeacherSuggestionRemove={removeTeacherClassSuggestion} />
-                <button type="button" disabled={!classSessionDetailsComplete(teacherClassName, sessionNumber)} onClick={() => onSelect({ ...classVariant, quickMode: 'CLASS_VIDEO', teacherClassName, sessionNumber })} className="h-11 w-full rounded-lg bg-[#35C49A] text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40">ثبت کلاس/ویدیو</button>
+                  <label className="block text-xs text-[var(--foreground-muted)]">زمان جلسه (دقیقه)
+                   <input type="text" inputMode="numeric" value={minutes} onChange={(event) => setMinutes(normalizeNumericInput(event.target.value))} placeholder="مثلاً ۹۰" className="mt-1.5 h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]" dir="ltr" />
+                  </label>
+                  {allowAdvisorNote && <AdvisorNoteField value={advisorNote} onChange={setAdvisorNote} />}
+                  <button type="button" disabled={!classSessionDetailsComplete(teacherClassName, sessionNumber)} onClick={() => onSelect({ ...classVariant, quickMode: 'CLASS_VIDEO', teacherClassName, sessionNumber, actualTimeMinutes: Number(minutes) > 0 ? Number(minutes) : null, advisorNote: allowAdvisorNote ? advisorNote.trim() || null : null })} className="h-11 w-full rounded-lg bg-[#35C49A] text-sm font-bold text-[var(--bg-deep)] disabled:opacity-40">ثبت کلاس/ویدیو</button>
               </div>
             ) : !selectedGroup ? (
               <div className="grid grid-cols-1 gap-2">
@@ -771,12 +805,22 @@ function AddSubjectModal({
                     );
                   })}
                 </div>
+                {allowAdvisorNote && <AdvisorNoteField value={advisorNote} onChange={setAdvisorNote} />}
               </div>
             )}
           </div>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AdvisorNoteField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block text-xs text-[var(--foreground-muted)]">
+      یادداشت برای دانش‌آموز (اختیاری)
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={3} placeholder="پیامی که دانش‌آموز روی این تسک می‌بیند" className="mt-1.5 w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg-base)] p-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)]" />
+    </label>
   );
 }
 
@@ -1072,7 +1116,7 @@ function EditTaskModal({
               </label>
               <input
                 type="number"
-                value={task.targetTimeMinutes ?? ''}
+                value={task.targetTimeMinutes ?? 0}
                 onChange={(e) => onUpdate({ targetTimeMinutes: Number(e.target.value) })}
                 className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                 dir="ltr"
@@ -1100,7 +1144,7 @@ function EditTaskModal({
               </label>
               <input
                 type="number"
-                value={task.targetTestCount ?? ''}
+                value={task.targetTestCount ?? 0}
                 onChange={(e) => onUpdate({ targetTestCount: Number(e.target.value) })}
                 className="w-full bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg px-3 h-10 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]/40"
                 dir="ltr"

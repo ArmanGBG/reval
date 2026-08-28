@@ -16,7 +16,7 @@ export function getRoleRootView(role: UserRole): ViewName {
 }
 
 function isViewAllowedForRole(view: ViewName, role: UserRole): boolean {
-  if (role === 'STUDENT') return ['dashboard', 'plan', 'tools', 'analytics', 'settings'].includes(view);
+  if (role === 'STUDENT') return ['dashboard', 'plan', 'exam-history', 'tools', 'analytics', 'settings'].includes(view);
   if (role === 'ADVISOR') return ['advisor-dashboard', 'advisor-students', 'advisor-student-detail', 'advisor-settings', 'advisor-messages'].includes(view);
   if (role === 'INSTITUTE_MANAGER') return ['institute-dashboard', 'institute-advisors', 'institute-students', 'institute-settings'].includes(view);
   return ['sa-dashboard', 'sa-subjects', 'sa-institutes', 'sa-institute-detail', 'sa-users', 'sa-user-detail', 'sa-settings', 'sa-messages'].includes(view);

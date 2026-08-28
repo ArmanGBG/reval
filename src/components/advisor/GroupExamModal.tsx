@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { ModalInput, ModalSelect } from './advisor-ui';
 import { toPersianDigits, computeStudentStatus, STATUS_CONFIG } from './advisor-helpers';
+import { PersianDatePicker } from '@/components/shared/PersianDatePicker';
+import { toISODate } from '@/lib/persian-date';
 
 // ===== Group Exam Modal =====
 export function GroupExamModal({
@@ -32,10 +34,9 @@ export function GroupExamModal({
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toISODate(new Date()));
   const [startTime, setStartTime] = useState('08:00');
   const [duration, setDuration] = useState(90);
-  const [totalScore, setTotalScore] = useState(100);
 
   useEffect(() => {
     if (!open) return;
@@ -48,10 +49,9 @@ export function GroupExamModal({
     setSelectedStudentIds([]);
     setTitle('');
     setSubject('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(toISODate(new Date()));
     setStartTime('08:00');
     setDuration(90);
-    setTotalScore(100);
   };
 
   const toggleStudent = (id: string) => {
@@ -94,7 +94,6 @@ export function GroupExamModal({
         date,
         startTime,
         duration,
-        totalScore,
         studentIds: selectedStudentIds,
         status: 'upcoming',
       });
@@ -164,12 +163,11 @@ export function GroupExamModal({
               <option key={s.name} value={s.name}>{s.name}</option>
             ))}
           </ModalSelect>
-          <ModalInput label="تاریخ" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <PersianDatePicker value={date} onChange={setDate} label="تاریخ آزمون" />
           <div className="grid grid-cols-2 gap-3">
             <ModalInput label="ساعت شروع" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             <ModalInput label="مدت (دقیقه)" type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} min={1} />
           </div>
-          <ModalInput label="نمره کل" type="number" value={totalScore} onChange={(e) => setTotalScore(Number(e.target.value))} min={1} />
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">

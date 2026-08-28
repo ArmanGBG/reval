@@ -1,0 +1,2 @@
+ALTER TABLE "ExamParticipant"
+ADD COLUMN "lifecycleStatus" TEXT NOT NULL DEFAULT 'PENDING';

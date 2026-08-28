@@ -4,7 +4,7 @@
 export type UserRole = 'STUDENT' | 'ADVISOR' | 'INSTITUTE_MANAGER' | 'SUPER_ADMIN';
 
 // Student views (personal command center)
-export type StudentView = 'dashboard' | 'plan' | 'tools' | 'analytics' | 'settings';
+export type StudentView = 'dashboard' | 'plan' | 'exam-history' | 'tools' | 'analytics' | 'settings';
 
 // Advisor views (CRM/management panel)
 export type AdvisorView = 'advisor-dashboard' | 'advisor-students' | 'advisor-student-detail' | 'advisor-settings' | 'advisor-messages';
@@ -60,9 +60,11 @@ export interface Task {
   sessionNumber?: string | null;
   bookName?: string | null;
   testDescription?: string | null;
+  advisorNote?: string | null;
   // Linked curriculum IDs (Task 12-a schema). When set, the API uses these
   // to auto-populate the text subject/subjectColor/topic fields from the DB.
   chapterId?: string | null;
+  chapter?: { id: string; title: string; chapterNo: number } | null;
   topicId?: string | null;
   topicIds?: string[];
   topics?: Array<{ id: string; title: string; topicNo: number; chapterId: string }>;
@@ -220,6 +222,38 @@ export interface InstituteProfile {
 // ===== Exam Types =====
 
 export type ExamStatus = 'upcoming' | 'in-progress' | 'completed';
+export type ExamScope = 'COMPREHENSIVE' | 'SUBJECT';
+export type ExamParticipantStatus = 'PENDING' | 'COMPLETED' | 'INCOMPLETE';
+
+export interface ExamParticipantState {
+  studentId: string;
+  status: ExamParticipantStatus;
+}
+
+export interface ExamAnalysisTask {
+  id: string;
+  examId: string;
+  studentId: string;
+  date: string;
+  status: TaskStatus;
+  completed: boolean | null;
+  actualTimeMinutes: number | null;
+  advisorNote: string | null;
+  createdBy: 'student' | 'advisor';
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExamSubjectAnalysis {
+  id: string;
+  examId: string;
+  studentId: string;
+  subjectName: string;
+  analyzed: boolean;
+  note: string | null;
+  updatedAt: string;
+}
 
 export interface ExamResult {
   studentId: string;
@@ -232,11 +266,25 @@ export interface Exam {
   title: string;
   subject: string;
   subjectColor: string;
+  scope: ExamScope;
+  description: string | null;
+  subjectId: string | null;
+  fieldType: FieldType | null;
+  chapterId: string | null;
+  topicId: string | null;
+  topicModeId: string | null;
+  curriculumMode: 'BOOK' | 'THEMATIC' | null;
+  curriculumLabel: string | null;
+  pageStart: number | null;
+  pageEnd: number | null;
   date: string; // ISO date string
   startTime: string; // e.g., "08:00"
   duration: number; // minutes
   totalScore: number;
   studentIds: string[];
+  participantStates: ExamParticipantState[];
+  analysisTasks: ExamAnalysisTask[];
+  subjectAnalyses: ExamSubjectAnalysis[];
   status: ExamStatus;
   results: ExamResult[];
   createdBy: string; // advisor ID

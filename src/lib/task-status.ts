@@ -8,6 +8,7 @@ export const ADVISOR_PLAN_TASK_PATCH_FIELDS = [
   'detailsCompleted', 'date', 'order', 'status', 'completed', 'actualTimeMinutes', 'actualTestCount', 'chapterId', 'topicId', 'topicIds',
   'topicModeId', 'topicModeSubtopicIds', 'curriculumMode', 'pageStart', 'pageEnd',
   'teacherClassName', 'sessionNumber', 'bookName', 'testDescription',
+  'advisorNote',
 ] as const;
 export const STUDENT_CLASS_DRAFT_COMPLETION_FIELDS = [
   'subjectId', 'fieldType', 'activityTypes', 'targetTimeMinutes', 'actualTimeMinutes',
@@ -32,12 +33,19 @@ export function validateTaskLifecycle(
   status: TaskStatus,
   detailsCompleted: boolean,
   completed: boolean | null,
+  allowIncompleteDetails = false,
 ): string | null {
   if (status === 'DRAFT' && (detailsCompleted || completed !== null)) return 'DRAFT باید بدون جزئیات اجرایی و بدون نتیجه باشد';
-  if (status === 'PENDING' && (!detailsCompleted || completed !== null)) return 'PENDING باید جزئیات کامل و نتیجه خالی داشته باشد';
-  if (status === 'COMPLETED' && (!detailsCompleted || completed !== true)) return 'COMPLETED باید جزئیات کامل و نتیجه true داشته باشد';
-  if (status === 'SKIPPED' && (!detailsCompleted || completed !== false)) return 'SKIPPED باید جزئیات کامل و نتیجه false داشته باشد';
-  if (status === 'INCOMPLETE' && (!detailsCompleted || completed !== null)) return 'INCOMPLETE باید جزئیات کامل و نتیجه خالی داشته باشد';
+  if (status === 'PENDING' && ((!detailsCompleted && !allowIncompleteDetails) || completed !== null)) return 'PENDING باید جزئیات کامل و نتیجه خالی داشته باشد';
+  if (status === 'COMPLETED' && ((!detailsCompleted && !allowIncompleteDetails) || completed !== true)) return 'COMPLETED باید جزئیات کامل و نتیجه true داشته باشد';
+  if (status === 'SKIPPED' && ((!detailsCompleted && !allowIncompleteDetails) || completed !== false)) return 'SKIPPED باید جزئیات کامل و نتیجه false داشته باشد';
+  if (status === 'INCOMPLETE' && ((!detailsCompleted && !allowIncompleteDetails) || completed !== null)) return 'INCOMPLETE باید جزئیات کامل و نتیجه خالی داشته باشد';
+  return null;
+}
+
+export function completedValueForTaskStatus(status: TaskStatus): boolean | null {
+  if (status === 'COMPLETED') return true;
+  if (status === 'SKIPPED') return false;
   return null;
 }
 
@@ -66,7 +74,7 @@ export function isStudentAdvisorTaskPatch(body: Record<string, unknown>): boolea
 export function isStudentClassDraftCompletionPatch(body: Record<string, unknown>): boolean {
   const allowed = new Set<string>(STUDENT_CLASS_DRAFT_COMPLETION_FIELDS);
   if (Object.keys(body).length === 0 || !Object.keys(body).every((key) => allowed.has(key))) return false;
-  if (body.status !== 'PENDING' || body.detailsCompleted !== true || body.completed !== null) return false;
+  if (body.status !== 'PENDING' || typeof body.detailsCompleted !== 'boolean' || body.completed !== null) return false;
   return Array.isArray(body.activityTypes)
     && body.activityTypes.length === 1
     && body.activityTypes[0] === 'کلاس/ویدیو';
@@ -77,8 +85,8 @@ export function isAdvisorPlanTaskPatch(body: Record<string, unknown>): boolean {
   if (Object.keys(body).length === 0 || !Object.keys(body).every((key) => allowed.has(key))) return false;
   if ('status' in body && body.status !== 'DRAFT' && body.status !== 'PENDING') return false;
   if ('completed' in body && body.completed !== null) return false;
-  if ('actualTimeMinutes' in body && body.actualTimeMinutes !== null) return false;
-  if ('actualTestCount' in body && body.actualTestCount !== null) return false;
+  if ('actualTimeMinutes' in body && body.actualTimeMinutes !== null && (typeof body.actualTimeMinutes !== 'number' || body.actualTimeMinutes < 0)) return false;
+  if ('actualTestCount' in body && body.actualTestCount !== null && (typeof body.actualTestCount !== 'number' || body.actualTestCount < 0)) return false;
   return true;
 }
 

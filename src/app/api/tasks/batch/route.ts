@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
     const prepared: Array<Record<string, unknown>> = [];
     for (let i = 0; i < tasks.length; i++) {
       const t = tasks[i];
+      if ('advisorNote' in t && ctx.user.role !== 'ADVISOR') {
+        return NextResponse.json({ error: `tasks[${i}]: فقط مشاور می‌تواند برای تسک یادداشت ثبت کند` }, { status: 403 });
+      }
+      if (t.advisorNote !== undefined && t.advisorNote !== null && typeof t.advisorNote !== 'string') {
+        return NextResponse.json({ error: `tasks[${i}]: یادداشت مشاور باید متن یا null باشد` }, { status: 400 });
+      }
       if (!t.studentId || typeof t.studentId !== 'string') {
         return NextResponse.json(
           { error: `tasks[${i}]: studentId الزامی است` },
@@ -65,12 +71,9 @@ export async function POST(request: NextRequest) {
       }
       const status = t.status ?? legacyTaskStatus(t.detailsCompleted, t.completed ?? null);
       if (!isTaskStatus(status)) return NextResponse.json({ error: `tasks[${i}]: status معتبر نیست` }, { status: 400 });
-      const lifecycleError = validateTaskLifecycle(status, t.detailsCompleted, t.completed ?? null);
+      const lifecycleError = validateTaskLifecycle(status, t.detailsCompleted, t.completed ?? null, inputHasClassVideo);
       if (lifecycleError) return NextResponse.json({ error: `tasks[${i}]: ${lifecycleError}` }, { status: 400 });
       const hasClassVideo = inputHasClassVideo;
-      if (hasClassVideo && t.detailsCompleted !== false) {
-        return NextResponse.json({ error: `tasks[${i}]: کلاس/ویدیو در مرحله ایجاد باید به‌صورت پیش‌نویس ثبت شود` }, { status: 400 });
-      }
       if (hasClassVideo && !classSessionDetailsComplete(t.teacherClassName, t.sessionNumber)) {
         return NextResponse.json({ error: `tasks[${i}]: نام کلاس و شماره جلسه برای کلاس/ویدیو الزامی است` }, { status: 400 });
       }
@@ -78,10 +81,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `tasks[${i}]: برای اتصال کلاس به محتوای درسی، نوع ارزیابی الزامی است` }, { status: 400 });
       }
       const invalidClassMetrics = hasClassVideo && (
-        (t.targetTimeMinutes != null && (typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes <= 0))
+        (t.targetTimeMinutes != null && (typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes < 0))
         || (t.targetTestCount != null && (typeof t.targetTestCount !== 'number' || t.targetTestCount < 0))
       );
-      const invalidStandardMetrics = !hasClassVideo && status !== 'DRAFT' && (!Array.isArray(t.activityTypes) || t.activityTypes.length === 0 || typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes <= 0 || typeof t.targetTestCount !== 'number' || t.targetTestCount < 0);
+      const invalidStandardMetrics = !hasClassVideo && status !== 'DRAFT' && (!Array.isArray(t.activityTypes) || t.activityTypes.length === 0 || typeof t.targetTimeMinutes !== 'number' || t.targetTimeMinutes < 0 || typeof t.targetTestCount !== 'number' || t.targetTestCount < 0);
       if (invalidClassMetrics || invalidStandardMetrics) {
         return NextResponse.json(
           { error: `tasks[${i}]: جزئیات تکمیل‌شده ناقص است` },
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!t.detailsCompleted && t.completed != null) {
+      if (!t.detailsCompleted && t.completed != null && !hasClassVideo) {
         return NextResponse.json(
           { error: `tasks[${i}]: تسک ناقص قابل تکمیل یا رد کردن نیست` },
           { status: 400 },
@@ -124,6 +127,7 @@ export async function POST(request: NextRequest) {
         sessionNumber: hasClassVideo && typeof t.sessionNumber === 'string' ? t.sessionNumber.trim() || null : null,
         bookName: hasTestDetails && typeof t.bookName === 'string' ? t.bookName.trim() || null : null,
         testDescription: hasTestDetails && typeof t.testDescription === 'string' ? t.testDescription.trim() || null : null,
+        advisorNote: permission.createdBy === 'advisor' && typeof t.advisorNote === 'string' ? t.advisorNote.trim() || null : null,
       });
     }
 
@@ -166,6 +170,7 @@ export async function POST(request: NextRequest) {
             sessionNumber: (t.sessionNumber as string | null) ?? null,
             bookName: (t.bookName as string | null) ?? null,
             testDescription: (t.testDescription as string | null) ?? null,
+            advisorNote: (t.advisorNote as string | null) ?? null,
             topics: { create: Array.isArray(t.topicIds) ? t.topicIds.map((topicId) => ({ topicId: topicId as string })) : [] },
             topicModeSubtopics: { create: Array.isArray(t.topicModeSubtopicIds) ? t.topicModeSubtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId: topicModeSubtopicId as string })) : [] },
           },
