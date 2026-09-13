@@ -34,6 +34,8 @@ model User {
   assignedAdvisor            User?                 @relation("AdvisorStudents", fields: [assignedAdvisorId], references: [id])
   students                   User[]                @relation("AdvisorStudents")
   tasks                      Task[]
+  nonStudyActivities         NonStudyActivity[]
+  sleepRecords               SleepRecord[]
   examParticipants           ExamParticipant[]
   examResults                ExamResult[]
   examAnalysisTasks          ExamAnalysisTask[]    @relation("ExamAnalysisTaskStudent")
@@ -171,6 +173,9 @@ model Task {
   curriculumMode    CurriculumMode? // null for legacy/draft tasks without curriculum details
   pageStart         Int?
   pageEnd           Int?
+  // Class homework — when set, this educational-test task is the homework
+  // assigned by a class/video task (self-relation, one homework per class).
+  classHomeworkOfId String? @unique
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -182,6 +187,8 @@ model Task {
   topicMode          TopicMode?              @relation(fields: [topicModeId], references: [id])
   topics             TaskTopic[]
   topicModeSubtopics TaskTopicModeSubtopic[]
+  classHomeworkOf    Task?                   @relation("ClassHomework", fields: [classHomeworkOfId], references: [id], onDelete: Cascade)
+  homeworkForClass   Task?                   @relation("ClassHomework")
 }
 
 model TaskTopic {
@@ -193,6 +200,50 @@ model TaskTopic {
 
   @@id([taskId, topicId])
   @@index([topicId])
+}
+
+// ===== Non-Study Activity =====
+// Personal, non-curricular activities a student logs (media, games, social,
+// health, personal skills). Duration is optional — an entry without minutes
+// still counts as an occurrence in reports.
+model NonStudyActivity {
+  id              String   @id @default(cuid())
+  studentId       String
+  category        String // MEDIA | GAMES | SOCIAL | HEALTH | SKILL
+  durationMinutes Int? // optional — null = not specified
+  date            String // ISO date string
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, date])
+}
+
+// ===== Sleep =====
+// Student sleep log. NIGHT = main night sleep (bedtime + wake time, duration
+// derived, crossing midnight handled by +24h; one per night — upserted).
+// NAP = daytime nap (start time + duration, with quick picks like 30/60 min).
+model SleepRecord {
+  id              String   @id @default(cuid())
+  studentId       String
+  type            SleepType
+  date            String // ISO date — the night's date for NIGHT, the day for NAP
+  startTime       String // HH:mm — bedtime (NIGHT) or nap start (NAP)
+  endTime         String? // HH:mm — wake time (NIGHT only)
+  durationMinutes Int // derived for NIGHT; explicit for NAP
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date, type])
+  @@index([studentId, date])
+}
+
+enum SleepType {
+  NIGHT
+  NAP
 }
 
 // ===== Exam =====

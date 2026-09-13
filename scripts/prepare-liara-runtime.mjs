@@ -32,6 +32,17 @@ await build({
 });
 
 await build({
+  entryPoints: [path.join(root, 'prisma', 'sync-curriculum-cli.ts')],
+  outfile: path.join(standalone, 'sync-curriculum.cjs'),
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node22',
+  external: ['@prisma/client'],
+  logLevel: 'warning',
+});
+
+await build({
   entryPoints: [path.join(root, 'prisma', 'bootstrap-production.ts')],
   outfile: path.join(standalone, 'bootstrap-production.cjs'),
   bundle: true,

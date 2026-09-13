@@ -14,6 +14,7 @@ export default function LoginPage() {
   const { setUserRole, setUser, setOnboardingComplete, setCurrentView } = useAppStore();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpChallengeId, setOtpChallengeId] = useState('');
   const [otpRequested, setOtpRequested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,7 +50,10 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await fetch('/api/auth/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, otp }),
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp, otpChallengeId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'کد واردشده صحیح نیست');
@@ -73,7 +77,7 @@ export default function LoginPage() {
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'خطا در ارتباط با سرور');
     } finally { setLoading(false); }
-  }, [phone, otp, setUserRole, setUser, setOnboardingComplete]);
+  }, [phone, otp, otpChallengeId, setUserRole, setUser, setOnboardingComplete]);
 
   const handleRequestOtp = useCallback(async () => {
     if (!isIranianMobileInput(phone)) {
@@ -88,7 +92,8 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'ارسال کد انجام نشد');
-      setOtp('');
+       setOtp('');
+       setOtpChallengeId(typeof data.challengeId === 'string' ? data.challengeId : '');
       setOtpRequested(true);
       setSeconds(60);
       if (data.testCode) toast.success(`کد تست: ${data.testCode}`);
@@ -144,7 +149,7 @@ export default function LoginPage() {
                 <div className="relative" onClick={() => otpRef.current?.focus()} dir="ltr">
                   <input
                     ref={otpRef} value={otp} inputMode="numeric" autoComplete="one-time-code" maxLength={6}
-                    onChange={(event) => { setOtp(numericInput(event.target.value, 6)); setError(''); }}
+                   onChange={(event) => { setOtp(numericInput(event.target.value, 6)); setError(''); }}
                     onKeyDown={(event) => { if (event.key === 'Enter') handleLogin(); }}
                     className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
                     aria-label="کد تایید شش رقمی"

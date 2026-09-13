@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FieldType, ActivityType, Task } from '@/lib/types';
@@ -328,9 +329,12 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     bookName: bookName || null,
     testDescription: testDescription || null,
     advisorNote: canEditAdvisorNote ? advisorNote.trim() || null : initialTask?.advisorNote ?? null,
+      // `doSave(full)` passes the real completion flag: editing a homework
+      // (or any) task to fill its details must flip detailsCompleted to true
+      // even though the stored task had it false.
       detailsCompleted: isClassVideo
         ? classCurriculumCompleted
-        : mode === 'edit' ? initialTask?.detailsCompleted ?? true : detailsCompleted,
+        : mode === 'edit' ? detailsCompleted || (initialTask?.detailsCompleted ?? true) : detailsCompleted,
     };
   };
 
@@ -404,17 +408,26 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     </div>
   );
 
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[70] flex items-end justify-center md:items-center md:p-6"
-          onClick={() => onOpenChange(false)}
-        >
+  // Portal the full-screen overlay to <body> so it escapes any transformed
+  // parent (e.g. the weekly planner dialog) that would otherwise clip the
+  // fixed positioning and hide the header (back/close controls) off-screen.
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
+  return portalTarget
+    ? createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="pointer-events-auto fixed inset-0 z-[70] flex items-end justify-center md:items-center md:p-6"
+              onClick={() => onOpenChange(false)}
+            >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <motion.div
             initial={{ y: '100%' }}
@@ -751,6 +764,8 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
-  );
+    </AnimatePresence>,
+    portalTarget,
+      )
+    : null;
 }

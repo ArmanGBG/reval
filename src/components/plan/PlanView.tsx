@@ -24,6 +24,10 @@ import {
 } from '@/components/ui/dialog';
 import ManualEntrySheet from './ManualEntrySheet';
 import { WeeklyPlanner } from './WeeklyPlanner';
+import { NonStudyActivityModal, NonStudyActivityCard } from './NonStudyActivityModal';
+import { NonStudyActivitiesTab } from './NonStudyActivitiesTab';
+import { SleepTab } from './SleepTab';
+import { ClassHomeworkDialog, homeworkNudgeMessage, isHomeworkWithoutDetails } from './ClassHomeworkDialog';
 import { PersianCalendar } from './PersianCalendar';
 import { SortableTaskList } from './SortableTaskList';
 import type { TaskCardCapabilities } from './TaskCard';
@@ -63,27 +67,20 @@ function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTes
   );
 }
 
-// ===== Plan Tab Toggle (daily / incompletes) =====
+// ===== Plan Tab Toggle (daily / activities / incompletes) =====
 function PlanTabToggle({
   tab,
   onChange,
   draftCount,
   incompleteCount,
 }: {
-  tab: 'daily' | 'draft' | 'incomplete' | 'exams';
-  onChange: (t: 'daily' | 'draft' | 'incomplete' | 'exams') => void;
+  tab: 'daily' | 'activities' | 'sleep' | 'draft' | 'incomplete' | 'exams';
+  onChange: (t: 'daily' | 'activities' | 'sleep' | 'draft' | 'incomplete' | 'exams') => void;
   draftCount: number;
   incompleteCount: number;
 }) {
   return (
     <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-1 no-scrollbar">
-      <button
-        onClick={() => onChange('exams')}
-        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${tab === 'exams' ? 'bg-[#E57373] text-[#241315]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
-      >
-        <ClipboardCheck className="w-3.5 h-3.5" />
-        آزمون‌ها
-      </button>
       <button
         onClick={() => onChange('daily')}
         className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${
@@ -94,6 +91,33 @@ function PlanTabToggle({
       >
         <CalendarDays className="w-3.5 h-3.5" />
         برنامه روز
+      </button>
+      <button
+        onClick={() => onChange('exams')}
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] flex items-center gap-1.5 ${tab === 'exams' ? 'bg-[#E57373] text-[#241315]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+      >
+        <ClipboardCheck className="w-3.5 h-3.5" />
+        آزمون‌ها
+      </button>
+      <button
+        onClick={() => onChange('activities')}
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${
+          tab === 'activities'
+            ? 'bg-[#4DA3FF] text-[#0B1220]'
+            : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+        }`}
+      >
+        فعالیت‌های غیردرسی
+      </button>
+      <button
+        onClick={() => onChange('sleep')}
+        className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all min-h-[36px] ${
+          tab === 'sleep'
+            ? 'bg-[#5B7FD9] text-[#0B1220]'
+            : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+        }`}
+      >
+        خواب
       </button>
       <button
         onClick={() => onChange('draft')}
@@ -139,7 +163,10 @@ export interface PlanActor {
 }
 
 // ===== Main Component =====
-export default function PlanView({ targetStudent, actor }: { targetStudent?: PlanTargetStudent; actor?: PlanActor } = {}) {
+// `embeddedTab` puts the view in controlled mode for the advisor's unified
+// student-workspace tabs: the parent owns which section is active and
+// PlanView hides its own tab bar + weekly buttons (weekly is a sibling tab).
+export default function PlanView({ targetStudent, actor, embeddedTab }: { targetStudent?: PlanTargetStudent; actor?: PlanActor; embeddedTab?: 'daily' | 'incomplete' | 'draft' } = {}) {
   const {
     tasks,
     addTask,
@@ -152,6 +179,9 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
     setSelectedDate,
     exams,
     loadExams,
+    nonStudyActivities,
+    loadNonStudyActivities,
+    deleteNonStudyActivity,
   } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
@@ -179,10 +209,16 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   // Local state
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
   const [examModalOpen, setExamModalOpen] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [weeklyPlannerOpen, setWeeklyPlannerOpen] = useState(false);
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
-  const [planTab, setPlanTab] = useState<'daily' | 'draft' | 'incomplete' | 'exams'>('daily');
+  const [homeworkTaskId, setHomeworkTaskId] = useState<string | null>(null);
+  const [planTab, setPlanTab] = useState<'daily' | 'activities' | 'sleep' | 'draft' | 'incomplete' | 'exams'>(embeddedTab ?? 'daily');
+  // Controlled mode: follow the parent's tab (advisor unified workspace)
+  useEffect(() => {
+    if (embeddedTab) setPlanTab(embeddedTab);
+  }, [embeddedTab]);
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [draftSessionId, setDraftSessionId] = useState<string | null>(null);
   const [resumingLocalDraft, setResumingLocalDraft] = useState<StoredTaskFormDraft | null>(null);
@@ -203,6 +239,12 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
   useEffect(() => {
     void loadExams(isAdvisorWorkspace ? { studentId } : { studentId });
   }, [isAdvisorWorkspace, loadExams, studentId]);
+
+  // Non-study activities: loaded for the active student (personal logging is
+  // student-only; advisors read them in reports).
+  useEffect(() => {
+    void loadNonStudyActivities(studentId).catch(() => {});
+  }, [loadNonStudyActivities, studentId]);
 
   const openNewTask = useCallback(() => {
     setResumingLocalDraft(null);
@@ -246,6 +288,41 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         return a.order - b.order;
       });
   }, [tasks, selectedDate, studentId]);
+
+  // Today's non-study activities (mixed into the daily plan list)
+  const dayActivities = useMemo(
+    () => nonStudyActivities
+      .filter((activity) => activity.date === selectedDate && activity.studentId === studentId)
+      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '')),
+    [nonStudyActivities, selectedDate, studentId],
+  );
+
+  // Interleave non-study activity cards among the day's tasks. Pending tasks
+  // keep their manual (drag) order; each activity is placed after the last
+  // task created before it, so the timeline reads chronologically while
+  // completed/skipped tasks stay at the bottom.
+  const dayActivityExtras = useMemo(() => {
+    const pendingCount = filteredTasks.filter((t) => t.completed === null).length;
+    return dayActivities.map((activity) => {
+      const ts = activity.createdAt ?? '';
+      let pos = pendingCount;
+      for (let i = 0; i < pendingCount; i++) {
+        if ((filteredTasks[i].createdAt ?? '') > ts) { pos = i; break; }
+      }
+      return {
+        key: `activity-${activity.id}`,
+        index: pos,
+        node: (
+          <NonStudyActivityCard
+            category={activity.category}
+            durationMinutes={activity.durationMinutes}
+            compact
+            onDelete={() => { void deleteNonStudyActivity(activity.id).catch(() => {}); }}
+          />
+        ),
+      };
+    });
+  }, [dayActivities, deleteNonStudyActivity, filteredTasks]);
 
   // Incomplete tasks (detailsCompleted === false) for this student — shown in
   // the "ناقصی‌ها" tab. Sorted by creation order (most recent first).
@@ -324,14 +401,24 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
 
   // Settings task
   const settingsTask = useMemo(() => tasks.find((t) => t.id === settingsTaskId), [tasks, settingsTaskId]);
+  // Class task whose homework dialog is open
+  const homeworkTask = useMemo(() => tasks.find((t) => t.id === homeworkTaskId) ?? null, [tasks, homeworkTaskId]);
 
   // ===== Handlers =====
   const handleComplete = useCallback(
     async (taskId: string) => {
       const task = tasks.find((item) => item.id === taskId);
+      // Class-homework tasks may be ticked without details — nudge the
+      // student to fill time/tests/topic for richer analytics.
+      if (task && isHomeworkWithoutDetails(task) && !isAdvisorWorkspace) {
+        toast(homeworkNudgeMessage(), {
+          style: { background: 'var(--bg-overlay)', border: '1px solid var(--border-strong)', color: 'var(--warning)' },
+          duration: 6000,
+        });
+      }
       await updateTask(taskId, { status: 'COMPLETED', completed: true, actualTimeMinutes: task?.actualTimeMinutes ?? task?.targetTimeMinutes ?? 0, actualTestCount: task?.actualTestCount ?? task?.targetTestCount ?? 0 });
     },
-    [tasks, updateTask]
+    [tasks, updateTask, isAdvisorWorkspace]
   );
 
   const handleSkip = useCallback(
@@ -445,19 +532,19 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
       {/* ===================================================
           MOBILE LAYOUT (single column, max-w-md)
           =================================================== */}
-      <div className="md:hidden max-w-md mx-auto px-4 pt-6 pb-28">
+      <div className="md:hidden max-w-md mx-auto px-4 pt-6 pb-56">
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
           <motion.h1
-            key={planTab === 'exams' ? 'آزمون‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+            key={planTab === 'exams' ? 'آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های غیردرسی' : planTab === 'sleep' ? 'خواب' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl font-bold text-[var(--foreground)]"
           >
-            {planTab === 'exams' ? 'آزمون‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+            {planTab === 'exams' ? 'آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های غیردرسی' : planTab === 'sleep' ? 'خواب' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
           </motion.h1>
           <div className="flex items-center gap-2">
-            {planTab === 'daily' && (
+            {!embeddedTab && (
               <button
                 onClick={() => setWeeklyPlannerOpen(true)}
                 className="icon-btn w-10 h-10 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--accent)]"
@@ -469,13 +556,15 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
           </div>
         </div>
         <p className="text-xs text-[var(--foreground-muted)] mb-3">
-          {planTab === 'exams' ? 'تاریخ، جزئیات و عملکرد آزمون‌ها' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+          {planTab === 'exams' ? 'تاریخ، جزئیات و عملکرد آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های شخصی و زمان صرف‌شده برای هر دسته' : planTab === 'sleep' ? 'خواب شبانه، چرت و میانگین‌ها' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
         </p>
 
-        {/* Plan Tab Toggle */}
-        <div className="mb-4">
-          <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length + incompleteExams.length + incompleteAnalysisTasks.length} />
-        </div>
+        {/* Plan Tab Toggle (owned by the parent in embedded mode) */}
+        {!embeddedTab && (
+          <div className="mb-4">
+            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length + incompleteExams.length + incompleteAnalysisTasks.length} />
+          </div>
+        )}
 
         {planTab === 'daily' ? (
           <>
@@ -496,11 +585,12 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
             <div className="space-y-3">
               {dailyExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
               {dailyAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
-              {filteredTasks.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
+              {filteredTasks.length === 0 && dayActivities.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
                 <EmptyState />
               ) : filteredTasks.length > 0 ? (
                 <SortableTaskList
                   tasks={filteredTasks}
+                  extras={dayActivityExtras}
                   onComplete={handleComplete}
                   onSkip={handleSkip}
                   onDelete={handleDeleteTask}
@@ -509,13 +599,20 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   onReset={handleReset}
                   onReorder={handleReorder}
                   onEdit={setDetailsTaskId}
+                  onHomework={setHomeworkTaskId}
                   getCapabilities={getTaskCapabilities}
                 />
-              ) : null}
+              ) : (
+                <div className="space-y-3">{dayActivityExtras.map((extra) => <div key={extra.key}>{extra.node}</div>)}</div>
+              )}
             </div>
           </>
         ) : planTab === 'exams' ? (
           <ExamCenter studentId={studentId} grade={targetStudent?.grade} major={targetStudent?.major} isAdvisor={isAdvisorWorkspace} />
+        ) : planTab === 'activities' ? (
+          <NonStudyActivitiesTab studentId={studentId} canManage />
+        ) : planTab === 'sleep' ? (
+          <SleepTab studentId={studentId} canManage />
         ) : (
           /* Draft and incomplete tasks tabs */
           <div className="space-y-3">
@@ -538,6 +635,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                 onReset={handleReset}
                 onReorder={handleReorder}
                 onEdit={setDetailsTaskId}
+                onHomework={setHomeworkTaskId}
                 getCapabilities={getTaskCapabilities}
                 sortable={!isAdvisorWorkspace}
               />
@@ -545,27 +643,39 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
           </div>
         )}
 
-        {/* FAB: Add Task (daily tab only) */}
+        {/* FAB: Add Task (daily tab only) — primary action + compact secondary
+            actions. Solid backgrounds on mobile (translucent glass overlaid
+            badly on the content behind the fixed bar). */}
         {planTab === 'daily' && (
-          <>
+          <div className="fixed bottom-24 inset-x-4 z-40 flex flex-col gap-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={openNewTask}
+              className="glow-hover flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] px-4 py-3 font-medium text-sm text-[var(--bg-deep)] shadow-[0_4px_16px_rgba(0,0,0,0.45)] hover:bg-[var(--accent-hover)]"
+              aria-label="اضافه کردن تسک"
+            >
+              <Plus className="w-5 h-5" />
+              <span>تسک جدید</span>
+            </motion.button>
+            <div className="flex gap-2">
               <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={openNewTask}
-            className="glow-hover fixed bottom-24 left-4 z-40 bg-[var(--accent)] text-[var(--bg-deep)] px-4 py-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.3)] flex items-center gap-2 font-medium text-sm hover:bg-[var(--accent-hover)] min-h-[48px]"
-            aria-label="اضافه کردن تسک"
-          >
-            <Plus className="w-5 h-5" />
-            <span>تسک جدید</span>
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={() => setExamModalOpen(true)}
-            className="fixed bottom-24 right-4 z-40 flex min-h-[48px] items-center gap-2 rounded-2xl border border-[#E57373]/30 bg-[#E57373]/15 px-4 py-3 text-sm font-bold text-[#EF9A9A]"
-          >
-            <ClipboardCheck className="w-5 h-5" />
-            آزمون
-          </motion.button>
-          </>
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setActivityModalOpen(true)}
+                className="flex min-h-[48px] flex-1 items-center justify-center whitespace-nowrap rounded-2xl bg-[#2E5FBF] px-2 py-3 text-xs font-semibold text-white shadow-[0_4px_16px_rgba(0,0,0,0.45)]"
+                aria-label="ثبت فعالیت غیردرسی"
+              >
+                <span>فعالیت غیردرسی</span>
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setExamModalOpen(true)}
+                className="flex min-h-[48px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-[#C25056] px-4 py-3 text-sm font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.45)]"
+              >
+                <ClipboardCheck className="w-5 h-5" />
+                آزمون
+              </motion.button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -579,30 +689,32 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-[var(--foreground-subtle)] font-semibold">
               <span>برنامه‌ریزی</span>
               <ChevronLeft className="w-3 h-3 flip-rtl" />
-              <span className={planTab === 'exams' ? 'text-[#EF9A9A]' : 'text-[var(--accent)]'}>{planTab === 'exams' ? 'آزمون‌ها' : planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
+              <span className={planTab === 'exams' ? 'text-[#EF9A9A]' : planTab === 'activities' ? 'text-[#7EB8FF]' : planTab === 'sleep' ? 'text-[#9DBBFF]' : 'text-[var(--accent)]'}>{planTab === 'exams' ? 'آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های غیردرسی' : planTab === 'sleep' ? 'خواب' : planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}</span>
             </div>
             <motion.h1
-              key={planTab === 'exams' ? 'آزمون‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+              key={planTab === 'exams' ? 'آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های غیردرسی' : planTab === 'sleep' ? 'خواب' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-3xl md:text-4xl font-bold text-[var(--foreground)]"
             >
-              {planTab === 'exams' ? 'آزمون‌ها' : planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
+              {planTab === 'exams' ? 'آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های غیردرسی' : planTab === 'draft' ? 'پیش‌نویس‌ها' : planTab === 'incomplete' ? 'ناقصی‌ها' : headerTitle}
             </motion.h1>
             <p className="text-sm text-[var(--foreground-muted)]">
-              {planTab === 'exams' ? 'تاریخ، جزئیات و عملکرد آزمون‌ها' : planTab === 'draft' ? 'پیش‌نویس‌های نیازمند تکمیل جزئیات' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
+              {planTab === 'exams' ? 'تاریخ، جزئیات و عملکرد آزمون‌ها' : planTab === 'activities' ? 'فعالیت‌های شخصی و زمان صرف‌شده برای هر دسته' : planTab === 'draft' ? 'پیش‌نویس‌های نیازمند تکمیل جزئیات' : planTab === 'incomplete' ? 'تسک‌های ناقص برای تکمیل بعدی' : daySubtitle}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length + incompleteExams.length + incompleteAnalysisTasks.length} />
-            {planTab === 'daily' && (
-              <button
-                onClick={() => setWeeklyPlannerOpen(true)}
-                className="btn-hover flex items-center gap-2 h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-sm font-medium"
-              >
-                <CalendarDays className="w-4 h-4" />
-                برنامه هفتگی
-              </button>
+            {!embeddedTab && (
+              <>
+                <PlanTabToggle tab={planTab} onChange={setPlanTab} draftCount={totalDraftCount} incompleteCount={incompleteTasks.length + incompleteExams.length + incompleteAnalysisTasks.length} />
+                <button
+                  onClick={() => setWeeklyPlannerOpen(true)}
+                  className="btn-hover flex items-center gap-2 h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--foreground-muted)] hover:text-[var(--accent)] text-sm font-medium"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  برنامه هفتگی
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -629,6 +741,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   تسک جدید
                 </button>
                 <button onClick={() => setExamModalOpen(true)} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--radius)] border border-[#E57373]/30 bg-[#E57373]/10 text-sm font-semibold text-[#EF9A9A]"><ClipboardCheck className="w-4 h-4" />آزمون جدید</button>
+                <button onClick={() => setActivityModalOpen(true)} className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius)] border border-[#4DA3FF]/30 bg-[#4DA3FF]/10 text-sm font-semibold text-[#7EB8FF]">فعالیت غیردرسی</button>
               </div>
 
               {/* Task Stats Widget (desktop sidebar) */}
@@ -639,11 +752,12 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
             <div className="lg:col-span-2 space-y-3">
               {dailyExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
               {dailyAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
-              {filteredTasks.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
+              {filteredTasks.length === 0 && dayActivities.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
                 <EmptyState />
               ) : filteredTasks.length > 0 ? (
                 <SortableTaskList
                   tasks={filteredTasks}
+                  extras={dayActivityExtras}
                   onComplete={handleComplete}
                   onSkip={handleSkip}
                   onDelete={handleDeleteTask}
@@ -652,13 +766,24 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                   onReset={handleReset}
                   onReorder={handleReorder}
                   onEdit={setDetailsTaskId}
+                  onHomework={setHomeworkTaskId}
                   getCapabilities={getTaskCapabilities}
                 />
-              ) : null}
+              ) : (
+                <div className="space-y-3">{dayActivityExtras.map((extra) => <div key={extra.key}>{extra.node}</div>)}</div>
+              )}
             </div>
           </div>
         ) : planTab === 'exams' ? (
           <ExamCenter studentId={studentId} grade={targetStudent?.grade} major={targetStudent?.major} isAdvisor={isAdvisorWorkspace} />
+        ) : planTab === 'activities' ? (
+          <div className="max-w-3xl mx-auto">
+            <NonStudyActivitiesTab studentId={studentId} canManage />
+          </div>
+        ) : planTab === 'sleep' ? (
+          <div className="max-w-3xl mx-auto">
+            <SleepTab studentId={studentId} canManage />
+          </div>
         ) : (
           /* Draft or incomplete tasks tab — full width */
           <div className="max-w-3xl mx-auto space-y-3">
@@ -681,6 +806,7 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
                 onReset={handleReset}
                 onReorder={handleReorder}
                 onEdit={setDetailsTaskId}
+                onHomework={setHomeworkTaskId}
                 getCapabilities={getTaskCapabilities}
                 sortable={!isAdvisorWorkspace}
               />
@@ -720,6 +846,22 @@ export default function PlanView({ targetStudent, actor }: { targetStudent?: Pla
         allowDraftSave={!isAdvisorWorkspace}
       />
       <ExamModal open={examModalOpen} onOpenChange={setExamModalOpen} studentId={studentId} selectedDate={selectedDate} grade={targetStudent?.grade} major={targetStudent?.major} />
+
+      <NonStudyActivityModal
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        date={selectedDate}
+        studentId={studentId}
+      />
+
+      {homeworkTask && (
+        <ClassHomeworkDialog
+          classTask={homeworkTask}
+          open={homeworkTaskId === homeworkTask.id}
+          onOpenChange={(next) => { if (!next) setHomeworkTaskId(null); }}
+          onOpenHomework={(homeworkId) => { setHomeworkTaskId(null); setDetailsTaskId(homeworkId); }}
+        />
+      )}
 
 
       <WeeklyPlanner

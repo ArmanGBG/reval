@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { ArrowRight, Phone, User as UserIcon, GraduationCap, Loader2, Shield, Building2, BookOpen } from 'lucide-react';
@@ -78,6 +78,9 @@ function StepPhone({
   otp,
   setOtp,
   onSendCode,
+  onVerifyCode,
+  verifyingOtp,
+  otpError,
   direction,
 }: {
   phone: string;
@@ -87,6 +90,9 @@ function StepPhone({
   otp: string;
   setOtp: (v: string) => void;
   onSendCode: () => void;
+  onVerifyCode: () => void;
+  verifyingOtp: boolean;
+  otpError: string;
   direction: number;
 }) {
   const isValidPhone = isIranianMobileInput(phone);
@@ -183,6 +189,18 @@ function StepPhone({
           >
             ارسال مجدد کد
           </motion.button>
+          <motion.button
+            type="button"
+            onClick={onVerifyCode}
+            disabled={!/^\d{6}$/.test(otp) || verifyingOtp}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-full h-12 bg-mint hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--bg-deep)] font-bold rounded-lg transition-all duration-200 inline-flex items-center justify-center gap-2"
+          >
+            {verifyingOtp && <Loader2 className="w-4 h-4 animate-spin" />}
+            {verifyingOtp ? 'در حال بررسی کد...' : 'تایید کد'}
+          </motion.button>
+          {otpError && <p role="alert" className="text-sm text-[var(--danger)] text-center">{otpError}</p>}
         </div>
       )}
     </motion.div>
@@ -472,6 +490,10 @@ export default function OnboardingWizard() {
   const [phone, setPhone] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
+  const [otpChallengeId, setOtpChallengeId] = useState('');
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState('');
 
   // Step 2 state — role selection (NEW)
   const [role, setRole] = useState<RegisterRole | ''>('');
@@ -508,17 +530,33 @@ export default function OnboardingWizard() {
     });
   }, []);
 
-  // Continue after the user has entered the six-digit code. The server verifies
-  // and consumes it atomically when the student account is submitted.
-  useEffect(() => {
-    if (/^\d{6}$/.test(otp)) {
-      const timer = setTimeout(() => {
-        setRole('STUDENT');
-        goToStep(2);
-      }, 400);
-      return () => clearTimeout(timer);
+  const handleVerifyCode = useCallback(async () => {
+    if (!showOtp || !/^\d{6}$/.test(otp) || verifyingOtp) return;
+    setVerifyingOtp(true);
+    setOtpError('');
+    try {
+      const res = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, purpose: 'SIGNUP', code: otp, consume: false }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setOtpVerified(false);
+        setOtpError(data.error || 'کد تایید اشتباه یا منقضی شده است');
+        return;
+      }
+      setOtpVerified(true);
+      setOtpChallengeId(typeof data.challengeId === 'string' ? data.challengeId : '');
+      setRole('STUDENT');
+      goToStep(2);
+    } catch {
+      setOtpVerified(false);
+      setOtpError('بررسی کد تایید انجام نشد');
+    } finally {
+      setVerifyingOtp(false);
     }
-  }, [otp, goToStep]);
+  }, [goToStep, otp, phone, showOtp, verifyingOtp]);
 
   const handleSendCode = useCallback(async () => {
     if (!isIranianMobileInput(phone)) return;
@@ -538,6 +576,9 @@ export default function OnboardingWizard() {
       if (!res.ok) throw new Error(data.error || 'ارسال کد انجام نشد');
       setShowOtp(true);
       setOtp('');
+      setOtpChallengeId('');
+      setOtpVerified(false);
+      setOtpError('');
       toast.success(data.testCode ? `کد تست شما: ${data.testCode}` : 'کد تایید ارسال شد');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'ارسال کد انجام نشد');
@@ -547,7 +588,7 @@ export default function OnboardingWizard() {
   const canProceed = useCallback((): boolean => {
     switch (currentStep) {
       case 1:
-        return showOtp && /^\d{6}$/.test(otp);
+        return showOtp && otpVerified;
       case 2:
         return name.trim().length > 0 && selectedAvatar !== '';
       case 3:
@@ -555,7 +596,7 @@ export default function OnboardingWizard() {
       default:
         return false;
     }
-  }, [currentStep, showOtp, otp, role, name, selectedAvatar, grade, major, instituteName]);
+  }, [currentStep, showOtp, otpVerified, name, selectedAvatar, grade, major]);
 
   const handleNext = useCallback(() => {
     if (!canProceed()) return;
@@ -593,6 +634,7 @@ export default function OnboardingWizard() {
           grade,
           major,
           otp,
+          otpChallengeId,
         }),
       });
 
@@ -600,6 +642,12 @@ export default function OnboardingWizard() {
 
       if (!res.ok) {
         const message = data.error || 'خطا در ساخت حساب کاربری';
+        if (res.status === 401) {
+          setOtpVerified(false);
+          setOtpChallengeId('');
+          setOtpError(message);
+          goToStep(1);
+        }
         toast.error(message, {
           style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--danger)' },
         });
@@ -638,7 +686,7 @@ export default function OnboardingWizard() {
       });
       setSubmitting(false);
     }
-  }, [canProceed, submitting, name, selectedAvatar, role, grade, major, instituteName, phone, setUser, setUserRole, setOnboardingComplete]);
+  }, [canProceed, submitting, name, selectedAvatar, role, grade, major, instituteName, phone, otp, otpChallengeId, goToStep, setUser, setUserRole, setOnboardingComplete]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
@@ -663,8 +711,16 @@ export default function OnboardingWizard() {
                 showOtp={showOtp}
                 setShowOtp={setShowOtp}
                 otp={otp}
-                setOtp={setOtp}
+                 setOtp={(value) => {
+                   setOtp(value);
+                   setOtpVerified(false);
+                   setOtpChallengeId('');
+                   setOtpError('');
+                 }}
                 onSendCode={handleSendCode}
+                onVerifyCode={handleVerifyCode}
+                verifyingOtp={verifyingOtp}
+                otpError={otpError}
                 direction={direction}
               />
             )}

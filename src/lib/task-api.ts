@@ -16,6 +16,15 @@ export const taskTopicInclude = {
   topicModeSubtopics: {
     include: { subtopic: { select: { id: true, title: true, subtopicNo: true, topicModeId: true } } },
   },
+  // Homework link: the educational-test task assigned by this class (if any).
+  homeworkForClass: {
+    select: { id: true, date: true, status: true },
+  },
+  // Reverse link: the class this homework task belongs to (if this task is a
+  // class homework).
+  classHomeworkOf: {
+    select: { id: true, teacherClassName: true, sessionNumber: true, date: true },
+  },
 } as const;
 
 export function parseTaskResponse(task: Record<string, unknown> & { topics?: TaskTopicRow[]; topicModeSubtopics?: TaskTopicModeSubtopicRow[] }): Record<string, unknown> {
@@ -39,6 +48,7 @@ export function parseTaskResponse(task: Record<string, unknown> & { topics?: Tas
     bookName: (task.bookName as string | null) ?? null,
     testDescription: (task.testDescription as string | null) ?? null,
     advisorNote: (task.advisorNote as string | null) ?? null,
+    classHomeworkOfId: (task.classHomeworkOfId as string | null) ?? null,
   };
 }
 

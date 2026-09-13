@@ -51,6 +51,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
     currentView === 'sa-user-detail' ||
     currentView === 'advisor-student-detail';
 
+  // The advisor's student workspace fills the whole content area (planner
+  // grid + reports read better wide) instead of the narrow detail-page cap.
+  const isFullWidthDetail = currentView === 'advisor-student-detail';
+
   const showBottomNav = !isDetailPage && !focusMode;
   const showSidebar = !isDetailPage && !focusMode; // detail pages + focus hide sidebar
   const isStudent = userRole === 'STUDENT';
@@ -67,8 +71,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
         }`}
       >
         <main
-          className={`flex-1 w-full mx-auto ${
-            isDetailPage ? 'max-w-5xl' : 'max-w-7xl'
+          className={`flex-1 w-full flex flex-col ${
+            isFullWidthDetail
+              ? ''
+              : `mx-auto ${isDetailPage ? 'max-w-5xl' : 'max-w-7xl'}`
           } px-4 md:px-6 lg:px-8 pt-4 md:pt-8 ${
             showBottomNav ? 'pb-24 md:pb-12' : 'pb-12'
           }`}

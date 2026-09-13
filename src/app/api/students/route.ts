@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       createdAt: true,
       tasks: {
         where: { date: { gte: weekStart, lte: weekEnd }, status: { not: 'DRAFT' } },
-        select: { status: true, actualTimeMinutes: true },
+        select: { id: true, subject: true, topic: true, date: true, status: true, completed: true, createdBy: true, actualTimeMinutes: true },
       },
     },
   });
@@ -76,24 +76,27 @@ export async function GET(request: NextRequest) {
     const completedTasks = u.tasks.filter((task) => task.status === 'COMPLETED');
     const actualMinutes = completedTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
     return ({
-    id: u.id,
-    name: u.name,
-    avatar: u.avatar,
-    phone: u.phone,
-    // Return raw values — do NOT fallback. The advisor TaskModal uses these
-    // to filter subjects, and a wrong fallback would show the student the
-    // wrong subjects. Missing grade/major is surfaced as a block in the UI.
-    grade: u.grade,
-    major: u.major,
-    assignedAdvisorId: u.assignedAdvisorId,
-    instituteId: u.instituteId,
-    createdAt: u.createdAt.toISOString(),
-    reportSummary: {
-      studyHoursThisWeek: Math.round((actualMinutes / 60) * 10) / 10,
-      taskCompletionRate: u.tasks.length > 0 ? Math.round((completedTasks.length / u.tasks.length) * 100) : 0,
-      incompleteCount: u.tasks.filter((task) => task.status === 'INCOMPLETE').length,
-    },
-  });
+      id: u.id,
+      name: u.name,
+      avatar: u.avatar,
+      phone: u.phone,
+      // Return raw values — do NOT fallback. The advisor TaskModal uses these
+      // to filter subjects, and a wrong fallback would show the student the
+      // wrong subjects. Missing grade/major is surfaced as a block in the UI.
+      grade: u.grade,
+      major: u.major,
+      assignedAdvisorId: u.assignedAdvisorId,
+      instituteId: u.instituteId,
+      createdAt: u.createdAt.toISOString(),
+      reportSummary: {
+        studyHoursThisWeek: Math.round((actualMinutes / 60) * 10) / 10,
+        taskCompletionRate: u.tasks.length > 0 ? Math.round((completedTasks.length / u.tasks.length) * 100) : 0,
+        incompleteCount: u.tasks.filter((task) => task.status === 'INCOMPLETE').length,
+      },
+      dailyTasks: u.tasks
+        .filter((task) => task.date === toISODate(new Date()) && task.createdBy === 'advisor')
+        .map(({ id, subject, topic, status, completed }) => ({ id, subject, topic, status, completed })),
+    });
   });
 
   return NextResponse.json({ students });

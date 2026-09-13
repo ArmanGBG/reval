@@ -15,6 +15,10 @@ import {
 import { useAppStore } from '@/lib/store';
 import type { ActivityType, Task } from '@/lib/types';
 import { buildActivityBreakdown, buildDailyTrend, buildSubjectDistribution, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
+import { filterNonStudyActivitiesForRange } from '@/lib/non-study-activity-report';
+import { resolveDateRange } from '@/lib/analytics';
+import { computeSleepMetrics, formatTimePersian } from '@/lib/sleep';
+import { sumNonStudyMinutes, sumNonStudyMinutesByCategory } from '@/lib/non-study-activity';
 import { minutesToHoursLabel, toISODate, toPersianDigits } from '@/lib/persian-date';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import { ACTIVITY_COLORS } from '@/lib/activity-styles';
@@ -267,7 +271,7 @@ export default function MinimalAnalyticsView({
   studentId: studentIdProp,
   isAdvisor = false,
 }: MinimalAnalyticsViewProps = {}) {
-  const { tasks: storeTasks, user } = useAppStore();
+  const { tasks: storeTasks, user, nonStudyActivities, sleepRecords } = useAppStore();
   const tasks = tasksOverride ?? storeTasks;
   const ownStudentId = useCurrentStudentId();
   const studentId = studentIdProp ?? ownStudentId;
@@ -333,6 +337,12 @@ export default function MinimalAnalyticsView({
     () => filterTasksForReport(tasks, timeFilter, 'همه', new Date(), customRange),
     [tasks, timeFilter, customRange],
   );
+  // Same selected window, resolved for the exams-history section so it lists
+  // only exams inside the chosen range (mirrors the report's task filter).
+  const examRange = useMemo(() => {
+    if (timeFilter === 'بازه دلخواه') return customRange ?? null;
+    return resolveDateRange(timeFilter, new Date());
+  }, [timeFilter, customRange]);
   const totals = useMemo(() => computeKpiTotals(reportTasks), [reportTasks]);
   const dailyTrend = useMemo(
     () => buildDailyTrend(reportTasks, timeFilter, new Date(), customRange),
@@ -344,6 +354,28 @@ export default function MinimalAnalyticsView({
     [reportTasks, timeFilter, customRange],
   );
   const completedCount = reportTasks.filter((task) => task.status === 'COMPLETED').length;
+  // Non-study activities for the SAME selected range — the overview widget
+  // re-uses this component's timeFilter/customRange state directly, so
+  // changing the range here re-filters the widget instantly and exactly.
+  const reportActivities = useMemo(
+    () => filterNonStudyActivitiesForRange(
+      nonStudyActivities.filter((activity) => activity.studentId === studentId),
+      timeFilter,
+      new Date(),
+      customRange,
+    ),
+    [nonStudyActivities, studentId, timeFilter, customRange],
+  );
+  const activityCategoryTotals = useMemo(() => sumNonStudyMinutesByCategory(reportActivities), [reportActivities]);
+  const activityTotalMinutes = useMemo(() => sumNonStudyMinutes(reportActivities), [reportActivities]);
+  // Sleep stats for the SAME selected range — circular-mean bedtime/wake and
+  // average night duration (naps counted separately).
+  const sleepStats = useMemo(() => {
+    const range = timeFilter === 'بازه دلخواه' ? customRange ?? null : resolveDateRange(timeFilter, new Date());
+    const records = sleepRecords.filter((record) => record.studentId === studentId
+      && (!range || (record.date >= range.start && record.date <= range.end)));
+    return computeSleepMetrics(records);
+  }, [sleepRecords, studentId, timeFilter, customRange]);
   const courseGroups = useMemo<CourseGroup[]>(() => {
     const groups = new Map<string, CourseGroup>();
     for (const subject of subjects) {
@@ -381,7 +413,8 @@ export default function MinimalAnalyticsView({
   const subjectMinutes = chapters.reduce((sum, chapter) => sum + chapter.minutes, 0);
   const chapterChartData = chapters.map((chapter) => ({
     name: `فصل ${toPersianDigits(chapter.chapterNo)}`,
-    ...Object.fromEntries(chapter.activities.map((activity) => [activity.name, activity.minutes])),
+    // activities in hours (chart Y axis shows hours, not minutes)
+    ...Object.fromEntries(chapter.activities.map((activity) => [activity.name, Math.round((activity.minutes / 60) * 10) / 10])),
   }));
   const courseOverview = useMemo(() => {
     if (!selectedCourse) return [];
@@ -465,7 +498,69 @@ export default function MinimalAnalyticsView({
         <div className="text-center"><p className="text-lg font-bold">{toPersianDigits(completedCount)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تسک تکمیل‌شده</p></div>
       </section>
 
-      {!embedded && <section className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"><div className="mb-4"><h2 className="text-base font-bold text-[var(--foreground)]">آزمون‌ها</h2><p className="mt-1 text-xs text-[var(--foreground-muted)]">تاریخچه آزمون‌ها و وضعیت تحلیل هر آزمون</p></div><ExamHistory studentId={studentId} isAdvisor={isAdvisor} embedded /></section>}
+      {/* ===== Non-Study Activities overview — same selected range as the report ===== */}
+      <section className="mb-8 rounded-xl border border-dashed border-[#4DA3FF]/30 bg-[#4DA3FF]/[0.06] p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">فعالیت‌های غیردرسی</h2>
+            <p className="mt-1 text-[11px] text-[var(--foreground-muted)]">زمان صرف‌شده برای هر دسته در بازه انتخابی</p>
+          </div>
+          <span className="shrink-0 text-xs font-bold text-[#7EB8FF]">
+            {activityTotalMinutes > 0 ? minutesToHoursLabel(activityTotalMinutes) : '—'}
+          </span>
+        </div>
+        {activityCategoryTotals.length > 0 ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {activityCategoryTotals.map((item) => (
+              <div key={item.key} className="flex items-center gap-3 rounded-lg border border-dashed border-[#4DA3FF]/25 bg-[var(--bg-elevated)] px-3 py-2.5">
+                <span className="text-lg shrink-0" aria-hidden>{item.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-[var(--foreground)]">{item.label}</p>
+                  <p className="mt-0.5 text-[10px] text-[var(--foreground-subtle)] tabular-nums">{toPersianDigits(item.count)} مورد</p>
+                </div>
+                <span className="shrink-0 text-sm font-bold text-[#7EB8FF] tabular-nums">
+                  {item.minutes > 0 ? minutesToHoursLabel(item.minutes) : 'بدون زمان'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-xs text-[var(--foreground-muted)]">در این بازه فعالیت غیردرسی ثبت نشده است.</p>
+        )}
+      </section>
+
+      {/* ===== Sleep overview — same selected range as the report ===== */}
+      <section className="mb-8 rounded-xl border border-dashed border-[#5B7FD9]/30 bg-[#5B7FD9]/[0.05] p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">خواب</h2>
+            <p className="mt-1 text-[11px] text-[var(--foreground-muted)]">میانگین خواب شبانه در بازه انتخابی</p>
+          </div>
+        </div>
+        {sleepStats.nightCount > 0 ? (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-dashed border-[#5B7FD9]/25 bg-[var(--bg-elevated)] px-3 py-2.5 text-center">
+              <p className="text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageNightMinutes != null ? minutesToHoursLabel(sleepStats.averageNightMinutes) : '—'}</p>
+              <p className="mt-0.5 text-[10px] text-[var(--foreground-muted)]">میانگین خواب شبانه</p>
+            </div>
+            <div className="rounded-lg border border-dashed border-[#5B7FD9]/25 bg-[var(--bg-elevated)] px-3 py-2.5 text-center">
+              <p className="text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageBedtime ? formatTimePersian(sleepStats.averageBedtime) : '—'}</p>
+              <p className="mt-0.5 text-[10px] text-[var(--foreground-muted)]">میانگین ساعت خواب</p>
+            </div>
+            <div className="rounded-lg border border-dashed border-[#5B7FD9]/25 bg-[var(--bg-elevated)] px-3 py-2.5 text-center">
+              <p className="text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageWakeTime ? formatTimePersian(sleepStats.averageWakeTime) : '—'}</p>
+              <p className="mt-0.5 text-[10px] text-[var(--foreground-muted)]">میانگین ساعت بیداری</p>
+            </div>
+          </div>
+        ) : (
+          <p className="py-6 text-center text-xs text-[var(--foreground-muted)]">در این بازه خوابی ثبت نشده است.</p>
+        )}
+        {sleepStats.napCount > 0 && (
+          <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">چرت: {toPersianDigits(sleepStats.napCount)} مورد · مجموع {minutesToHoursLabel(sleepStats.napMinutes)}</p>
+        )}
+      </section>
+
+      {!embedded && <section className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4"><div className="mb-4"><h2 className="text-base font-bold text-[var(--foreground)]">آزمون‌ها</h2><p className="mt-1 text-xs text-[var(--foreground-muted)]">آزمون‌های بازه انتخابی و وضعیت تحلیل هر آزمون</p></div><ExamHistory studentId={studentId} isAdvisor={isAdvisor} embedded dateRange={examRange} /></section>}
 
       <section className="mb-8 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
         <div className="mb-4">
@@ -482,7 +577,17 @@ export default function MinimalAnalyticsView({
             <ResponsiveContainer width="100%" height="100%">
                <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="day" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                  minTickGap={12}
+                  angle={dailyTrend.length > 8 ? -40 : 0}
+                  textAnchor={dailyTrend.length > 8 ? 'end' : 'middle'}
+                  height={dailyTrend.length > 8 ? 44 : 30}
+                />
                 <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
                 <Bar dataKey="hours" name="ساعت مطالعه" fill="var(--accent)" radius={[5, 5, 0, 0]} maxBarSize={34} />
@@ -507,12 +612,27 @@ export default function MinimalAnalyticsView({
           dailyActivities.some((day) => day.مطالعه + day.مرور + day.تست_آموزشی + day.تست_سنجشی + day.کلاس_ویدیو > 0) ? <>
             <div className="h-64" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={dailyActivities} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="var(--border)" />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'var(--border)' }} />
-                  <Bar dataKey="مطالعه" name="مطالعه" stackId="method" fill={ACTIVITY_COLORS['مطالعه']} maxBarSize={42} />
+                  <BarChart data={dailyActivities} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                   <CartesianGrid vertical={false} stroke="var(--border)" />
+                   <XAxis
+                     dataKey="name"
+                     tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
+                     axisLine={false}
+                     tickLine={false}
+                     interval="preserveStartEnd"
+                     minTickGap={12}
+                     angle={dailyActivities.length > 8 ? -40 : 0}
+                     textAnchor={dailyActivities.length > 8 ? 'end' : 'middle'}
+                     height={dailyActivities.length > 8 ? 44 : 30}
+                   />
+                    <YAxis
+                      tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(value: number) => toPersianDigits(Math.round(value * 10) / 10)}
+                    />
+                   <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
+                   <Bar dataKey="مطالعه" name="مطالعه" stackId="method" fill={ACTIVITY_COLORS['مطالعه']} maxBarSize={42} />
                   <Bar dataKey="مرور" name="مرور" stackId="method" fill={ACTIVITY_COLORS['مرور']} maxBarSize={42} />
                   <Bar dataKey="تست_آموزشی" name="تست آموزشی" stackId="method" fill={ACTIVITY_COLORS['تست آموزشی']} maxBarSize={42} />
                   <Bar dataKey="تست_سنجشی" name="تست سنجشی" stackId="method" fill={ACTIVITY_COLORS['تست سنجشی']} maxBarSize={42} />
@@ -577,15 +697,15 @@ export default function MinimalAnalyticsView({
                   {courseOverview.some((item) => item.minutes > 0) ? (
                     <div className="h-64" dir="ltr">
                       <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={courseOverview} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                          <CartesianGrid vertical={false} stroke="var(--border)" />
-                          <XAxis dataKey="name" tick={{ fill: 'var(--foreground)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
-                          <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<ReportTooltip unit="دقیقه" />} cursor={{ fill: 'var(--border)' }} />
-                          <Bar dataKey="minutes" name="زمان" radius={[5, 5, 0, 0]} maxBarSize={42}>
-                            {courseOverview.map((item) => <Cell key={item.key} fill={item.fill} />)}
-                          </Bar>
-                        </BarChart>
+                          <BarChart data={courseOverview.map((item) => ({ ...item, hours: Math.round((item.minutes / 60) * 10) / 10 }))} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
+                           <CartesianGrid vertical={false} stroke="var(--border)" />
+                           <XAxis dataKey="name" tick={{ fill: 'var(--foreground)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+                           <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                           <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
+                           <Bar dataKey="hours" name="ساعت" radius={[5, 5, 0, 0]} maxBarSize={42}>
+                             {courseOverview.map((item) => <Cell key={item.key} fill={item.fill} />)}
+                           </Bar>
+                         </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
@@ -668,7 +788,7 @@ export default function MinimalAnalyticsView({
                         <CartesianGrid vertical={false} stroke="var(--border)" />
                         <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<ReportTooltip />} cursor={{ fill: 'var(--border)' }} />
+                        <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
                         {(Object.keys(ACTIVITY_COLORS) as ActivityType[]).map((activity) => (
                           <Bar key={activity} dataKey={activity} name={activity} stackId="activity" fill={ACTIVITY_COLORS[activity]} maxBarSize={42} />
                         ))}

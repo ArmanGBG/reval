@@ -5,7 +5,9 @@ import { BarChart3, CalendarDays, Check, ClipboardCheck, Clock3, Medal, Plus, Ro
 import { toast } from 'sonner';
 import type { Exam } from '@/lib/types';
 import { useAppStore } from '@/lib/store';
-import { formatPersianDateFromISO, toPersianDigits } from '@/lib/persian-date';
+import { formatPersianDateFromISO, toISODate, toPersianDigits } from '@/lib/persian-date';
+import { resolveDateRange, type TimeFilter } from '@/lib/analytics';
+import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import { ExamModal } from '@/components/advisor/ExamModal';
 import { ExamResultsModal } from '@/components/advisor/ExamResultsModal';
 import { getExamParticipantStatus } from '@/lib/exam-lifecycle';
@@ -19,6 +21,17 @@ export function ExamBadge({ exam }: { exam: Exam }) {
       {exam.scope === 'COMPREHENSIVE' ? 'آزمون جامع' : 'آزمون تک‌درسی'}
     </span>
   );
+}
+
+/** Time filters for the exams list — same labels + range resolution as the study report and the activities tab, plus 'همه' (no restriction). */
+type ExamTimeFilter = TimeFilter | 'همه';
+const EXAM_TIME_FILTERS: ExamTimeFilter[] = ['همه', 'روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'];
+
+/** Resolves the inclusive ISO [start, end] window for the given filter. 'همه' returns null (no restriction). */
+function examDateRange(timeFilter: ExamTimeFilter, customRange?: { start: string; end: string } | null): { start: string; end: string } | null {
+  if (timeFilter === 'همه') return null;
+  if (timeFilter === 'بازه دلخواه') return customRange ?? null;
+  return resolveDateRange(timeFilter, new Date());
 }
 
 export function ExamCard({ exam, studentId, canManageResult = false, compact = false }: { exam: Exam; studentId: string; canManageResult?: boolean; compact?: boolean }) {
@@ -126,8 +139,13 @@ export function ExamCard({ exam, studentId, canManageResult = false, compact = f
           </>
         )}
       </div>}
-      <button type="button" onClick={() => setAnalysisOpen(true)} className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#E57373]/30 bg-[#E57373]/10 px-3 text-xs font-semibold text-[#EF9A9A]"><BarChart3 className="size-3.5" />{exam.analysisTasks?.some((task) => task.studentId === studentId) ? 'مشاهده تسک تحلیل' : 'تحلیل این آزمون'}</button>
-      {canManageResult && <button type="button" onClick={() => setResultsOpen(true)} className="mt-3 min-h-10 rounded-lg border border-[#E57373]/30 bg-[#E57373]/10 px-3 text-xs font-semibold text-[#EF9A9A]">ثبت یا ویرایش نتیجه</button>}
+      {/* Actions — flex row so both buttons align by box (baseline of an
+          inline-flex button with an icon differs from a text-only
+          inline-block button, which visibly offset them vertically) */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setAnalysisOpen(true)} className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#E57373]/30 bg-[#E57373]/10 px-3 text-xs font-semibold text-[#EF9A9A]"><BarChart3 className="size-3.5" />{exam.analysisTasks?.some((task) => task.studentId === studentId) ? 'مشاهده تسک تحلیل' : 'تحلیل این آزمون'}</button>
+        {canManageResult && <button type="button" onClick={() => setResultsOpen(true)} className="inline-flex min-h-10 items-center rounded-lg border border-[#E57373]/30 bg-[#E57373]/10 px-3 text-xs font-semibold text-[#EF9A9A]">ثبت یا ویرایش نتیجه</button>}
+      </div>
       {canManageResult && <ExamResultsModal exam={exam} open={resultsOpen} onOpenChange={setResultsOpen} />}
       <ExamAnalysisDialog exam={exam} studentId={studentId} isAdvisor={canManageResult} open={analysisOpen} onOpenChange={setAnalysisOpen} />
       {canUpdateStatus && <ExamTaskActionDialog
@@ -145,10 +163,18 @@ export function ExamCard({ exam, studentId, canManageResult = false, compact = f
 export function ExamCenter({ studentId, grade, major, isAdvisor }: { studentId: string; grade?: string; major?: string; isAdvisor: boolean }) {
   const { exams, examsLoading } = useAppStore();
   const [createOpen, setCreateOpen] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<ExamTimeFilter>('همه');
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
   const studentExams = useMemo(() => exams
     .filter((exam) => exam.studentIds.includes(studentId))
     .sort((a, b) => b.date.localeCompare(a.date)), [exams, studentId]);
-  const completed = studentExams.filter((exam) => exam.results.some((result) => result.studentId === studentId && result.score != null));
+  // Range-filtered list — same window resolution as the study report
+  const visibleExams = useMemo(() => {
+    const range = examDateRange(timeFilter, customRange);
+    if (!range) return studentExams;
+    return studentExams.filter((exam) => exam.date >= range.start && exam.date <= range.end);
+  }, [studentExams, timeFilter, customRange]);
+  const completed = visibleExams.filter((exam) => exam.results.some((result) => result.studentId === studentId && result.score != null));
   const average = completed.length > 0
     ? Math.round(completed.reduce((sum, exam) => {
         const score = exam.results.find((result) => result.studentId === studentId)?.score ?? 0;
@@ -165,12 +191,44 @@ export function ExamCenter({ studentId, grade, major, isAdvisor }: { studentId: 
         </div>
         <button type="button" onClick={() => setCreateOpen(true)} className="flex min-h-11 items-center gap-2 rounded-xl bg-[#E57373] px-4 text-sm font-bold text-[#241315]"><Plus className="size-4" />آزمون جدید</button>
       </div>
+      {/* Time filter — same chips + logic as the study report; horizontally scrollable on mobile */}
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {EXAM_TIME_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            onClick={() => {
+              if (filter === 'بازه دلخواه' && !customRange) {
+                const today = new Date();
+                const end = new Date(today);
+                end.setDate(today.getDate() + 6);
+                setCustomRange({ start: toISODate(today), end: toISODate(end) });
+              }
+              setTimeFilter(filter);
+            }}
+            className={`shrink-0 rounded-lg border px-3 py-2 text-xs transition-colors ${
+              timeFilter === filter
+                ? 'border-[#E57373]/40 bg-[#E57373]/15 text-[#EF9A9A]'
+                : 'border-[var(--border)] text-[var(--foreground-muted)]'
+            }`}
+          >
+            {filter}
+          </button>
+        ))}
+      </div>
+      {timeFilter === 'بازه دلخواه' && (
+        <div><PersianDateRangePicker value={customRange} onChange={setCustomRange} /></div>
+      )}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-center"><p className="text-lg font-bold">{toPersianDigits(studentExams.length)}</p><p className="text-[10px] text-[var(--foreground-muted)]">کل آزمون‌ها</p></div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-center"><p className="text-lg font-bold">{toPersianDigits(visibleExams.length)}</p><p className="text-[10px] text-[var(--foreground-muted)]">در این بازه</p></div>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-center"><p className="text-lg font-bold">{toPersianDigits(completed.length)}</p><p className="text-[10px] text-[var(--foreground-muted)]">نتیجه ثبت‌شده</p></div>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-center"><p className="text-lg font-bold text-[#EF9A9A]">{average == null ? '—' : `${toPersianDigits(average)}٪`}</p><p className="text-[10px] text-[var(--foreground-muted)]">میانگین عملکرد</p></div>
       </div>
-      {examsLoading ? <div className="rounded-xl border border-[var(--border)] p-8 text-center text-sm text-[var(--foreground-muted)]">در حال دریافت آزمون‌ها...</div> : studentExams.length === 0 ? <div className="rounded-xl border border-dashed border-[#E57373]/30 p-10 text-center"><ClipboardCheck className="mx-auto size-7 text-[#EF9A9A]" /><p className="mt-3 text-sm font-semibold">هنوز آزمونی ثبت نشده است</p></div> : <div className="grid gap-3 md:grid-cols-2">{studentExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisor} />)}</div>}
+      {examsLoading ? <div className="rounded-xl border border-[var(--border)] p-8 text-center text-sm text-[var(--foreground-muted)]">در حال دریافت آزمون‌ها...</div> : visibleExams.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[#E57373]/30 p-10 text-center">
+          <ClipboardCheck className="mx-auto size-7 text-[#EF9A9A]" />
+          <p className="mt-3 text-sm font-semibold">{timeFilter === 'همه' ? 'هنوز آزمونی ثبت نشده است' : 'در این بازه آزمونی ثبت نشده است'}</p>
+        </div>
+      ) : <div className="grid gap-3 md:grid-cols-2">{visibleExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisor} />)}</div>}
       <ExamModal open={createOpen} onOpenChange={setCreateOpen} studentId={studentId} grade={grade} major={major} />
     </section>
   );

@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const phone = normalizeIranianPhone(typeof body.phone === 'string' ? body.phone : '');
     const otp = typeof body.otp === 'string' ? body.otp.trim() : '';
+    const otpChallengeId = typeof body.otpChallengeId === 'string' ? body.otpChallengeId.trim() : undefined;
 
     if (!phone || !/^\d{6}$/.test(otp)) {
       return NextResponse.json(
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!(await verifyOtp(phone, 'LOGIN', otp))) {
+    if (!(await verifyOtp(phone, 'LOGIN', otp, { challengeId: otpChallengeId }))) {
       return NextResponse.json(
         { error: 'کد تایید نامعتبر یا منقضی شده است' },
         { status: 401 }

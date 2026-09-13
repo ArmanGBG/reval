@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, type Variants } from 'framer-motion';
-import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil, UserRound, BookOpen, MessageSquareText } from 'lucide-react';
+import { Check, X, Settings, Trash2, Clock, FileText, GripVertical, RotateCcw, Pencil, UserRound, BookOpen, BookOpenCheck, MessageSquareText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Task } from '@/lib/types';
 import { getRandomSuccessMessage, getRandomFailureMessage } from '@/lib/constants/feedbackMessages';
@@ -34,6 +34,8 @@ interface TaskCardProps {
   onSettings: (id: string) => void;
   onReset: (id: string) => void; // NEW: undo complete/skip
   onEdit?: (id: string) => void; // edit task details
+  /** Open the class-homework dialog for a class task (create/view its homework). */
+  onHomework?: (id: string) => void;
   dragHandleProps?: Record<string, unknown>; // for dnd-kit drag handle
   capabilities?: TaskCardCapabilities;
 }
@@ -59,6 +61,7 @@ export default function TaskCard({
   onSettings,
   onReset,
   onEdit,
+  onHomework,
   dragHandleProps,
   capabilities,
 }: TaskCardProps) {
@@ -92,6 +95,12 @@ export default function TaskCard({
         border border-[var(--border)] hover:border-[var(--border-strong)]
         ${isCompleted || isSkipped ? 'opacity-60 hover:opacity-90' : ''}
       `}
+      style={task.subjectColor ? {
+        // Very soft per-subject tint: the subject color at ~5.5% over the
+        // card surface, so subjects are distinguishable at a glance while
+        // text contrast is untouched in both light and dark themes.
+        backgroundColor: `color-mix(in srgb, ${task.subjectColor} 5.5%, var(--bg-elevated))`,
+      } : undefined}
     >
       {/* Top subject color stripe (subtle accent strip at the very top) */}
       <div
@@ -144,6 +153,29 @@ export default function TaskCard({
                 {task.teacherClassName && <span className="flex items-center gap-1"><UserRound className="w-3 h-3" />دبیر: {task.teacherClassName}{task.sessionNumber ? ` · ${task.sessionNumber}` : ''}</span>}
                 {task.bookName && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />کتاب: {task.bookName}{task.testDescription ? ` · ${task.testDescription}` : ''}</span>}
               </div>
+            )}
+
+            {/* Class homework — create/view the linked homework task (same
+                pattern as the exam-analysis link on exam cards). Shown as
+                soon as the class task exists, regardless of draft/details
+                state — the homework's date is picked independently. */}
+            {isClassTask(task) && onHomework && (
+              <div className="mb-2">
+                <button
+                  type="button"
+                  onClick={(event) => { event.preventDefault(); event.stopPropagation(); onHomework(task.id); }}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-3 text-xs font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/15"
+                >
+                  <BookOpenCheck className="size-3.5" />
+                  {task.homeworkForClass ? 'مشاهده تکلیف این کلاس' : 'تکلیف این کلاس'}
+                </button>
+              </div>
+            )}
+            {/* Class-homework tasks show which class they belong to */}
+            {task.classHomeworkOfId && (
+              <span className="mb-2 inline-flex items-center gap-1 rounded-md border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)]">
+                تکلیف کلاس{task.classHomeworkOf?.teacherClassName ? ` · ${task.classHomeworkOf.teacherClassName}` : ''}
+              </span>
             )}
             {task.advisorNote && (
               <div className="mb-2 flex items-start gap-2 rounded-lg border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-3 py-2 text-xs leading-5 text-[var(--foreground)]">

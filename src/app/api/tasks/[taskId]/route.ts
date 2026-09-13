@@ -165,7 +165,10 @@ export async function PATCH(
     }
     const fieldType = 'fieldType' in body ? body.fieldType : existing.fieldType;
     const subjectId = body.subjectId ?? existing.subjectId;
-    if ((!isTaskFieldType(fieldType) && !(hasClassVideoRequested && fieldType == null)) || typeof subjectId !== 'string') return NextResponse.json({ error: 'subjectId یا fieldType معتبر نیست' }, { status: 400 });
+    // Class-homework tasks (educational tests linked to a class) may keep
+    // fieldType null until the student fills in the details.
+    const isClassHomeworkTask = existing.classHomeworkOfId != null;
+    if ((!isTaskFieldType(fieldType) && !(hasClassVideoRequested && fieldType == null) && !isClassHomeworkTask) || typeof subjectId !== 'string') return NextResponse.json({ error: 'subjectId یا fieldType معتبر نیست' }, { status: 400 });
     const curriculumMode = 'curriculumMode' in body ? body.curriculumMode : existing.curriculumMode;
     if (hasClassVideoRequested && curriculumMode != null && !isTaskFieldType(fieldType)) {
       return NextResponse.json({ error: 'برای اتصال کلاس به محتوای درسی، نوع ارزیابی الزامی است' }, { status: 400 });
@@ -197,7 +200,7 @@ export async function PATCH(
       topicModeSubtopicIds: 'topicModeSubtopicIds' in body ? body.topicModeSubtopicIds : isThematic ? existing.topicModeSubtopics.map((item) => item.topicModeSubtopicId) : [],
       pageStart: 'pageStart' in body ? body.pageStart : isBook ? existing.pageStart : null,
       pageEnd: 'pageEnd' in body ? body.pageEnd : isBook ? existing.pageEnd : null,
-      allowSubjectOnly: hasClassVideoRequested,
+      allowSubjectOnly: hasClassVideoRequested || isClassHomeworkTask,
       allowAllGrades: true,
     });
     if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
@@ -218,17 +221,17 @@ export async function PATCH(
       ? body.completed === true ? 'COMPLETED' : body.completed === false ? 'SKIPPED' : hasClassVideoRequested ? 'PENDING' : legacyTaskStatus(detailsCompleted, null)
       : existing.status ?? legacyTaskStatus(detailsCompleted, existing.completed));
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
-    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed !== undefined ? body.completed : existing.completed, hasClassVideoRequested);
+    const lifecycleError = validateTaskLifecycle(status, detailsCompleted, body.completed !== undefined ? body.completed : existing.completed, hasClassVideoRequested || isClassHomeworkTask);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
     const invalidClassMetrics = hasClassVideoRequested && (
       (targetTimeMinutes != null && (typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0))
       || (targetTestCount != null && (typeof targetTestCount !== 'number' || targetTestCount < 0))
     );
-    const invalidStandardMetrics = !hasClassVideoRequested && status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0 || typeof targetTestCount !== 'number' || targetTestCount < 0);
+    const invalidStandardMetrics = !hasClassVideoRequested && !isClassHomeworkTask && status !== 'DRAFT' && (!Array.isArray(activityTypes) || activityTypes.length === 0 || typeof targetTimeMinutes !== 'number' || targetTimeMinutes < 0 || typeof targetTestCount !== 'number' || targetTestCount < 0);
     if (invalidClassMetrics || invalidStandardMetrics) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
-    if ((body.completed === true || body.completed === false) && !detailsCompleted && !hasClassVideoRequested) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
+    if ((body.completed === true || body.completed === false) && !detailsCompleted && !hasClassVideoRequested && !isClassHomeworkTask) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
     if (status === 'COMPLETED') {
       if (body.actualTimeMinutes === undefined && existing.actualTimeMinutes === null) {
         data.actualTimeMinutes = typeof targetTimeMinutes === 'number' ? targetTimeMinutes : 0;

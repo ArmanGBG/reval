@@ -1,8 +1,11 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType } from '@/lib/types';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity } from '@/lib/types';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
+import * as nonStudyActivityService from '@/lib/non-study-activity-service';
+import * as sleepService from '@/lib/sleep-service';
+import type { SleepRecordData } from '@/lib/sleep';
 import { initSRSFields } from '@/lib/spaced-repetition';
 import { AuthError } from '@/lib/api-client';
 import { navigationUrl, pushNavigation } from '@/lib/navigation';
@@ -183,6 +186,7 @@ interface AppState {
   // Advisor: selected student for detail view
   selectedStudentId: string | null;
   setSelectedStudentId: (id: string | null) => void;
+  advisorStudentsFilter: 'intervention' | null;
 
   // Super Admin: selected institute / user for detail view
   selectedInstituteId: string | null;
@@ -236,6 +240,32 @@ interface AppState {
 
   // Reorder tasks. Optimistic + batch API call.
   reorderTasks: (tasks: Task[]) => Promise<void>;
+
+  // ===== Non-Study Activities (API-backed cache) =====
+  // Same cache pattern as tasks: holds the currently-loaded student's
+  // personal non-study activities (media, games, social, health, skills).
+  nonStudyActivities: NonStudyActivity[];
+  nonStudyActivitiesLoading: boolean;
+  nonStudyActivitiesError: string | null;
+  /** Loads all activities for a student (no date filter — the client filters by range). */
+  loadNonStudyActivities: (studentId: string) => Promise<void>;
+  /** Creates an activity via API and adds it to the cache on success. */
+  addNonStudyActivity: (input: nonStudyActivityService.CreateNonStudyActivityPayload) => Promise<void>;
+  /** Deletes an activity. Optimistic + API call + revert on error. */
+  deleteNonStudyActivity: (id: string) => Promise<void>;
+
+  // ===== Sleep (API-backed cache) =====
+  sleepRecords: SleepRecordData[];
+  sleepLoading: boolean;
+  sleepError: string | null;
+  /** Loads all sleep records for a student. */
+  loadSleepRecords: (studentId: string) => Promise<void>;
+  /** Upserts the night sleep for a date (replace on re-submit). */
+  saveNightSleep: (payload: sleepService.SaveNightSleepPayload) => Promise<void>;
+  /** Upserts the nap for a date. */
+  saveNap: (payload: sleepService.SaveNapPayload) => Promise<void>;
+  /** Deletes a sleep record. Optimistic + revert on error. */
+  deleteSleepRecord: (id: string) => Promise<void>;
 
   // ===== Advisor: real students from DB =====
   // Fetched from /api/students?advisorId=... on login or dashboard mount.
@@ -362,6 +392,7 @@ function buildStudentProfile(row: {
     taskCompletionRate: number;
     incompleteCount: number;
   };
+  dailyTasks?: StudentProfile['dailyTasks'];
 }): StudentProfile {
   return {
     id: row.id,
@@ -386,6 +417,7 @@ function buildStudentProfile(row: {
     advisorNotes: '',
     lastSessionDate: '',
     weeksUntilExam: 0,
+    dailyTasks: row.dailyTasks ?? [],
   };
 }
 
@@ -433,6 +465,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedInstituteId: target.view === 'sa-institute-detail' ? target.selectedInstituteId ?? null : null,
       selectedGlobalUserId: target.view === 'sa-user-detail' ? target.selectedGlobalUserId ?? null : null,
       currentTool: target.view === 'tools' ? ('currentTool' in target ? target.currentTool ?? null : get().currentTool) : null,
+      advisorStudentsFilter: target.view === 'advisor-students' ? target.advisorFilter ?? null : null,
     };
     const navigationTarget = {
       view: nextState.currentView,
@@ -440,6 +473,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedInstituteId: nextState.selectedInstituteId,
       selectedGlobalUserId: nextState.selectedGlobalUserId,
       currentTool: nextState.currentTool,
+      advisorFilter: nextState.advisorStudentsFilter,
     };
     set(nextState);
     if (`${window.location.pathname}${window.location.search}` !== navigationUrl(navigationTarget)) {
@@ -452,10 +486,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     selectedInstituteId: target.view === 'sa-institute-detail' ? target.selectedInstituteId ?? null : null,
     selectedGlobalUserId: target.view === 'sa-user-detail' ? target.selectedGlobalUserId ?? null : null,
     currentTool: target.view === 'tools' ? target.currentTool ?? null : null,
+    advisorStudentsFilter: target.view === 'advisor-students' ? target.advisorFilter ?? null : null,
   }),
 
   // Advisor: selected student
   selectedStudentId: null,
+  advisorStudentsFilter: null,
   setSelectedStudentId: (id) => set({ selectedStudentId: id }),
 
   // Super Admin: selected institute / user
@@ -519,6 +555,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedGlobalUserId: null,
       tasks: [],
       loadedStudentId: null,
+      nonStudyActivities: [],
+      sleepRecords: [],
       advisorStudents: [],
     });
   },
@@ -596,13 +634,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       bookName: task.bookName ?? null,
       testDescription: task.testDescription ?? null,
       ...(task.createdBy === 'advisor' ? { advisorNote: task.advisorNote ?? null } : {}),
+      classHomeworkOfId: task.classHomeworkOfId ?? null,
     };
 
     try {
       const realTask = await taskService.createTask(payload);
-      // Replace the temp task with the real DB task (match by temp id)
+      // Replace the temp task with the real DB task (match by temp id) and,
+      // for class homework, mark the linked class task so its button flips
+      // to «مشاهده تکلیف» without a reload.
       set((state) => ({
-        tasks: state.tasks.map((t) => (t.id === task.id ? realTask : t)),
+        tasks: state.tasks
+          .map((t) => (t.id === task.id ? realTask : t))
+          .map((t) => (t.id === realTask.classHomeworkOfId
+            ? { ...t, homeworkForClass: { id: realTask.id, date: realTask.date, status: realTask.status ?? 'PENDING' } }
+            : t)),
       }));
     } catch (err) {
       // Remove the optimistic task on error
@@ -761,6 +806,116 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (err instanceof AuthError) throw err;
       const msg = err instanceof Error ? err.message : 'خطا در مرتب‌سازی';
       throw new Error(msg);
+    }
+  },
+
+  // ===== Non-Study Activities =====
+  nonStudyActivities: [],
+  nonStudyActivitiesLoading: false,
+  nonStudyActivitiesError: null,
+
+  loadNonStudyActivities: async (studentId) => {
+    set({ nonStudyActivitiesLoading: true, nonStudyActivitiesError: null });
+    try {
+      const activities = await nonStudyActivityService.loadNonStudyActivities({ studentId });
+      set({ nonStudyActivities: activities, nonStudyActivitiesLoading: false });
+    } catch (err) {
+      if (err instanceof AuthError) {
+        set({ nonStudyActivitiesLoading: false });
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'خطا در بارگذاری فعالیت‌های غیردرسی';
+      set({ nonStudyActivitiesLoading: false, nonStudyActivitiesError: msg });
+    }
+  },
+
+  addNonStudyActivity: async (input) => {
+    try {
+      const activity = await nonStudyActivityService.createNonStudyActivity(input);
+      set((state) => ({ nonStudyActivities: [...state.nonStudyActivities, activity] }));
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در ثبت فعالیت غیردرسی';
+      throw new Error(msg);
+    }
+  },
+
+  deleteNonStudyActivity: async (id) => {
+    const original = get().nonStudyActivities.find((a) => a.id === id);
+    set((state) => ({ nonStudyActivities: state.nonStudyActivities.filter((a) => a.id !== id) }));
+    try {
+      await nonStudyActivityService.deleteNonStudyActivity(id);
+    } catch (err) {
+      if (original) {
+        set((state) => ({ nonStudyActivities: [...state.nonStudyActivities, original] }));
+      }
+      if (err instanceof AuthError) throw err;
+      const msg = err instanceof Error ? err.message : 'خطا در حذف فعالیت';
+      throw new Error(msg);
+    }
+  },
+
+  // ===== Sleep =====
+  sleepRecords: [],
+  sleepLoading: false,
+  sleepError: null,
+
+  loadSleepRecords: async (studentId) => {
+    set({ sleepLoading: true, sleepError: null });
+    try {
+      const records = await sleepService.loadSleepRecords(studentId);
+      set({ sleepRecords: records, sleepLoading: false });
+    } catch (err) {
+      if (err instanceof AuthError) {
+        set({ sleepLoading: false });
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'خطا در بارگذاری خواب';
+      set({ sleepLoading: false, sleepError: msg });
+    }
+  },
+
+  saveNightSleep: async (payload) => {
+    try {
+      const record = await sleepService.saveNightSleep(payload);
+      set((state) => ({
+        sleepRecords: [
+          ...state.sleepRecords.filter((r) => !(r.studentId === record.studentId && r.date === record.date && r.type === 'NIGHT')),
+          record,
+        ],
+      }));
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      throw new Error(err instanceof Error ? err.message : 'خطا در ثبت خواب شبانه');
+    }
+  },
+
+  saveNap: async (payload) => {
+    try {
+      const record = await sleepService.saveNap(payload);
+      set((state) => ({
+        sleepRecords: [
+          ...state.sleepRecords.filter((r) => !(r.studentId === record.studentId && r.date === record.date && r.type === 'NAP')),
+          record,
+        ],
+      }));
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      throw new Error(err instanceof Error ? err.message : 'خطا در ثبت چرت');
+    }
+  },
+
+  deleteSleepRecord: async (id) => {
+    const original = get().sleepRecords.find((r) => r.id === id);
+    set((state) => ({ sleepRecords: state.sleepRecords.filter((r) => r.id !== id) }));
+    try {
+      await sleepService.deleteSleepRecord(id);
+    } catch (err) {
+      if (original) {
+        set((state) => ({ sleepRecords: [...state.sleepRecords, original] }));
+      }
+      if (err instanceof AuthError) throw err;
+      throw new Error(err instanceof Error ? err.message : 'خطا در حذف رکورد خواب');
     }
   },
 

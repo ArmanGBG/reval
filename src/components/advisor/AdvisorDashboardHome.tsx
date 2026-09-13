@@ -1,204 +1,100 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { AlertTriangle, CheckCircle2, Circle, Loader2, Users } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { StudentStatus } from '@/lib/types';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Users,
-  Target,
-  UserCheck,
-  Activity,
-  Clock,
-  Flame,
-  Zap,
-} from 'lucide-react';
-import { Card, SectionHeader, MetricBar } from './advisor-ui';
-import { toPersianDigits, computeRisks, computeStudentStatus, STATUS_CONFIG, RISK_CONFIG } from './advisor-helpers';
+import { AdvisorDailyTask, StudentProfile } from '@/lib/types';
+import { toPersianDigits } from './advisor-helpers';
 
-// ===== ADVISOR VIEW 1: Dashboard (Global KPIs) =====
+function dailySummary(student: StudentProfile) {
+  const total = student.dailyTasks.length;
+  const completed = student.dailyTasks.filter((task) => task.status === 'COMPLETED').length;
+  const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
+  return { total, completed, completionRate, needsIntervention: total > 0 && completionRate <= 40 };
+}
+
+function TaskStatus({ task }: { task: AdvisorDailyTask }) {
+  const completed = task.status === 'COMPLETED';
+  return (
+    <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
+      {completed ? <CheckCircle2 className="w-3.5 h-3.5 text-[var(--accent)]" /> : <Circle className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />}
+      <span className={completed ? 'text-[var(--foreground)]' : undefined}>{task.subject}{task.topic ? ` · ${task.topic}` : ''}</span>
+      <span className="mr-auto text-[10px]">{completed ? 'انجام شده' : task.status === 'SKIPPED' ? 'رد شده' : 'انجام نشده'}</span>
+    </div>
+  );
+}
+
+function StudentRow({ student, index, onOpen }: { student: StudentProfile; index: number; onOpen: () => void }) {
+  const summary = dailySummary(student);
+  return (
+    <motion.button
+      type="button"
+      onClick={onOpen}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.25), duration: 0.25 }}
+      className="surface-1 rounded-2xl border border-[var(--border)] p-4 md:p-5 text-right w-full hover:border-[var(--accent)]/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-xl bg-[var(--bg-overlay)] flex items-center justify-center text-lg shrink-0">{student.avatar}</span>
+          <div className="min-w-0">
+            <span className="font-bold text-[var(--foreground)] group-hover:text-[var(--accent)] text-right truncate">
+              {student.name}
+            </span>
+            <p className="text-[11px] text-[var(--foreground-muted)] mt-1">{toPersianDigits(summary.completed)} از {toPersianDigits(summary.total)} تسک انجام شده</p>
+          </div>
+        </div>
+        <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold shrink-0 ${summary.needsIntervention ? 'bg-[var(--danger)]/15 text-[var(--danger)]' : 'bg-[var(--accent-soft)] text-[var(--accent)]'}`}>
+          {summary.needsIntervention ? 'نیاز به مداخله' : summary.total === 0 ? 'بدون تسک امروز' : `${toPersianDigits(summary.completionRate)}٪ انجام شده`}
+        </span>
+      </div>
+      {student.dailyTasks.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-[var(--border)] space-y-2">
+          {student.dailyTasks.map((task) => <TaskStatus key={task.id} task={task} />)}
+        </div>
+      )}
+    </motion.button>
+  );
+}
+
 export function AdvisorDashboardHome() {
   const { advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents, navigateTo } = useAppStore();
-  const students = advisorStudents;
 
-  // Load real students from DB if not already loaded
   useEffect(() => {
-    if (user?.id && advisorStudents.length === 0 && !advisorStudentsLoading) {
-      loadAdvisorStudents(user.id).catch(() => {});
-    }
+    if (user?.id && advisorStudents.length === 0 && !advisorStudentsLoading) loadAdvisorStudents(user.id).catch(() => {});
   }, [user?.id, advisorStudents.length, advisorStudentsLoading, loadAdvisorStudents]);
 
-  // Guard against empty students (before load completes)
-  const safeStudents = students.length > 0 ? students : [];
-  const safeAvg = (fn: (s: typeof safeStudents[0]) => number) =>
-    safeStudents.length > 0 ? Math.round(safeStudents.reduce((a, s) => a + fn(s), 0) / safeStudents.length) : 0;
-  const risks = useMemo(() => computeRisks(students), [students]);
-  const statuses = useMemo(() => students.map(s => computeStudentStatus(s)), [students]);
-
-  const statusCounts = useMemo(() => {
-    const c = { excellent: 0, good: 0, fair: 0, 'at-risk': 0, critical: 0 };
-    statuses.forEach(s => c[s]++);
-    return c;
-  }, [statuses]);
-
-  const avgStudy = safeAvg(s => s.studyHoursPerWeek);
-  const avgAdherence = safeAvg(s => s.taskCompletionRate);
-  const atRiskCount = statusCounts['at-risk'] + statusCounts.critical;
-
-  const kpis = [
-    { icon: <Users className="w-4 h-4" />, label: 'کل دانش‌آموزان', value: toPersianDigits(students.length), sub: 'تحت نظارت', accent: 'var(--accent)', view: 'advisor-students' as const },
-    { icon: <AlertTriangle className="w-4 h-4" />, label: 'نیاز به مداخله', value: toPersianDigits(atRiskCount), sub: 'دانش‌آموز', accent: 'var(--danger)' },
-    { icon: <Clock className="w-4 h-4" />, label: 'میانگین مطالعه', value: toPersianDigits(avgStudy), sub: 'ساعت در هفته', accent: 'var(--accent)' },
-    { icon: <UserCheck className="w-4 h-4" />, label: 'میانگین رعایت', value: `${toPersianDigits(avgAdherence)}٪`, sub: 'تکمیل وظایف', accent: 'var(--warning)' },
-  ];
-
-  const statusBars = (Object.entries(statusCounts) as [StudentStatus, number][]).map(([status, count]) => ({
-    status, count, config: STATUS_CONFIG[status], pct: students.length > 0 ? Math.round((count / students.length) * 100) : 0,
-  }));
-
-  const activeRisks = risks.filter(r => r.level !== 'low');
+  const sortedStudents = useMemo(() => [...advisorStudents].sort((a, b) => dailySummary(b).completionRate - dailySummary(a).completionRate || a.name.localeCompare(b.name)), [advisorStudents]);
+  const interventionCount = advisorStudents.filter((student) => dailySummary(student).needsIntervention).length;
 
   return (
     <div className="space-y-4 md:space-y-5">
-      {/* Top row: KPI cards (mobile: 2-col grid, desktop: 4-col span 3 each) */}
-      <div className="grid grid-cols-2 md:grid-cols-12 gap-3 md:gap-4">
-        {kpis.map((kpi, i) => (
-          <motion.button
-            key={kpi.label}
-            type="button"
-            onClick={() => kpi.view && navigateTo({ view: kpi.view })}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className={`md:col-span-3 surface-1 card-hover rounded-xl md:rounded-2xl p-4 md:p-5 edge-highlight text-right ${kpi.view ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]' : ''}`}
-            aria-label={kpi.view ? 'نمایش فهرست دانش‌آموزان' : undefined}
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: `color-mix(in srgb, ${kpi.accent} 12%, transparent)`, color: kpi.accent }}
-              >
-                {kpi.icon}
-              </span>
-              <span className="text-[11px] md:text-xs text-[var(--foreground-muted)] font-medium">{kpi.label}</span>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <p className="text-2xl md:text-3xl font-black text-[var(--foreground)] tabular-nums">{kpi.value}</p>
-              <span className="text-[10px] md:text-[11px] text-[var(--foreground-subtle)]">{kpi.sub}</span>
-            </div>
-          </motion.button>
-        ))}
+      <div className="grid grid-cols-2 gap-3 md:gap-4">
+        <button type="button" onClick={() => navigateTo({ view: 'advisor-students', advisorFilter: 'intervention' })} className="surface-1 rounded-2xl border border-[var(--border)] p-4 md:p-5 text-right hover:border-[var(--danger)]/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--danger)]">
+          <div className="flex items-center gap-2 text-[var(--foreground-muted)] text-xs"><Users className="w-4 h-4 text-[var(--accent)]" /> کل دانش‌آموزان</div>
+          <p className="mt-3 text-3xl font-black text-[var(--foreground)]">{toPersianDigits(advisorStudents.length)}</p>
+        </button>
+        <div className="surface-1 rounded-2xl border border-[var(--border)] p-4 md:p-5">
+          <div className="flex items-center gap-2 text-[var(--foreground-muted)] text-xs"><AlertTriangle className="w-4 h-4 text-[var(--danger)]" /> نیاز به مداخله</div>
+          <p className="mt-3 text-3xl font-black text-[var(--danger)]">{toPersianDigits(interventionCount)}</p>
+        </div>
       </div>
 
-      {/* Middle row: status distribution (col-span-4) + study hours chart (col-span-8) — desktop only split; mobile stacks */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
-        {/* Status distribution — mobile: horizontal bars, desktop: stacked bars */}
-        <Card className="md:col-span-4" style={{ borderRight: '3px solid var(--accent)' }}>
-          <SectionHeader icon={<Activity className="w-4.5 h-4.5" />} title="توزیع وضعیت دانش‌آموزان" />
-          <div className="space-y-2.5">
-            {statusBars.map(({ status, count, config, pct }) => (
-              <div key={status}>
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className={config.color}>{config.icon}</span>
-                    <span className="text-[11px] text-[var(--foreground-muted)] font-medium">{config.label}</span>
-                  </div>
-                  <span className="text-[11px] text-[var(--foreground)] font-bold tabular-nums">{toPersianDigits(count)}</span>
-                </div>
-                <div className="h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                  <motion.div
-                    className={`h-full rounded-full ${config.bg}`}
-                    style={{ backgroundColor: 'currentColor' }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <div className={`h-full w-full ${config.bg}`} />
-                  </motion.div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Study hours chart — full width on mobile, col-span-8 on desktop */}
-        <Card className="md:col-span-8" style={{ borderRight: '3px solid var(--warning)' }}>
-          <SectionHeader
-            icon={<Clock className="w-4.5 h-4.5" />}
-            title="ساعت مطالعه هفتگی"
-          />
-          <div className="space-y-2.5 max-h-72 overflow-y-auto custom-scrollbar pr-1">
-            {students.map(student => (
-              <MetricBar
-                key={student.id}
-                label={student.name.split(' ')[0]}
-                value={student.studyHoursPerWeek}
-                max={Math.max(10, ...students.map((item) => item.studyHoursPerWeek))}
-                color="var(--accent)"
-              />
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Bottom row: red flags — full width, inner 3-col grid on desktop */}
-      <Card
-        className="border-[var(--danger)]/25"
-        style={{
-          borderRight: '3px solid var(--danger)',
-        }}
-      >
-        <SectionHeader
-          icon={<Flame className="w-4.5 h-4.5" />}
-          title="پرچم‌های قرمز"
-          accent="var(--danger)"
-          action={
-            <span className="flex items-center gap-1.5 text-[11px] text-[var(--danger)] font-medium px-2.5 py-1 rounded-full bg-[var(--danger)]/10">
-              {activeRisks.length > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)] animate-pulse" />
-              )}
-              {toPersianDigits(activeRisks.length)} مورد
-            </span>
-          }
-        />
-        {activeRisks.length === 0 ? (
-          <div className="text-center py-6">
-            <CheckCircle2 className="w-8 h-8 text-[var(--accent)] mx-auto mb-2" />
-            <p className="text-sm text-[var(--foreground-muted)]">پرچم قرمزی شناسایی نشده</p>
-          </div>
+      <section className="surface-1 rounded-2xl border border-[var(--border)] overflow-hidden">
+        <div className="px-4 py-4 md:px-5 border-b border-[var(--border)]">
+          <h2 className="font-bold text-[var(--foreground)]">وضعیت دانش‌آموزان امروز</h2>
+          <p className="text-[11px] text-[var(--foreground-muted)] mt-1">مرتب‌سازی از بیشترین به کمترین میزان انجام تسک‌ها</p>
+        </div>
+        {advisorStudentsLoading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-[var(--foreground-muted)]"><Loader2 className="w-4 h-4 animate-spin" /> در حال بارگذاری...</div>
+        ) : sortedStudents.length === 0 ? (
+          <div className="py-12 text-center text-sm text-[var(--foreground-muted)]">هنوز دانش‌آموزی به شما متصل نشده است.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {activeRisks.map(risk => {
-              const student = students.find(s => s.id === risk.studentId)!;
-              const config = RISK_CONFIG[risk.level];
-              return (
-                <div
-                  key={risk.studentId}
-                  className={`rounded-xl p-3.5 border ${config.border} ${config.bg} card-hover`}
-                >
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <span className="text-xl">{student.avatar}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[var(--foreground)] truncate">{student.name}</p>
-                      <p className="text-[10px] text-[var(--foreground-muted)] truncate">{risk.reasons[0]}</p>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${config.bg} ${config.color}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                      {config.label}
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-1.5 pt-2 border-t border-[var(--border)]">
-                    <Zap className="w-3 h-3 text-[var(--accent)] mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-[var(--foreground-muted)] leading-relaxed">{risk.immediateAction}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <div className="p-3 md:p-4 space-y-3">{sortedStudents.map((student, index) => <StudentRow key={student.id} student={student} index={index} onOpen={() => navigateTo({ view: 'advisor-student-detail', selectedStudentId: student.id })} />)}</div>
         )}
-      </Card>
+      </section>
     </div>
   );
 }

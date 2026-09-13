@@ -27,6 +27,19 @@ export type FieldType = 'کنکور' | 'نهایی';
 export type ActivityType = 'مطالعه' | 'مرور' | 'تست آموزشی' | 'تست سنجشی' | 'کلاس/ویدیو';
 export type TaskStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'SKIPPED' | 'INCOMPLETE';
 
+// ===== Non-Study Activity =====
+// Personal, non-curricular activity logged by a student (media, games,
+// social, health, personal skill). Duration is optional.
+export interface NonStudyActivity {
+  id: string;
+  studentId: string;
+  category: string;
+  durationMinutes: number | null;
+  date: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -75,6 +88,13 @@ export interface Task {
   pageStart?: number | null;
   pageEnd?: number | null;
   detailsCompleted?: boolean;
+  // Class homework link — when set, this educational-test task is the
+  // homework of the referenced class/video task (one per class).
+  classHomeworkOfId?: string | null;
+  /** Homework task assigned by this class task (present on class tasks). */
+  homeworkForClass?: { id: string; date: string; status: TaskStatus } | null;
+  /** The class this homework task belongs to (present on homework tasks). */
+  classHomeworkOf?: { id: string; teacherClassName: string | null; sessionNumber: string | null; date: string } | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -169,6 +189,15 @@ export interface StudentProfile {
   advisorNotes: string;
   lastSessionDate: string;
   weeksUntilExam: number;
+  dailyTasks: AdvisorDailyTask[];
+}
+
+export interface AdvisorDailyTask {
+  id: string;
+  subject: string;
+  topic: string | null;
+  status: TaskStatus;
+  completed: boolean | null;
 }
 
 export interface StudentRisk {

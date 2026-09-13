@@ -77,7 +77,7 @@ export default function BottomNav() {
         borderTop: '1px solid var(--border)',
       }}
     >
-      <div className="mx-auto flex h-16 max-w-md items-stretch justify-start overflow-x-auto px-2 no-scrollbar">
+      <div className="mx-auto flex h-16 max-w-md items-stretch justify-start px-1 no-scrollbar">
         {navItems.map((item) => {
           const isActive = currentView === item.view;
           const Icon = item.icon;
@@ -85,7 +85,7 @@ export default function BottomNav() {
             <button
               key={item.view}
               onClick={() => navigateTo({ view: item.view })}
-              className={`nav-item-hover relative flex min-h-[48px] min-w-[58px] flex-1 shrink-0 flex-col items-center justify-center gap-1 rounded-xl ${
+              className={`nav-item-hover relative flex min-h-[48px] min-w-0 flex-1 shrink flex-col items-center justify-center gap-1 rounded-xl px-0.5 ${
                 isActive ? accentText : 'text-[var(--foreground-subtle)]'
               }`}
               aria-label={item.label}
@@ -129,7 +129,7 @@ export default function BottomNav() {
             try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
             logout();
           }}
-          className="nav-item-hover relative flex min-h-[48px] min-w-[58px] flex-1 shrink-0 flex-col items-center justify-center gap-1 rounded-xl text-red-400"
+          className="nav-item-hover relative flex min-h-[48px] min-w-0 flex-1 shrink flex-col items-center justify-center gap-1 rounded-xl px-0.5 text-red-400"
           aria-label="خروج"
         >
           <LogOut className="relative w-[22px] h-[22px]" />

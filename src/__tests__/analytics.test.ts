@@ -51,15 +51,15 @@ describe('analytics report datasets', () => {
     ]);
   });
 
-  it('splits daily time across selected study methods', () => {
+  it('splits daily time across selected study methods (in hours)', () => {
     const data = buildActivityBreakdown(
       [completedTask({ activityTypes: ['مرور', 'تست آموزشی'], actualTimeMinutes: 60 })],
       'بازه دلخواه',
       new Date(2026, 7, 14),
       { start: '2026-08-14', end: '2026-08-14' },
     );
-    expect(data[0].مرور).toBe(30);
-    expect(data[0].تست_آموزشی).toBe(30);
+    expect(data[0].مرور).toBe(0.5);
+    expect(data[0].تست_آموزشی).toBe(0.5);
     expect(data[0].مطالعه).toBe(0);
   });
 });

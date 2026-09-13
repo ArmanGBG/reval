@@ -5,6 +5,7 @@ export interface NavigationTarget {
   selectedStudentId?: string | null;
   selectedInstituteId?: string | null;
   selectedGlobalUserId?: string | null;
+  advisorFilter?: 'intervention' | null;
   currentTool?: string | null;
 }
 
@@ -42,10 +43,14 @@ export function decodeNavigationState(location: Pick<Location, 'search'>, role: 
     return selectedGlobalUserId ? { view, selectedGlobalUserId } : { view: 'sa-users' };
   }
 
-  return {
+  const target: NavigationTarget = {
     view,
     currentTool: view === 'tools' ? params.get('tool') : null,
   };
+  if (view === 'advisor-students' && params.get('filter') === 'intervention') {
+    target.advisorFilter = 'intervention';
+  }
+  return target;
 }
 
 export function navigationUrl(target: NavigationTarget, pathname = window.location.pathname): string {
@@ -54,6 +59,7 @@ export function navigationUrl(target: NavigationTarget, pathname = window.locati
   if (target.selectedInstituteId) params.set('institute', target.selectedInstituteId);
   if (target.selectedGlobalUserId) params.set('user', target.selectedGlobalUserId);
   if (target.currentTool) params.set('tool', target.currentTool);
+  if (target.advisorFilter === 'intervention') params.set('filter', 'intervention');
   return `${pathname}?${params.toString()}`;
 }
 

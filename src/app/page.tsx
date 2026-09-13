@@ -91,10 +91,12 @@ export default function Home() {
           replaceNavigation(navigation);
 
           // Load role-specific data in the background
-          const { loadTasksForStudent, loadAdvisorStudents, loadExams } = useAppStore.getState();
+          const { loadTasksForStudent, loadAdvisorStudents, loadExams, loadNonStudyActivities, loadSleepRecords } = useAppStore.getState();
           if (role === 'STUDENT') {
             loadTasksForStudent(data.user.id).catch(() => {});
             loadExams({ studentId: data.user.id }).catch(() => {});
+            loadNonStudyActivities(data.user.id).catch(() => {});
+            loadSleepRecords(data.user.id).catch(() => {});
           } else if (role === 'ADVISOR') {
             loadAdvisorStudents(data.user.id).catch(() => {});
             loadExams({ advisorId: data.user.id }).catch(() => {});

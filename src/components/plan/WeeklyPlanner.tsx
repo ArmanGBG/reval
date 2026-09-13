@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle, BookOpenCheck, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -13,8 +13,9 @@ import { Task, ActivityType, FieldType } from '@/lib/types';
 import { Subject } from '@/lib/subjects-types';
 import {
   TaskSubjectPicker,
-  TaskSelection,
+  type TaskSelection,
 } from '@/components/shared/TaskSubjectPicker';
+import { ClassHomeworkDialog } from '@/components/plan/ClassHomeworkDialog';
 import {
   PERSIAN_WEEKDAYS,
   PERSIAN_WEEKDAYS_SHORT,
@@ -60,6 +61,8 @@ interface WeeklyPlannerProps {
   onSelectDay?: (date: string) => void;
   targetStudent?: PlanTargetStudent;
   actor?: PlanActor;
+  /** Render as an inline panel (advisor's unified weekly tab) instead of a dialog. */
+  inline?: boolean;
 }
 
 type QuickMode = 'BOOK' | 'THEMATIC' | 'CLASS_VIDEO';
@@ -103,7 +106,7 @@ const TEST_QUICK_PICKS = [0, 20, 30, 40];
 // ============================================================
 // Main Component — reads REAL tasks from store, immediate sync
 // ============================================================
-export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, actor }: WeeklyPlannerProps) {
+export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, actor, inline = false }: WeeklyPlannerProps) {
   const { user, tasks, exams, loadExams, addTask, updateTask, deleteTask, resetTask } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
@@ -131,6 +134,10 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
 
   // Which subject is being edited
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+
+  // Class task whose homework dialog is open
+  const [homeworkTaskId, setHomeworkTaskId] = useState<string | null>(null);
+  const homeworkTask = useMemo(() => tasks.find((t) => t.id === homeworkTaskId) ?? null, [tasks, homeworkTaskId]);
 
   // Range mode
   const [rangeMode, setRangeMode] = useState<RangeMode>('week');
@@ -287,9 +294,8 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
     0
   );
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-1rem)] sm:max-w-6xl max-h-[92vh] overflow-hidden flex flex-col rounded-2xl p-0" dir="rtl">
+  const plannerBody = (
+    <>
         {/* ===== Header ===== */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center gap-3">
@@ -326,12 +332,14 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                 </button>
               </>
             )}
-            <button
-              onClick={() => onOpenChange(false)}
-              className="icon-btn size-9 rounded-md border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] ml-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {!inline && (
+              <button
+                onClick={() => onOpenChange(false)}
+                className="icon-btn size-9 rounded-md border border-[var(--border)] flex items-center justify-center text-[var(--foreground-muted)] ml-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -405,10 +413,11 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                       toast.error(error instanceof Error ? error.message : 'حذف پیش‌نویس ناموفق بود');
                     });
                   }}
-                  onEdit={(taskId) => {
-                    const task = tasks.find((item) => item.id === taskId);
-                    if (task && canEditTask(task)) setEditingTaskId(taskId);
-                  }}
+                   onEdit={(taskId) => {
+                     const task = tasks.find((item) => item.id === taskId);
+                     if (task && canEditTask(task)) setEditingTaskId(taskId);
+                   }}
+                   onHomework={(taskId) => setHomeworkTaskId(taskId)}
                 onToggleComplete={(taskId) => {
                   const task = tasks.find((t) => t.id === taskId);
                    if (task && !isAdvisorWorkspace) {
@@ -437,12 +446,14 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
           <p className="text-[11px] text-[var(--foreground-muted)]">
             روی هر درس کلیک کنید تا جزئیاتش را ویرایش کنید
           </p>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="btn-hover glow-hover h-11 px-6 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm"
-          >
-            بستن
-          </button>
+          {!inline && (
+            <button
+              onClick={() => onOpenChange(false)}
+              className="btn-hover glow-hover h-11 px-6 rounded-lg bg-[var(--accent)] text-[var(--bg-deep)] font-bold text-sm"
+            >
+              بستن
+            </button>
+          )}
         </div>
 
         {/* ===== Add Subject Picker Modal ===== */}
@@ -463,7 +474,33 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
         {editingTaskId && (
            <TaskDetailsDialog task={tasks.find(t => t.id === editingTaskId) ?? null} open grade={targetStudent?.grade ?? user?.grade ?? 'دوازدهم'} major={targetStudent?.major ?? user?.major ?? 'تجربی'} onOpenChange={v => !v && setEditingTaskId(null)} onSave={updates => updateTask(editingTaskId, updates)} canEditAdvisorNote={isAdvisorWorkspace} />
         )}
+
+        {/* ===== Class Homework Modal (create/view linked homework task) ===== */}
+        {homeworkTask && (
+          <ClassHomeworkDialog
+            classTask={homeworkTask}
+            open={homeworkTaskId === homeworkTask.id}
+            onOpenChange={(next) => { if (!next) setHomeworkTaskId(null); }}
+            onOpenHomework={(homeworkId) => { setHomeworkTaskId(null); setEditingTaskId(homeworkId); }}
+          />
+        )}
         <ExamModal open={Boolean(addingExamToDay)} onOpenChange={(next) => { if (!next) setAddingExamToDay(null); }} studentId={studentId} selectedDate={addingExamToDay ?? undefined} grade={targetStudent?.grade ?? user?.grade} major={targetStudent?.major ?? user?.major} />
+    </>
+  );
+
+  // Inline mode (advisor's unified weekly tab): same content, no dialog chrome
+  if (inline) {
+    return (
+      <div className="surface-2 w-full overflow-hidden rounded-2xl border border-[var(--border-strong)] text-[var(--foreground)] flex flex-col" dir="rtl">
+        {plannerBody}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="surface-2 border-[var(--border-strong)] text-[var(--foreground)] max-w-[calc(100%-1rem)] sm:max-w-6xl max-h-[92vh] overflow-hidden flex flex-col rounded-2xl p-0" dir="rtl">
+        {plannerBody}
       </DialogContent>
     </Dialog>
   );
@@ -486,6 +523,7 @@ function DayColumn({
   onRemove,
   onEdit,
   onToggleComplete,
+  onHomework,
 }: {
   dayPlan: WeekdayPlan;
   exams: import('@/lib/types').Exam[];
@@ -500,6 +538,7 @@ function DayColumn({
   onRemove: (taskId: string) => void;
   onEdit: (taskId: string) => void;
   onToggleComplete: (taskId: string) => void;
+  onHomework?: (taskId: string) => void;
 }) {
   const dayName = getPersianWeekdayName(dayPlan.date);
   const dateLabel = formatPersianDate(dayPlan.date);
@@ -549,6 +588,7 @@ function DayColumn({
               onClick={() => onEdit(task.id)}
               onRemove={() => onRemove(task.id)}
               onToggleComplete={() => onToggleComplete(task.id)}
+              onHomework={onHomework ? () => onHomework(task.id) : undefined}
             />
           ))
         )}
@@ -574,6 +614,7 @@ function TaskChip({
   onClick,
   onRemove,
   onToggleComplete,
+  onHomework,
 }: {
   task: Task;
   canManage: boolean;
@@ -582,6 +623,7 @@ function TaskChip({
   onClick: () => void;
   onRemove: () => void;
   onToggleComplete: () => void;
+  onHomework?: () => void;
 }) {
   const hasDetails = task.detailsCompleted;
   const isDone = task.completed === true;
@@ -598,9 +640,16 @@ function TaskChip({
         title={task.subject}
         className={`btn-hover relative block w-full overflow-hidden rounded-lg border pr-4 text-right ${actionPad} ${
           hasDetails
-            ? 'bg-[var(--accent-soft)] border-[var(--accent)]/20'
-            : 'bg-[var(--bg-elevated)] border-[var(--border)]'
+            ? 'border-[var(--accent)]/20'
+            : 'border-[var(--border)]'
         } ${isDone ? 'opacity-50 line-through' : ''}`}
+        style={{
+          // Soft per-subject tint on the chip (accent-soft base when
+          // detailed, elevated otherwise), ~6-7% subject color.
+          backgroundColor: hasDetails
+            ? `color-mix(in srgb, ${task.subjectColor ?? 'var(--accent)'} 7%, var(--bg-elevated))`
+            : `color-mix(in srgb, ${task.subjectColor ?? 'var(--accent)'} 5%, var(--bg-elevated))`,
+        }}
       >
         {/* Color strip — right edge in RTL */}
         <span aria-hidden className="absolute top-2 bottom-2 right-1.5 w-[3px] rounded-full" style={{ backgroundColor: task.subjectColor }} />
@@ -615,6 +664,28 @@ function TaskChip({
           {(task.teacherClassName || task.bookName) && (
             <span className="mt-0.5 block truncate text-[11px] text-[var(--foreground-muted)]" title={[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}>
               {[task.teacherClassName && `دبیر: ${task.teacherClassName}`, task.bookName && `کتاب: ${task.bookName}`].filter(Boolean).join(' · ')}
+            </span>
+          )}
+
+          {/* Class homework link — small inline badge (same pattern as
+              exam-analysis). Visible as soon as the class task exists. */}
+          {isClassTask(task) && onHomework && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onHomework(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onHomework(); } }}
+              className="mt-1 inline-flex items-center gap-1 rounded-md border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)]"
+              title={task.homeworkForClass ? 'مشاهده تکلیف این کلاس' : 'افزودن تکلیف این کلاس'}
+            >
+              <BookOpenCheck className="size-3" />
+              {task.homeworkForClass ? 'تکلیف' : 'تکلیف این کلاس'}
+            </span>
+          )}
+          {/* Homework task chip shows its class */}
+          {task.classHomeworkOfId && (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-[var(--accent)]/25 bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)]">
+              تکلیف کلاس{task.classHomeworkOf?.teacherClassName ? ` · ${task.classHomeworkOf.teacherClassName}` : ''}
             </span>
           )}
         </span>

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import type { ExamScope, FieldType } from '@/lib/types';
 import { TaskSubjectPicker, type TaskSelection } from '@/components/shared/TaskSubjectPicker';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { PersianDatePicker } from '@/components/shared/PersianDatePicker';
 import { toISODate } from '@/lib/persian-date';
 
@@ -125,16 +125,34 @@ export function ExamModal({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) reset(); onOpenChange(next); }}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto rounded-2xl border-[var(--border-strong)] bg-[var(--bg-overlay)] text-[var(--foreground)] sm:max-w-xl" dir="rtl">
-        <DialogHeader className="text-right">
-          <div className="mb-2 flex size-10 items-center justify-center rounded-xl border border-[#E57373]/30 bg-[#E57373]/10 text-[#EF9A9A]">
-            <ClipboardCheck className="size-5" aria-hidden="true" />
+      <DialogContent
+        className="inset-0 top-0 left-0 max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 grid-rows-[auto_1fr_auto] overflow-y-auto rounded-none border-0 bg-[var(--bg-overlay)] p-0 text-[var(--foreground)] md:top-1/2 md:left-1/2 md:max-h-[88vh] md:max-w-xl md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl md:border md:border-[var(--border-strong)]"
+        dir="rtl"
+        showCloseButton={false}
+      >
+        <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-overlay)] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-right md:pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#E57373]/30 bg-[#E57373]/10 text-[#EF9A9A]">
+                <ClipboardCheck className="size-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold">ثبت آزمون</h2>
+                <p className="mt-0.5 text-xs text-[var(--foreground-subtle)]">آزمون جامع به درس نیاز ندارد؛ اتصال تک‌درسی اختیاری است.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { reset(); onOpenChange(false); }}
+              aria-label="بستن"
+              className="flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground)]"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <DialogTitle>ثبت آزمون</DialogTitle>
-          <DialogDescription>آزمون جامع به درس نیاز ندارد؛ اتصال آزمون تک‌درسی به فصل و مبحث اختیاری است.</DialogDescription>
-        </DialogHeader>
+        </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-[var(--bg-elevated)] p-1">
             <button type="button" onClick={() => selectScope('COMPREHENSIVE')} className={`min-h-11 rounded-lg border text-sm font-semibold ${scope === 'COMPREHENSIVE' ? 'border-[#E57373]/50 bg-[#E57373]/15 text-[#EF9A9A]' : 'border-transparent text-[var(--foreground-muted)]'}`}>آزمون جامع</button>
             <button type="button" onClick={() => selectScope('SUBJECT')} className={`min-h-11 rounded-lg border text-sm font-semibold ${scope === 'SUBJECT' ? 'border-[#E57373]/50 bg-[#E57373]/15 text-[#EF9A9A]' : 'border-transparent text-[var(--foreground-muted)]'}`}>تک‌درسی</button>
@@ -179,9 +197,9 @@ export function ExamModal({
           <PersianDatePicker value={date} onChange={setDate} label="تاریخ آزمون" />
         </div>
 
-        <DialogFooter>
-          <button type="button" disabled={saving} onClick={handleSubmit} className="h-11 w-full rounded-xl bg-[#E57373] px-6 text-sm font-bold text-[#241315] disabled:opacity-50 sm:w-auto">{saving ? 'در حال ثبت...' : 'ثبت آزمون'}</button>
-        </DialogFooter>
+        <div className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--bg-overlay)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button type="button" disabled={saving} onClick={handleSubmit} className="h-11 w-full rounded-xl bg-[#E57373] px-6 text-sm font-bold text-[#241315] disabled:opacity-50">{saving ? 'در حال ثبت...' : 'ثبت آزمون'}</button>
+        </div>
       </DialogContent>
     </Dialog>
   );

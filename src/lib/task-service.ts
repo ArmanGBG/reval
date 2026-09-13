@@ -39,6 +39,8 @@ export interface CreateTaskPayload {
   bookName?: string | null;
   testDescription?: string | null;
   advisorNote?: string | null;
+  /** When set, this educational-test task is the homework of the referenced class/video task. */
+  classHomeworkOfId?: string | null;
 }
 
 export type UpdateTaskPayload = Omit<Partial<CreateTaskPayload>, 'studentId' | 'createdBy' | 'createdById' | 'subjectId' | 'topic'> & {
@@ -66,7 +68,10 @@ export function buildTaskDetailsUpdate(task: Task, nextTask: Task): UpdateTaskPa
   if (task.status === 'COMPLETED' || task.status === 'SKIPPED') {
     delete updates.status;
     delete updates.completed;
-    if (isClassTask(task)) {
+    // Class tasks and class-homework tasks keep their details flag when
+    // edited after completion (the student fills in details later).
+    const keepsDetails = isClassTask(task) || task.classHomeworkOfId != null;
+    if (keepsDetails) {
       updates.detailsCompleted = nextTask.detailsCompleted;
     } else {
       delete updates.actualTimeMinutes;
@@ -168,6 +173,13 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     bookName: (raw.bookName as string | null) ?? null,
     testDescription: (raw.testDescription as string | null) ?? null,
     advisorNote: (raw.advisorNote as string | null) ?? null,
+    classHomeworkOfId: (raw.classHomeworkOfId as string | null) ?? null,
+    homeworkForClass: raw.homeworkForClass && typeof raw.homeworkForClass === 'object'
+      ? raw.homeworkForClass as NonNullable<Task['homeworkForClass']>
+      : null,
+    classHomeworkOf: raw.classHomeworkOf && typeof raw.classHomeworkOf === 'object'
+      ? raw.classHomeworkOf as NonNullable<Task['classHomeworkOf']>
+      : null,
   };
 }
 

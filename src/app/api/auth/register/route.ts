@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
     }
 
     const otp = typeof body.otp === 'string' ? body.otp.trim() : '';
-    if (!/^\d{6}$/.test(otp) || !(await verifyOtp(normalizedPhone, 'SIGNUP', otp))) {
+    const otpChallengeId = typeof body.otpChallengeId === 'string' ? body.otpChallengeId.trim() : undefined;
+    if (!/^\d{6}$/.test(otp) || !(await verifyOtp(normalizedPhone, 'SIGNUP', otp, { challengeId: otpChallengeId }))) {
       return NextResponse.json({ error: 'کد تایید نامعتبر یا منقضی شده است' }, { status: 401 });
     }
 

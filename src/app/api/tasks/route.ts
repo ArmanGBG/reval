@@ -32,7 +32,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'یادداشت مشاور باید متن یا null باشد' }, { status: 400 });
     }
     const hasClassVideo = isClassActivityTypes(body.activityTypes);
-    if (typeof body.studentId !== 'string' || typeof body.subjectId !== 'string' || typeof body.date !== 'string' || (!isTaskFieldType(body.fieldType) && !(hasClassVideo && body.fieldType == null))) {
+    // Class homework: an educational-test task linked to a class/video task.
+    // Created with detailsCompleted=false (metrics filled by the student
+    // later), so the "details need metrics" rule must not reject it.
+    const isClassHomework = typeof body.classHomeworkOfId === 'string' && body.classHomeworkOfId.length > 0;
+    if (isClassHomework && hasClassVideo) {
+      return NextResponse.json({ error: 'تکلیف کلاس نمی‌تواند خودش از نوع کلاس باشد' }, { status: 400 });
+    }
+    if (isClassHomework && body.activityTypes?.length !== 1 || (isClassHomework && body.activityTypes?.[0] !== 'تست آموزشی')) {
+      if (isClassHomework) return NextResponse.json({ error: 'تکلیف کلاس باید از نوع تست آموزشی باشد' }, { status: 400 });
+    }
+    // Class homework tasks inherit the class's unclassified nature — the
+    // student picks the fieldType later when filling details.
+    if (typeof body.studentId !== 'string' || typeof body.subjectId !== 'string' || typeof body.date !== 'string' || (!isTaskFieldType(body.fieldType) && !(hasClassVideo && body.fieldType == null) && !isClassHomework)) {
       return NextResponse.json({ error: 'studentId، subjectId و date معتبر الزامی هستند و نوع ارزیابی برای غیرکلاس الزامی است' }, { status: 400 });
     }
     if (typeof body.order !== 'number') return NextResponse.json({ error: 'order الزامی و باید عدد باشد' }, { status: 400 });
@@ -47,14 +59,14 @@ export async function POST(request: NextRequest) {
     if (!permission.allowed || !permission.createdBy) return NextResponse.json({ error: 'اجازه ایجاد تسک برای این دانش‌آموز را ندارید' }, { status: 403 });
     const status = body.status ?? legacyTaskStatus(body.detailsCompleted, body.completed ?? null);
     if (!isTaskStatus(status)) return NextResponse.json({ error: 'status معتبر نیست' }, { status: 400 });
-    const lifecycleError = validateTaskLifecycle(status, body.detailsCompleted, body.completed ?? null, hasClassVideo);
+    const lifecycleError = validateTaskLifecycle(status, body.detailsCompleted, body.completed ?? null, hasClassVideo || isClassHomework);
     if (lifecycleError) return NextResponse.json({ error: lifecycleError }, { status: 400 });
     const curriculum = await validateTaskCurriculum({
       ...body,
       studentId: body.studentId,
       subjectId: body.subjectId,
       fieldType: isTaskFieldType(body.fieldType) ? body.fieldType : null,
-      allowSubjectOnly: (status === 'DRAFT' && body.detailsCompleted === false) || hasClassVideo,
+      allowSubjectOnly: (status === 'DRAFT' && body.detailsCompleted === false) || hasClassVideo || isClassHomework,
       allowAllGrades: true,
     });
     if (!curriculum) return NextResponse.json({ error: 'ساختار برنامه درسی، پایه، رشته یا نوع ارزیابی معتبر نیست' }, { status: 400 });
@@ -62,12 +74,31 @@ export async function POST(request: NextRequest) {
       (body.targetTimeMinutes != null && (typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes < 0))
       || (body.targetTestCount != null && (typeof body.targetTestCount !== 'number' || body.targetTestCount < 0))
     );
-    const invalidStandardMetrics = !hasClassVideo && status !== 'DRAFT' && (!Array.isArray(body.activityTypes) || body.activityTypes.length === 0 || typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes < 0 || typeof body.targetTestCount !== 'number' || body.targetTestCount < 0);
+    const invalidStandardMetrics = !hasClassVideo && !isClassHomework && status !== 'DRAFT' && (!Array.isArray(body.activityTypes) || body.activityTypes.length === 0 || typeof body.targetTimeMinutes !== 'number' || body.targetTimeMinutes < 0 || typeof body.targetTestCount !== 'number' || body.targetTestCount < 0);
     if (invalidClassMetrics || invalidStandardMetrics) {
       return NextResponse.json({ error: 'جزئیات تکمیل‌شده نیازمند فعالیت، زمان و تعداد تست معتبر است' }, { status: 400 });
     }
-    if (!body.detailsCompleted && body.completed != null && !hasClassVideo) return NextResponse.json({ error: 'تسک ناقص قابل تکمیل یا رد کردن نیست' }, { status: 400 });
+    if (!body.detailsCompleted && body.completed != null && !hasClassVideo && !isClassHomework) return NextResponse.json({ error: "تسک ناقص قابل تکمیل یا رد کردن نیست" }, { status: 400 });
     const hasTestDetails = Array.isArray(body.activityTypes) && (body.activityTypes.includes('تست آموزشی') || body.activityTypes.includes('تست سنجشی'));
+    // Class-homework link: the referenced task must be a real class/video
+    // task belonging to the same student.
+    if (isClassHomework) {
+      const homeworkParent = await db.task.findUnique({
+        where: { id: body.classHomeworkOfId },
+        select: { id: true, studentId: true, activityTypes: true },
+      });
+      const linkedIsClass = homeworkParent !== null && isClassActivityTypes(JSON.parse(homeworkParent.activityTypes ?? '[]'));
+      if (!homeworkParent || !linkedIsClass || homeworkParent.studentId !== body.studentId) {
+        return NextResponse.json({ error: 'کلاس مرجع برای تکلیف معتبر نیست' }, { status: 400 });
+      }
+      const alreadyAssigned = await db.task.findUnique({
+        where: { classHomeworkOfId: body.classHomeworkOfId },
+        select: { id: true },
+      });
+      if (alreadyAssigned) {
+        return NextResponse.json({ error: 'برای این کلاس قبلاً تکلیف ثبت شده است' }, { status: 409 });
+      }
+    }
     const task = await db.task.create({ data: {
       studentId: body.studentId, subjectId: curriculum.subject.id, subject: curriculum.subject.name, subjectColor: curriculum.subject.color,
        topic: curriculum.topic, fieldType: isTaskFieldType(body.fieldType) ? body.fieldType : null, activityTypes: Array.isArray(body.activityTypes) ? JSON.stringify(body.activityTypes) : null,
@@ -83,6 +114,7 @@ export async function POST(request: NextRequest) {
       bookName: hasTestDetails && typeof body.bookName === 'string' ? body.bookName.trim() || null : null,
       testDescription: hasTestDetails && typeof body.testDescription === 'string' ? body.testDescription.trim() || null : null,
       advisorNote: permission.createdBy === 'advisor' && typeof body.advisorNote === 'string' ? body.advisorNote.trim() || null : null,
+      classHomeworkOfId: isClassHomework ? body.classHomeworkOfId : null,
       topics: { create: curriculum.topicIds.map((topicId) => ({ topicId })) },
       topicModeSubtopics: { create: curriculum.subtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId })) },
     }, include: taskTopicInclude });

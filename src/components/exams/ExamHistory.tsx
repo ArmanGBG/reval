@@ -50,10 +50,16 @@ function SubjectAnalysisEditor({ exam, studentId }: { exam: Exam; studentId: str
   );
 }
 
-export function ExamHistory({ studentId, isAdvisor, embedded = false }: { studentId: string; isAdvisor: boolean; embedded?: boolean }) {
+export function ExamHistory({ studentId, isAdvisor, embedded = false, dateRange }: { studentId: string; isAdvisor: boolean; embedded?: boolean; dateRange?: { start: string; end: string } | null }) {
   const { exams, examsLoading, loadExams } = useAppStore();
   useEffect(() => { void loadExams({ studentId }); }, [loadExams, studentId]);
-  const history = useMemo(() => exams.filter((exam) => exam.studentIds.includes(studentId)).sort((a, b) => b.date.localeCompare(a.date)), [exams, studentId]);
+  // When a dateRange is provided (e.g. the analytics report's selected
+  // window), only exams inside the inclusive [start, end] range are listed
+  // and counted — the same window resolution the study report uses.
+  const history = useMemo(() => exams
+    .filter((exam) => exam.studentIds.includes(studentId))
+    .filter((exam) => !dateRange || (exam.date >= dateRange.start && exam.date <= dateRange.end))
+    .sort((a, b) => b.date.localeCompare(a.date)), [exams, studentId, dateRange]);
   const analyzedCount = history.filter((exam) => exam.analysisTasks?.some((task) => task.studentId === studentId && task.status === 'COMPLETED')).length;
 
   return (

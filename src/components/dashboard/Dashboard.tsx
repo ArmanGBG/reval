@@ -128,18 +128,18 @@ function MotivationalQuoteCard() {
         }}
       />
 
-      {/* Decorative opening quote mark ❝ */}
+      {/* Decorative opening quote mark ❝ — faint, behind text (z-0) */}
       <span
-        className="absolute top-1 left-2 pointer-events-none select-none text-6xl leading-none"
+        className="absolute top-0.5 left-2 z-0 pointer-events-none select-none text-4xl md:text-6xl leading-none opacity-40"
         style={{ color: 'var(--accent-soft)' }}
         aria-hidden="true"
       >
         ❝
       </span>
 
-      {/* Decorative closing quote mark ❞ */}
+      {/* Decorative closing quote mark ❞ — faint, behind text (z-0) */}
       <span
-        className="absolute bottom-1 right-2 pointer-events-none select-none text-6xl leading-none"
+        className="absolute bottom-0.5 right-2 z-0 pointer-events-none select-none text-4xl md:text-6xl leading-none opacity-40"
         style={{ color: 'var(--accent-soft)' }}
         aria-hidden="true"
       >

@@ -166,15 +166,39 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
   }
 
   if (customRange) {
-    const result: DailyDatum[] = [];
-    const cursor = new Date(`${customRange.start}T00:00:00`);
+    // Bucket long ranges so the X axis stays readable: ≤ 16 points get a
+    // daily label; longer ranges are grouped into ~12 buckets of N days
+    // (e.g. 60 days → 5-day buckets). Labels stay compact — the bucket's
+    // start day only — since full «from–to» labels still overlap on mobile.
+    const start = new Date(`${customRange.start}T00:00:00`);
     const end = new Date(`${customRange.end}T00:00:00`);
+    const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+
+    const dayData: DailyDatum[] = [];
+    const cursor = new Date(start);
     while (cursor <= end) {
       const dayStr = toISODate(cursor);
       const dayTasks = completed.filter((t) => t.date === dayStr);
       const minutes = dayTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
-       result.push({ day: jalaliDayLabel(cursor), hours: Math.round((minutes / 60) * 10) / 10, tests: dayTasks.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0) });
+      dayData.push({ day: jalaliDayLabel(cursor), hours: Math.round((minutes / 60) * 10) / 10, tests: dayTasks.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0) });
       cursor.setDate(cursor.getDate() + 1);
+    }
+    if (totalDays <= 16) return dayData;
+
+    const bucketSize = Math.ceil(totalDays / 12);
+    const result: DailyDatum[] = [];
+    for (let index = 0; index < dayData.length; index += bucketSize) {
+      const bucket = dayData.slice(index, index + bucketSize);
+      const firstDate = new Date(start);
+      firstDate.setDate(start.getDate() + index);
+      const lastDate = new Date(start);
+      lastDate.setDate(start.getDate() + index + bucket.length - 1);
+      const label = jalaliDayLabel(firstDate);
+      result.push({
+        day: label,
+        hours: Math.round((bucket.reduce((s, d) => s + d.hours, 0)) * 10) / 10,
+        tests: bucket.reduce((s, d) => s + d.tests, 0),
+      });
     }
     return result;
   }
@@ -279,12 +303,25 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
       labelToDates.set(label, dates);
     }
   } else if (customRange) {
+    // Mirror buildDailyTrend's custom-range bucketing: ≤ 16 days → a label
+    // per day; longer → ~12 buckets labeled by their start day, mapping every
+    // date in the bucket to that label.
     labelToDates = new Map();
-    const cursor = new Date(`${customRange.start}T00:00:00`);
+    const start = new Date(`${customRange.start}T00:00:00`);
     const end = new Date(`${customRange.end}T00:00:00`);
+    const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+    const bucketSize = totalDays <= 16 ? 1 : Math.ceil(totalDays / 12);
+    const cursor = new Date(start);
+    let dayIndex = 0;
     while (cursor <= end) {
-      labelToDates.set(jalaliDayLabel(cursor), [toISODate(cursor)]);
+      const bucketStart = new Date(start);
+      bucketStart.setDate(start.getDate() + Math.floor(dayIndex / bucketSize) * bucketSize);
+      const label = jalaliDayLabel(bucketStart);
+      const arr = labelToDates.get(label) ?? [];
+      arr.push(toISODate(cursor));
+      labelToDates.set(label, arr);
       cursor.setDate(cursor.getDate() + 1);
+      dayIndex += 1;
     }
   } else {
     // بازه دلخواه — last 14 days, label = "day/month"
@@ -324,12 +361,12 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
         else if (a === 'کلاس/ویدیو') datum.کلاس_ویدیو += per;
       }
     }
-    // Round each bucket to integer minutes (chart displays whole minutes)
-    datum.مطالعه = Math.round(datum.مطالعه);
-    datum.مرور = Math.round(datum.مرور);
-    datum.تست_آموزشی = Math.round(datum.تست_آموزشی);
-    datum.تست_سنجشی = Math.round(datum.تست_سنجشی);
-    datum.کلاس_ویدیو = Math.round(datum.کلاس_ویدیو);
+    // Convert each bucket to decimal hours (charts show hours, not minutes)
+    datum.مطالعه = Math.round((datum.مطالعه / 60) * 10) / 10;
+    datum.مرور = Math.round((datum.مرور / 60) * 10) / 10;
+    datum.تست_آموزشی = Math.round((datum.تست_آموزشی / 60) * 10) / 10;
+    datum.تست_سنجشی = Math.round((datum.تست_سنجشی / 60) * 10) / 10;
+    datum.کلاس_ویدیو = Math.round((datum.کلاس_ویدیو / 60) * 10) / 10;
     return datum;
   });
 }

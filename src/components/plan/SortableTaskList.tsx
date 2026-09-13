@@ -32,8 +32,17 @@ interface SortableTaskListProps {
   onReset: (id: string) => void;
   onReorder: (tasks: Task[]) => void;
   onEdit?: (id: string) => void;
+  /** Open the class-homework dialog for a class task (create/view its homework). */
+  onHomework?: (id: string) => void;
   getCapabilities?: (task: Task) => TaskCardCapabilities;
   sortable?: boolean;
+  /**
+   * Non-sortable cards interleaved between task cards (e.g. non-study
+   * activities). `index` is the insertion position among the task cards
+   * (0..tasks.length); cards sharing an index keep their given order.
+   * Drag-and-drop still operates on tasks only.
+   */
+  extras?: Array<{ key: string; index: number; node: React.ReactNode }>;
 }
 
 // ===== Sortable wrapper for each task card =====
@@ -47,6 +56,7 @@ function SortableTaskCard({
   onSettings,
   onReset,
   onEdit,
+  onHomework,
   capabilities,
   sortable,
 }: {
@@ -59,6 +69,7 @@ function SortableTaskCard({
   onSettings: (id: string) => void;
   onReset: (id: string) => void;
   onEdit?: (id: string) => void;
+  onHomework?: (id: string) => void;
   capabilities?: TaskCardCapabilities;
   sortable: boolean;
 }) {
@@ -90,6 +101,7 @@ function SortableTaskCard({
         onSettings={onSettings}
         onReset={onReset}
         onEdit={onEdit}
+        onHomework={onHomework}
         capabilities={capabilities}
         dragHandleProps={sortable ? { ...attributes, ...listeners } : undefined}
       />
@@ -108,8 +120,10 @@ export function SortableTaskList({
   onReset,
   onReorder,
   onEdit,
+  onHomework,
   getCapabilities,
   sortable = true,
+  extras,
 }: SortableTaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -145,22 +159,38 @@ export function SortableTaskList({
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-3 md:space-y-4">
           <AnimatePresence>
-            {tasks.map((task, index) => (
-              <SortableTaskCard
-                key={task.id}
-                task={task}
-                index={index}
-                onComplete={onComplete}
-                onSkip={onSkip}
-                onDelete={onDelete}
-                onAction={onAction}
-                onSettings={onSettings}
-                onReset={onReset}
-                onEdit={onEdit}
-                capabilities={getCapabilities?.(task)}
-                sortable={sortable}
-              />
-            ))}
+            {(() => {
+              // Group extras by insertion index, then interleave with task cards
+              const extrasByIndex = new Map<number, React.ReactNode[]>();
+              for (const extra of extras ?? []) {
+                const arr = extrasByIndex.get(extra.index) ?? [];
+                arr.push(<div key={extra.key}>{extra.node}</div>);
+                extrasByIndex.set(extra.index, arr);
+              }
+              const children: React.ReactNode[] = [];
+              tasks.forEach((task, index) => {
+                for (const node of extrasByIndex.get(index) ?? []) children.push(node);
+                children.push(
+                  <SortableTaskCard
+                    key={task.id}
+                    task={task}
+                    index={index}
+                    onComplete={onComplete}
+                    onSkip={onSkip}
+                    onDelete={onDelete}
+                    onAction={onAction}
+                    onSettings={onSettings}
+                    onReset={onReset}
+                    onEdit={onEdit}
+                    onHomework={onHomework}
+                    capabilities={getCapabilities?.(task)}
+                    sortable={sortable}
+                  />
+                );
+              });
+              for (const node of extrasByIndex.get(tasks.length) ?? []) children.push(node);
+              return children;
+            })()}
           </AnimatePresence>
         </div>
       </SortableContext>

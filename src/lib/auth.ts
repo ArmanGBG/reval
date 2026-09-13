@@ -135,10 +135,12 @@ export function isDirectLocalHttpAccess(request: NextRequest): boolean {
     return proto === 'http' && (host.startsWith('localhost') || host.startsWith('127.0.0.1'));
   }
 
-  // No forwarding headers — direct access. Check protocol + host.
+  // No forwarding headers means this is a direct browser request. Any direct
+  // HTTP host (including a LAN IP used to open the local dev server) cannot
+  // store a Secure cookie, so use the local-development cookie policy.
   const host = (request.headers.get('host') || '').toLowerCase();
   const isHttp = request.nextUrl.protocol === 'http:';
-  return isHttp && (host.startsWith('localhost') || host.startsWith('127.0.0.1'));
+  return isHttp && host.length > 0;
 }
 
 /**

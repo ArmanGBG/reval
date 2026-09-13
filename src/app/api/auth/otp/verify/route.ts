@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeIranianPhone } from '@/lib/phone';
-import { verifyOtp } from '@/lib/otp';
+import { verifyOtpDetails } from '@/lib/otp';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,9 +11,11 @@ export async function POST(request: NextRequest) {
     if (!phone || !purpose || !/^\d{6}$/.test(code)) {
       return NextResponse.json({ error: 'اطلاعات کد تایید نامعتبر است' }, { status: 400 });
     }
-    const valid = await verifyOtp(phone, purpose, code);
-    return valid
-      ? NextResponse.json({ verified: true })
+    // Registration performs the consuming verification itself. This endpoint
+    // is also used by the onboarding UI as a non-consuming preflight check.
+    const result = await verifyOtpDetails(phone, purpose, code, { consume: body.consume === true });
+    return result.valid
+      ? NextResponse.json({ verified: true, challengeId: result.challengeId })
       : NextResponse.json({ error: 'کد تایید نامعتبر یا منقضی شده است' }, { status: 401 });
   } catch (error) {
     console.error('OTP verify error:', error);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeIranianPhone } from '@/lib/phone';
-import { requestOtp } from '@/lib/otp';
+import { requestOtpDetails } from '@/lib/otp';
 import { isSmsSandbox } from '@/lib/sms';
 import { db } from '@/lib/db';
 
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const code = await requestOtp(phone, purpose);
-    return NextResponse.json({ message: isSmsSandbox() ? 'کد تست ساخته شد' : 'کد تایید ارسال شد', ...(isSmsSandbox() ? { testCode: code } : {}) });
+    const { code, challengeId } = await requestOtpDetails(phone, purpose);
+    return NextResponse.json({ message: isSmsSandbox() ? 'کد تست ساخته شد' : 'کد تایید ارسال شد', challengeId, ...(isSmsSandbox() ? { testCode: code } : {}) });
   } catch (error) {
     if (error instanceof Error && error.message === 'OTP_COOLDOWN') {
       return NextResponse.json({ error: 'لطفاً برای ارسال مجدد کمی صبر کنید' }, { status: 429 });

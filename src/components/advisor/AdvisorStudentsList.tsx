@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { GroupExamModal } from './GroupExamModal';
 import { toPersianDigits, computeStudentStatus, STATUS_CONFIG, TREND_CONFIG } from './advisor-helpers';
+import type { StudentProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import ConnectionManager from '@/components/shared/ConnectionManager';
 
@@ -124,7 +125,7 @@ function EmptyStateStudents({ hasStudents }: { hasStudents: boolean }) {
 
 // ===== ADVISOR VIEW 2: Students List =====
 export function AdvisorStudentsList() {
-  const { navigateTo, advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents } = useAppStore();
+  const { navigateTo, advisorStudents, advisorStudentsLoading, user, loadAdvisorStudents, advisorStudentsFilter } = useAppStore();
   const students = advisorStudents;
 
   // Load real students from DB if not already loaded
@@ -137,9 +138,10 @@ export function AdvisorStudentsList() {
   const [groupExamOpen, setGroupExamOpen] = useState(false);
 
   const filteredStudents = useMemo(() => {
-    if (!searchQuery) return students;
-    return students.filter(s => s.name.includes(searchQuery) || s.grade.includes(searchQuery) || s.major.includes(searchQuery));
-  }, [students, searchQuery]);
+    const matchesSearch = (s: StudentProfile) => !searchQuery || s.name.includes(searchQuery) || s.grade.includes(searchQuery) || s.major.includes(searchQuery);
+    const needsIntervention = (s: StudentProfile) => s.dailyTasks.length > 0 && Math.round((s.dailyTasks.filter((task) => task.status === 'COMPLETED').length / s.dailyTasks.length) * 100) <= 40;
+    return students.filter((student) => matchesSearch(student) && (advisorStudentsFilter !== 'intervention' || needsIntervention(student)));
+  }, [students, searchQuery, advisorStudentsFilter]);
 
   const handleStudentClick = (studentId: string) => {
     navigateTo({ view: 'advisor-student-detail', selectedStudentId: studentId });
