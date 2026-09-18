@@ -21,6 +21,12 @@ export type TopView = 'landing' | 'onboarding' | 'login';
 // Unified view name
 export type ViewName = TopView | StudentView | AdvisorView | InstituteManagerView | SuperAdminView;
 
+// ===== Plan sub-tab (for deep-linking from Dashboard / external links) =====
+// Mirrors the `planTab` state inside `PlanView`. When the user clicks a nav
+// card on the Dashboard, the URL becomes `?view=plan&tab=<value>` and
+// `PlanView` reads `initialTab` to set the active section on mount.
+export type PlanTab = 'daily' | 'activities' | 'sleep' | 'draft' | 'incomplete' | 'exams';
+
 export type Grade = 'دهم' | 'یازدهم' | 'دوازدهم' | 'فارغ‌التحصیل';
 export type Major = 'تجربی' | 'ریاضی' | 'انسانی';
 export type FieldType = 'کنکور' | 'نهایی';

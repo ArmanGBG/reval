@@ -32,7 +32,7 @@ import { UserRole } from '@/lib/types';
 import { decodeNavigationState, replaceNavigation } from '@/lib/navigation';
 
 export default function Home() {
-  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete, restoreNavigation, theme, setTheme } = useAppStore();
+  const { currentView, onboardingComplete, userRole, hydrateAuth, logout, setCurrentView, setUserRole, setUser, setOnboardingComplete, restoreNavigation, theme, setTheme, planTab } = useAppStore();
   // Track whether we've validated the persisted session with the server
   const [authValidated, setAuthValidated] = useState(false);
   const currentStudentId = useCurrentStudentId();
@@ -248,7 +248,7 @@ export default function Home() {
 
     // Student
     if (currentView === 'dashboard') return <Dashboard />;
-    if (currentView === 'plan') return <PlanView />;
+    if (currentView === 'plan') return <PlanView initialTab={planTab ?? undefined} />;
     if (currentView === 'exam-history') return <ExamHistory studentId={currentStudentId} isAdvisor={false} />;
     if (currentView === 'tools') return <ToolsHub />;
     if (currentView === 'analytics') return <AnalyticsView />;

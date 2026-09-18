@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox, ClipboardCheck,
+  Plus, Check, X, CalendarDays, Clock, Target, ChevronLeft, Inbox, ClipboardCheck, Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
@@ -22,6 +22,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import type { PlanTab } from '@/lib/types';
 import ManualEntrySheet from './ManualEntrySheet';
 import { WeeklyPlanner } from './WeeklyPlanner';
 import { NonStudyActivityModal, NonStudyActivityCard } from './NonStudyActivityModal';
@@ -42,6 +48,116 @@ import { ExamModal } from '@/components/advisor/ExamModal';
 import { ExamCard, ExamCenter } from '@/components/exams/ExamCenter';
 import { getExamParticipantStatus } from '@/lib/exam-lifecycle';
 import { ExamAnalysisTaskCard } from '@/components/exams/ExamAnalysisTaskCard';
+
+// ===== Quick-Add FAB (mobile, daily tab only) =====
+// A single round "+" button at bottom-right that pops a 3-action menu
+// (تسک جدید / فعالیت غیردرسی / آزمون) via a shadcn Popover. Replaces the
+// old wide multi-button bar that ate too much vertical space on small
+// screens. Placement on the right mirrors the search FAB on the left so
+// the two never overlap.
+function QuickAddFab({
+  onAddTask,
+  onAddActivity,
+  onAddExam,
+}: {
+  onAddTask: () => void;
+  onAddActivity: () => void;
+  onAddExam: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          aria-label={open ? 'بستن منوی افزودن' : 'افزودن تسک، فعالیت یا آزمون'}
+          aria-expanded={open}
+          className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--bg-deep)] shadow-[0_6px_20px_rgba(0,0,0,0.45)] hover:bg-[var(--accent-hover)] transition-colors"
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            {open ? (
+              <motion.span
+                key="x"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center justify-center"
+              >
+                <X className="h-6 w-6" />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="plus"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center justify-center"
+              >
+                <Plus className="h-6 w-6" />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="end"
+        sideOffset={10}
+        className="w-56 rounded-2xl border-[var(--border-strong)] bg-[var(--bg-elevated)] p-1.5 text-[var(--foreground)] shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+        dir="rtl"
+      >
+        <div className="flex flex-col gap-1">
+          <QuickAddMenuItem
+            icon={<Plus className="h-4 w-4" />}
+            label="تسک جدید"
+            onClick={() => {
+              setOpen(false);
+              onAddTask();
+            }}
+          />
+          <QuickAddMenuItem
+            icon={<ClipboardCheck className="h-4 w-4" />}
+            label="آزمون"
+            onClick={() => {
+              setOpen(false);
+              onAddExam();
+            }}
+          />
+          <QuickAddMenuItem
+            icon={<Activity className="h-4 w-4" />}
+            label="فعالیت غیردرسی"
+            onClick={() => {
+              setOpen(false);
+              onAddActivity();
+            }}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function QuickAddMenuItem({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex min-h-[44px] w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]"
+    >
+      <span className="text-[var(--foreground-muted)]">{icon}</span>
+      {label}
+    </button>
+  );
+}
 
 // ===== Minimal Stats Bar (hours + tests only) =====
 function MiniStatsBar({ totalHours, totalTests }: { totalHours: number; totalTests: number }) {
@@ -166,7 +282,23 @@ export interface PlanActor {
 // `embeddedTab` puts the view in controlled mode for the advisor's unified
 // student-workspace tabs: the parent owns which section is active and
 // PlanView hides its own tab bar + weekly buttons (weekly is a sibling tab).
-export default function PlanView({ targetStudent, actor, embeddedTab }: { targetStudent?: PlanTargetStudent; actor?: PlanActor; embeddedTab?: 'daily' | 'incomplete' | 'draft' } = {}) {
+//
+// `initialTab` is a one-shot deep-link hint coming from the URL
+// (`?view=plan&tab=exams`). When the user taps a nav card on the Dashboard,
+// page.tsx passes `initialTab` here and we set the active section on mount
+// and whenever the deep-linked value changes. Priority for which tab wins:
+//   embeddedTab (advisor-controlled)  >  initialTab (URL deep-link)  >  'daily'
+export default function PlanView({
+  targetStudent,
+  actor,
+  embeddedTab,
+  initialTab,
+}: {
+  targetStudent?: PlanTargetStudent;
+  actor?: PlanActor;
+  embeddedTab?: 'daily' | 'incomplete' | 'draft';
+  initialTab?: PlanTab;
+} = {}) {
   const {
     tasks,
     addTask,
@@ -214,11 +346,18 @@ export default function PlanView({ targetStudent, actor, embeddedTab }: { target
   const [settingsTaskId, setSettingsTaskId] = useState<string | null>(null);
   const [detailsTaskId, setDetailsTaskId] = useState<string | null>(null);
   const [homeworkTaskId, setHomeworkTaskId] = useState<string | null>(null);
-  const [planTab, setPlanTab] = useState<'daily' | 'activities' | 'sleep' | 'draft' | 'incomplete' | 'exams'>(embeddedTab ?? 'daily');
-  // Controlled mode: follow the parent's tab (advisor unified workspace)
+  const [planTab, setPlanTab] = useState<'daily' | 'activities' | 'sleep' | 'draft' | 'incomplete' | 'exams'>(embeddedTab ?? initialTab ?? 'daily');
+  // Controlled mode: follow the parent's tab (advisor unified workspace).
+  // In advisor mode, `embeddedTab` always wins. In student mode, we honor
+  // `initialTab` from the URL deep-link whenever it changes (so the back /
+  // forward buttons also re-target the tab, not just the first mount).
   useEffect(() => {
-    if (embeddedTab) setPlanTab(embeddedTab);
-  }, [embeddedTab]);
+    if (embeddedTab) {
+      setPlanTab(embeddedTab);
+      return;
+    }
+    if (initialTab) setPlanTab(initialTab);
+  }, [embeddedTab, initialTab]);
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [draftSessionId, setDraftSessionId] = useState<string | null>(null);
   const [resumingLocalDraft, setResumingLocalDraft] = useState<StoredTaskFormDraft | null>(null);
@@ -532,7 +671,7 @@ export default function PlanView({ targetStudent, actor, embeddedTab }: { target
       {/* ===================================================
           MOBILE LAYOUT (single column, max-w-md)
           =================================================== */}
-      <div className="md:hidden max-w-md mx-auto px-4 pt-6 pb-56">
+      <div className="md:hidden max-w-md mx-auto px-4 pt-6 pb-28">
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
           <motion.h1
@@ -643,39 +782,17 @@ export default function PlanView({ targetStudent, actor, embeddedTab }: { target
           </div>
         )}
 
-        {/* FAB: Add Task (daily tab only) — primary action + compact secondary
-            actions. Solid backgrounds on mobile (translucent glass overlaid
-            badly on the content behind the fixed bar). */}
+        {/* FAB: Add (daily tab only) — collapsed into a single round "+" that
+            pops a 3-action menu (تسک جدید / فعالیت غیردرسی / آزمون). The
+            previous wide multi-button bar was hard to use on small screens and
+            ate too much vertical space. Placement is on the right (mirroring
+            the search FAB on the left) so the two never overlap. */}
         {planTab === 'daily' && (
-          <div className="fixed bottom-24 inset-x-4 z-40 flex flex-col gap-2">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={openNewTask}
-              className="glow-hover flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] px-4 py-3 font-medium text-sm text-[var(--bg-deep)] shadow-[0_4px_16px_rgba(0,0,0,0.45)] hover:bg-[var(--accent-hover)]"
-              aria-label="اضافه کردن تسک"
-            >
-              <Plus className="w-5 h-5" />
-              <span>تسک جدید</span>
-            </motion.button>
-            <div className="flex gap-2">
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setActivityModalOpen(true)}
-                className="flex min-h-[48px] flex-1 items-center justify-center whitespace-nowrap rounded-2xl bg-[#2E5FBF] px-2 py-3 text-xs font-semibold text-white shadow-[0_4px_16px_rgba(0,0,0,0.45)]"
-                aria-label="ثبت فعالیت غیردرسی"
-              >
-                <span>فعالیت غیردرسی</span>
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setExamModalOpen(true)}
-                className="flex min-h-[48px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-[#C25056] px-4 py-3 text-sm font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.45)]"
-              >
-                <ClipboardCheck className="w-5 h-5" />
-                آزمون
-              </motion.button>
-            </div>
-          </div>
+          <QuickAddFab
+            onAddTask={openNewTask}
+            onAddActivity={() => setActivityModalOpen(true)}
+            onAddExam={() => setExamModalOpen(true)}
+          />
         )}
       </div>
 

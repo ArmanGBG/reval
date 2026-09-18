@@ -2,14 +2,25 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Clock, Target, ChevronLeft, Share2, Heart } from 'lucide-react';
+import {
+  X,
+  Clock,
+  Target,
+  CalendarDays,
+  ClipboardCheck,
+  Activity,
+  Moon,
+  FileText,
+  AlertCircle,
+  type LucideIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
-import { Task, ActivityType, FieldType } from '@/lib/types';
+import { Task, ActivityType, FieldType, PlanTab } from '@/lib/types';
 import {
   TaskSubjectPicker,
   TaskSelection,
@@ -34,180 +45,53 @@ import { useCelebration } from '@/hooks/use-celebration';
 import { isClassTask, studentCanEditTask } from '@/lib/class-task';
 import NotificationCenter from '@/components/shared/NotificationCenter';
 
-// ===== Motivational Quotes =====
-const MOTIVATIONAL_QUOTES: { text: string; author?: string }[] = [
-  { text: 'موفقیت، مجموع تلاش‌های کوچک است که هر روز تکرار می‌شوند.', author: 'رابرت کولیر' },
-  { text: 'دانش، قدرتی است که هیچ‌کس نمی‌تواند از تو بگیرد.' },
-  { text: 'هر لحظه که صرف یادگیری می‌شود، لحظه‌ای ارزشمند است.' },
-  { text: 'تنها راه انجام کار بزرگ، عاشق بودن به آن است.', author: 'استیو جابز' },
-  { text: 'اگر فکر می‌کنی می‌توانی یا نمی‌توانی، در هر دو حال حق با توست.', author: 'هنری فورد' },
-  { text: 'موفقیت نتیجه‌ی آمادگی، کار سخت و یادگیری از شکست است.', author: 'کالین پاول' },
-  { text: 'هر متخصصی روزی مبتدی بوده است.', author: 'هلن هیز' },
-  { text: 'سخت‌ترین قدم، همان قدم اول است. بعد از آن، بقیه‌ی راه راحت‌تر می‌شود.' },
-  { text: 'قدرت تمرکز مانند عضله است: هرچه بیشتر تمرین کنی، قوی‌تر می‌شود.' },
-  { text: 'شکست، پایان راه نیست؛ بلکه فرصتی برای شروع دوباره است.', author: 'رابرت کیوساکی' },
-  { text: 'آینده‌ی تو با تصمیم‌های امروزت ساخته می‌شود، نه با رویاهای فردات.' },
-  { text: 'دانش‌آموزی که از اشتباهاتش درس می‌گیرد، از دانش‌آموزی که هرگز اشتباه نمی‌کند جلوتر است.' },
+// ===== Plan Section Nav Grid (replaces the old motivational quote card) =====
+// Minimal 2×3 grid of cards that deep-link to each Plan sub-section
+// (?view=plan&tab=<value>). Cards are intentionally minimal — just an icon
+// and a short Persian label — with a uniform soft color so the dashboard
+// stays calm and uncluttered. Both mobile and desktop render the same grid.
+const PLAN_SECTION_CARDS: { tab: PlanTab; label: string; icon: LucideIcon }[] = [
+  { tab: 'daily',      label: 'برنامه روز',       icon: CalendarDays },
+  { tab: 'exams',      label: 'آزمون',            icon: ClipboardCheck },
+  { tab: 'activities', label: 'فعالیت غیردرسی',   icon: Activity },
+  { tab: 'sleep',      label: 'خواب',             icon: Moon },
+  { tab: 'draft',      label: 'پیش‌نویس‌ها',       icon: FileText },
+  { tab: 'incomplete', label: 'ناقصی‌ها',         icon: AlertCircle },
 ];
 
-// ===== Motivational Quote Card =====
-const BOOKMARKS_KEY = 'reval:bookmarked-quotes:v1';
-
-function getBookmarkedQuotes(): Set<number> {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(BOOKMARKS_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as number[]);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveBookmarkedQuotes(set: Set<number>) {
-  try {
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([...set]));
-  } catch {
-    // ignore storage errors
-  }
-}
-
-function MotivationalQuoteCard() {
-  const [quoteIndex, setQuoteIndex] = useState<number>(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 0);
-    const diff = now.getTime() - start.getTime();
-    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-    return dayOfYear % MOTIVATIONAL_QUOTES.length;
-  });
-  const [bookmarked, setBookmarked] = useState<Set<number>>(() => getBookmarkedQuotes());
-
-  const handleNext = useCallback(() => {
-    setQuoteIndex((prev) => (prev + 1) % MOTIVATIONAL_QUOTES.length);
-  }, []);
-
-  const quote = MOTIVATIONAL_QUOTES[quoteIndex];
-  const isBookmarked = bookmarked.has(quoteIndex);
-
-  const handleBookmark = useCallback(() => {
-    setBookmarked((prev) => {
-      const next = new Set(prev);
-      if (next.has(quoteIndex)) {
-        next.delete(quoteIndex);
-      } else {
-        next.add(quoteIndex);
-      }
-      saveBookmarkedQuotes(next);
-      return next;
-    });
-  }, [quoteIndex]);
-
-  const handleShare = useCallback(() => {
-    const text = quote.author
-      ? `${quote.text} — ${quote.author}`
-      : quote.text;
-    navigator.clipboard.writeText(text).then(() => {
-      toast('نقل قول کپی شد!');
-    }).catch(() => {
-      toast('خطا در کپی کردن');
-    });
-  }, [quote]);
-
+function PlanSectionNavGrid() {
+  const { navigateTo } = useAppStore();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-      className="relative rounded-[var(--radius-lg)] p-5 md:p-6 overflow-hidden surface-1 card-hover edge-highlight mb-5"
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="mb-5 grid grid-cols-3 gap-2.5 sm:gap-3"
+      aria-label="دسترسی سریع به بخش‌های برنامه"
     >
-      {/* Subtle background radial gradient */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse 70% 80% at 75% 30%, var(--accent-soft), transparent)',
-        }}
-      />
-
-      {/* Decorative opening quote mark ❝ — faint, behind text (z-0) */}
-      <span
-        className="absolute top-0.5 left-2 z-0 pointer-events-none select-none text-4xl md:text-6xl leading-none opacity-40"
-        style={{ color: 'var(--accent-soft)' }}
-        aria-hidden="true"
-      >
-        ❝
-      </span>
-
-      {/* Decorative closing quote mark ❞ — faint, behind text (z-0) */}
-      <span
-        className="absolute bottom-0.5 right-2 z-0 pointer-events-none select-none text-4xl md:text-6xl leading-none opacity-40"
-        style={{ color: 'var(--accent-soft)' }}
-        aria-hidden="true"
-      >
-        ❞
-      </span>
-
-      <div className="relative z-10">
-        {/* Quote text with AnimatePresence for smooth transitions */}
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={quoteIndex}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="text-lg font-medium leading-8 text-[var(--foreground)] mb-3"
-          >
-            {quote.text}
-          </motion.p>
-        </AnimatePresence>
-
-        {/* Author + Action buttons */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {quote.author ? (
-              <span className="text-sm text-[var(--foreground-muted)] font-medium truncate">
-                — {quote.author}
-              </span>
-            ) : (
-              <span />
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Bookmark button */}
-            <button
-              onClick={handleBookmark}
-              className="btn-hover flex items-center justify-center size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
-              aria-label={isBookmarked ? 'حذف از ذخیره‌شده‌ها' : 'ذخیره نقل قول'}
-            >
-              <Heart
-                className="w-4 h-4"
-                fill={isBookmarked ? 'currentColor' : 'none'}
-              />
-            </button>
-            {/* Share button */}
-            <button
-              onClick={handleShare}
-              className="btn-hover flex items-center justify-center size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors"
-              aria-label="اشتراک‌گذاری نقل قول"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-            {/* Next quote button */}
-            <button
-              onClick={handleNext}
-              className="btn-hover flex items-center gap-1.5 text-xs font-medium px-3 h-9 rounded-md text-[var(--accent)] bg-[var(--accent-soft)] border border-[var(--border-strong)] hover:bg-[var(--accent-soft)] transition-colors"
-            >
-              <span>نقل قول بعدی</span>
-              <ChevronLeft className="w-3.5 h-3.5 flip-rtl" />
-            </button>
-          </div>
-        </div>
-      </div>
+      {PLAN_SECTION_CARDS.map(({ tab, label, icon: Icon }, idx) => (
+        <motion.button
+          key={tab}
+          type="button"
+          onClick={() => navigateTo({ view: 'plan', planTab: tab })}
+          whileTap={{ scale: 0.97 }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1], delay: 0.04 * idx }}
+          className="group flex min-h-[88px] sm:min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-center transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40"
+          aria-label={label}
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition-colors group-hover:bg-[var(--accent)] group-hover:text-[var(--bg-deep)]">
+            <Icon className="h-4.5 w-4.5" strokeWidth={2.2} />
+          </span>
+          <span className="text-xs font-semibold text-[var(--foreground)] sm:text-[13px]">
+            {label}
+          </span>
+        </motion.button>
+      ))}
     </motion.div>
   );
 }
-
-
 
 export default function Dashboard() {
   const { user, tasks, tasksLoading, tasksError, loadTasksForStudent, updateTask, deleteTask, resetTask, reorderTasks, incrementStreak } = useAppStore();
@@ -358,8 +242,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ===== Motivational Quote Card (kept per user request) ===== */}
-      <MotivationalQuoteCard />
+      {/* ===== Plan Section Nav Grid (replaces the old motivational quote card) =====
+          Minimal 2×3 grid of cards that deep-link to each Plan sub-section. */}
+      <PlanSectionNavGrid />
 
       {/* ===== Compact Today Summary ===== */}
       <motion.div

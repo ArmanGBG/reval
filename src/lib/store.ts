@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity } from '@/lib/types';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity, PlanTab } from '@/lib/types';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
@@ -182,6 +182,11 @@ interface AppState {
   setCurrentView: (view: ViewName) => void;
   navigateTo: (target: NavigationTarget) => void;
   restoreNavigation: (target: NavigationTarget) => void;
+  // Deep-linked Plan sub-tab. Read by `page.tsx` and passed to
+  // `<PlanView initialTab={...} />`. Reset to null on every navigation
+  // away from `plan` so a stale value doesn't bleed into the next visit.
+  planTab: PlanTab | null;
+  setPlanTab: (tab: PlanTab | null) => void;
 
   // Advisor: selected student for detail view
   selectedStudentId: string | null;
@@ -466,6 +471,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedGlobalUserId: target.view === 'sa-user-detail' ? target.selectedGlobalUserId ?? null : null,
       currentTool: target.view === 'tools' ? ('currentTool' in target ? target.currentTool ?? null : get().currentTool) : null,
       advisorStudentsFilter: target.view === 'advisor-students' ? target.advisorFilter ?? null : null,
+      planTab: target.view === 'plan' ? (target.planTab ?? null) : null,
     };
     const navigationTarget = {
       view: nextState.currentView,
@@ -474,6 +480,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedGlobalUserId: nextState.selectedGlobalUserId,
       currentTool: nextState.currentTool,
       advisorFilter: nextState.advisorStudentsFilter,
+      planTab: nextState.planTab,
     };
     set(nextState);
     if (`${window.location.pathname}${window.location.search}` !== navigationUrl(navigationTarget)) {
@@ -487,12 +494,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     selectedGlobalUserId: target.view === 'sa-user-detail' ? target.selectedGlobalUserId ?? null : null,
     currentTool: target.view === 'tools' ? target.currentTool ?? null : null,
     advisorStudentsFilter: target.view === 'advisor-students' ? target.advisorFilter ?? null : null,
+    planTab: target.view === 'plan' ? (target.planTab ?? null) : null,
   }),
 
   // Advisor: selected student
   selectedStudentId: null,
   advisorStudentsFilter: null,
   setSelectedStudentId: (id) => set({ selectedStudentId: id }),
+
+  // Plan deep-link target sub-tab (mirrors the URL ?view=plan&tab=...)
+  planTab: null,
+  setPlanTab: (tab) => set({ planTab: tab }),
 
   // Super Admin: selected institute / user
   selectedInstituteId: null,
@@ -553,6 +565,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedStudentId: null,
       selectedInstituteId: null,
       selectedGlobalUserId: null,
+      planTab: null,
       tasks: [],
       loadedStudentId: null,
       nonStudyActivities: [],

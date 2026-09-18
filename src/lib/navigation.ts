@@ -1,4 +1,4 @@
-import type { UserRole, ViewName } from '@/lib/types';
+import type { UserRole, ViewName, PlanTab } from '@/lib/types';
 
 export interface NavigationTarget {
   view: ViewName;
@@ -7,6 +7,15 @@ export interface NavigationTarget {
   selectedGlobalUserId?: string | null;
   advisorFilter?: 'intervention' | null;
   currentTool?: string | null;
+  // Deep-linked Plan sub-tab. Only meaningful when `view === 'plan'`.
+  planTab?: PlanTab | null;
+}
+
+const PLAN_TAB_VALUES: PlanTab[] = ['daily', 'activities', 'sleep', 'draft', 'incomplete', 'exams'];
+
+function parsePlanTab(raw: string | null): PlanTab | null {
+  if (!raw) return null;
+  return (PLAN_TAB_VALUES as string[]).includes(raw) ? (raw as PlanTab) : null;
 }
 
 export function getRoleRootView(role: UserRole): ViewName {
@@ -50,6 +59,11 @@ export function decodeNavigationState(location: Pick<Location, 'search'>, role: 
   if (view === 'advisor-students' && params.get('filter') === 'intervention') {
     target.advisorFilter = 'intervention';
   }
+  // Deep-linked Plan sub-tab (?view=plan&tab=exams)
+  if (view === 'plan') {
+    const tab = parsePlanTab(params.get('tab'));
+    if (tab) target.planTab = tab;
+  }
   return target;
 }
 
@@ -60,6 +74,7 @@ export function navigationUrl(target: NavigationTarget, pathname = window.locati
   if (target.selectedGlobalUserId) params.set('user', target.selectedGlobalUserId);
   if (target.currentTool) params.set('tool', target.currentTool);
   if (target.advisorFilter === 'intervention') params.set('filter', 'intervention');
+  if (target.planTab) params.set('tab', target.planTab);
   return `${pathname}?${params.toString()}`;
 }
 

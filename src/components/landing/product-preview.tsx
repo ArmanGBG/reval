@@ -175,16 +175,6 @@ function Sidebar({
 function DashboardView() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-5">
-      {/* Greeting */}
-      <div className="rounded-xl border border-white/[0.06] bg-gradient-to-l from-mint/[0.06] to-transparent p-4">
-        <p className="text-sm font-bold">
-          سلام، آرمان! 👋
-        </p>
-        <p className="mt-1 text-[11px] text-muted-foreground/70">
-          بیا امروز رو عالی شروع کنیم
-        </p>
-      </div>
-
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
