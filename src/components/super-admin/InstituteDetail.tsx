@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { formatPersianDateFromISO } from '@/lib/persian-date';
+import { SubscriptionPlan } from '@/lib/types';
 import {
   ChevronRight,
   Building2,
@@ -15,6 +17,10 @@ import {
   Calendar,
   ShieldCheck,
   Activity,
+  Pencil,
+  Save,
+  X,
+  Loader2,
 } from 'lucide-react';
 
 function toPersianDigits(num: number | string): string {
@@ -28,6 +34,13 @@ const SUB_CONFIG: Record<string, { label: string; color: string; bg: string }> =
   pro: { label: 'حرفه‌ای', color: 'text-gold', bg: 'bg-gold/15' },
   enterprise: { label: 'سازمانی', color: 'text-gold', bg: 'bg-gold/15' },
 };
+
+const PLAN_OPTIONS: { value: SubscriptionPlan; label: string }[] = [
+  { value: 'free', label: 'رایگان' },
+  { value: 'basic', label: 'پایه' },
+  { value: 'pro', label: 'حرفه‌ای' },
+  { value: 'enterprise', label: 'سازمانی' },
+];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   active: { label: 'فعال', color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/15', dot: 'bg-[var(--success)]' },
@@ -43,6 +56,54 @@ export default function InstituteDetail() {
     platformInstitutes.find((i) => i.id === selectedInstituteId),
     [selectedInstituteId, platformInstitutes]
   );
+
+  // ===== Inline edit state =====
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPlan, setEditPlan] = useState<SubscriptionPlan>('basic');
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = () => {
+    if (!institute) return;
+    setEditName(institute.name);
+    setEditPlan(institute.subscriptionPlan);
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditName('');
+    setSaving(false);
+  };
+
+  const saveEdit = async () => {
+    if (!institute) return;
+    if (!editName.trim()) {
+      toast.error('نام آموزشگاه الزامی است');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/institutes/${institute.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName.trim(),
+          subscriptionPlan: editPlan,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'به‌روزرسانی انجام نشد');
+      toast.success('اطلاعات آموزشگاه به‌روزرسانی شد');
+      setEditMode(false);
+      // Refresh store data so the UI reflects the new values
+      await loadPlatformInstitutes().catch(() => {});
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'به‌روزرسانی انجام نشد');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const goBack = () => {
     if (window.history.state?.revalEntry) window.history.back();
@@ -112,32 +173,94 @@ export default function InstituteDetail() {
               <Building2 className="w-7 h-7 md:w-8 md:h-8 text-gold" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl md:text-2xl font-bold text-foreground">{institute.name}</h1>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${subCfg.bg} ${subCfg.color} font-medium`}>{subCfg.label}</span>
-                <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.color} font-medium`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
-                  {statusCfg.label}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Phone className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                  <span className="text-xs text-muted-foreground truncate">مدیر: {institute.managerName}</span>
+              {!editMode ? (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground">{institute.name}</h1>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${subCfg.bg} ${subCfg.color} font-medium`}>{subCfg.label}</span>
+                    <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full ${statusCfg.bg} ${statusCfg.color} font-medium`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                      {statusCfg.label}
+                    </span>
+                    <button
+                      onClick={startEdit}
+                      className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors font-medium"
+                      title="ویرایش نام و طرح اشتراک"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      ویرایش
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Phone className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                      <span className="text-xs text-muted-foreground truncate">مدیر: {institute.managerName}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Calendar className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                       <span className="text-xs text-muted-foreground tabular-nums">{formatPersianDateFromISO(institute.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <GraduationCap className="w-3.5 h-3.5 text-mint shrink-0" />
+                      <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.studentCount)} دانش‌آموز</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.advisorCount)} مشاور</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-bold text-muted-foreground">ویرایش اطلاعات آموزشگاه</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-1 block">نام آموزشگاه</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        disabled={saving}
+                        autoFocus
+                        className="w-full bg-[var(--bg-overlay)] border border-gold/30 rounded-[10px] px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/60 transition-colors disabled:opacity-60"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-1 block">طرح اشتراک</label>
+                      <select
+                        value={editPlan}
+                        onChange={(e) => setEditPlan(e.target.value as SubscriptionPlan)}
+                        disabled={saving}
+                        className="w-full bg-[var(--bg-overlay)] border border-gold/30 rounded-[10px] px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/60 transition-colors disabled:opacity-60"
+                      >
+                        {PLAN_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={saveEdit}
+                      disabled={saving || !editName.trim()}
+                      className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-[10px] bg-gold text-white font-bold hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      {saving ? 'در حال ذخیره...' : 'ذخیره'}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      disabled={saving}
+                      className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-[10px] border border-[var(--border)] text-muted-foreground hover:bg-[var(--bg-overlay)] transition-colors disabled:opacity-50"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      انصراف
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Calendar className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                   <span className="text-xs text-muted-foreground tabular-nums">{formatPersianDateFromISO(institute.createdAt)}</span>
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <GraduationCap className="w-3.5 h-3.5 text-mint shrink-0" />
-                  <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.studentCount)} دانش‌آموز</span>
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground tabular-nums">{toPersianDigits(institute.advisorCount)} مشاور</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

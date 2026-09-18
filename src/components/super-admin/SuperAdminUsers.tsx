@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { GlobalUserRole, UserAccountStatus } from '@/lib/types';
+import { exportCsv } from '@/lib/csv';
 import {
   Users,
   Search,
@@ -18,6 +19,11 @@ import {
   Plus,
   X,
   Trash2,
+  Download,
+  Loader2,
+  Ban,
+  CheckCircle2,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -30,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -61,6 +68,10 @@ export default function SuperAdminUsers() {
   const [newGrade, setNewGrade] = useState('دوازدهم');
   const [newMajor, setNewMajor] = useState('تجربی');
   const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name: string } | null>(null);
+
+  // ===== Bulk selection state =====
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const createAdvisor = async () => {
     setCreatingAdvisor(true);
@@ -99,6 +110,93 @@ export default function SuperAdminUsers() {
     navigateTo({ view: 'sa-user-detail', selectedGlobalUserId: id });
   };
 
+  // ===== CSV export (current filtered list) =====
+  const handleExportCsv = () => {
+    if (filteredUsers.length === 0) {
+      toast.error('برای خروجی CSV حداقل یک کاربر لازم است');
+      return;
+    }
+    const headers = ['نام', 'شماره', 'نقش', 'پایه', 'رشته', 'وضعیت', 'آموزشگاه', 'تاریخ عضویت'];
+    const rows = filteredUsers.map((u) => [
+      u.name,
+      u.phone,
+      ROLE_CONFIG[u.role]?.label ?? u.role,
+      u.grade ?? '',
+      u.major ?? '',
+      u.status === 'active' ? 'فعال' : 'معلق',
+      u.instituteName,
+      u.joinDate,
+    ]);
+    try {
+      exportCsv(`reval-users-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+      toast.success(`${toPersianDigits(filteredUsers.length)} کاربر به CSV خروجی گرفته شد`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'خروجی CSV ناموفق بود');
+    }
+  };
+
+  // ===== Bulk selection helpers =====
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allFilteredSelected = filteredUsers.length > 0 && filteredUsers.every((u) => selectedIds.has(u.id));
+  const someFilteredSelected = filteredUsers.some((u) => selectedIds.has(u.id)) && !allFilteredSelected;
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        for (const u of filteredUsers) next.delete(u.id);
+      } else {
+        for (const u of filteredUsers) next.add(u.id);
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // ===== Bulk status update (suspend or activate) =====
+  const bulkUpdateStatus = async (status: UserAccountStatus) => {
+    if (selectedIds.size === 0) return;
+    setBulkActionLoading(true);
+    const ids = Array.from(selectedIds);
+    const label = status === 'suspended' ? 'تعلیق' : 'فعال‌سازی';
+    let ok = 0;
+    let failed = 0;
+    try {
+      await Promise.all(ids.map(async (id) => {
+        try {
+          const res = await fetch(`/api/users/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          });
+          if (res.ok) ok += 1;
+          else failed += 1;
+        } catch {
+          failed += 1;
+        }
+      }));
+      if (failed === 0) {
+        toast.success(`${toPersianDigits(ok)} کاربر ${status === 'suspended' ? 'معلق شد' : 'فعال شد'}`);
+      } else if (ok === 0) {
+        toast.error(`${label} کاربران ناموفق بود`);
+      } else {
+        toast.warning(`${toPersianDigits(ok)} کاربر تغییر کرد، ${toPersianDigits(failed)} ناموفق`);
+      }
+      clearSelection();
+      await loadGlobalUsers().catch(() => {});
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-5 md:space-y-6 animate-fade-in-up">
       {/* ============ Page Header ============ */}
@@ -120,7 +218,18 @@ export default function SuperAdminUsers() {
             </p>
           </div>
         </div>
-        <button onClick={() => setShowAdvisorForm((value) => !value)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/15 text-gold border border-gold/25 text-sm font-bold"><Plus className="w-4 h-4" />کاربر جدید</button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleExportCsv}
+            disabled={globalUsers.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] text-muted-foreground hover:text-foreground hover:border-gold/40 text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="خروجی CSV از کاربران فیلترشده"
+          >
+            <Download className="w-4 h-4" />
+            خروجی CSV
+          </button>
+          <button onClick={() => setShowAdvisorForm((value) => !value)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/15 text-gold border border-gold/25 text-sm font-bold"><Plus className="w-4 h-4" />کاربر جدید</button>
+        </div>
       </header>
 
       {showAdvisorForm && <div className="surface-1 rounded-2xl p-4 border border-gold/25 space-y-3">
@@ -188,11 +297,73 @@ export default function SuperAdminUsers() {
         <span>{toPersianDigits(filteredUsers.length)} نتیجه</span>
       </div>
 
+      {/* ============ Bulk action bar (shown when 1+ users selected) ============ */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="sticky top-2 z-20"
+          >
+            <div className="surface-2 edge-highlight rounded-[14px] border border-gold/30 bg-[var(--gold-soft)] p-3 flex flex-wrap items-center gap-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-gold">
+                <ListChecks className="w-4 h-4" />
+                <span className="tabular-nums">{toPersianDigits(selectedIds.size)}</span>
+                <span className="text-muted-foreground font-normal">کاربر انتخاب شده</span>
+              </div>
+              <div className="flex-1" />
+              <button
+                onClick={() => void bulkUpdateStatus('suspended')}
+                disabled={bulkActionLoading}
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-[10px] bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 hover:bg-[var(--danger)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold"
+              >
+                {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                تعلیق انتخاب‌شده‌ها
+              </button>
+              <button
+                onClick={() => void bulkUpdateStatus('active')}
+                disabled={bulkActionLoading}
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-[10px] bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30 hover:bg-[var(--success)]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold"
+              >
+                {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                فعال‌سازی انتخاب‌شده‌ها
+              </button>
+              <button
+                onClick={toggleSelectAll}
+                disabled={bulkActionLoading || filteredUsers.length === 0}
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-[10px] bg-[var(--bg-overlay)] text-muted-foreground border border-[var(--border)] hover:text-foreground disabled:opacity-50 transition-colors"
+              >
+                {allFilteredSelected ? 'لغو انتخاب همه' : 'انتخاب همه'}
+              </button>
+              <button
+                onClick={clearSelection}
+                disabled={bulkActionLoading}
+                className="inline-flex items-center gap-1 text-xs px-2 py-2 rounded-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                title="پاک کردن انتخاب"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ============ Dense Table (Desktop) ============ */}
       <div className="hidden lg:block surface-1 rounded-[16px] overflow-hidden">
         {/* Header */}
         <div className="grid grid-cols-12 gap-3 px-5 py-3 text-[11px] text-muted-foreground/70 font-semibold uppercase tracking-wide border-b border-[var(--border)] bg-[var(--bg-base)]/40">
-          <div className="col-span-3">کاربر</div>
+          <div className="col-span-1 flex items-center">
+            <Checkbox
+              checked={filteredUsers.length > 0 ? allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false : false}
+              onCheckedChange={toggleSelectAll}
+              disabled={filteredUsers.length === 0}
+              aria-label="انتخاب همه کاربران"
+              className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold data-[state=indeterminate]:bg-gold/60"
+            />
+          </div>
+          <div className="col-span-2">کاربر</div>
           <div className="col-span-2">نقش</div>
           <div className="col-span-3">آموزشگاه</div>
           <div className="col-span-2 text-center">عملکرد</div>
@@ -206,6 +377,7 @@ export default function SuperAdminUsers() {
             {filteredUsers.map((user, idx) => {
               const roleCfg = ROLE_CONFIG[user.role];
               const RoleIcon = roleCfg.icon;
+              const isSelected = selectedIds.has(user.id);
               return (
                 <motion.div
                   key={user.id}
@@ -213,10 +385,19 @@ export default function SuperAdminUsers() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ delay: idx * 0.02, duration: 0.2 }}
-                  className="nav-item-hover grid grid-cols-12 gap-3 px-5 py-3 border-b border-[var(--border)] last:border-0 items-center"
+                  className={`nav-item-hover grid grid-cols-12 gap-3 px-5 py-3 border-b border-[var(--border)] last:border-0 items-center transition-colors ${isSelected ? 'bg-gold/[0.06]' : ''}`}
                 >
+                  {/* Checkbox */}
+                  <div className="col-span-1 flex items-center">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelect(user.id)}
+                      aria-label={`انتخاب ${user.name}`}
+                      className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold"
+                    />
+                  </div>
                   {/* User */}
-                  <div className="col-span-3 flex items-center gap-3 min-w-0">
+                  <div className="col-span-2 flex items-center gap-3 min-w-0">
                     <div className="w-9 h-9 rounded-[10px] bg-[var(--bg-overlay)] border border-[var(--border)] flex items-center justify-center text-lg shrink-0">
                       {user.avatar}
                     </div>
@@ -281,6 +462,7 @@ export default function SuperAdminUsers() {
           {filteredUsers.map((user, idx) => {
             const roleCfg = ROLE_CONFIG[user.role];
             const RoleIcon = roleCfg.icon;
+            const isSelected = selectedIds.has(user.id);
             return (
               <motion.div
                 key={user.id}
@@ -288,9 +470,15 @@ export default function SuperAdminUsers() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ delay: idx * 0.02, duration: 0.2 }}
-                className="card-hover surface-1 rounded-[12px] p-3"
+                className={`card-hover surface-1 rounded-[12px] p-3 transition-colors ${isSelected ? 'border border-gold/40 bg-gold/[0.06]' : 'border border-transparent'}`}
               >
                 <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(user.id)}
+                    aria-label={`انتخاب ${user.name}`}
+                    className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold shrink-0"
+                  />
                   <div className="w-10 h-10 rounded-[10px] bg-[var(--bg-overlay)] border border-[var(--border)] flex items-center justify-center text-xl shrink-0">
                     {user.avatar}
                   </div>

@@ -5,15 +5,12 @@ import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-mot
 
 // ===== Features section =====
 // Sits after the InteractiveDemo ("بخشی از محیط اپ این شکلیه..."). Lists the
-// detailed feature breakdown of روال as 9 expandable bullet points. Each
+// detailed feature breakdown of روال as 8 expandable bullet points. Each
 // bullet shows only its title by default; clicking the row reveals the
 // description below it (animated accordion).
 //
 // Desktop layout: 2-column grid (each feature is an independent accordion
 // that expands inline). Mobile: single column.
-//
-// The last feature ("مقاله‌های کاربردی") has no body text — it's rendered
-// as a non-clickable title-only bullet point.
 //
 // No icons — every visual is a typographic / CSS element (bullet dot,
 // `+`/`×` character for the open/close indicator). Per user's "no icons"
@@ -53,10 +50,6 @@ const FEATURES: { title: string; body?: string }[] = [
     title: "تحلیل هوشمندِ آزمون‌ها",
     body: "بررسی اینکه ساعت‌ها و روش‌های مطالعه‌ات دقیقاً چه تاثیری روی نتیجه‌ی آزمون‌هات گذاشته، تا بتونی مسیر پیشرفتت رو خیلی شفاف‌تر ببینی.",
   },
-  {
-    title: "مقاله‌های کاربردی",
-    // body is intentionally omitted — title-only bullet point per user request.
-  },
 ];
 
 export function Features() {
@@ -78,7 +71,8 @@ export function Features() {
           transition={{ duration: reduceMotion ? 0.12 : 0.6, ease: easeOut }}
           className="mb-12 max-w-2xl text-right"
         >
-          <h2 className="text-balance text-3xl font-black leading-tight text-foreground sm:text-5xl">
+          <span className="text-xs font-bold text-mint">امکانات روال</span>
+          <h2 className="mt-3 text-balance text-3xl font-black leading-tight text-foreground sm:text-5xl">
             قابلیت‌های روال
           </h2>
         </motion.div>

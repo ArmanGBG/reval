@@ -31,7 +31,7 @@ export function ForStudents() {
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
           animate={headerInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: reduceMotion ? 0.12 : 0.6, ease: easeOut }}
-          className="mx-auto max-w-3xl text-right"
+          className="mb-12 max-w-2xl text-right"
         >
           <span className="text-xs font-bold text-mint">روال برای توست</span>
           <h2 className="mt-3 text-balance text-3xl font-black leading-tight text-foreground sm:text-5xl">

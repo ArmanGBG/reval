@@ -1,7 +1,7 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings,
@@ -14,6 +14,7 @@ import {
   Palette,
   AlertTriangle,
   Server,
+  Loader2,
 } from 'lucide-react';
 import { AppearanceSection } from '@/components/settings/AppearanceSection';
 
@@ -25,16 +26,69 @@ function toPersianDigits(num: number | string): string {
 export default function SuperAdminSettings() {
   const { theme, setTheme } = useAppStore();
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [allowNewRegistrations, setAllowNewRegistrations] = useState(true);
   const [maxFreeStudents, setMaxFreeStudents] = useState('5');
-  const [maxBasicStudents, setMaxBasicStudents] = useState('15');
-  const [maxProStudents, setMaxProStudents] = useState('50');
-  const [maxEnterpriseStudents, setMaxEnterpriseStudents] = useState('200');
+  const [maxBasicStudents, setMaxBasicStudents] = useState('20');
+  const [maxProStudents, setMaxProStudents] = useState('100');
+  const [maxEnterpriseStudents, setMaxEnterpriseStudents] = useState('500');
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // ===== Fetch settings from API on mount =====
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/settings');
+        if (!res.ok) throw new Error('خطا در بارگذاری تنظیمات');
+        const data = await res.json();
+        if (!mounted) return;
+        const s = data.settings || {};
+        if (s.maintenanceMode != null) setMaintenanceMode(s.maintenanceMode === 'true');
+        if (s.allowRegistration != null) setAllowNewRegistrations(s.allowRegistration === 'true');
+        if (s.maxStudentsFree != null) setMaxFreeStudents(s.maxStudentsFree);
+        if (s.maxStudentsBasic != null) setMaxBasicStudents(s.maxStudentsBasic);
+        if (s.maxStudentsPro != null) setMaxProStudents(s.maxStudentsPro);
+        if (s.maxStudentsEnterprise != null) setMaxEnterpriseStudents(s.maxStudentsEnterprise);
+        setError(null);
+      } catch (e) {
+        if (mounted) setError(e instanceof Error ? e.message : 'خطای ناشناخته');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // ===== Save settings to API =====
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            maintenanceMode: String(maintenanceMode),
+            allowRegistration: String(allowNewRegistrations),
+            maxStudentsFree: maxFreeStudents,
+            maxStudentsBasic: maxBasicStudents,
+            maxStudentsPro: maxProStudents,
+            maxStudentsEnterprise: maxEnterpriseStudents,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error('خطا در ذخیره تنظیمات');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'خطای ناشناخته');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Toggle switch (accent for super admin)
@@ -171,7 +225,7 @@ export default function SuperAdminSettings() {
           <div className="space-y-2">
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <span className="text-xs text-muted-foreground">نسخه پلتفرم</span>
-              <span className="text-xs text-foreground font-bold tabular-nums" dir="ltr">v2.1.0</span>
+              <span className="text-xs text-foreground font-bold tabular-nums" dir="ltr">v0.2.1</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <span className="text-xs text-muted-foreground">آخرین بروزرسانی</span>
@@ -188,7 +242,7 @@ export default function SuperAdminSettings() {
             </div>
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <span className="text-xs text-muted-foreground">پایگاه داده</span>
-              <span className="text-xs text-foreground font-bold" dir="ltr">SQLite</span>
+              <span className="text-xs text-foreground font-bold" dir="ltr">PostgreSQL</span>
             </div>
           </div>
         </motion.section>
@@ -232,10 +286,23 @@ export default function SuperAdminSettings() {
       <div className="lg:sticky lg:bottom-4 lg:flex lg:justify-end">
         <button
           onClick={handleSave}
-          className="btn-hover glow-hover glow-hover-gold w-full lg:w-auto flex items-center justify-center gap-2 bg-gold text-white px-6 py-3 rounded-[12px] text-sm font-bold shadow-lg shadow-black/20"
+          disabled={saving || loading}
+          className="btn-hover glow-hover glow-hover-gold w-full lg:w-auto flex items-center justify-center gap-2 bg-gold text-white px-6 py-3 rounded-[12px] text-sm font-bold shadow-lg shadow-black/20 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <AnimatePresence mode="wait">
-            {saved ? (
+            {saving ? (
+              <motion.div
+                key="saving"
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.6, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center gap-2"
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>در حال ذخیره...</span>
+              </motion.div>
+            ) : saved ? (
               <motion.div
                 key="saved"
                 initial={{ scale: 0.6, opacity: 0 }}

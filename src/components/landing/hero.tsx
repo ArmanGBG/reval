@@ -41,7 +41,7 @@ export function Hero() {
         </div>
       )}
 
-      <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-5 py-12 sm:px-8 sm:py-20 md:flex-row md:items-center md:gap-12 md:px-10 lg:gap-16">
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-5 pt-24 pb-12 sm:px-8 sm:py-20 md:flex-row md:items-center md:gap-12 md:px-10 lg:gap-16">
         {/* ===== Text block (visual RIGHT in RTL / first in DOM) ===== */}
         <motion.div
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 22, filter: "blur(8px)" }}

@@ -151,34 +151,8 @@ export default function UserDetail() {
             </div>
           </motion.section>
 
-          {/* Activity Log */}
-          <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="surface-1 rounded-[16px] p-5 md:p-6"
-          >
-            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gold" />
-              تاریخچه فعالیت
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
-                <div className="w-2 h-2 rounded-full bg-muted-foreground mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-foreground">تاریخ عضویت</p>
-                   <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{formatPersianDateFromISO(user.joinDate)}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
-                <div className="w-2 h-2 rounded-full bg-gold mt-1.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-foreground">آموزشگاه متعلق</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{user.instituteName}</p>
-                </div>
-              </div>
-            </div>
-          </motion.section>
+          {/* Activity Log — real audit log from /api/admin/audit-log */}
+          <AuditLogSection userId={user.id} />
         </div>
 
         {/* ----- Right col-span-5: Metrics ----- */}
@@ -354,5 +328,53 @@ export default function UserDetail() {
         </aside>
       </div>
     </div>
+  );
+}
+
+// ===== AuditLogSection — real audit log for a specific user =====
+function AuditLogSection({ userId }: { userId: string }) {
+  const [logs, setLogs] = useState<{ action: string; details: string | null; createdAt: string; actorName: string | null }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/audit-log?entity=User&entityId=${userId}&limit=20`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted && Array.isArray(data.logs)) setLogs(data.logs);
+      } catch { /* ignore */ }
+      finally { if (mounted) setLoading(false); }
+    })();
+    return () => { mounted = false; };
+  }, [userId]);
+
+  const actionLabels: Record<string, string> = { CREATE: 'ایجاد', UPDATE: 'بروزرسانی', DELETE: 'حذف', SUSPEND: 'تعلیق', ACTIVATE: 'فعال‌سازی' };
+
+  return (
+    <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="surface-1 rounded-[16px] p-5 md:p-6">
+      <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+        <Activity className="w-4 h-4 text-gold" />
+        تاریخچه فعالیت
+      </h3>
+      <div className="space-y-2.5">
+        {loading ? (
+          <div className="p-3 text-center text-xs text-muted-foreground">در حال بارگذاری...</div>
+        ) : logs.length === 0 ? (
+          <div className="p-3 text-center text-xs text-muted-foreground">هنوز فعالیتی ثبت نشده</div>
+        ) : (
+          logs.map((log, i) => (
+            <div key={i} className="flex items-start gap-3 p-2.5 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
+              <div className="w-2 h-2 rounded-full bg-gold mt-1.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-foreground">{actionLabels[log.action] || log.action}{log.actorName ? ` توسط ${log.actorName}` : ''}</p>
+                <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">{formatPersianDateFromISO(log.createdAt)}</p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </motion.section>
   );
 }

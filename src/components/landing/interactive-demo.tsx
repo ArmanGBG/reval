@@ -134,14 +134,15 @@ export function InteractiveDemo() {
     <section id="features" className="relative scroll-mt-16 overflow-hidden border-b border-border/50 py-24 sm:py-32">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.1]" aria-hidden="true" />
       <div className="relative mx-auto max-w-5xl px-5 sm:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-balance text-3xl font-black leading-tight text-foreground sm:text-5xl">بخشی از محیط اپ این شکلیه...</h2>
-          <p className="mt-4 text-sm font-medium leading-7 text-muted-foreground sm:text-base">رایگان ثبت‌نام کن و از تمام قابلیت‌هامون استفاده کن!</p>
+        <div className="mb-12 max-w-2xl text-right">
+          <span className="text-xs font-bold text-mint">دموی محصول</span>
+          <h2 className="mt-3 text-balance text-3xl font-black leading-tight text-foreground sm:text-5xl">بخشی از محیط اپ این شکلیه...</h2>
+          <p className="mt-4 text-sm font-medium leading-8 text-muted-foreground sm:text-base">رایگان ثبت‌نام کن و از تمام قابلیت‌هامون استفاده کن!</p>
         </div>
 
         <div className="mx-auto max-w-4xl">
           <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
-            <div className="text-right"><p className="text-xs text-muted-foreground">برنامه امروز</p><h3 className="mt-1 text-xl font-black text-foreground">تسک‌های من</h3></div>
+            <div className="text-right"><p className="text-xs text-muted-foreground">برنامه امروز</p><h3 className="mt-1 text-lg font-black text-foreground">تسک‌های من</h3></div>
           </div>
           <div className={`${styles.taskDemo} space-y-3`}>
             {tasks.map((task, index) => (
@@ -172,7 +173,7 @@ export function InteractiveDemo() {
           </div>
 
           <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
-            <div className="text-right"><p className="text-xs text-muted-foreground">متصل به تسک‌های بالا</p><h3 className="mt-1 text-xl font-black text-foreground">گزارش مطالعه</h3></div>
+            <div className="text-right"><p className="text-xs text-muted-foreground">متصل به تسک‌های بالا</p><h3 className="mt-1 text-lg font-black text-foreground">گزارش مطالعه</h3></div>
           </div>
           {hasCompletedTask ? (
             <div ref={analyticsRef} className={`${styles.analyticsDemo} landingAnalyticsDemo`}>

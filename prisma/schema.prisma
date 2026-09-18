@@ -47,6 +47,9 @@ model User {
   readMessages               MessageRead[]         @relation("ReadMessages")
   sentConnectionRequests     ConnectionRequest[]   @relation("ConnectionRequestStudent")
   receivedConnectionRequests ConnectionRequest[]   @relation("ConnectionRequestAdvisor")
+  platformSettings           PlatformSetting[]      @relation("PlatformSettingUpdater")
+  auditLogs                  AuditLog[]              @relation("AuditLogActor")
+  featureFlags               FeatureFlag[]           @relation("FeatureFlagUpdater")
 }
 
 model OtpChallenge {
@@ -502,4 +505,46 @@ model ExamTitleSuggestion {
 
   @@unique([studentId, value])
   @@index([studentId, createdAt])
+}
+
+// ===== Platform Settings (key-value store for admin-configurable settings) =====
+model PlatformSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  updatedByUser User? @relation("PlatformSettingUpdater", fields: [updatedBy], references: [id])
+}
+
+// ===== Audit Log (tracks admin actions across the platform) =====
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String   // 'CREATE' | 'UPDATE' | 'DELETE' | 'SUSPEND' | 'ACTIVATE' | 'LOGIN_AS' | etc.
+  entity    String   // 'User' | 'Institute' | 'Subject' | 'Message' | 'PlatformSetting' | etc.
+  entityId  String?
+  details   String?  // JSON string with before/after values
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditLogActor", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ===== Feature Flags (toggleable platform features) =====
+model FeatureFlag {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  enabled   Boolean  @default(false)
+  category  String   @default("general") // 'general' | 'messaging' | 'curriculum' | 'analytics'
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  updatedByUser User? @relation("FeatureFlagUpdater", fields: [updatedBy], references: [id])
 }

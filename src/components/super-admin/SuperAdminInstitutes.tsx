@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { PlatformInstitute, SubscriptionPlan, InstituteStatus } from '@/lib/types';
+import { exportCsv } from '@/lib/csv';
 import {
   Building2,
   Plus,
@@ -18,6 +19,7 @@ import {
   Phone,
   Trash2,
   Filter,
+  Download,
 } from 'lucide-react';
 
 function toPersianDigits(num: number | string): string {
@@ -101,6 +103,31 @@ export default function SuperAdminInstitutes() {
     navigateTo({ view: 'sa-institute-detail', selectedInstituteId: id });
   };
 
+  // ===== CSV export (current filtered list) =====
+  const handleExportCsv = () => {
+    if (filteredInstitutes.length === 0) {
+      toast.error('برای خروجی CSV حداقل یک آموزشگاه لازم است');
+      return;
+    }
+    const headers = ['نام آموزشگاه', 'مدیر', 'شماره مدیر', 'طرح اشتراک', 'وضعیت', 'تعداد دانش‌آموز', 'تعداد مشاور', 'میانگین تکمیل'];
+    const rows = filteredInstitutes.map((i) => [
+      i.name,
+      i.managerName,
+      i.managerPhone || '',
+      SUB_CONFIG[i.subscriptionPlan]?.label ?? i.subscriptionPlan,
+      STATUS_CONFIG[i.status]?.label ?? i.status,
+      i.studentCount,
+      i.advisorCount,
+      `${i.avgCompletionRate}%`,
+    ]);
+    try {
+      exportCsv(`reval-institutes-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+      toast.success(`${toPersianDigits(filteredInstitutes.length)} آموزشگاه به CSV خروجی گرفته شد`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'خروجی CSV ناموفق بود');
+    }
+  };
+
   return (
     <div className="space-y-5 md:space-y-6 animate-fade-in-up">
       {/* ============ Page Header ============ */}
@@ -122,13 +149,24 @@ export default function SuperAdminInstitutes() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-hover glow-hover glow-hover-gold flex items-center gap-2 bg-gold text-white px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          افزودن آموزشگاه
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleExportCsv}
+            disabled={platformInstitutes.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-[10px] bg-[var(--bg-overlay)] border border-[var(--border)] text-muted-foreground hover:text-foreground hover:border-gold/40 text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="خروجی CSV از آموزشگاه‌های فیلترشده"
+          >
+            <Download className="w-4 h-4" />
+            خروجی CSV
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-hover glow-hover glow-hover-gold flex items-center gap-2 bg-gold text-white px-4 py-2.5 rounded-[10px] text-sm font-bold shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            افزودن آموزشگاه
+          </button>
+        </div>
       </header>
 
       {/* ============ Filter Bar (sticky) ============ */}

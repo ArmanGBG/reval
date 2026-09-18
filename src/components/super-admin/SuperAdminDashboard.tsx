@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import {
   Building2,
@@ -16,6 +17,28 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+interface MonthBucket {
+  label: string;
+  key: string;
+  users: number;
+  institutes: number;
+  tasks: number;
+  exams: number;
+  messages: number;
+}
+
+interface MetricsResponse {
+  months: MonthBucket[];
+  snapshot: {
+    totalUsers: number;
+    totalInstitutes: number;
+    totalStudents: number;
+    totalAdvisors: number;
+    totalTasks: number;
+    totalExams: number;
+  };
+}
+
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
   return num.toString().split('').map((d) => persianDigits[parseInt(d)] ?? d).join('');
@@ -24,6 +47,29 @@ function toPersianDigits(num: number | string): string {
 export default function SuperAdminDashboard() {
   const { platformInstitutes, globalUsers, loadPlatformInstitutes, loadGlobalUsers } = useAppStore();
   useEffect(() => { loadPlatformInstitutes().catch(() => {}); loadGlobalUsers().catch(() => {}); }, [loadPlatformInstitutes, loadGlobalUsers]);
+
+  // ===== Real monthly analytics from /api/admin/metrics =====
+  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setMetricsLoading(true);
+      try {
+        const res = await fetch('/api/admin/metrics?months=6');
+        const data = await res.json();
+        if (!active) return;
+        if (res.ok && data && Array.isArray(data.months)) {
+          setMetrics(data as MetricsResponse);
+        }
+      } catch {
+        // silent fail — chart falls back to a friendly empty state
+      } finally {
+        if (active) setMetricsLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   // Platform-wide KPIs
   const kpis = useMemo(() => {
@@ -69,8 +115,10 @@ export default function SuperAdminDashboard() {
     return dist;
   }, [platformInstitutes]);
 
-  // Max value for engagement bars normalization
-  const maxStudents = Math.max(kpis.totalStudents, 1);
+  // Max value for engagement bars normalization (peak of new users per month)
+  const monthlyUsers = metrics?.months ?? [];
+  const maxMonthlyUsers = Math.max(1, ...monthlyUsers.map((m) => m.users));
+  const maxMonthlyInstitutes = Math.max(1, ...monthlyUsers.map((m) => m.institutes));
 
   const kpiCards = [
     {
@@ -184,48 +232,61 @@ export default function SuperAdminDashboard() {
             </div>
             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-mint" /> دانش‌آموز
+                <span className="w-2 h-2 rounded-full bg-mint" /> کاربر جدید
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-muted-foreground" /> مشاور
+                <span className="w-2 h-2 rounded-full bg-muted-foreground" /> آموزشگاه جدید
               </span>
             </div>
           </div>
 
           <div className="space-y-3">
-            {[{ month: 'اکنون', students: kpis.totalStudents, advisors: kpis.totalAdvisors, completionRate: kpis.avgCompletion }].map((item, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-10 md:w-12 text-left tabular-nums">{item.month}</span>
-                <div className="flex-1 flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(item.students / maxStudents) * 100}%` }}
-                        transition={{ duration: 0.8, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full bg-mint rounded-full"
-                      />
-                    </div>
-                    <span className="text-[11px] text-muted-foreground w-7 tabular-nums">{toPersianDigits(item.students)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(item.advisors / 30) * 100}%` }}
-                        transition={{ duration: 0.8, delay: idx * 0.1 + 0.05, ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full bg-muted-foreground rounded-full"
-                      />
-                    </div>
-                    <span className="text-[11px] text-muted-foreground w-7 tabular-nums">{toPersianDigits(item.advisors)}</span>
-                  </div>
-                </div>
-                <div className="text-center min-w-[44px] md:min-w-[52px] px-2 py-1 rounded-[8px] bg-gold/10 border border-gold/15">
-                  <span className="text-sm md:text-base font-bold text-gold tabular-nums">{toPersianDigits(item.completionRate)}٪</span>
-                  <p className="text-[9px] text-muted-foreground/70">تکمیل</p>
-                </div>
+            {metricsLoading ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-gold" />
+                <span>در حال بارگذاری آمار ماهانه...</span>
               </div>
-            ))}
+            ) : monthlyUsers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-xs">
+                هنوز داده‌ای برای نمایش رشد ماهانه ثبت نشده است.
+              </div>
+            ) : (
+              monthlyUsers.map((item, idx) => {
+                return (
+                  <div key={`${item.key}-${idx}`} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-10 md:w-12 text-left tabular-nums">{item.label}</span>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(item.users / maxMonthlyUsers) * 100}%` }}
+                            transition={{ duration: 0.7, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                            className="h-full bg-mint rounded-full"
+                          />
+                        </div>
+                        <span className="text-[11px] text-muted-foreground w-7 tabular-nums">{toPersianDigits(item.users)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(item.institutes / maxMonthlyInstitutes) * 100}%` }}
+                            transition={{ duration: 0.7, delay: idx * 0.06 + 0.05, ease: [0.16, 1, 0.3, 1] }}
+                            className="h-full bg-muted-foreground rounded-full"
+                          />
+                        </div>
+                        <span className="text-[11px] text-muted-foreground/60 w-7 tabular-nums">{toPersianDigits(item.institutes)}</span>
+                      </div>
+                    </div>
+                    <div className="text-center min-w-[44px] md:min-w-[52px] px-2 py-1 rounded-[8px] bg-gold/10 border border-gold/15">
+                      <span className="text-sm md:text-base font-bold text-gold tabular-nums">{toPersianDigits(item.tasks)}</span>
+                      <p className="text-[9px] text-muted-foreground/70">تسک</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </motion.section>
 

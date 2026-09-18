@@ -1,14 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Loader2, Settings } from 'lucide-react';
+import { Save, Loader2, Settings, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Subject } from '@/lib/subjects-types';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface SubjectSettingsPanelProps {
   subject: Subject;
   onUpdated: (subject: Subject) => void;
+  onClose?: () => void;
 }
 
 const COLORS = [
@@ -20,13 +32,15 @@ const COLORS = [
 
 const ICONS = ['📚', '🧬', '⚛️', '⚗️', '📐', '🪨', '🌍', '🎨', '📝', '🌐', '🏛️', '🔢', '📖', '🔬'];
 
-export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPanelProps) {
+export function SubjectSettingsPanel({ subject, onUpdated, onClose }: SubjectSettingsPanelProps) {
   const [name, setName] = useState(subject.name);
   const [color, setColor] = useState(subject.color);
   const [icon, setIcon] = useState(subject.icon || '📚');
   const [sortOrder, setSortOrder] = useState(subject.sortOrder);
   const [isActive, setIsActive] = useState(subject.isActive);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -55,6 +69,26 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
       toast.error(msg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/subjects/${subject.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'حذف درس ناموفق بود');
+      toast.success(`درس «${subject.name}» حذف شد`);
+      setDeleteOpen(false);
+      // Give the dialog a tick to close before notifying parent
+      setTimeout(() => {
+        onClose?.();
+      }, 50);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'حذف درس ناموفق بود';
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -174,6 +208,59 @@ export function SubjectSettingsPanel({ subject, onUpdated }: SubjectSettingsPane
             )}
           </button>
         </div>
+      </div>
+
+      {/* ============ Delete Subject (danger zone) ============ */}
+      <div className="surface-1 rounded-2xl p-5 border border-[var(--danger)]/25 bg-[var(--danger)]/[0.03]">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertTriangle className="w-4 h-4 text-[var(--danger)]" />
+          <h3 className="text-sm font-bold text-[var(--danger)]">منطقه خطر</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+          با کلیک روی «حذف درس»، این درس به‌صورت نرم حذف می‌شود. دانش‌آموزان دیگر آن را در فهرست دروس نخواهند دید اما تسک‌های ثبت‌شده نگه داشته می‌شوند. این عمل قابل بازگشت نیست.
+        </p>
+        <AlertDialog open={deleteOpen} onOpenChange={(open) => { setDeleteOpen(open); if (!open) setDeleting(false); }}>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              className="btn-hover w-full h-11 rounded-xl border border-[var(--danger)]/40 text-[var(--danger)] bg-[var(--danger)]/5 hover:bg-[var(--danger)]/10 font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              حذف درس
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>حذف درس «{subject.name}»؟</AlertDialogTitle>
+              <AlertDialogDescription>
+                این عمل قابل بازگشت نیست. درس از فهرست دروس دانش‌آموزان مخفی می‌شود ولی تسک‌های ثبت‌شده حفظ می‌گردند.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>انصراف</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-white hover:bg-destructive/90"
+                disabled={deleting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void handleDelete();
+                }}
+              >
+                {deleting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    در حال حذف...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    حذف درس
+                  </span>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

@@ -9,13 +9,28 @@ import { cn } from "@/lib/utils";
 import { useConfettiOnClick } from "./use-confetti";
 import { useAppStore } from "@/lib/store";
 
-const NAV = [
-  { label: "دموی محصول", href: "#features" },
-  { label: "مشاوران", href: "#advisors" },
-  { label: "تیم ما", href: "#team" },
+// Nav items support two modes:
+//   - `href` → renders a <Link> that scrolls to a hash on the landing page
+//   - `action` → renders a <button> that calls the corresponding callback
+//     (switches the LandingPage view to the dedicated advisors / team page,
+//      or for "demo" switches back to main landing and scrolls to #features).
+type NavItem = { label: string; href: string } | { label: string; action: "advisors-page" | "team-page" | "demo" };
+
+const NAV: NavItem[] = [
+  { label: "دموی محصول", action: "demo" },
+  { label: "مشاوران", action: "advisors-page" },
+  { label: "تیم ما", action: "team-page" },
 ];
 
-export function Header() {
+export function Header({
+  onAdvisorsClick,
+  onTeamClick,
+  onDemoClick,
+}: {
+  onAdvisorsClick?: () => void;
+  onTeamClick?: () => void;
+  onDemoClick?: () => void;
+}) {
   const [open, setOpen] = React.useState(false);
   const onConfetti = useConfettiOnClick(45);
   const theme = useAppStore((s) => s.theme);
@@ -28,6 +43,70 @@ export function Header() {
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  // Shared click handler for action nav items — triggers the right
+  // callback (switches the LandingPage view) and also closes the mobile
+  // drawer if open.
+  const handleActionClick = (action: "advisors-page" | "team-page" | "demo") => {
+    if (action === "advisors-page") onAdvisorsClick?.();
+    else if (action === "team-page") onTeamClick?.();
+    else if (action === "demo") onDemoClick?.();
+    setOpen(false);
+  };
+
+  // Helper: render a nav item as either a <Link> (href mode) or a <button>
+  // (action mode). Used by both the desktop nav and the mobile drawer.
+  const renderNavItem = (item: NavItem, index: number) => {
+    if ("action" in item) {
+      return (
+        <button
+          key={item.label}
+          type="button"
+          onClick={() => handleActionClick(item.action)}
+          className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.05] hover:text-foreground"
+        >
+          {item.label}
+        </button>
+      );
+    }
+    return (
+      <Link
+        key={item.label}
+        href={item.href}
+        onClick={() => setOpen(false)}
+        className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.05] hover:text-foreground"
+      >
+        {item.label}
+      </Link>
+    );
+  };
+
+  // Mobile-drawer variant: bigger touch target, different padding. Same
+  // href-vs-action logic.
+  const renderMobileNavItem = (item: NavItem, index: number) => {
+    if ("action" in item) {
+      return (
+        <button
+          key={item.label}
+          type="button"
+          onClick={() => handleActionClick(item.action)}
+          className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-foreground/[0.06] focus-ring-mint text-right"
+        >
+          {item.label}
+        </button>
+      );
+    }
+    return (
+      <Link
+        key={item.label}
+        href={item.href}
+        onClick={() => setOpen(false)}
+        className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-foreground/[0.06] focus-ring-mint"
+      >
+        {item.label}
+      </Link>
+    );
+  };
 
   return (
     <motion.header
@@ -51,15 +130,7 @@ export function Header() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-1 lg:flex" aria-label="منوی اصلی">
-            {NAV.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="underline-grow rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-foreground/[0.05] hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {NAV.map(renderNavItem)}
           </nav>
 
           <div className="flex-1" />
@@ -133,16 +204,7 @@ export function Header() {
                 </button>
               </div>
               <nav className="mt-8 flex flex-col gap-1" aria-label="منوی موبایل">
-                {NAV.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="touch-target rounded-xl px-4 py-3.5 text-base font-medium text-foreground/90 transition-all hover:bg-foreground/[0.06] focus-ring-mint"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {NAV.map(renderMobileNavItem)}
               </nav>
               <div className="mt-auto flex flex-col gap-3">
                 <Link

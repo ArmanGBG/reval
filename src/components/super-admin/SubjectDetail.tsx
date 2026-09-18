@@ -359,6 +359,10 @@ export function SubjectDetail({ subject: initialSubject, onBack, onChange }: Sub
                 setSubject(updated);
                 onChange();
               }}
+              onClose={() => {
+                onChange();
+                onBack();
+              }}
             />
           )}
         </motion.div>

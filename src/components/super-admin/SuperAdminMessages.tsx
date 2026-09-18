@@ -13,6 +13,7 @@ interface StudentOption {
   name: string;
   phone: string;
   avatar: string;
+  role?: string;
 }
 
 interface SentMessageRow {
@@ -58,13 +59,13 @@ export default function SuperAdminMessages() {
     setLoadingStudents(true);
     (async () => {
       try {
-        const res = await fetch('/api/users?role=STUDENT', {
+        const res = await fetch('/api/users', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'خطا در بارگذاری دانش‌آموزان');
+          throw new Error(data.error || 'خطا در بارگذاری کاربران');
         }
         const data = await res.json();
         if (!mounted) return;
@@ -131,7 +132,7 @@ export default function SuperAdminMessages() {
       });
       const recipientLabel =
         targetRecipient === null
-          ? 'همه دانش‌آموزان (سراسری)'
+          ? 'همه کاربران (سراسری)'
           : students.find((s) => s.id === targetRecipient)?.name || 'دانش‌آموز';
       toast.success(`پیام به «${recipientLabel}» ارسال شد`);
       // Reset form
@@ -195,10 +196,10 @@ export default function SuperAdminMessages() {
             disabled={loadingStudents || sending}
             className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--gold)]/50 transition-colors mb-4 disabled:opacity-60"
           >
-            <option value="">همه دانش‌آموزان (سراسری)</option>
+            <option value="">همه کاربران (سراسری)</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} — {s.phone}
+                {s.name} — {s.phone}{s.role ? ` (${s.role === 'STUDENT' ? 'دانش‌آموز' : s.role === 'ADVISOR' ? 'مشاور' : s.role === 'INSTITUTE_MANAGER' ? 'مدیر آموزشگاه' : s.role})` : ''}
               </option>
             ))}
           </select>
@@ -298,7 +299,7 @@ export default function SuperAdminMessages() {
                 const isBroadcast = m.recipientId === null;
                 const recipientName = isBroadcast
                   ? null
-                  : students.find((s) => s.id === m.recipientId)?.name || 'دانش‌آموز';
+                  : students.find((s) => s.id === m.recipientId)?.name || 'کاربر';
                 return (
                   <div
                     key={m.id}
