@@ -6,7 +6,7 @@ import { motion, useInView, useReducedMotion } from "framer-motion";
 import { Send } from "lucide-react";
 
 const easeOut = [0.16, 1, 0.3, 1] as const;
-const TELEGRAM_HANDLE = process.env.NEXT_PUBLIC_ADVISOR_TELEGRAM_HANDLE || "reval_support";
+const TELEGRAM_HANDLE = process.env.NEXT_PUBLIC_ADVISOR_TELEGRAM_HANDLE || "RevalSupport";
 
 const TEAM = [
   {

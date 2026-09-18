@@ -11,6 +11,7 @@ import { useAppStore } from "@/lib/store";
 
 const NAV = [
   { label: "دموی محصول", href: "#features" },
+  { label: "مشاوران", href: "#advisors" },
   { label: "تیم ما", href: "#team" },
 ];
 

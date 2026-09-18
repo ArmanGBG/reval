@@ -5,7 +5,10 @@ import { MotionConfig } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { Header } from './header';
 import { Hero } from './hero';
+import { ForStudents } from './for-students';
 import { InteractiveDemo } from './interactive-demo';
+import { Features } from './features';
+import { Advisors } from './advisors';
 import { Team } from './team';
 import { Footer } from './footer';
 import { FloatingLines } from './floating-lines';
@@ -88,7 +91,10 @@ export default function LandingPage() {
 
         <main className="relative z-10 flex-1">
           <Hero />
+          <ForStudents />
           <InteractiveDemo />
+          <Features />
+          <Advisors />
           <Team />
         </main>
         <Footer />
