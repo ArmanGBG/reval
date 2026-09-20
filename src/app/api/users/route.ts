@@ -3,15 +3,20 @@ import { db } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { normalizeIranianPhone } from '@/lib/phone';
 import { createPublicCode } from '@/lib/public-code';
+import { computeEngagement } from '@/lib/user-engagement';
 
 const roleMap = { STUDENT: 'student', ADVISOR: 'advisor', INSTITUTE_MANAGER: 'institute_manager' } as const;
+
+// Trend window for the list endpoint (sparkline). The detail page uses a
+// longer window (30 days) via /api/users/[userId] GET.
+const LIST_TREND_DAYS = 14;
 
 function serializeUser(user: {
   id: string; firstName: string; lastName: string | null; avatar: string; phone: string; role: string; instituteId: string | null; grade: string | null; major: string | null; assignedAdvisorId: string | null;
   province: string | null; city: string | null;
   isActive: boolean; createdAt: Date; institute: { name: string } | null;
-  tasks: Array<{ status: string; actualTimeMinutes: number | null }>;
-  students?: Array<{ tasks: Array<{ status: string; actualTimeMinutes: number | null }> }>;
+  tasks: Array<{ status: string; actualTimeMinutes: number | null; date: string; updatedAt: Date }>;
+  students?: Array<{ tasks: Array<{ status: string; actualTimeMinutes: number | null; date: string; updatedAt: Date }> }>;
 }) {
   const sourceTasks = user.role === 'ADVISOR' ? (user.students ?? []).flatMap((student) => student.tasks) : user.tasks;
   const reportable = sourceTasks.filter((task) => task.status !== 'DRAFT');
@@ -19,6 +24,8 @@ function serializeUser(user: {
   // For super-admin tables: compose a display `name` from firstName + lastName
   // for backward compat with the existing UI (which expects a single name field).
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  // Engagement metrics — 14-day trend for the list sparkline.
+  const engagement = computeEngagement(sourceTasks, LIST_TREND_DAYS);
   return {
     id: user.id, name: fullName, firstName: user.firstName, lastName: user.lastName,
     avatar: user.avatar, phone: user.phone,
@@ -30,6 +37,11 @@ function serializeUser(user: {
     completionRate: reportable.length ? Math.round((completed.length / reportable.length) * 100) : 0,
     studyHours: Math.round((completed.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0) / 60) * 10) / 10,
     joinDate: user.createdAt.toISOString().split('T')[0],
+    // Engagement fields (new)
+    totalTasks: engagement.totalTasks,
+    completedTasks: engagement.completedTasks,
+    lastTaskInteraction: engagement.lastTaskInteraction,
+    activityTrend: engagement.activityTrend,
   };
 }
 
@@ -49,8 +61,9 @@ const userSelect = {
   isActive: true,
   createdAt: true,
   institute: { select: { name: true } },
-  tasks: { select: { status: true, actualTimeMinutes: true } },
-  students: { select: { tasks: { select: { status: true, actualTimeMinutes: true } } } },
+  // Add date + updatedAt so computeEngagement can group by completion day.
+  tasks: { select: { status: true, actualTimeMinutes: true, date: true, updatedAt: true } },
+  students: { select: { tasks: { select: { status: true, actualTimeMinutes: true, date: true, updatedAt: true } } } },
 } as const;
 
 export async function GET(request: NextRequest) {

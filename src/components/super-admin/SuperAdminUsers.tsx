@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { GlobalUserRole, UserAccountStatus } from '@/lib/types';
 import { exportCsv } from '@/lib/csv';
+import { trendSummary } from '@/lib/user-engagement';
+import { Sparkline } from '@/components/shared/Sparkline';
 import {
   Users,
   Search,
@@ -42,6 +44,25 @@ import { Checkbox } from '@/components/ui/checkbox';
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
   return num.toString().split('').map((d) => persianDigits[parseInt(d)] ?? d).join('');
+}
+
+// Format an ISO datetime as a short relative time in Persian.
+// Examples: "همین الان", "۵ دقیقه پیش", "۳ ساعت پیش", "۲ روز پیش", "۱۴۰۵/۰۶/۳۱"
+function formatRelativeTime(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return 'همین الان';
+  if (diffMin < 60) return `${toPersianDigits(diffMin)} دقیقه پیش`;
+  if (diffHr < 24) return `${toPersianDigits(diffHr)} ساعت پیش`;
+  if (diffDay < 7) return `${toPersianDigits(diffDay)} روز پیش`;
+  // Older than a week — show the ISO date.
+  return date.toISOString().split('T')[0];
 }
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: LucideIcon }> = {
@@ -133,20 +154,28 @@ export default function SuperAdminUsers() {
       toast.error('برای خروجی CSV حداقل یک کاربر لازم است');
       return;
     }
-    const headers = ['نام', 'شماره', 'نقش', 'پایه', 'رشته', 'استان', 'شهر', 'وضعیت', 'آموزشگاه', 'تاریخ عضویت'];
+    const headers = [
+      'نام', 'شماره', 'نقش', 'پایه', 'رشته', 'استان', 'شهر', 'وضعیت', 'آموزشگاه', 'تاریخ عضویت',
+      // Engagement columns (new)
+      'تعداد کل تسک‌ها', 'تسک‌های انجام‌شده', 'نرخ تکمیل (٪)', 'آخرین فعالیت', 'خلاصه روند',
+    ];
     const rows = filteredUsers.map((u) => [
       u.name,
       u.phone,
       ROLE_CONFIG[u.role]?.label ?? u.role,
       u.grade ?? '',
       u.major ?? '',
-      // Province/city are nullable — export empty string when null so the CSV
-      // cell stays empty rather than the literal string "null".
       u.province ?? '',
       u.city ?? '',
       u.status === 'active' ? 'فعال' : 'معلق',
       u.instituteName,
       u.joinDate,
+      // Engagement fields
+      String(u.totalTasks ?? 0),
+      String(u.completedTasks ?? 0),
+      String(u.completionRate ?? 0),
+      u.lastTaskInteraction ? new Date(u.lastTaskInteraction).toISOString().split('T')[0] : '',
+      trendSummary(u.activityTrend ?? []),
     ]);
     try {
       exportCsv(`reval-users-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
@@ -386,8 +415,8 @@ export default function SuperAdminUsers() {
       {/* ============ Dense Table (Desktop) ============ */}
       <div className="hidden lg:block surface-1 rounded-[16px] overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-12 gap-3 px-5 py-3 text-[11px] text-muted-foreground/70 font-semibold uppercase tracking-wide border-b border-[var(--border)] bg-[var(--bg-base)]/40">
-          <div className="col-span-1 flex items-center">
+        <div className="grid grid-cols-[2.5fr_1.5fr_2fr_0.8fr_0.8fr_1fr_1.2fr_1.8fr_0.8fr_0.8fr] gap-2 px-4 py-3 text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wide border-b border-[var(--border)] bg-[var(--bg-base)]/40">
+          <div className="flex items-center gap-2">
             <Checkbox
               checked={filteredUsers.length > 0 ? allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false : false}
               onCheckedChange={toggleSelectAll}
@@ -395,13 +424,17 @@ export default function SuperAdminUsers() {
               aria-label="انتخاب همه کاربران"
               className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold data-[state=indeterminate]:bg-gold/60"
             />
+            <span>کاربر</span>
           </div>
-          <div className="col-span-2">کاربر</div>
-          <div className="col-span-2">نقش</div>
-          <div className="col-span-3">آموزشگاه</div>
-          <div className="col-span-2 text-center">عملکرد</div>
-          <div className="col-span-1 text-center">وضعیت</div>
-          <div className="col-span-1 text-right">عملیات</div>
+          <div>نقش</div>
+          <div>آموزشگاه</div>
+          <div className="text-center">کل</div>
+          <div className="text-center">انجام</div>
+          <div className="text-center">نرخ</div>
+          <div className="text-center">آخرین فعالیت</div>
+          <div className="text-center">روند پایبندی</div>
+          <div className="text-center">وضعیت</div>
+          <div className="text-right">عملیات</div>
         </div>
 
         {/* Rows */}
@@ -411,6 +444,10 @@ export default function SuperAdminUsers() {
               const roleCfg = ROLE_CONFIG[user.role];
               const RoleIcon = roleCfg.icon;
               const isSelected = selectedIds.has(user.id);
+              const trendCounts = (user.activityTrend ?? []).map(d => d.count);
+              const lastActivity = user.lastTaskInteraction
+                ? formatRelativeTime(user.lastTaskInteraction)
+                : '—';
               return (
                 <motion.div
                   key={user.id}
@@ -418,49 +455,66 @@ export default function SuperAdminUsers() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ delay: idx * 0.02, duration: 0.2 }}
-                  className={`nav-item-hover grid grid-cols-12 gap-3 px-5 py-3 border-b border-[var(--border)] last:border-0 items-center transition-colors ${isSelected ? 'bg-gold/[0.06]' : ''}`}
+                  className={`nav-item-hover grid grid-cols-[2.5fr_1.5fr_2fr_0.8fr_0.8fr_1fr_1.2fr_1.8fr_0.8fr_0.8fr] gap-2 px-4 py-3 border-b border-[var(--border)] last:border-0 items-center transition-colors ${isSelected ? 'bg-gold/[0.06]' : ''}`}
                 >
-                  {/* Checkbox */}
-                  <div className="col-span-1 flex items-center">
+                  {/* Checkbox + User */}
+                  <div className="flex items-center gap-2 min-w-0">
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => toggleSelect(user.id)}
                       aria-label={`انتخاب ${user.name}`}
-                      className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold"
+                      className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold shrink-0"
                     />
-                  </div>
-                  {/* User */}
-                  <div className="col-span-2 flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-[10px] bg-[var(--bg-overlay)] border border-[var(--border)] flex items-center justify-center text-lg shrink-0">
+                    <div className="w-8 h-8 rounded-[8px] bg-[var(--bg-overlay)] border border-[var(--border)] flex items-center justify-center text-base shrink-0">
                       {user.avatar}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                      <p className="text-[11px] text-muted-foreground/70 tabular-nums" dir="ltr">{user.phone}</p>
+                      <p className="text-[10px] text-muted-foreground/70 tabular-nums" dir="ltr">{user.phone}</p>
                     </div>
                   </div>
                   {/* Role */}
-                  <div className="col-span-2">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full ${roleCfg.bg} ${roleCfg.color} font-medium`}>
+                  <div>
+                    <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full ${roleCfg.bg} ${roleCfg.color} font-medium`}>
                       <RoleIcon className="w-3 h-3" />
                       {roleCfg.label}
                     </span>
                   </div>
                   {/* Institute */}
-                  <div className="col-span-3 min-w-0">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <Building2 className="w-3 h-3 text-muted-foreground/60 shrink-0" />
                       <span className="text-xs text-muted-foreground truncate">{user.instituteName}</span>
                     </div>
                   </div>
-                  {/* Performance */}
-                  <div className="col-span-2 text-center">
-                    <span className="text-xs font-bold text-foreground tabular-nums">{toPersianDigits(user.completionRate)}٪</span>
-                    <span className="text-[10px] text-muted-foreground/60 mx-1">•</span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{toPersianDigits(user.studyHours)}س</span>
+                  {/* Total tasks */}
+                  <div className="text-center">
+                    <span className="text-xs font-bold text-foreground tabular-nums">{toPersianDigits(user.totalTasks ?? 0)}</span>
+                  </div>
+                  {/* Completed */}
+                  <div className="text-center">
+                    <span className="text-xs font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(user.completedTasks ?? 0)}</span>
+                  </div>
+                  {/* Completion rate (mini progress bar) */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden min-w-[24px]">
+                      <div
+                        className={`h-full rounded-full ${(user.completionRate ?? 0) >= 75 ? 'bg-[var(--success)]' : (user.completionRate ?? 0) >= 50 ? 'bg-[var(--warning)]' : 'bg-[var(--danger)]'}`}
+                        style={{ width: `${user.completionRate ?? 0}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{toPersianDigits(user.completionRate ?? 0)}٪</span>
+                  </div>
+                  {/* Last activity (relative time) */}
+                  <div className="text-center">
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{lastActivity}</span>
+                  </div>
+                  {/* Trend sparkline */}
+                  <div className="flex items-center justify-center">
+                    <Sparkline data={trendCounts} width={90} height={26} />
                   </div>
                   {/* Status */}
-                  <div className="col-span-1 text-center">
+                  <div className="text-center">
                     <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium ${
                       user.status === 'active' ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
                     }`}>
@@ -469,7 +523,7 @@ export default function SuperAdminUsers() {
                     </span>
                   </div>
                   {/* Actions */}
-                  <div className="col-span-1 flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => handleViewUser(user.id)}
                       className="icon-btn p-2 rounded-[8px] bg-gold/10 text-gold hover:bg-gold/20 border border-transparent"
@@ -496,6 +550,10 @@ export default function SuperAdminUsers() {
             const roleCfg = ROLE_CONFIG[user.role];
             const RoleIcon = roleCfg.icon;
             const isSelected = selectedIds.has(user.id);
+            const trendCounts = (user.activityTrend ?? []).map(d => d.count);
+            const lastActivity = user.lastTaskInteraction
+              ? formatRelativeTime(user.lastTaskInteraction)
+              : '—';
             return (
               <motion.div
                 key={user.id}
@@ -538,6 +596,27 @@ export default function SuperAdminUsers() {
                     </button>
                     <button onClick={() => setDeleteCandidate({ id: user.id, name: user.name })} className="icon-btn p-2 rounded-[8px] bg-[var(--danger)]/10 text-[var(--danger)]" title="حذف"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
+                </div>
+                {/* Engagement stats row (mobile) */}
+                <div className="flex items-center gap-3 mt-2.5 pt-2.5 border-t border-[var(--border)]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">کل:</span>
+                    <span className="text-xs font-bold text-foreground tabular-nums">{toPersianDigits(user.totalTasks ?? 0)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">انجام:</span>
+                    <span className="text-xs font-bold text-[var(--accent)] tabular-nums">{toPersianDigits(user.completedTasks ?? 0)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">نرخ:</span>
+                    <span className="text-[11px] font-bold tabular-nums" style={{ color: (user.completionRate ?? 0) >= 75 ? 'var(--success)' : (user.completionRate ?? 0) >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{toPersianDigits(user.completionRate ?? 0)}٪</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">آخرین:</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{lastActivity}</span>
+                  </div>
+                  <div className="flex-1" />
+                  <Sparkline data={trendCounts} width={70} height={22} />
                 </div>
               </motion.div>
             );

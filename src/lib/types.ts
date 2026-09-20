@@ -351,6 +351,14 @@ export interface PlatformInstitute {
 export type GlobalUserRole = 'student' | 'advisor' | 'institute_manager';
 export type UserAccountStatus = 'active' | 'suspended';
 
+/** Daily activity data point for the engagement sparkline / chart. */
+export interface ActivityDay {
+  /** ISO date string (YYYY-MM-DD) */
+  date: string;
+  /** Number of completed tasks on that day */
+  count: number;
+}
+
 export interface GlobalUser {
   id: string;
   // Composed display name (firstName + lastName joined) — backward compat for UIs that read .name.
@@ -371,6 +379,15 @@ export interface GlobalUser {
   completionRate: number;
   studyHours: number;
   joinDate: string;
+  // ===== Engagement metrics (new) =====
+  /** Total non-draft tasks (excludes DRAFT scaffolding) */
+  totalTasks: number;
+  /** Tasks with status COMPLETED */
+  completedTasks: number;
+  /** ISO datetime of the most recent task interaction (max updatedAt), or null */
+  lastTaskInteraction: string | null;
+  /** Daily completed-task counts for the trend window (oldest → newest) */
+  activityTrend: ActivityDay[];
 }
 
 // ===== Notification Types =====

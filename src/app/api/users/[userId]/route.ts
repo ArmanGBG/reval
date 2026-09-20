@@ -3,8 +3,12 @@ import { db } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { detachAdvisorRoster, detachStudent } from '@/lib/user-lifecycle';
 import { createPublicCode } from '@/lib/public-code';
+import { computeEngagement } from '@/lib/user-engagement';
 
 const roleMap = { STUDENT: 'student', ADVISOR: 'advisor', INSTITUTE_MANAGER: 'institute_manager' } as const;
+
+// Trend window for the detail page — 30 days for a month-long view.
+const DETAIL_TREND_DAYS = 30;
 
 function serializeUser(user: Awaited<ReturnType<typeof loadUser>>) {
   if (!user) return null;
@@ -12,6 +16,7 @@ function serializeUser(user: Awaited<ReturnType<typeof loadUser>>) {
   const reportable = sourceTasks.filter((task) => task.status !== 'DRAFT');
   const completed = reportable.filter((task) => task.status === 'COMPLETED');
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  const engagement = computeEngagement(sourceTasks, DETAIL_TREND_DAYS);
   return {
     id: user.id, name: fullName, firstName: user.firstName, lastName: user.lastName,
     avatar: user.avatar, phone: user.phone,
@@ -23,6 +28,11 @@ function serializeUser(user: Awaited<ReturnType<typeof loadUser>>) {
     completionRate: reportable.length ? Math.round((completed.length / reportable.length) * 100) : 0,
     studyHours: Math.round((completed.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0) / 60) * 10) / 10,
     joinDate: user.createdAt.toISOString().split('T')[0],
+    // Engagement fields (new) — 30-day trend for the detail page chart
+    totalTasks: engagement.totalTasks,
+    completedTasks: engagement.completedTasks,
+    lastTaskInteraction: engagement.lastTaskInteraction,
+    activityTrend: engagement.activityTrend,
   };
 }
 
@@ -31,11 +41,25 @@ function loadUser(id: string) {
     where: { id, deletedAt: null },
     include: {
       institute: { select: { name: true } },
-      tasks: { select: { status: true, actualTimeMinutes: true } },
-      students: { where: { deletedAt: null }, select: { tasks: { select: { status: true, actualTimeMinutes: true } } } },
+      tasks: { select: { status: true, actualTimeMinutes: true, date: true, updatedAt: true } },
+      students: { where: { deletedAt: null }, select: { tasks: { select: { status: true, actualTimeMinutes: true, date: true, updatedAt: true } } } },
       managedInstitute: { select: { id: true, deletedAt: true } },
     },
   });
+}
+
+// ===== GET /api/users/[userId] =====
+// Returns a single user with full engagement data (30-day activity trend).
+// Used by the super-admin User Detail page's Consistency Analysis section.
+export async function GET(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
+  const { ctx, error } = await requireRole(request, ['SUPER_ADMIN']);
+  if (error || !ctx) return error;
+  const { userId } = await params;
+  const user = await loadUser(userId);
+  if (!user) return NextResponse.json({ error: 'کاربر یافت نشد' }, { status: 404 });
+  const serialized = serializeUser(user);
+  if (!serialized) return NextResponse.json({ error: 'کاربر یافت نشد' }, { status: 404 });
+  return NextResponse.json({ user: serialized });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ userId: string }> }) {

@@ -22,8 +22,13 @@ import {
   Activity,
   ShieldCheck,
   MapPin,
+  TrendingUp,
+  Flame,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react';
+import { Sparkline } from '@/components/shared/Sparkline';
+import { trendSummary, type ActivityDay } from '@/lib/user-engagement';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -160,6 +165,9 @@ export default function UserDetail() {
               </div>
             </div>
           </motion.section>
+
+          {/* Consistency Analysis section — fetches 30-day trend from GET /api/users/[userId] */}
+          <ConsistencyAnalysisSection userId={user.id} fallbackUser={user} />
 
           {/* Activity Log — real audit log from /api/admin/audit-log */}
           <AuditLogSection userId={user.id} />
@@ -338,6 +346,176 @@ export default function UserDetail() {
         </aside>
       </div>
     </div>
+  );
+}
+
+// ===== ConsistencyAnalysisSection — engagement & daily activity trend =====
+function ConsistencyAnalysisSection({
+  userId,
+  fallbackUser,
+}: {
+  userId: string;
+  // fallbackUser is the user record from the store (14-day trend). We use it
+  // for instant rendering while the 30-day trend is being fetched.
+  fallbackUser: {
+    totalTasks: number;
+    completedTasks: number;
+    completionRate: number;
+    lastTaskInteraction: string | null;
+    activityTrend: ActivityDay[];
+  };
+}) {
+  // State for the 30-day trend fetched from /api/users/[userId] GET
+  const [detail, setDetail] = useState<{
+    totalTasks: number;
+    completedTasks: number;
+    completionRate: number;
+    lastTaskInteraction: string | null;
+    activityTrend: ActivityDay[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/users/${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted && data.user) {
+          setDetail({
+            totalTasks: data.user.totalTasks ?? 0,
+            completedTasks: data.user.completedTasks ?? 0,
+            completionRate: data.user.completionRate ?? 0,
+            lastTaskInteraction: data.user.lastTaskInteraction ?? null,
+            activityTrend: data.user.activityTrend ?? [],
+          });
+        }
+      } catch {
+        // Ignore — we'll use the fallback (14-day trend from the store).
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [userId]);
+
+  // Use the fetched 30-day data if available, otherwise fall back to the store
+  // data (14-day trend) so the section renders instantly on mount.
+  const data = detail ?? fallbackUser;
+  const trend = data.activityTrend ?? [];
+  const maxCount = Math.max(...trend.map(d => d.count), 1); // avoid divide-by-zero
+
+  // Calculate streak: consecutive days (ending today) with count > 0.
+  const streak = (() => {
+    let s = 0;
+    for (let i = trend.length - 1; i >= 0; i--) {
+      if (trend[i].count > 0) s++;
+      else break;
+    }
+    return s;
+  })();
+
+  // Calculate active days (days with at least 1 completed task) out of total.
+  const activeDays = trend.filter(d => d.count > 0).length;
+  const consistencyPct = trend.length > 0 ? Math.round((activeDays / trend.length) * 100) : 0;
+
+  const lastActivityText = data.lastTaskInteraction
+    ? new Date(data.lastTaskInteraction).toLocaleDateString('fa-IR')
+    : 'بدون فعالیت';
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="surface-1 rounded-[16px] p-5 md:p-6"
+    >
+      <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-gold" />
+        تحلیل پایبندی
+        {loading && <Loader2 className="w-3 h-3 text-muted-foreground/50 animate-spin mr-1" />}
+      </h3>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5">
+        <div className="rounded-[10px] bg-gold/10 border border-gold/15 p-3 text-center">
+          <BookOpen className="w-4 h-4 text-gold mx-auto mb-1" />
+          <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(data.totalTasks)}</p>
+          <p className="text-[10px] text-muted-foreground">کل تسک‌ها</p>
+        </div>
+        <div className="rounded-[10px] bg-[var(--accent-soft)] border border-[var(--accent)]/15 p-3 text-center">
+          <CheckCircle2 className="w-4 h-4 text-[var(--accent)] mx-auto mb-1" />
+          <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(data.completedTasks)}</p>
+          <p className="text-[10px] text-muted-foreground">انجام‌شده</p>
+        </div>
+        <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-3 text-center">
+          <Target className="w-4 h-4 text-[var(--success)] mx-auto mb-1" />
+          <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(data.completionRate)}٪</p>
+          <p className="text-[10px] text-muted-foreground">نرخ تکمیل</p>
+        </div>
+        <div className="rounded-[10px] bg-orange-500/10 border border-orange-500/20 p-3 text-center">
+          <Flame className="w-4 h-4 text-orange-500 mx-auto mb-1" />
+          <p className="text-base md:text-lg font-bold text-foreground tabular-nums">{toPersianDigits(streak)}</p>
+          <p className="text-[10px] text-muted-foreground">روز پیاپی</p>
+        </div>
+      </div>
+
+      {/* Mini summary bar */}
+      <div className="flex items-center justify-between mb-3 text-xs">
+        <div className="flex items-center gap-3">
+          <span className="text-muted-foreground">پایبندی: <span className="font-bold text-foreground tabular-nums">{toPersianDigits(consistencyPct)}٪</span></span>
+          <span className="text-muted-foreground">روزهای فعال: <span className="font-bold text-foreground tabular-nums">{toPersianDigits(activeDays)} از {toPersianDigits(trend.length)}</span></span>
+          <span className="text-muted-foreground">آخرین: <span className="text-foreground tabular-nums">{lastActivityText}</span></span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">{trendSummary(trend)}</span>
+      </div>
+
+      {/* Bar chart — 30-day daily completed-task counts */}
+      {trend.length > 0 ? (
+        <div className="flex items-end gap-[2px] h-32 bg-[var(--bg-overlay)]/40 rounded-[10px] p-2 overflow-hidden">
+          {trend.map((day, i) => {
+            const heightPct = (day.count / maxCount) * 100;
+            const isToday = i === trend.length - 1;
+            const hasActivity = day.count > 0;
+            return (
+              <div
+                key={day.date}
+                className="flex-1 flex flex-col items-center justify-end h-full group relative"
+                title={`${day.date}: ${day.count} تسک`}
+              >
+                {/* Tooltip on hover */}
+                <div className="absolute bottom-full mb-1 px-1.5 py-0.5 rounded-md bg-[var(--bg-deep)] border border-[var(--border-strong)] text-[9px] text-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none tabular-nums">
+                  {day.date.slice(5)} · {toPersianDigits(day.count)}
+                </div>
+                <div
+                  className={`w-full rounded-t-[2px] transition-all ${
+                    hasActivity
+                      ? isToday
+                        ? 'bg-gold'
+                        : 'bg-[var(--accent)]'
+                      : 'bg-[var(--border)]'
+                  }`}
+                  style={{ height: `${hasActivity ? Math.max(heightPct, 4) : 2}%` }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="h-32 flex items-center justify-center text-xs text-muted-foreground">
+          هنوز فعالیتی ثبت نشده است
+        </div>
+      )}
+
+      {/* X-axis labels */}
+      {trend.length > 0 && (
+        <div className="flex justify-between mt-1.5 text-[9px] text-muted-foreground/50 tabular-nums">
+          <span>{trend[0]?.date.slice(5) ?? ''}</span>
+          <span>امروز</span>
+        </div>
+      )}
+    </motion.section>
   );
 }
 
