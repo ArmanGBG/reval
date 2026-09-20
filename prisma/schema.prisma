@@ -14,11 +14,14 @@ model User {
   id                String    @id @default(cuid())
   phone             String    @unique
   password          String? // legacy password hash; OTP accounts leave this null
-  name              String
+  firstName         String // نام (REQUIRED for new signups; backfilled for legacy users)
+  lastName          String? // نام خانوادگی (OPTIONAL — null for legacy users until they fill it in)
   avatar            String    @default("🦊")
   role              String    @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
   grade             String? // دهم, یازدهم, دوازدهم, فارغ‌التحصیل
   major             String? // تجربی, ریاضی, انسانی
+  province          String? // استان (required at signup, optional for legacy users)
+  city              String? // شهر (required at signup, optional for legacy users)
   instituteId       String?
   assignedAdvisorId String?
   publicCode        String    @unique @default(cuid())
@@ -129,19 +132,6 @@ model Institute {
 }
 
 // ===== Task =====
-enum TaskStatus {
-  DRAFT
-  PENDING
-  COMPLETED
-  SKIPPED
-  INCOMPLETE
-}
-
-enum CurriculumMode {
-  BOOK
-  THEMATIC
-}
-
 model Task {
   id                String          @id @default(cuid())
   studentId         String
@@ -155,7 +145,7 @@ model Task {
   actualTimeMinutes Int?
   targetTestCount   Int?
   actualTestCount   Int?
-  status            TaskStatus      @default(PENDING)
+  status            String          @default("PENDING")
   completed         Boolean? // null = pending, true = done, false = skipped
   detailsCompleted  Boolean         @default(true)
   date              String // ISO date string
@@ -173,7 +163,7 @@ model Task {
   chapterId         String?
   topicId           String?
   topicModeId       String?
-  curriculumMode    CurriculumMode? // null for legacy/draft tasks without curriculum details
+  curriculumMode    String? // BOOK | THEMATIC; null for legacy/draft tasks without curriculum details
   pageStart         Int?
   pageEnd           Int?
   // Class homework — when set, this educational-test task is the homework
@@ -230,7 +220,7 @@ model NonStudyActivity {
 model SleepRecord {
   id              String   @id @default(cuid())
   studentId       String
-  type            SleepType
+  type            String   @default("NIGHT") // NIGHT | NAP
   date            String // ISO date — the night's date for NIGHT, the day for NAP
   startTime       String // HH:mm — bedtime (NIGHT) or nap start (NAP)
   endTime         String? // HH:mm — wake time (NIGHT only)
@@ -242,11 +232,6 @@ model SleepRecord {
 
   @@unique([studentId, date, type])
   @@index([studentId, date])
-}
-
-enum SleepType {
-  NIGHT
-  NAP
 }
 
 // ===== Exam =====
@@ -262,7 +247,7 @@ model Exam {
   chapterId       String?
   topicId         String?
   topicModeId     String?
-  curriculumMode  CurriculumMode?
+  curriculumMode  String? // BOOK | THEMATIC
   curriculumLabel String?
   pageStart       Int?
   pageEnd         Int?
@@ -316,7 +301,7 @@ model ExamAnalysisTask {
   examId            String
   studentId         String
   date              String
-  status            TaskStatus @default(PENDING)
+  status            String @default("PENDING") // DRAFT | PENDING | COMPLETED | SKIPPED | INCOMPLETE
   completed         Boolean?
   actualTimeMinutes Int?
   advisorNote       String?

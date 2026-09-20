@@ -108,9 +108,13 @@ export default function DataExportHelper() {
         exportedAt: new Date().toISOString(),
         student: user
           ? {
-              name: user.name,
+              name: [user.firstName, user.lastName].filter(Boolean).join(' ').trim(),
+              firstName: user.firstName,
+              lastName: user.lastName,
               grade: user.grade,
               major: user.major,
+              province: user.province,
+              city: user.city,
             }
           : null,
         stats: {

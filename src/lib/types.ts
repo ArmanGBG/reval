@@ -48,12 +48,15 @@ export interface NonStudyActivity {
 
 export interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName?: string | null;
   avatar: string;
   grade: Grade;
   major: Major;
   phone: string;
   assignedAdvisorId: string | null;
+  province?: string | null;
+  city?: string | null;
 }
 
 export interface Task {
@@ -350,12 +353,17 @@ export type UserAccountStatus = 'active' | 'suspended';
 
 export interface GlobalUser {
   id: string;
+  // Composed display name (firstName + lastName joined) — backward compat for UIs that read .name.
   name: string;
+  firstName: string;
+  lastName: string | null;
   avatar: string;
   phone: string;
   role: GlobalUserRole;
   grade: string | null;
   major: string | null;
+  province: string | null;
+  city: string | null;
   assignedAdvisorId: string | null;
   instituteId: string | null;
   instituteName: string;

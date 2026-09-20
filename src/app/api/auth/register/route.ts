@@ -18,10 +18,13 @@ import { detachAdvisorRoster, detachStudent } from '@/lib/user-lifecycle';
 //
 // Body:
 //   phone            string  required (Iranian mobile, digits only)
-//   name             string  required
+//   firstName        string  required (نام)
+//   lastName         string  optional (نام خانوادگی)
 //   avatar           string  optional (emoji, defaults to 🦊)
 //   grade            string  optional (دهم | یازدهم | دوازدهم | فارغ‌التحصیل) — STUDENT only
 //   major            string  optional (تجربی | ریاضی | انسانی) — STUDENT only
+//   province         string  required (استان) — required for STUDENT/ADVISOR at signup
+//   city             string  required (شهر) — required for STUDENT/ADVISOR at signup
 //   otp              string  required, six digits verified server-side
 //
 // Returns: { user, token, message } and sets the `reval-session` httpOnly cookie.
@@ -30,10 +33,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : '';
+    const lastName = typeof body.lastName === 'string' && body.lastName.trim() ? body.lastName.trim() : null;
     const avatar = typeof body.avatar === 'string' && body.avatar ? body.avatar : '🦊';
     const grade = typeof body.grade === 'string' ? body.grade : null;
     const major = typeof body.major === 'string' ? body.major : null;
+    const province = typeof body.province === 'string' && body.province.trim() ? body.province.trim() : null;
+    const city = typeof body.city === 'string' && body.city.trim() ? body.city.trim() : null;
     const role = 'STUDENT' as const;
 
     if (!phone) {
@@ -42,7 +48,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    if (!name) {
+    if (!firstName) {
       return NextResponse.json(
         { error: 'نام الزامی است' },
         { status: 400 },
@@ -59,6 +65,18 @@ export async function POST(request: NextRequest) {
           { error: 'رشته تحصیلی برای دانش‌آموز الزامی است' },
           { status: 400 },
         );
+    }
+    if (!province) {
+      return NextResponse.json(
+        { error: 'استان الزامی است' },
+        { status: 400 },
+      );
+    }
+    if (!city) {
+      return NextResponse.json(
+        { error: 'شهر الزامی است' },
+        { status: 400 },
+      );
     }
 
     const normalizedPhone = normalizeIranianPhone(phone);
@@ -95,11 +113,11 @@ export async function POST(request: NextRequest) {
             data: { phone: `deleted-${existing.id}-${Date.now()}`, password: null, phoneVerifiedAt: null },
           });
           return tx.user.create({
-            data: { phone: normalizedPhone, name, avatar, role, publicCode, grade, major, isActive: true, phoneVerifiedAt: new Date() },
+            data: { phone: normalizedPhone, firstName, lastName, avatar, role, publicCode, grade, major, province, city, isActive: true, phoneVerifiedAt: new Date() },
           });
         })
       : await db.user.create({
-          data: { phone: normalizedPhone, name, avatar, role, publicCode, grade, major, isActive: true, phoneVerifiedAt: new Date() },
+          data: { phone: normalizedPhone, firstName, lastName, avatar, role, publicCode, grade, major, province, city, isActive: true, phoneVerifiedAt: new Date() },
         });
 
     // Strip password before returning.

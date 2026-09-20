@@ -14,6 +14,7 @@ import { AVATARS } from '@/lib/constants/avatars';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ProvinceCityPicker } from '@/components/shared/ProvinceCityPicker';
 import {
   Drawer,
   DrawerContent,
@@ -75,15 +76,25 @@ function SelectPill<T extends string>({
 
 // ===== Profile Section =====
 function ProfileSection({
-  displayName, setDisplayName,
+  firstName, setFirstName,
+  lastName, setLastName,
+  province, setProvince,
+  city, setCity,
   selectedAvatar, setSelectedAvatar,
   selectedGrade, setSelectedGrade,
   selectedMajor, setSelectedMajor,
   showAvatarGrid, setShowAvatarGrid,
+  saving,
   onSave,
 }: {
-  displayName: string;
-  setDisplayName: (v: string) => void;
+  firstName: string;
+  setFirstName: (v: string) => void;
+  lastName: string;
+  setLastName: (v: string) => void;
+  province: string | null;
+  setProvince: (v: string | null) => void;
+  city: string | null;
+  setCity: (v: string | null) => void;
   selectedAvatar: string;
   setSelectedAvatar: (v: string) => void;
   selectedGrade: Grade;
@@ -92,6 +103,7 @@ function ProfileSection({
   setSelectedMajor: (v: Major) => void;
   showAvatarGrid: boolean;
   setShowAvatarGrid: (v: boolean) => void;
+  saving: boolean;
   onSave: () => void;
 }) {
   return (
@@ -139,15 +151,39 @@ function ProfileSection({
         </AnimatePresence>
       </div>
 
-      {/* Display Name */}
-      <div className="space-y-2">
-        <Label className="text-[var(--foreground-muted)] text-sm">چی صدات کنیم؟</Label>
+      {/* First Name + Last Name */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label className="text-[var(--foreground-muted)] text-sm">نام</Label>
           <Input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
             className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
-            placeholder="نام نمایشی"
+            placeholder="نام"
+            maxLength={30}
           />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-[var(--foreground-muted)] text-sm">نام خانوادگی</Label>
+          <Input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--foreground-subtle)]"
+            placeholder="نام خانوادگی (اختیاری)"
+            maxLength={50}
+          />
+        </div>
+      </div>
+
+      {/* Province + City (OPTIONAL in settings; required only at signup) */}
+      <div className="space-y-2">
+        <Label className="text-[var(--foreground-muted)] text-sm">استان و شهر (اختیاری)</Label>
+        <ProvinceCityPicker
+          province={province}
+          city={city}
+          onProvinceChange={setProvince}
+          onCityChange={setCity}
+        />
       </div>
 
       {/* Grade Selector */}
@@ -176,9 +212,10 @@ function ProfileSection({
 
       <button
         onClick={onSave}
-        className="btn-hover glow-hover w-full bg-[var(--accent)] text-[var(--bg-deep)] font-bold py-3 rounded-[var(--radius)] min-h-[44px] hover:bg-[var(--accent-hover)]"
+        disabled={saving}
+        className="btn-hover glow-hover w-full bg-[var(--accent)] text-[var(--bg-deep)] font-bold py-3 rounded-[var(--radius)] min-h-[44px] hover:bg-[var(--accent-hover)] disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        ذخیره تغییرات
+        {saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
       </button>
     </SectionCard>
   );
@@ -348,18 +385,22 @@ function TicketDrawer({
 export default function SettingsView() {
   const {
     user,
-    updateUser,
+    saveProfile,
     tickets,
     addTicket,
   } = useAppStore();
   const { theme, setTheme } = useAppStore();
 
-  // Local state for profile editing
-  const [displayName, setDisplayName] = useState(user?.name || '');
+  // Local state for profile editing — firstName/lastName split, plus optional province/city.
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [province, setProvince] = useState<string | null>(user?.province ?? null);
+  const [city, setCity] = useState<string | null>(user?.city ?? null);
   const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || '🦊');
   const [selectedGrade, setSelectedGrade] = useState<Grade>(user?.grade || 'یازدهم');
   const [selectedMajor, setSelectedMajor] = useState<Major>(user?.major || 'تجربی');
   const [showAvatarGrid, setShowAvatarGrid] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   // Ticket drawer state
   const [ticketDrawerOpen, setTicketDrawerOpen] = useState(false);
@@ -370,14 +411,28 @@ export default function SettingsView() {
   // Desktop: active section
   const [activeSection, setActiveSection] = useState<SectionId>('profile');
 
-  const handleSaveProfile = () => {
-    updateUser({
-      name: displayName,
-      avatar: selectedAvatar,
-      grade: selectedGrade,
-      major: selectedMajor,
-    });
-    toast.success('تغییرات ذخیره شد');
+  const handleSaveProfile = async () => {
+    if (!firstName.trim()) {
+      toast.error('نام نمی‌تواند خالی باشد');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await saveProfile({
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || null,
+        avatar: selectedAvatar,
+        grade: selectedGrade,
+        major: selectedMajor,
+        province,
+        city,
+      });
+      toast.success('تغییرات ذخیره شد');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'خطا در ذخیره تغییرات');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleSubmitTicket = () => {
@@ -414,11 +469,15 @@ export default function SettingsView() {
 
   // Shared props for sections
   const profileProps = {
-    displayName, setDisplayName,
+    firstName, setFirstName,
+    lastName, setLastName,
+    province, setProvince,
+    city, setCity,
     selectedAvatar, setSelectedAvatar,
     selectedGrade, setSelectedGrade,
     selectedMajor, setSelectedMajor,
     showAvatarGrid, setShowAvatarGrid,
+    saving: savingProfile,
     onSave: handleSaveProfile,
   };
   const supportProps = {

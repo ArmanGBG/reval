@@ -78,12 +78,15 @@ export default function Home() {
           setUserRole(role);
           setUser({
             id: data.user.id,
-            name: data.user.name,
+            firstName: data.user.firstName,
+            lastName: data.user.lastName ?? null,
             avatar: data.user.avatar,
             grade: data.user.grade || 'دوازدهم',
             major: data.user.major || 'تجربی',
             phone: data.user.phone,
             assignedAdvisorId: data.user.assignedAdvisorId || null,
+            province: data.user.province ?? null,
+            city: data.user.city ?? null,
           });
           setOnboardingComplete(true);
           const navigation = decodeNavigationState(window.location, role);

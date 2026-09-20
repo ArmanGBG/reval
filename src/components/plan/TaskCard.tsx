@@ -110,8 +110,8 @@ export default function TaskCard({
           backgroundColor: task.subjectColor,
         }}
       />
-      <div className="flex items-start justify-between gap-2 md:gap-3 relative">
-        {/* ===== Drag Handle + Task Info (right side in RTL) ===== */}
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-3 relative">
+        {/* ===== Drag Handle + Task Info (right side in RTL on desktop; top row on mobile) ===== */}
         <div className="flex items-start gap-1.5 flex-1 min-w-0">
           {/* Drag handle (works on touch devices too; touch-none lets the
               pointer sensor own the gesture without scrolling the page) */}
@@ -129,7 +129,7 @@ export default function TaskCard({
           <div className="flex-1 min-w-0">
             {/* Subject Row */}
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-[var(--foreground)] font-bold text-sm md:text-base truncate">
+              <span className="text-[var(--foreground)] font-bold text-sm md:text-base line-clamp-2 md:truncate">
                 {task.subject}
               </span>
               {task.fieldType ? <FieldTypeBadge value={task.fieldType} /> : <span className="rounded-md border border-[#35C49A]/30 bg-[#35C49A]/10 px-2 py-0.5 text-[10px] font-semibold text-[#72E0BF]">کلاس</span>}
@@ -240,8 +240,8 @@ export default function TaskCard({
           </div>
         </div>
 
-        {/* ===== Action Buttons (left side in RTL) ===== */}
-        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+        {/* ===== Action Buttons (bottom row on mobile; left side in RTL on desktop) ===== */}
+        <div className="flex items-center gap-1 md:gap-2 shrink-0 self-end md:self-start border-t md:border-t-0 border-[var(--border)] pt-2 md:pt-0 -mx-4 px-4 md:mx-0 md:px-0">
           {isDraft && !isActionableClassDraft ? (
             <div className="flex items-center gap-2">
               {canEdit && onEdit && <button onClick={() => onEdit(task.id)} className="px-3 h-9 rounded-md bg-[var(--warning)]/10 text-[var(--warning)] text-xs font-bold">تکمیل</button>}
@@ -266,14 +266,14 @@ export default function TaskCard({
                     },
                   });
                 }}
-                className="icon-btn size-10 rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] flex items-center justify-center hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]"
+                className="icon-btn size-9 md:size-10 rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--border-strong)] flex items-center justify-center hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]"
                 aria-label="انجام شد"
               >
                 <Check className="w-4 h-4 md:w-5 md:h-5" />
               </button>}
               {canAction && <button
                 onClick={() => onAction(task.id)}
-                className="icon-btn size-10 rounded-lg bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
+                className="icon-btn size-9 md:size-10 rounded-lg bg-[rgba(229,72,77,0.12)] text-[var(--danger)] border border-[rgba(229,72,77,0.2)] flex items-center justify-center hover:bg-[rgba(229,72,77,0.18)] hover:border-[var(--danger)]"
                 aria-label="عملیات تسک"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -281,7 +281,7 @@ export default function TaskCard({
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
-                  className="icon-btn size-10 rounded-lg bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  className="icon-btn size-9 md:size-10 rounded-lg bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   aria-label="ویرایش"
                 >
                   <Pencil className="w-4 h-4 md:w-5 md:h-5" />
@@ -289,21 +289,21 @@ export default function TaskCard({
               )}
               {canPartial && !isClassTask(task) && <button
                 onClick={() => onSettings(task.id)}
-                className="icon-btn size-10 rounded-lg bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[var(--surface-glass-strong)]"
+                className="icon-btn size-9 md:size-10 rounded-lg bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--foreground)] hover:bg-[var(--surface-glass-strong)]"
                 aria-label="ثبت بخشی"
               >
                 <Settings className="w-4 h-4 md:w-5 md:h-5" />
               </button>}
             </>
           ) : !isPending ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 md:gap-1.5">
               {canEdit && onEdit && (
                 <button
                   onClick={() => onEdit(task.id)}
-                  className="icon-btn size-9 rounded-md bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                  className="icon-btn size-8 md:size-9 rounded-md bg-[var(--surface-glass)] text-[var(--foreground-muted)] border border-[var(--border)] flex items-center justify-center hover:text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                   aria-label="ویرایش جزئیات برنامه"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </button>
               )}
               {/* Undo button — NEW: allows reverting to pending */}
@@ -318,15 +318,15 @@ export default function TaskCard({
                     },
                   });
                 }}
-                className="icon-btn size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] flex items-center justify-center"
+                className="icon-btn size-8 md:size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] flex items-center justify-center"
                 aria-label="بازگشت به حالت قبل"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-3.5 h-3.5 md:w-3.5 md:h-3.5" />
               </button>}
               {/* Task action button (opens the 3-way dialog) */}
               {canAction && <button
                 onClick={() => onAction(task.id)}
-                className="icon-btn size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
+                className="icon-btn size-8 md:size-9 rounded-md text-[var(--foreground-subtle)] hover:text-[var(--danger)] hover:bg-[rgba(229,72,77,0.08)] flex items-center justify-center"
                 aria-label="عملیات تسک"
               >
                 <Trash2 className="w-3.5 h-3.5" />

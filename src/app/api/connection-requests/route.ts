@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 
+// Compose a display `name` from the new firstName/lastName split. Returned on
+// the connection-request payload so legacy clients (which read `.student.name`
+// or `.advisor.name`) keep working without changes.
+function withDisplayName<T extends { firstName: string; lastName: string | null }>(user: T) {
+  return {
+    ...user,
+    name: [user.firstName, user.lastName].filter(Boolean).join(' ').trim(),
+  };
+}
+
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requireRole(request, ['STUDENT', 'ADVISOR']);
   if (error || !ctx) return error;
@@ -10,18 +20,24 @@ export async function GET(request: NextRequest) {
     where,
     orderBy: { updatedAt: 'desc' },
     include: {
-      student: { select: { id: true, name: true, avatar: true, publicCode: true, grade: true, major: true } },
-      advisor: { select: { id: true, name: true, avatar: true, publicCode: true } },
+      student: { select: { id: true, firstName: true, lastName: true, avatar: true, publicCode: true, grade: true, major: true } },
+      advisor: { select: { id: true, firstName: true, lastName: true, avatar: true, publicCode: true } },
     },
   });
   const self = await db.user.findUnique({
     where: { id: ctx.userId },
     select: {
       publicCode: true,
-      assignedAdvisor: { select: { id: true, name: true, avatar: true, publicCode: true } },
+      assignedAdvisor: { select: { id: true, firstName: true, lastName: true, avatar: true, publicCode: true } },
     },
   });
-  return NextResponse.json({ requests, publicCode: self?.publicCode, assignedAdvisor: self?.assignedAdvisor || null });
+  const serializedRequests = requests.map((r) => ({
+    ...r,
+    student: withDisplayName(r.student),
+    advisor: withDisplayName(r.advisor),
+  }));
+  const serializedAdvisor = self?.assignedAdvisor ? withDisplayName(self.assignedAdvisor) : null;
+  return NextResponse.json({ requests: serializedRequests, publicCode: self?.publicCode, assignedAdvisor: serializedAdvisor });
 }
 
 export async function POST(request: NextRequest) {
@@ -44,11 +60,11 @@ export async function POST(request: NextRequest) {
       where: { studentId_advisorId: { studentId, advisorId } },
       create: { studentId, advisorId, initiatedBy: ctx.user.role, status: 'PENDING' },
       update: { initiatedBy: ctx.user.role, status: 'PENDING', respondedAt: null },
-      include: { student: { select: { id: true, name: true, avatar: true } }, advisor: { select: { id: true, name: true, avatar: true } } },
+      include: { student: { select: { id: true, firstName: true, lastName: true, avatar: true } }, advisor: { select: { id: true, firstName: true, lastName: true, avatar: true } } },
     });
-    return NextResponse.json({ request: connection }, { status: 201 });
-  } catch (error) {
-    console.error('Connection request error:', error);
+    return NextResponse.json({ request: { ...connection, student: withDisplayName(connection.student), advisor: withDisplayName(connection.advisor) } }, { status: 201 });
+  } catch (err) {
+    console.error('Connection request error:', err);
     return NextResponse.json({ error: 'ثبت درخواست انجام نشد' }, { status: 500 });
   }
 }

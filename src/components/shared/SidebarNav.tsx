@@ -185,7 +185,7 @@ export default function SidebarNav() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-[var(--foreground)] truncate">
-                {user?.name || 'کاربر روال'}
+                {user?.firstName || 'کاربر روال'}
               </div>
               <div className="text-[10px] text-[var(--foreground-subtle)] truncate">
                 {user?.phone || 'ورود موفق'}

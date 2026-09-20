@@ -86,11 +86,14 @@ export default function SessionGuard() {
             const assignmentChanged = previous.user?.assignedAdvisorId !== (nextUser.assignedAdvisorId || null);
             const profileChanged = !previous.user
               || previous.user.id !== nextUser.id
-              || previous.user.name !== nextUser.name
+              || previous.user.firstName !== nextUser.firstName
+              || (previous.user.lastName ?? null) !== (nextUser.lastName ?? null)
               || previous.user.avatar !== nextUser.avatar
               || previous.user.grade !== (nextUser.grade || 'دوازدهم')
               || previous.user.major !== (nextUser.major || 'تجربی')
-              || previous.user.phone !== nextUser.phone;
+              || previous.user.phone !== nextUser.phone
+              || (previous.user.province ?? null) !== (nextUser.province ?? null)
+              || (previous.user.city ?? null) !== (nextUser.city ?? null);
 
             // Do not call setUserRole on every focus. It resets currentView
             // and selected entities, which makes returning to this tab look
@@ -99,12 +102,15 @@ export default function SessionGuard() {
             if (profileChanged || assignmentChanged) {
               setUser({
                 id: nextUser.id,
-                name: nextUser.name,
+                firstName: nextUser.firstName,
+                lastName: nextUser.lastName ?? null,
                 avatar: nextUser.avatar,
                 grade: nextUser.grade || 'دوازدهم',
                 major: nextUser.major || 'تجربی',
                 phone: nextUser.phone,
                 assignedAdvisorId: nextUser.assignedAdvisorId || null,
+                province: nextUser.province ?? null,
+                city: nextUser.city ?? null,
               });
             }
             if (roleChanged) {

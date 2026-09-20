@@ -129,7 +129,7 @@ export default function Dashboard() {
   }, [todayTasks, todayCompletedCount]);
 
   // ===== Labels =====
-  const userName = user?.name ?? 'رفیق';
+  const userName = user?.firstName ?? 'رفیق';
   const greeting = getGreeting(userName);
 
   // ===== Handlers =====

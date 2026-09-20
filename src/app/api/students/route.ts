@@ -54,14 +54,17 @@ export async function GET(request: NextRequest) {
   const weekEnd = toISODate(weekDays[6]);
   const users = await db.user.findMany({
     where,
-    orderBy: { name: 'asc' },
+    orderBy: { firstName: 'asc' },
     select: {
       id: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       avatar: true,
       phone: true,
       grade: true,
       major: true,
+      province: true,
+      city: true,
       assignedAdvisorId: true,
       instituteId: true,
       createdAt: true,
@@ -77,7 +80,9 @@ export async function GET(request: NextRequest) {
     const actualMinutes = completedTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
     return ({
       id: u.id,
-      name: u.name,
+      name: [u.firstName, u.lastName].filter(Boolean).join(' ').trim(),
+      firstName: u.firstName,
+      lastName: u.lastName,
       avatar: u.avatar,
       phone: u.phone,
       // Return raw values — do NOT fallback. The advisor TaskModal uses these

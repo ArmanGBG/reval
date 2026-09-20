@@ -10,6 +10,7 @@ import { replaceNavigation } from '@/lib/navigation';
 import { AVATARS } from '@/lib/constants/avatars';
 import type { Grade, Major, User, UserRole } from '@/lib/types';
 import { isIranianMobileInput, numericInput } from '@/lib/phone';
+import { ProvinceCityPicker } from '@/components/shared/ProvinceCityPicker';
 
 // ===== Constants =====
 const GRADES: Grade[] = ['دهم', 'یازدهم', 'دوازدهم', 'فارغ‌التحصیل'];
@@ -282,14 +283,26 @@ function StepRole({
 
 // ===== Step 3: Personal Identity =====
 function StepIdentity({
-  name,
-  setName,
+  firstName,
+  setFirstName,
+  lastName,
+  setLastName,
+  province,
+  setProvince,
+  city,
+  setCity,
   selectedAvatar,
   setSelectedAvatar,
   direction,
 }: {
-  name: string;
-  setName: (v: string) => void;
+  firstName: string;
+  setFirstName: (v: string) => void;
+  lastName: string;
+  setLastName: (v: string) => void;
+  province: string | null;
+  setProvince: (v: string | null) => void;
+  city: string | null;
+  setCity: (v: string | null) => void;
   selectedAvatar: string;
   setSelectedAvatar: (v: string) => void;
   direction: number;
@@ -310,16 +323,44 @@ function StepIdentity({
       </div>
 
       <h1 className="text-2xl font-bold text-foreground mb-2">توی روال چی صدات کنیم؟</h1>
-      <p className="text-muted-foreground mb-8">اسم و آواتارت رو انتخاب کن</p>
+      <p className="text-muted-foreground mb-8">اسم، نام خانوادگی و آواتارت رو انتخاب کن</p>
 
       <div className="w-full space-y-6">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="مثلاً: علی، سارا، ..."
-          className="w-full h-12 bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-4 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-mint/50 focus:border-mint/50 transition-all"
-          maxLength={30}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* First name (REQUIRED) */}
+          <div className="space-y-1.5">
+            <label htmlFor="onboarding-firstName" className="text-xs text-[var(--foreground-muted)]">نام</label>
+            <input
+              id="onboarding-firstName"
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="مثلاً: علی، سارا، ..."
+              className="w-full h-12 bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-4 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-mint/50 focus:border-mint/50 transition-all"
+              maxLength={30}
+            />
+          </div>
+          {/* Last name (OPTIONAL but encouraged) */}
+          <div className="space-y-1.5">
+            <label htmlFor="onboarding-lastName" className="text-xs text-[var(--foreground-muted)]">نام خانوادگی</label>
+            <input
+              id="onboarding-lastName"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="مثلاً: رضایی، محمدی، ..."
+              className="w-full h-12 bg-[var(--bg-overlay)] border border-[var(--border-strong)] rounded-lg px-4 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-mint/50 focus:border-mint/50 transition-all"
+              maxLength={50}
+            />
+          </div>
+        </div>
+
+        {/* Province + City (BOTH REQUIRED at signup) */}
+        <ProvinceCityPicker
+          province={province}
+          city={city}
+          onProvinceChange={setProvince}
+          onCityChange={setCity}
         />
 
         <div className="grid grid-cols-3 gap-3">
@@ -499,7 +540,10 @@ export default function OnboardingWizard() {
   const [role, setRole] = useState<RegisterRole | ''>('');
 
   // Step 3 state
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [province, setProvince] = useState<string | null>(null);
+  const [city, setCity] = useState<string | null>(null);
   const [selectedAvatar, setSelectedAvatar] = useState('');
 
   // Step 4 state (STUDENT only)
@@ -590,13 +634,15 @@ export default function OnboardingWizard() {
       case 1:
         return showOtp && otpVerified;
       case 2:
-        return name.trim().length > 0 && selectedAvatar !== '';
+        // firstName is required (non-empty), lastName is optional,
+        // avatar is required, province and city are required at signup.
+        return firstName.trim().length > 0 && selectedAvatar !== '' && Boolean(province) && Boolean(city);
       case 3:
         return grade !== '' && major !== '';
       default:
         return false;
     }
-  }, [currentStep, showOtp, otpVerified, name, selectedAvatar, grade, major]);
+  }, [currentStep, showOtp, otpVerified, firstName, selectedAvatar, province, city, grade, major]);
 
   const handleNext = useCallback(() => {
     if (!canProceed()) return;
@@ -629,10 +675,13 @@ export default function OnboardingWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: normalizedPhone,
-          name: name.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || null,
           avatar: selectedAvatar,
           grade,
           major,
+          province,
+          city,
           otp,
           otpChallengeId,
         }),
@@ -659,12 +708,15 @@ export default function OnboardingWizard() {
       const u = data.user;
       const realUser: User = {
         id: u.id,
-        name: u.name,
+        firstName: u.firstName,
+        lastName: u.lastName ?? null,
         avatar: u.avatar,
         grade: (u.grade as Grade) || (grade as Grade),
         major: (u.major as Major) || (major as Major),
         phone: u.phone,
         assignedAdvisorId: u.assignedAdvisorId || null,
+        province: u.province ?? null,
+        city: u.city ?? null,
       };
 
       setUser(realUser);
@@ -677,7 +729,7 @@ export default function OnboardingWizard() {
       loadTasksForStudent(realUser.id).catch(() => {});
       loadExams({ studentId: realUser.id }).catch(() => {});
 
-      toast.success(`خوش امدی، ${realUser.name}`, {
+      toast.success(`خوش امدی، ${realUser.firstName}`, {
         style: { background: 'var(--bg-overlay)', border: '1px solid var(--border)', color: 'var(--success)' },
       });
     } catch {
@@ -686,7 +738,7 @@ export default function OnboardingWizard() {
       });
       setSubmitting(false);
     }
-  }, [canProceed, submitting, name, selectedAvatar, role, grade, major, instituteName, phone, otp, otpChallengeId, goToStep, setUser, setUserRole, setOnboardingComplete]);
+  }, [canProceed, submitting, firstName, lastName, selectedAvatar, role, grade, major, instituteName, phone, otp, otpChallengeId, goToStep, setUser, setUserRole, setOnboardingComplete]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 py-8 relative overflow-hidden">
@@ -726,8 +778,14 @@ export default function OnboardingWizard() {
             )}
             {currentStep === 2 && (
               <StepIdentity
-                name={name}
-                setName={setName}
+                firstName={firstName}
+                setFirstName={setFirstName}
+                lastName={lastName}
+                setLastName={setLastName}
+                province={province}
+                setProvince={setProvince}
+                city={city}
+                setCity={setCity}
                 selectedAvatar={selectedAvatar}
                 setSelectedAvatar={setSelectedAvatar}
                 direction={direction}

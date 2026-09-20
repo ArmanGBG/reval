@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
           select: { id: true, name: true, status: true, deletedAt: true },
         },
         assignedAdvisor: {
-          select: { id: true, name: true, avatar: true },
+          select: { id: true, firstName: true, lastName: true, avatar: true },
         },
       },
     });
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
       user = await db.user.create({
         data: {
           phone,
-          name: process.env.INITIAL_SUPER_ADMIN_NAME?.trim() || 'مدیر روال',
+          firstName: process.env.INITIAL_SUPER_ADMIN_NAME?.trim() || 'مدیر',
+          lastName: process.env.INITIAL_SUPER_ADMIN_NAME?.trim() ? null : 'روال',
           role: 'SUPER_ADMIN',
           avatar: '🛡️',
           publicCode: await createPublicCode('ADV'),
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
         },
         include: {
           institute: { select: { id: true, name: true, status: true, deletedAt: true } },
-          assignedAdvisor: { select: { id: true, name: true, avatar: true } },
+          assignedAdvisor: { select: { id: true, firstName: true, lastName: true, avatar: true } },
         },
       });
     } else if (isBootstrapSuperAdmin && user.role !== 'SUPER_ADMIN') {
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
         data: { phoneVerifiedAt: new Date(), isActive: true },
         include: {
           institute: { select: { id: true, name: true, status: true, deletedAt: true } },
-          assignedAdvisor: { select: { id: true, name: true, avatar: true } },
+          assignedAdvisor: { select: { id: true, firstName: true, lastName: true, avatar: true } },
         },
       });
     } else if (!user.phoneVerifiedAt) {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
         data: { phoneVerifiedAt: new Date() },
         include: {
           institute: { select: { id: true, name: true, status: true, deletedAt: true } },
-          assignedAdvisor: { select: { id: true, name: true, avatar: true } },
+          assignedAdvisor: { select: { id: true, firstName: true, lastName: true, avatar: true } },
         },
       });
     }

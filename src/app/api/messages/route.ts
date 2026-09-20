@@ -77,22 +77,25 @@ export async function GET(request: NextRequest) {
       title: true,
       body: true,
       createdAt: true,
-      sender: { select: { id: true, name: true, role: true } },
+      sender: { select: { id: true, firstName: true, lastName: true, role: true } },
       readBy: { where: { userId: ctx.userId }, select: { userId: true } },
     },
   });
 
-  const messages = rows.map((m) => ({
-    id: m.id,
-    senderId: m.senderId,
-    senderName: m.sender?.name ?? null,
-    senderRole: m.sender?.role ?? null,
-    recipientId: m.recipientId,
-    title: m.title,
-    body: m.body,
-    createdAt: m.createdAt.toISOString(),
-    read: m.readBy.length > 0,
-  }));
+  const messages = rows.map((m) => {
+    const fullName = [m.sender?.firstName, m.sender?.lastName].filter(Boolean).join(' ').trim();
+    return {
+      id: m.id,
+      senderId: m.senderId,
+      senderName: fullName || null,
+      senderRole: m.sender?.role ?? null,
+      recipientId: m.recipientId,
+      title: m.title,
+      body: m.body,
+      createdAt: m.createdAt.toISOString(),
+      read: m.readBy.length > 0,
+    };
+  });
 
   return NextResponse.json({ messages });
 }

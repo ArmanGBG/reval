@@ -11,10 +11,13 @@ function serializeUser(user: Awaited<ReturnType<typeof loadUser>>) {
   const sourceTasks = user.role === 'ADVISOR' ? user.students.flatMap((student) => student.tasks) : user.tasks;
   const reportable = sourceTasks.filter((task) => task.status !== 'DRAFT');
   const completed = reportable.filter((task) => task.status === 'COMPLETED');
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
   return {
-    id: user.id, name: user.name, avatar: user.avatar, phone: user.phone,
+    id: user.id, name: fullName, firstName: user.firstName, lastName: user.lastName,
+    avatar: user.avatar, phone: user.phone,
     role: roleMap[user.role as keyof typeof roleMap] ?? 'student',
     grade: user.grade, major: user.major, assignedAdvisorId: user.assignedAdvisorId,
+    province: user.province, city: user.city,
     instituteId: user.instituteId, instituteName: user.institute?.name ?? 'بدون آموزشگاه',
     status: user.isActive ? 'active' : 'suspended',
     completionRate: reportable.length ? Math.round((completed.length / reportable.length) * 100) : 0,
@@ -70,11 +73,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const deactivating = body.status === 'suspended';
     if ((existing.role === 'ADVISOR' && (roleChanged || instituteChanged || deactivating))) await detachAdvisorRoster(tx, userId);
     if ((existing.role === 'STUDENT' && (roleChanged || instituteChanged || deactivating))) await detachStudent(tx, userId);
+    // Compose firstName / lastName from either explicit new fields or a legacy
+    // `name` field (split on first space). Only update if a non-empty value
+    // is provided.
+    const firstNameUpdate = typeof body.firstName === 'string' && body.firstName.trim() ? body.firstName.trim()
+      : typeof body.name === 'string' && body.name.trim() ? body.name.trim().split(' ')[0] : undefined;
+    const lastNameUpdate = typeof body.lastName === 'string' && body.lastName.trim() ? body.lastName.trim()
+      : typeof body.name === 'string' && body.name.trim() && body.name.trim().includes(' ') ? body.name.trim().split(' ').slice(1).join(' ') : undefined;
+    const provinceUpdate = typeof body.province === 'string' && body.province.trim() ? body.province.trim() : undefined;
+    const cityUpdate = typeof body.city === 'string' && body.city.trim() ? body.city.trim() : undefined;
     await tx.user.update({
       where: { id: userId },
       data: {
         ...(body.status === 'active' || body.status === 'suspended' ? { isActive: body.status === 'active' } : {}),
-        ...(typeof body.name === 'string' && body.name.trim() ? { name: body.name.trim() } : {}),
+        ...(firstNameUpdate ? { firstName: firstNameUpdate } : {}),
+        ...(lastNameUpdate !== undefined && lastNameUpdate !== null ? { lastName: lastNameUpdate } : {}),
+        ...(typeof body.lastName === 'string' && body.lastName.trim() === '' ? { lastName: null } : {}),
+        ...(provinceUpdate ? { province: provinceUpdate } : {}),
+        ...(cityUpdate ? { city: cityUpdate } : {}),
         ...('instituteId' in body ? { instituteId: nextInstituteId } : {}),
         ...(requestedRole ? {
           role: requestedRole,

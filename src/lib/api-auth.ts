@@ -15,8 +15,11 @@ export interface AuthContext {
   user: {
     id: string;
     role: string; // STUDENT | ADVISOR | INSTITUTE_MANAGER | SUPER_ADMIN
-    name: string;
+    firstName: string;
+    lastName: string | null;
     phone: string;
+    province: string | null;
+    city: string | null;
     instituteId: string | null;
     assignedAdvisorId: string | null;
     isActive: boolean;
@@ -56,8 +59,11 @@ export async function requireAuth(
     select: {
       id: true,
       role: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       phone: true,
+      province: true,
+      city: true,
       instituteId: true,
       assignedAdvisorId: true,
       isActive: true,

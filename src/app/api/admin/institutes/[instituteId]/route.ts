@@ -12,7 +12,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const institute = await db.institute.findUnique({ where: { id: instituteId }, include: { manager: true, members: { where: { deletedAt: null }, select: { role: true, tasks: { select: { status: true } } } } } });
   if (!institute) return NextResponse.json({ error: 'آموزشگاه یافت نشد' }, { status: 404 });
   const tasks = institute.members.flatMap((member) => member.tasks).filter((task) => task.status !== 'DRAFT'); const completed = tasks.filter((task) => task.status === 'COMPLETED');
-  return NextResponse.json({ institute: { id: institute.id, name: institute.name, logoUrl: institute.logoUrl, managerName: institute.manager.name, managerPhone: institute.manager.phone, subscriptionPlan: institute.subscriptionPlan, status: institute.status, studentCount: institute.members.filter((member) => member.role === 'STUDENT').length, advisorCount: institute.members.filter((member) => member.role === 'ADVISOR').length, createdAt: institute.createdAt.toISOString().split('T')[0], avgCompletionRate: tasks.length ? Math.round((completed.length / tasks.length) * 100) : 0 } });
+  const managerName = [institute.manager.firstName, institute.manager.lastName].filter(Boolean).join(' ').trim();
+  return NextResponse.json({ institute: { id: institute.id, name: institute.name, logoUrl: institute.logoUrl, managerName, managerPhone: institute.manager.phone, subscriptionPlan: institute.subscriptionPlan, status: institute.status, studentCount: institute.members.filter((member) => member.role === 'STUDENT').length, advisorCount: institute.members.filter((member) => member.role === 'ADVISOR').length, createdAt: institute.createdAt.toISOString().split('T')[0], avgCompletionRate: tasks.length ? Math.round((completed.length / tasks.length) * 100) : 0 } });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ instituteId: string }> }) {

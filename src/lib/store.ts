@@ -109,7 +109,7 @@ const AUTH_STORAGE_KEY = 'reval:auth:v1';
 
 interface PersistedAuth {
   userRole: UserRole;
-  user: Pick<User, 'id' | 'name' | 'avatar' | 'grade' | 'major' | 'phone' | 'assignedAdvisorId'> | null;
+  user: Pick<User, 'id' | 'firstName' | 'lastName' | 'avatar' | 'grade' | 'major' | 'phone' | 'assignedAdvisorId' | 'province' | 'city'> | null;
   onboardingComplete: boolean;
 }
 
@@ -203,6 +203,10 @@ interface AppState {
   user: User | null;
   setUser: (user: User | null) => void;
   updateUser: (updates: Partial<User>) => void;
+  // saveProfile — PERSISTS profile changes to the server via PATCH /api/auth/profile
+  // and returns the updated user record. Fixes the bug where updateUser only
+  // updated local state and the next /api/auth/me fetch would silently revert it.
+  saveProfile: (updates: Partial<User>) => Promise<User | null>;
 
   // Onboarding
   onboardingComplete: boolean;
@@ -535,6 +539,56 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       return { user };
     }),
+
+  // saveProfile — PERSISTS to the server (PATCH /api/auth/profile) and only
+  // updates the local store + localStorage on success. The server response is
+  // treated as the source of truth so the local cache never drifts.
+  saveProfile: async (updates) => {
+    // Apply locally first so the UI feels responsive — server response will
+    // overwrite this if there's any drift.
+    const state = get();
+    if (!state.user) return null;
+    const optimisticUser: User = { ...state.user, ...updates };
+    set({ user: optimisticUser });
+    saveAuthToStorage({ userRole: state.userRole, user: optimisticUser, onboardingComplete: state.onboardingComplete });
+
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // Revert on error.
+        set({ user: state.user });
+        saveAuthToStorage({ userRole: state.userRole, user: state.user, onboardingComplete: state.onboardingComplete });
+        throw new Error(data.error || 'به‌روزرسانی پروفایل ناموفق بود');
+      }
+      // Server is the source of truth — replace local user with its response.
+      const u = data.user;
+      const nextUser: User = {
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName ?? null,
+        avatar: u.avatar,
+        grade: u.grade || state.user.grade,
+        major: u.major || state.user.major,
+        phone: u.phone,
+        assignedAdvisorId: u.assignedAdvisorId || null,
+        province: u.province ?? null,
+        city: u.city ?? null,
+      };
+      set({ user: nextUser });
+      const afterState = get();
+      saveAuthToStorage({ userRole: afterState.userRole, user: nextUser, onboardingComplete: afterState.onboardingComplete });
+      return nextUser;
+    } catch (err) {
+      // Already reverted above; just re-throw for the caller to surface.
+      throw err;
+    }
+  },
 
   // Onboarding — hydrate from localStorage if available
   onboardingComplete: (() => {

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     db.auditLog.findMany({
       where,
       include: {
-        actor: { select: { id: true, name: true, avatar: true, role: true } },
+        actor: { select: { id: true, firstName: true, lastName: true, avatar: true, role: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     logs: logs.map((l) => ({
       id: l.id,
       actorId: l.actorId,
-      actorName: l.actor?.name ?? null,
+      actorName: l.actor ? [l.actor.firstName, l.actor.lastName].filter(Boolean).join(' ').trim() || null : null,
       actorAvatar: l.actor?.avatar ?? null,
       action: l.action,
       entity: l.entity,

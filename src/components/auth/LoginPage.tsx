@@ -60,9 +60,11 @@ export default function LoginPage() {
       const role = data.user.role as UserRole;
       setUserRole(role);
       setUser({
-        id: data.user.id, name: data.user.name, avatar: data.user.avatar,
+        id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName ?? null,
+        avatar: data.user.avatar,
         grade: data.user.grade || 'دوازدهم', major: data.user.major || 'تجربی', phone: data.user.phone,
         assignedAdvisorId: data.user.assignedAdvisorId || null,
+        province: data.user.province ?? null, city: data.user.city ?? null,
       });
       setOnboardingComplete(true);
       replaceNavigation({ view: role === 'ADVISOR' ? 'advisor-dashboard' : role === 'INSTITUTE_MANAGER' ? 'institute-dashboard' : role === 'SUPER_ADMIN' ? 'sa-dashboard' : 'dashboard' });

@@ -19,7 +19,8 @@ export async function seedProductionAdmins(client: PrismaClient = db) {
       },
       create: {
         phone: admin.phone,
-        name: admin.name,
+        firstName: admin.name,
+        lastName: null,
         avatar: '👑',
         role: 'SUPER_ADMIN',
         isActive: true,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle, BookOpenCheck, ClipboardCheck } from 'lucide-react';
+import { X, Plus, Check, Calendar, ChevronDown, ChevronLeft, ChevronRight, Loader2, Clock, Target, RotateCcw, AlertCircle, BookOpenCheck, ClipboardCheck, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -38,6 +38,7 @@ import { useCurrentStudentId } from '@/lib/student-utils';
 import { supportsFinalAssessment } from '@/lib/subject-eligibility';
 import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { TaskDetailsDialog } from './TaskDetailsDialog';
+import { NonStudyActivityModal } from './NonStudyActivityModal';
 import { activitySelectedStyle } from '@/lib/activity-styles';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import type { PlanActor, PlanTargetStudent } from './PlanView';
@@ -131,6 +132,8 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
   // Which day's "add subject" picker is open
   const [addingToDay, setAddingToDay] = useState<string | null>(null); // dateStr
   const [addingExamToDay, setAddingExamToDay] = useState<string | null>(null);
+  // Which day's "non-study activity" picker is open
+  const [addingActivityToDay, setAddingActivityToDay] = useState<string | null>(null);
 
   // Which subject is being edited
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -401,6 +404,7 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                  studentId={studentId}
                   onAdd={() => setAddingToDay(dayPlan.dateStr)}
                   onAddExam={() => setAddingExamToDay(dayPlan.dateStr)}
+                  onAddActivity={() => setAddingActivityToDay(dayPlan.dateStr)}
                   canManage={canManageTask}
                   canEdit={canEditTask}
                   canComplete={!isAdvisorWorkspace}
@@ -485,6 +489,12 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
           />
         )}
         <ExamModal open={Boolean(addingExamToDay)} onOpenChange={(next) => { if (!next) setAddingExamToDay(null); }} studentId={studentId} selectedDate={addingExamToDay ?? undefined} grade={targetStudent?.grade ?? user?.grade} major={targetStudent?.major ?? user?.major} />
+        <NonStudyActivityModal
+          open={Boolean(addingActivityToDay)}
+          onOpenChange={(next) => { if (!next) setAddingActivityToDay(null); }}
+          date={addingActivityToDay ?? new Date().toISOString().slice(0, 10)}
+          studentId={studentId}
+        />
     </>
   );
 
@@ -520,6 +530,7 @@ function DayColumn({
   onSelectDay,
   onAdd,
   onAddExam,
+  onAddActivity,
   onRemove,
   onEdit,
   onToggleComplete,
@@ -535,6 +546,7 @@ function DayColumn({
   onSelectDay: () => void;
   onAdd: () => void;
   onAddExam: () => void;
+  onAddActivity: () => void;
   onRemove: (taskId: string) => void;
   onEdit: (taskId: string) => void;
   onToggleComplete: (taskId: string) => void;
@@ -594,10 +606,11 @@ function DayColumn({
         )}
       </div>
 
-      {/* Add button */}
-      <div className="grid grid-cols-2 border-t border-[var(--border)]">
-        <button onClick={onAdd} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 border-l border-[var(--border)] text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)]"><Plus className="w-3.5 h-3.5" />افزودن درس</button>
-        <button onClick={onAddExam} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 text-xs font-medium text-[#EF9A9A]"><ClipboardCheck className="w-3.5 h-3.5" />آزمون</button>
+      {/* Add buttons — 3-column grid: درس | آزمون | فعالیت غیردرسی */}
+      <div className="grid grid-cols-3 border-t border-[var(--border)]">
+        <button onClick={onAdd} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 border-l border-[var(--border)] text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)]"><Plus className="w-3.5 h-3.5" />درس</button>
+        <button onClick={onAddExam} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 border-l border-[var(--border)] text-xs font-medium text-[#EF9A9A]"><ClipboardCheck className="w-3.5 h-3.5" />آزمون</button>
+        <button onClick={onAddActivity} className="btn-hover flex min-h-[40px] items-center justify-center gap-1.5 text-xs font-medium text-[#7EB8FF]"><Activity className="w-3.5 h-3.5" />فعالیت</button>
       </div>
     </div>
   );

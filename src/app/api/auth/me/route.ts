@@ -25,12 +25,15 @@ export async function GET(request: NextRequest) {
       where: { id: payload.userId },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         avatar: true,
         phone: true,
         role: true,
         grade: true,
         major: true,
+        province: true,
+        city: true,
         assignedAdvisorId: true,
         publicCode: true,
         isActive: true,
@@ -46,7 +49,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'دسترسی آموزشگاه شما تعلیق شده است' }, { status: 403 });
     }
 
-    return NextResponse.json({ user });
+    // Strip nested institute field — keep the response shape compatible with
+    // what the client expects (flat user with the new firstName/lastName fields).
+    const { institute: _institute, ...userFields } = user;
+    return NextResponse.json({ user: userFields });
   } catch (error) {
     console.error('Auth /me error:', error);
     return NextResponse.json({ error: 'خطای سرور' }, { status: 500 });

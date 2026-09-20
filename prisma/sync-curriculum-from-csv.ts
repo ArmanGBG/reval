@@ -566,7 +566,8 @@ async function importBookCurriculum(
   const tree = buildImportTree(rows);
   return db.$transaction(async (tx) => {
     if (options.onlyIfEmpty) {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(1380273228)`;
+      // pg_advisory_xact_lock is PostgreSQL-only; SQLite has no advisory locks,
+      // and in single-process dev/test runs we don't need cross-process coordination.
       const subjectCount = await tx.subject.count();
       if (subjectCount > 0) return null;
     }
