@@ -1,34 +1,34 @@
-# ============================================================
-# Migration: split_user_name_fields
-# Date: 2026-09-20
-# Purpose:
-#   1. Split the legacy `name` column on the User table into:
-#        `firstName` (NOT NULL — required for new signups)
-#        `lastName`  (nullable  — optional, may be null for legacy users
-#                                 until they fill it in via Settings)
-#   2. Add `province` and `city` columns (both nullable, optional for
-#      legacy users — required only at signup for NEW users).
-#   3. Backfill `firstName` and `lastName` from the existing `name`
-#      column WITHOUT data loss:
-#        - "علی احمدی"        → firstName="علی", lastName="احمدی"
-#        - "علی محمد رضایی"   → firstName="علی", lastName="محمد رضایی"
-#                              (only the FIRST space splits the names —
-#                               everything after the first space stays
-#                               in lastName, including middle names)
-#        - "سارا"             → firstName="سارا", lastName=NULL
-#        - "" (empty)         → firstName="کاربر" (placeholder so the
-#                              NOT NULL constraint passes; the user can
-#                              edit it in Settings)
-#        - NULL               → firstName="کاربر" (placeholder)
-#   4. Make `firstName` NOT NULL (after backfill).
-#   5. Drop the legacy `name` column.
-#
-# This migration is SAFE for production — it never deletes any existing
-# data; it only renames/splits an existing column. The backfill is
-# deterministic and uses PostgreSQL built-in string functions.
-#
-# Verified on PostgreSQL 13+ (Liara's default).
-# ============================================================
+-- ============================================================
+-- Migration: split_user_name_fields
+-- Date: 2026-09-20
+-- Purpose:
+--   1. Split the legacy `name` column on the User table into:
+--        `firstName` (NOT NULL — required for new signups)
+--        `lastName`  (nullable  — optional, may be null for legacy users
+--                                 until they fill it in via Settings)
+--   2. Add `province` and `city` columns (both nullable, optional for
+--      legacy users — required only at signup for NEW users).
+--   3. Backfill `firstName` and `lastName` from the existing `name`
+--      column WITHOUT data loss:
+--        - "علی احمدی"        → firstName="علی", lastName="احمدی"
+--        - "علی محمد رضایی"   → firstName="علی", lastName="محمد رضایی"
+--                              (only the FIRST space splits the names —
+--                               everything after the first space stays
+--                               in lastName, including middle names)
+--        - "سارا"             → firstName="سارا", lastName=NULL
+--        - "" (empty)         → firstName="کاربر" (placeholder so the
+--                              NOT NULL constraint passes; the user can
+--                              edit it in Settings)
+--        - NULL               → firstName="کاربر" (placeholder)
+--   4. Make `firstName` NOT NULL (after backfill).
+--   5. Drop the legacy `name` column.
+--
+-- This migration is SAFE for production — it never deletes any existing
+-- data; it only renames/splits an existing column. The backfill is
+-- deterministic and uses PostgreSQL built-in string functions.
+--
+-- Verified on PostgreSQL 13+ (Liara's default).
+-- ============================================================
 
 -- Step 1: Add the new nullable columns alongside `name`.
 -- Adding nullable columns with no default is a fast, non-blocking operation

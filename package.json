@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "dev": "npm run db:setup:dev && next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev -p 3000",
     "build": "prisma generate && next build && node scripts/prepare-liara-runtime.mjs",
     "start": "next start -p ${PORT:-3000}",
     "start:liara": "npm run db:deploy && npm run db:bootstrap && npm run start",

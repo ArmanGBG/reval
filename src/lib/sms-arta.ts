@@ -15,24 +15,38 @@ export async function sendArtaVerification(phone: string, otp: string): Promise<
     throw new Error('ARTA_SMS_NOT_CONFIGURED');
   }
 
+  const recipient = toArtaRecipient(phone);
+  const body = {
+    sending_type: 'pattern',
+    from_number: fromNumber,
+    code: patternCode,
+    recipients: [recipient],
+    params: { [parameterName]: otp },
+  };
+
+  console.log('[ARTA DEBUG] URL:', ARTA_SEND_URL);
+  console.log('[ARTA DEBUG] Headers:', { Authorization: apiToken.substring(0, 10) + '...', 'Content-Type': 'application/json' });
+  console.log('[ARTA DEBUG] Body:', JSON.stringify(body, null, 2));
+
   const response = await fetch(ARTA_SEND_URL, {
     method: 'POST',
     headers: {
       Authorization: apiToken,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      sending_type: 'pattern',
-      from_number: fromNumber,
-      code: patternCode,
-      recipients: [toArtaRecipient(phone)],
-      params: { [parameterName]: otp },
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(10_000),
   });
 
+  console.log('[ARTA DEBUG] Response status:', response.status, response.statusText);
+  const responseText = await response.text();
+  console.log('[ARTA DEBUG] Response body:', responseText);
+
   if (!response.ok) {
-    const result = (await response.json().catch(() => null)) as { message?: string } | null;
+    let result: { message?: string } | null = null;
+    try {
+      result = JSON.parse(responseText);
+    } catch {}
     throw new Error(result?.message || 'ARTA_SMS_SEND_FAILED');
   }
 }
