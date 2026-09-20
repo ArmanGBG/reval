@@ -21,6 +21,7 @@ import {
   XCircle,
   Activity,
   ShieldCheck,
+  MapPin,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -146,6 +147,15 @@ export default function UserDetail() {
                 <div className="flex items-center gap-2 min-w-0">
                   <Phone className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                   <span className="text-xs text-muted-foreground tabular-nums" dir="ltr">{user.phone}</span>
+                </div>
+                {/* Province + City — null-safe display */}
+                <div className="flex items-center gap-2 min-w-0" title={`${user.province ?? '—'} / ${user.city ?? '—'}`}>
+                  <MapPin className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                  <span className="text-xs text-muted-foreground truncate">
+                    {user.province || user.city
+                      ? [user.province, user.city].filter(Boolean).join('، ')
+                      : 'ثبت نشده'}
+                  </span>
                 </div>
               </div>
             </div>

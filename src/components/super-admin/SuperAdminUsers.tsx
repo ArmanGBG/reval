@@ -24,6 +24,7 @@ import {
   Ban,
   CheckCircle2,
   ListChecks,
+  RefreshCcw,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -51,6 +52,22 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
 
 export default function SuperAdminUsers() {
   const { globalUsers, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, navigateTo } = useAppStore();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadGlobalUsers();
+      toast.success('لیست کاربران به‌روزرسانی شد');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'به‌روزرسانی لیست ناموفق بود');
+    } finally {
+      // Tiny delay so the spin animation is visible even on a fast network —
+      // otherwise the icon flashes for a single frame and feels broken.
+      setTimeout(() => setRefreshing(false), 350);
+    }
+  };
+
   useEffect(() => {
     loadGlobalUsers().catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری کاربران انجام نشد'));
     loadPlatformInstitutes().catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری آموزشگاه‌ها انجام نشد'));
@@ -116,13 +133,17 @@ export default function SuperAdminUsers() {
       toast.error('برای خروجی CSV حداقل یک کاربر لازم است');
       return;
     }
-    const headers = ['نام', 'شماره', 'نقش', 'پایه', 'رشته', 'وضعیت', 'آموزشگاه', 'تاریخ عضویت'];
+    const headers = ['نام', 'شماره', 'نقش', 'پایه', 'رشته', 'استان', 'شهر', 'وضعیت', 'آموزشگاه', 'تاریخ عضویت'];
     const rows = filteredUsers.map((u) => [
       u.name,
       u.phone,
       ROLE_CONFIG[u.role]?.label ?? u.role,
       u.grade ?? '',
       u.major ?? '',
+      // Province/city are nullable — export empty string when null so the CSV
+      // cell stays empty rather than the literal string "null".
+      u.province ?? '',
+      u.city ?? '',
       u.status === 'active' ? 'فعال' : 'معلق',
       u.instituteName,
       u.joinDate,
@@ -219,6 +240,18 @@ export default function SuperAdminUsers() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Refresh button — icon-only, with spin animation while loading.
+              Calls loadGlobalUsers() (re-fetches from /api/users) without a
+              full-page reload. */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--bg-overlay)] border border-[var(--border)] text-muted-foreground hover:text-foreground hover:border-gold/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="به‌روزرسانی لیست کاربران"
+            aria-label="به‌روزرسانی لیست کاربران"
+          >
+            <RefreshCcw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
           <button
             onClick={handleExportCsv}
             disabled={globalUsers.length === 0}
