@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Next.js 项目路径
-NEXTJS_PROJECT_DIR="/home/z/my-project"
+NEXTJS_PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # 检查 Next.js 项目目录是否存在
 if [ ! -d "$NEXTJS_PROJECT_DIR" ]; then
@@ -27,21 +27,22 @@ cd "$NEXTJS_PROJECT_DIR" || exit 1
 # 设置环境变量
 export NEXT_TELEMETRY_DISABLED=1
 
+BUILD_ID="${BUILD_ID:-local}"
 BUILD_DIR="/tmp/build_fullstack_$BUILD_ID"
 echo "📁 清理并创建构建目录: $BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
 # 安装依赖
 echo "📦 安装依赖..."
-bun install
+npm install
 
 # 构建 Next.js 应用
 echo "🔨 构建 Next.js 应用..."
-bun run build
+npm run build
 
 # 校验 standalone 服务端入口是否生成（部署成功率守卫）。
 # Next 仅在 next.config 含 output:"standalone" 时产出 .next/standalone/server.js。
-# 若用户/AI 编辑项目时改写或删除了该配置，bun run build 仍会成功（static 照常
+# 若用户/AI 编辑项目时改写或删除了该配置，npm run build 仍会成功（static 照常
 # 产出、退出码 0），但 standalone 缺失——打出的包里没有 server.js，部署到 FC 后
 # start.sh 找不到 next-service-dist/server.js → 不启动 Next → Caddy:81 反代空的
 # 3000 → FC 健康检查 120s 超时失败（线上 warmup_412 / FunctionNotStarted 的主因）。
@@ -88,7 +89,7 @@ if [ ! -f ".next/standalone/server.js" ]; then
     fi
 
     echo "🔨 已注入 output:\"standalone\"，重新构建..."
-    bun run build
+    npm run build
 
     if [ ! -f ".next/standalone/server.js" ]; then
         echo "❌ 注入 output:\"standalone\" 并重建后，仍未生成 .next/standalone/server.js。"
@@ -139,11 +140,6 @@ fi
 # 依赖清单，在构建期将生产依赖固化到产物，并保持 Python 源码的项目相对路径。
 PROJECT_DIR="$NEXTJS_PROJECT_DIR" BUILD_DIR="$BUILD_DIR" \
     bash "$SCRIPT_DIR/python-runtime-build.sh"
-
-# 有 Preview 数据库时复制现有数据；没有时直接在部署产物中初始化空库。
-# 模板源码不携带 db/custom.db，不能依赖 dev.sh 必须在 Deploy 前成功运行过。
-PROJECT_DIR="$NEXTJS_PROJECT_DIR" BUILD_DIR="$BUILD_DIR" \
-    bash "$SCRIPT_DIR/database-runtime-build.sh"
 
 # 复制 Caddyfile（如果存在）
 if [ -f "Caddyfile" ]; then

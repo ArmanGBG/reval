@@ -12,9 +12,11 @@ escapes to PID 1 and survives across Bash tool calls.
 import os
 import sys
 
-PROJECT_DIR = "/home/z/my-project"
-DEV_LOG = "/home/z/my-project/dev.log"
-PID_FILE = "/home/z/my-project/.zscripts/dev-daemon.pid"
+from pathlib import Path
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+DEV_LOG = PROJECT_DIR / "dev.log"
+PID_FILE = PROJECT_DIR / ".zscripts" / "dev-daemon.pid"
 
 def daemonize():
     # First fork
@@ -42,9 +44,10 @@ def main():
     daemonize()
     # Exec the Next.js dev server directly (no `tee` pipe — we already log to dev.log).
     # Using node directly avoids bun's wrapper overhead and the `| tee` subprocess.
+    next_cli = PROJECT_DIR / "node_modules" / "next" / "dist" / "bin" / "next"
     os.execvp("node", [
         "node",
-        "/home/z/my-project/node_modules/next/dist/bin/next",
+        str(next_cli),
         "dev",
         "-p",
         "3000",

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Production server with auto-restart watchdog
-cd /home/z/my-project/reval
+cd "$(dirname "$0")/.."
 
 LOG=/tmp/reval-server.log
 STANDALONE=./.next/standalone/server.js

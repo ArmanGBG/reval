@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 配置项
-ROOT_DIR="/home/z/my-project/mini-services"
-DIST_DIR="/tmp/build_fullstack_$BUILD_ID/mini-services-dist"
+ROOT_DIR="$(cd "$(dirname "$0")/../mini-services" && pwd)"
+DIST_DIR="${DIST_DIR:-/tmp/reval-mini-services-dist}"
 
 main() {
     echo "🚀 开始批量构建..."
@@ -43,12 +43,12 @@ main() {
             echo ""
             echo "📦 正在构建: $project_name..."
             
-            # 使用 bun build CLI 构建
             output_file="$DIST_DIR/mini-service-$project_name.js"
-            
-            if bun build "$entry_path" \
-                --outfile "$output_file" \
-                --target bun \
+
+            if npx esbuild "$entry_path" \
+                --outfile="$output_file" \
+                --platform=node \
+                --target=node \
                 --minify; then
                 echo "✅ $project_name 构建成功 -> $output_file"
                 success_count=$((success_count + 1))

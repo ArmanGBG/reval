@@ -70,17 +70,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Tally counts into buckets.
-  const tally = (data: { createdAt: Date; _count: number }[], field: 'users' | 'institutes' | 'tasks' | 'exams' | 'messages') => {
-    for (const row of data as any[]) {
-      const date = row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const bucket = monthBuckets.find((b) => b.key === key);
-      if (bucket) bucket[field] += row._count;
-    }
-  };
-
-  // SQLite groupBy returns slightly different shape — handle both.
+  // Tally counts into month buckets.
   for (const [data, field] of [
     [users, 'users'],
     [institutes, 'institutes'],
