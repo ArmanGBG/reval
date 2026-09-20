@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "npm run db:setup:dev && next dev -p 3000 2>&1 | tee dev.log",
     "build": "prisma generate && next build && node scripts/prepare-liara-runtime.mjs",
     "start": "next start -p ${PORT:-3000}",
     "start:liara": "npm run db:deploy && npm run db:bootstrap && npm run start",
@@ -18,6 +18,11 @@
     "db:seed:book:dry": "tsx prisma/sync-curriculum-from-csv.ts",
     "db:seed:book": "tsx prisma/sync-curriculum-from-csv.ts --apply",
     "liara:release": "prisma migrate deploy",
+    "db:sync-dev-schema": "node scripts/sync-dev-schema.mjs",
+    "db:generate:dev": "npm run db:sync-dev-schema && prisma generate --schema=prisma/schema.dev.prisma",
+    "db:push:dev": "npm run db:generate:dev && prisma db push --schema=prisma/schema.dev.prisma --accept-data-loss",
+    "db:bootstrap:dev": "tsx prisma/bootstrap-production.ts",
+    "db:setup:dev": "npm run db:push:dev && npm run db:bootstrap:dev",
     "test": "vitest run",
     "test:watch": "vitest"
   },

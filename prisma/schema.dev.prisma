@@ -1,0 +1,535 @@
+// ===== Reval (روال) - Prisma Schema =====
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== User (all roles) =====
+model User {
+  id                String    @id @default(cuid())
+  phone             String    @unique
+  password          String? // legacy password hash; OTP accounts leave this null
+  firstName         String // نام (REQUIRED for new signups; backfilled for legacy users)
+  lastName          String? // نام خانوادگی (OPTIONAL — null for legacy users until they fill it in)
+  avatar            String    @default("🦊")
+  role              String    @default("STUDENT") // STUDENT, ADVISOR, INSTITUTE_MANAGER, SUPER_ADMIN
+  grade             String? // دهم, یازدهم, دوازدهم, فارغ‌التحصیل
+  major             String? // تجربی, ریاضی, انسانی
+  province          String? // استان (required at signup, optional for legacy users)
+  city              String? // شهر (required at signup, optional for legacy users)
+  instituteId       String?
+  assignedAdvisorId String?
+  publicCode        String    @unique @default(cuid())
+  phoneVerifiedAt   DateTime?
+  isActive          Boolean   @default(true)
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  institute                  Institute?            @relation("InstituteMembers", fields: [instituteId], references: [id])
+  managedInstitute           Institute?            @relation("InstituteManager")
+  assignedAdvisor            User?                 @relation("AdvisorStudents", fields: [assignedAdvisorId], references: [id])
+  students                   User[]                @relation("AdvisorStudents")
+  tasks                      Task[]
+  nonStudyActivities         NonStudyActivity[]
+  sleepRecords               SleepRecord[]
+  examParticipants           ExamParticipant[]
+  examResults                ExamResult[]
+  examAnalysisTasks          ExamAnalysisTask[]    @relation("ExamAnalysisTaskStudent")
+  createdExamAnalysisTasks   ExamAnalysisTask[]    @relation("ExamAnalysisTaskCreator")
+  examSubjectAnalyses        ExamSubjectAnalysis[]
+  createdTasks               Task[]                @relation("TaskCreator")
+  createdExams               Exam[]                @relation("ExamCreator")
+  sentMessages               Message[]             @relation("SentMessages")
+  readMessages               MessageRead[]         @relation("ReadMessages")
+  sentConnectionRequests     ConnectionRequest[]   @relation("ConnectionRequestStudent")
+  receivedConnectionRequests ConnectionRequest[]   @relation("ConnectionRequestAdvisor")
+  platformSettings           PlatformSetting[]      @relation("PlatformSettingUpdater")
+  auditLogs                  AuditLog[]              @relation("AuditLogActor")
+  featureFlags               FeatureFlag[]           @relation("FeatureFlagUpdater")
+}
+
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  phone      String
+  purpose    String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, purpose, createdAt])
+}
+
+model ConnectionRequest {
+  id          String    @id @default(cuid())
+  studentId   String
+  advisorId   String
+  initiatedBy String // STUDENT or ADVISOR
+  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED, CANCELLED, ENDED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  respondedAt DateTime?
+
+  student User @relation("ConnectionRequestStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  advisor User @relation("ConnectionRequestAdvisor", fields: [advisorId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, advisorId])
+  @@index([studentId, status])
+  @@index([advisorId, status])
+}
+
+// ===== Message (advisor/super-admin → student) =====
+model Message {
+  id          String        @id @default(cuid())
+  senderId    String // the User who sent it
+  recipientId String? // null = broadcast to all students; non-null = specific student
+  title       String
+  body        String
+  // readReceipts stored as a separate table so each student has independent read state
+  readBy      MessageRead[]
+  sender      User          @relation("SentMessages", fields: [senderId], references: [id])
+  createdAt   DateTime      @default(now())
+
+  @@index([recipientId])
+  @@index([createdAt])
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String // the student who read it
+  readAt    DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation("ReadMessages", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
+
+// ===== Institute =====
+model Institute {
+  id               String    @id @default(cuid())
+  name             String
+  logoUrl          String?
+  managerId        String    @unique
+  subscriptionPlan String    @default("free") // free, basic, pro, enterprise
+  status           String    @default("active") // active, suspended, trial
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  manager User   @relation("InstituteManager", fields: [managerId], references: [id])
+  members User[] @relation("InstituteMembers")
+  exams   Exam[]
+}
+
+// ===== Task =====
+model Task {
+  id                String          @id @default(cuid())
+  studentId         String
+  subjectId         String
+  subject           String
+  subjectColor      String
+  topic             String?
+  fieldType         String? // کنکور, نهایی; null for an unclassified class/video task
+  activityTypes     String? // JSON array stored as string
+  targetTimeMinutes Int?
+  actualTimeMinutes Int?
+  targetTestCount   Int?
+  actualTestCount   Int?
+  status            String          @default("PENDING")
+  completed         Boolean? // null = pending, true = done, false = skipped
+  detailsCompleted  Boolean         @default(true)
+  date              String // ISO date string
+  order             Int
+  createdBy         String // "student" or "advisor"
+  createdById       String?
+  // Class/Video details
+  teacherClassName  String?
+  sessionNumber     String?
+  // Educational Test details
+  bookName          String?
+  testDescription   String?
+  advisorNote       String?
+  // FK links to curriculum structure (all optional — task may reference chapter, topic, or topic mode)
+  chapterId         String?
+  topicId           String?
+  topicModeId       String?
+  curriculumMode    String? // BOOK | THEMATIC; null for legacy/draft tasks without curriculum details
+  pageStart         Int?
+  pageEnd           Int?
+  // Class homework — when set, this educational-test task is the homework
+  // assigned by a class/video task (self-relation, one homework per class).
+  classHomeworkOfId String? @unique
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  student            User                    @relation(fields: [studentId], references: [id])
+  subjectRef         Subject                 @relation(fields: [subjectId], references: [id])
+  creator            User?                   @relation("TaskCreator", fields: [createdById], references: [id])
+  chapter            Chapter?                @relation(fields: [chapterId], references: [id])
+  topicRef           Topic?                  @relation(fields: [topicId], references: [id])
+  topicMode          TopicMode?              @relation(fields: [topicModeId], references: [id])
+  topics             TaskTopic[]
+  topicModeSubtopics TaskTopicModeSubtopic[]
+  classHomeworkOf    Task?                   @relation("ClassHomework", fields: [classHomeworkOfId], references: [id], onDelete: Cascade)
+  homeworkForClass   Task?                   @relation("ClassHomework")
+}
+
+model TaskTopic {
+  taskId  String
+  topicId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, topicId])
+  @@index([topicId])
+}
+
+// ===== Non-Study Activity =====
+// Personal, non-curricular activities a student logs (media, games, social,
+// health, personal skills). Duration is optional — an entry without minutes
+// still counts as an occurrence in reports.
+model NonStudyActivity {
+  id              String   @id @default(cuid())
+  studentId       String
+  category        String // MEDIA | GAMES | SOCIAL | HEALTH | SKILL
+  durationMinutes Int? // optional — null = not specified
+  date            String // ISO date string
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, date])
+}
+
+// ===== Sleep =====
+// Student sleep log. NIGHT = main night sleep (bedtime + wake time, duration
+// derived, crossing midnight handled by +24h; one per night — upserted).
+// NAP = daytime nap (start time + duration, with quick picks like 30/60 min).
+model SleepRecord {
+  id              String   @id @default(cuid())
+  studentId       String
+  type            String   @default("NIGHT") // NIGHT | NAP
+  date            String // ISO date — the night's date for NIGHT, the day for NAP
+  startTime       String // HH:mm — bedtime (NIGHT) or nap start (NAP)
+  endTime         String? // HH:mm — wake time (NIGHT only)
+  durationMinutes Int // derived for NIGHT; explicit for NAP
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date, type])
+  @@index([studentId, date])
+}
+
+// ===== Exam =====
+model Exam {
+  id              String          @id @default(cuid())
+  title           String
+  subject         String
+  subjectColor    String
+  scope           String          @default("COMPREHENSIVE") // COMPREHENSIVE | SUBJECT
+  description     String?
+  subjectId       String?
+  fieldType       String?
+  chapterId       String?
+  topicId         String?
+  topicModeId     String?
+  curriculumMode  String? // BOOK | THEMATIC
+  curriculumLabel String?
+  pageStart       Int?
+  pageEnd         Int?
+  date            String
+  startTime       String
+  duration        Int
+  totalScore      Int
+  status          String          @default("upcoming") // upcoming, in-progress, completed
+  createdById     String
+  instituteId     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  creator         User                  @relation("ExamCreator", fields: [createdById], references: [id])
+  institute       Institute?            @relation(fields: [instituteId], references: [id])
+  participants    ExamParticipant[]
+  results         ExamResult[]
+  analysisTasks   ExamAnalysisTask[]
+  subjectAnalyses ExamSubjectAnalysis[]
+}
+
+// ===== Exam Participant =====
+model ExamParticipant {
+  id              String @id @default(cuid())
+  examId          String
+  studentId       String
+  lifecycleStatus String @default("PENDING") // PENDING | COMPLETED | INCOMPLETE
+
+  exam    Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+// ===== Exam Result =====
+model ExamResult {
+  id        String @id @default(cuid())
+  examId    String
+  studentId String
+  score     Int?
+  rank      Int?
+
+  exam    Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+}
+
+model ExamAnalysisTask {
+  id                String     @id @default(cuid())
+  examId            String
+  studentId         String
+  date              String
+  status            String @default("PENDING") // DRAFT | PENDING | COMPLETED | SKIPPED | INCOMPLETE
+  completed         Boolean?
+  actualTimeMinutes Int?
+  advisorNote       String?
+  createdBy         String
+  createdById       String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  exam    Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User  @relation("ExamAnalysisTaskStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  creator User? @relation("ExamAnalysisTaskCreator", fields: [createdById], references: [id])
+
+  @@unique([examId, studentId])
+  @@index([studentId, date])
+}
+
+model ExamSubjectAnalysis {
+  id          String   @id @default(cuid())
+  examId      String
+  studentId   String
+  subjectName String
+  analyzed    Boolean  @default(false)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exam    Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId, subjectName])
+  @@index([studentId, updatedAt])
+}
+
+// ===== Subject Management System (Super Admin) =====
+// Top-level subject: زیست‌شناسی، فیزیک، شیمی، ریاضی، زمین‌شناسی ...
+model Subject {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  // normalizedName: normalized form (Persian Yeh/Kaf, collapsed spaces, lowercased)
+  // used for deduplication so "ریاضی" / "رياضي" / "ریاضی " don't create duplicates.
+  normalizedName String   @unique
+  color          String   @default("#3EB489")
+  icon           String? // emoji or lucide icon name
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  grades GradeSubject[]
+  tasks  Task[]
+}
+
+// ===== Grade-Subject Pivot =====
+// Links subjects to grades (and major applicability).
+// e.g. زیست‌شناسی → applies to دهم/یازدهم/دوازدهم for تجربی
+// Valid grades: دهم | یازدهم | دوازدهم  (validation enforced in API)
+// Valid majors: تجربی | انسانی | ریاضی  (validation enforced in API)
+model GradeSubject {
+  id        String  @id @default(cuid())
+  subjectId String
+  grade     String // دهم | یازدهم | دوازدهم
+  major     String // تجربی | ریاضی | انسانی
+  sortOrder Int     @default(0)
+  isKonkur  Boolean @default(false)
+  isFinal   Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  subject    Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  chapters   Chapter[]
+  topicModes TopicMode[]
+
+  @@unique([subjectId, grade, major])
+}
+
+// ===== Chapter (فصل) =====
+// Belongs to a GradeSubject (subject+grade+major pivot).
+// Chapters contain گفتار (topics) as children when they exist.
+// Page ranges enable auto page→chapter/topic lookup.
+model Chapter {
+  id             String   @id @default(cuid())
+  gradeSubjectId String
+  title          String // e.g. "دنیای زنده"
+  chapterNo      Int // non-negative within gradeSubject; 0 is reserved for a book preface
+  pageStart      Int? // شماره صفحه شروع
+  pageEnd        Int? // شماره صفحه پایان
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  gradeSubject GradeSubject @relation(fields: [gradeSubjectId], references: [id], onDelete: Cascade)
+  topics       Topic[]
+  tasks        Task[]
+
+  @@unique([gradeSubjectId, chapterNo])
+}
+
+// ===== Topic (گفتار) =====
+// Child of a Chapter. Optional — chapters without topics are "whole chapter" selections.
+// Page ranges enable auto page→topic lookup.
+model Topic {
+  id        String   @id @default(cuid())
+  chapterId String
+  title     String // e.g. "زیست‌شناسی چیست؟"
+  topicNo   Int // non-negative within chapter; 0 is reserved for a book preface
+  pageStart Int? // شماره صفحه شروع
+  pageEnd   Int? // شماره صفحه پایان
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chapter    Chapter     @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  tasks      Task[]
+  taskTopics TaskTopic[]
+
+  @@unique([chapterId, topicNo])
+}
+
+// ===== TopicMode (حالت مبحثی) =====
+// The thematic / integrated view for one subject/grade/major offering.
+// e.g. زیست‌شناسی → "زیست سلولی و مولکولی", "ژنتیک و تقسیم یاخته", ...
+// When a student selects "مبحثی" mode, they pick from this list instead of chapters.
+model TopicMode {
+  id             String   @id @default(cuid())
+  gradeSubjectId String
+  title          String // e.g. "زیست سلولی و مولکولی"
+  description    String? // optional long description
+  modeNo         Int // sequential within GradeSubject
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  gradeSubject GradeSubject        @relation(fields: [gradeSubjectId], references: [id], onDelete: Cascade)
+  subtopics    TopicModeSubtopic[]
+  tasks        Task[]
+
+  @@unique([gradeSubjectId, modeNo])
+}
+
+model TopicModeSubtopic {
+  id          String   @id @default(cuid())
+  topicModeId String
+  title       String
+  subtopicNo  Int
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  topicMode TopicMode               @relation(fields: [topicModeId], references: [id], onDelete: Cascade)
+  tasks     TaskTopicModeSubtopic[]
+
+  @@unique([topicModeId, subtopicNo])
+}
+
+model TaskTopicModeSubtopic {
+  taskId              String
+  topicModeSubtopicId String
+
+  task     Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  subtopic TopicModeSubtopic @relation(fields: [topicModeSubtopicId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, topicModeSubtopicId])
+  @@index([topicModeSubtopicId])
+}
+
+model TaskDetailSuggestion {
+  id        String   @id @default(cuid())
+  studentId String
+  subjectId String
+  type      String // 'teacherClass' | 'book'
+  value     String
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, subjectId, type, value])
+  @@index([studentId, subjectId, type])
+}
+
+model ExamTitleSuggestion {
+  id        String   @id @default(cuid())
+  studentId String
+  value     String
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, value])
+  @@index([studentId, createdAt])
+}
+
+// ===== Platform Settings (key-value store for admin-configurable settings) =====
+model PlatformSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  updatedByUser User? @relation("PlatformSettingUpdater", fields: [updatedBy], references: [id])
+}
+
+// ===== Audit Log (tracks admin actions across the platform) =====
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String   // 'CREATE' | 'UPDATE' | 'DELETE' | 'SUSPEND' | 'ACTIVATE' | 'LOGIN_AS' | etc.
+  entity    String   // 'User' | 'Institute' | 'Subject' | 'Message' | 'PlatformSetting' | etc.
+  entityId  String?
+  details   String?  // JSON string with before/after values
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditLogActor", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ===== Feature Flags (toggleable platform features) =====
+model FeatureFlag {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  enabled   Boolean  @default(false)
+  category  String   @default("general") // 'general' | 'messaging' | 'curriculum' | 'analytics'
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  updatedByUser User? @relation("FeatureFlagUpdater", fields: [updatedBy], references: [id])
+}
