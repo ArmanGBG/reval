@@ -566,8 +566,16 @@ async function importBookCurriculum(
   const tree = buildImportTree(rows);
   return db.$transaction(async (tx) => {
     if (options.onlyIfEmpty) {
-      // pg_advisory_xact_lock is PostgreSQL-only; SQLite has no advisory locks,
-      // and in single-process dev/test runs we don't need cross-process coordination.
+      // On PostgreSQL (production / Liara), use an advisory transaction lock
+      // so concurrent boots / cron triggers don't double-import the curriculum.
+      // On SQLite (local dev / tests) there's no such function — but in a
+      // single-process dev run we don't need cross-process coordination, so
+      // we just skip it. We detect Postgres by checking the DATABASE_URL scheme.
+      const dbUrl = (process.env.DATABASE_URL ?? '').toLowerCase();
+      const isPostgres = dbUrl.startsWith('postgres') || dbUrl.startsWith('postgresql');
+      if (isPostgres) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(1380273228)`;
+      }
       const subjectCount = await tx.subject.count();
       if (subjectCount > 0) return null;
     }
