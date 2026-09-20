@@ -97,6 +97,7 @@ export default function SuperAdminUsers() {
   const [filterRole, setFilterRole] = useState<'all' | GlobalUserRole>('all');
   const [filterInstitute, setFilterInstitute] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | UserAccountStatus>('all');
+  const [filterProvince, setFilterProvince] = useState<string>('all');
   const [advisorName, setAdvisorName] = useState('');
   const [advisorPhone, setAdvisorPhone] = useState('');
   const [creatingAdvisor, setCreatingAdvisor] = useState(false);
@@ -121,12 +122,31 @@ export default function SuperAdminUsers() {
     finally { setCreatingAdvisor(false); }
   };
 
+  // Build a dynamic list of provinces that actually appear in the user data,
+  // sorted Persian-alphabetically. Empty/null provinces are excluded from the
+  // dropdown but those users still match the "همه استان‌ها" filter.
+  const availableProvinces = useMemo(() => {
+    const set = new Set<string>();
+    for (const u of globalUsers) {
+      if (u.province && u.province.trim()) set.add(u.province.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fa'));
+  }, [globalUsers]);
+
   const filteredUsers = useMemo(() => {
     let result = [...globalUsers];
 
     if (searchQuery) {
       const q = searchQuery.trim().toLowerCase();
-      result = result.filter((u) => u.name.includes(q) || u.phone.includes(q) || u.instituteName.includes(q));
+      // Text search now also matches province/city — so typing "تهران" or
+      // "شیراز" finds users in those locations, in addition to name/phone/institute.
+      result = result.filter((u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.phone.includes(q) ||
+        u.instituteName.toLowerCase().includes(q) ||
+        (u.province ?? '').toLowerCase().includes(q) ||
+        (u.city ?? '').toLowerCase().includes(q)
+      );
     }
 
     if (filterRole !== 'all') {
@@ -141,8 +161,12 @@ export default function SuperAdminUsers() {
       result = result.filter((u) => u.status === filterStatus);
     }
 
+    if (filterProvince !== 'all') {
+      result = result.filter((u) => (u.province ?? '') === filterProvince);
+    }
+
     return result;
-  }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus]);
+  }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus, filterProvince]);
 
   const handleViewUser = (id: string) => {
     navigateTo({ view: 'sa-user-detail', selectedGlobalUserId: id });
@@ -313,13 +337,23 @@ export default function SuperAdminUsers() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
             <input
               type="text"
-              placeholder="جستجوی نام، شماره یا آموزشگاه..."
+              placeholder="جستجوی نام، شماره، آموزشگاه، استان یا شهر..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] pr-10 pl-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/50 transition-colors"
             />
           </div>
           <div className="flex gap-2 flex-wrap md:flex-nowrap">
+            <select
+              value={filterProvince}
+              onChange={(e) => setFilterProvince(e.target.value)}
+              className="flex-1 md:flex-none bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-3 py-2.5 text-xs text-foreground/90 focus:outline-none focus:border-gold/50 transition-colors min-w-[110px] max-w-[200px]"
+            >
+              <option value="all">همه استان‌ها</option>
+              {availableProvinces.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value as 'all' | GlobalUserRole)}
