@@ -12,6 +12,7 @@ export {
   computeInsights,
   filterTasksForReport,
   filterTasksForReport as filterReportTasks,
+  getReportDate,
   hasAnyCompletedData,
   resolveDateRange,
 } from '@/lib/analytics';

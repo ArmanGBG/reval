@@ -136,9 +136,11 @@ export function getFirstDayOfJalaliMonth(jy: number, jm: number): Date {
   return jalaliToDate(jy, jm, 1);
 }
 
-// Get today's Jalali info
-export function getTodayJalali() {
-  const now = new Date();
+// Get today's Jalali info. Accepts an optional `now` parameter so callers
+// (e.g. resolveDateRange for ماهانه) can pin the calculation to a specific
+// reference date — used both for unit tests and for advisor views that
+// report on a past month. Falls back to real `new Date()` when omitted.
+export function getTodayJalali(now: Date = new Date()) {
   const j = toJalali(now);
   return {
     jy: j.jy,

@@ -34,6 +34,12 @@ export type FieldFilter = 'همه' | 'کنکوری' | 'نهایی';
 /**
  * Returns the [startDate, endDate] ISO strings (inclusive) for a given
  * TimeFilter. For "بازه دلخواه" returns null (no date restriction).
+ *
+ * The `now` parameter is the reference date used by "روزانه", "هفته جاری",
+ * and "ماهانه" to resolve the current day/week/month. Defaults to real
+ * `new Date()`. Pass an explicit value when testing or when computing a
+ * range relative to a non-current date (e.g. an advisor reviewing a past
+ * month).
  */
 export function resolveDateRange(timeFilter: TimeFilter, now: Date = new Date()): { start: string; end: string } | null {
   if (timeFilter === 'بازه دلخواه') return null;
@@ -45,12 +51,30 @@ export function resolveDateRange(timeFilter: TimeFilter, now: Date = new Date())
     const days = getWeekDays(now);
     return { start: toISODate(days[0]), end: toISODate(days[6]) };
   }
-  // ماهانه — current Jalali month
-  const j = getTodayJalali();
+  // ماهانه — current Jalali month relative to `now`
+  const j = getTodayJalali(now);
   const first = getFirstDayOfJalaliMonth(j.jy, j.jm);
   const last = new Date(first);
   last.setDate(last.getDate() + getDaysInJalaliMonth(j.jy, j.jm) - 1);
   return { start: toISODate(first), end: toISODate(last) };
+}
+
+/**
+ * Single source of truth for "which date represents this task in the report?".
+ *
+ * Completed tasks are bucketed by the date they were actually completed
+ * (`updatedAt` truncated to YYYY-MM-DD), because that is when the real
+ * study happened. Non-completed tasks (PENDING / SKIPPED / etc.) are
+ * bucketed by their scheduled `date` since `updatedAt` would be misleading.
+ *
+ * IMPORTANT: this helper MUST be used everywhere a task needs to be placed
+ * into a date range or chart bucket — filterTasksForReport, buildDailyTrend,
+ * buildActivityBreakdown. Previously these functions disagreed (filter used
+ * updatedAt while chart buckets used t.date), which silently lost tasks at
+ * month boundaries (e.g. scheduled شهریور 31 but completed مهر 1 morning).
+ */
+export function getReportDate(t: Task): string {
+  return t.status === 'COMPLETED' && t.updatedAt ? t.updatedAt.slice(0, 10) : t.date;
 }
 
 // ===== Task filtering =====
@@ -70,7 +94,7 @@ export function filterTasksForReport(
   return tasks.filter((t) => {
     if (t.status === 'DRAFT' || (t.status === undefined && t.detailsCompleted === false)) return false;
     if (range) {
-      const reportDate = t.status === 'COMPLETED' && t.updatedAt ? t.updatedAt.slice(0, 10) : t.date;
+      const reportDate = getReportDate(t);
       if (reportDate < range.start || reportDate > range.end) return false;
     }
     if (fieldFilter === 'کنکوری' && t.fieldType !== 'کنکور') return false;
@@ -100,8 +124,11 @@ export function computeKpiTotals(tasks: Task[]): KpiTotals {
   const totalTasks = tasks.length;
   const completedCount = completed.length;
   const adherenceRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-  // Daily average: divide by the number of UNIQUE active days (any task), not 7
-  const activeDays = new Set(tasks.map((t) => t.date));
+  // Daily average: divide by the number of UNIQUE active days (any task).
+  // Uses getReportDate so the "active day" set matches the chart's bucketing
+  // — otherwise completed tasks (bucketed by updatedAt) would inflate the
+  // denominator with scheduled-but-not-yet-completed days.
+  const activeDays = new Set(tasks.map((t) => getReportDate(t)));
   const dailyAvgHours = activeDays.size > 0 ? totalHours / activeDays.size : 0;
   return { totalHours, totalTests, adherenceRate, dailyAvgHours };
 }
@@ -124,11 +151,12 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
   const completed = tasks.filter(isCompletedTask);
 
   if (timeFilter === 'روزانه' || timeFilter === 'هفته جاری') {
-    // 7 bars by weekday
+    // 7 bars by weekday — uses reportDate so completed tasks land in the
+    // weekday they were actually completed on, matching the filter logic.
     const weekDays = getWeekDays(now);
     return PERSIAN_WEEKDAYS.map((dayName, i) => {
       const dayStr = toISODate(weekDays[i]);
-      const dayTasks = completed.filter((t) => t.date === dayStr);
+      const dayTasks = completed.filter((t) => getReportDate(t) === dayStr);
       const minutes = dayTasks.reduce((s, t) => s + (t.actualTimeMinutes ?? 0), 0);
       const tests = dayTasks.reduce((s, t) => s + (t.actualTestCount ?? 0), 0);
       return { day: dayName, hours: Math.round((minutes / 60) * 10) / 10, tests };
@@ -136,8 +164,9 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
   }
 
   if (timeFilter === 'ماهانه') {
-    // Bucket the current Jalali month into 6 parts of ~5 days each
-    const j = getTodayJalali();
+    // Bucket the current Jalali month into 6 parts of ~5 days each.
+    // Uses `now` (not real today) so advisor views of past months work.
+    const j = getTodayJalali(now);
     const daysInMonth = getDaysInJalaliMonth(j.jy, j.jm);
     const first = getFirstDayOfJalaliMonth(j.jy, j.jm);
     const bucketCount = 6;
@@ -153,7 +182,11 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
       end.setDate(first.getDate() + endDay - 1);
       const startStr = toISODate(start);
       const endStr = toISODate(end);
-      const bucketTasks = completed.filter((t) => t.date >= startStr && t.date <= endStr);
+      // Use reportDate for consistency with filterTasksForReport.
+      const bucketTasks = completed.filter((t) => {
+        const reportDate = getReportDate(t);
+        return reportDate >= startStr && reportDate <= endStr;
+      });
       const minutes = bucketTasks.reduce((s, t) => s + (t.actualTimeMinutes ?? 0), 0);
       const tests = bucketTasks.reduce((s, t) => s + (t.actualTestCount ?? 0), 0);
       buckets.push({
@@ -178,7 +211,9 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
     const cursor = new Date(start);
     while (cursor <= end) {
       const dayStr = toISODate(cursor);
-      const dayTasks = completed.filter((t) => t.date === dayStr);
+      // Use reportDate (not t.date) so completed tasks that crossed the
+      // range boundary are still attributed to the day they were completed on.
+      const dayTasks = completed.filter((t) => getReportDate(t) === dayStr);
       const minutes = dayTasks.reduce((sum, task) => sum + (task.actualTimeMinutes ?? 0), 0);
       dayData.push({ day: jalaliDayLabel(cursor), hours: Math.round((minutes / 60) * 10) / 10, tests: dayTasks.reduce((sum, task) => sum + (task.actualTestCount ?? 0), 0) });
       cursor.setDate(cursor.getDate() + 1);
@@ -209,7 +244,7 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const dayStr = toISODate(d);
-    const dayTasks = completed.filter((t) => t.date === dayStr);
+    const dayTasks = completed.filter((t) => getReportDate(t) === dayStr);
     const minutes = dayTasks.reduce((s, t) => s + (t.actualTimeMinutes ?? 0), 0);
     const tests = dayTasks.reduce((s, t) => s + (t.actualTestCount ?? 0), 0);
     const dayLabel = jalaliDayLabel(d);
@@ -283,7 +318,7 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
     const weekDays = getWeekDays(now);
     labelToDates = new Map(PERSIAN_WEEKDAYS.map((name, i) => [name, [toISODate(weekDays[i])]]));
   } else if (timeFilter === 'ماهانه') {
-    const j = getTodayJalali();
+    const j = getTodayJalali(now);
     const daysInMonth = getDaysInJalaliMonth(j.jy, j.jm);
     const first = getFirstDayOfJalaliMonth(j.jy, j.jm);
     const bucketCount = 6;
@@ -339,7 +374,10 @@ export function buildActivityBreakdown(tasks: Task[], timeFilter: TimeFilter, no
   return labels.map((label) => {
     const dates = labelToDates.get(label) ?? [];
     const dateSet = new Set(dates);
-    const dayTasks = completed.filter((t) => dateSet.has(t.date));
+    // Use reportDate (not t.date) so completed tasks that crossed the range
+    // boundary are still attributed to the day they were completed on, in
+    // lockstep with filterTasksForReport and buildDailyTrend.
+    const dayTasks = completed.filter((t) => dateSet.has(getReportDate(t)));
     const datum: ActivityDatum = {
       name: label,
       مطالعه: 0,

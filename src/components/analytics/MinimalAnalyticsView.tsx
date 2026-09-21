@@ -492,10 +492,10 @@ export default function MinimalAnalyticsView({
         <div className="mb-5"><PersianDateRangePicker value={customRange} onChange={setCustomRange} /></div>
       )}
 
-      <section className="mb-8 grid grid-cols-3 divide-x divide-x-reverse divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-4">
-        <div className="text-center"><p className="text-lg font-bold">{minutesToHoursLabel(Math.round(totals.totalHours * 60))}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">زمان مطالعه</p></div>
-        <div className="text-center"><p className="text-lg font-bold">{toPersianDigits(totals.totalTests)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تست حل‌شده</p></div>
-        <div className="text-center"><p className="text-lg font-bold">{toPersianDigits(completedCount)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تسک تکمیل‌شده</p></div>
+      <section className="mb-8 grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 divide-x-reverse divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] sm:px-2 py-4">
+        <div className="text-center py-2 sm:py-0"><p className="text-base sm:text-lg font-bold tabular-nums">{minutesToHoursLabel(Math.round(totals.totalHours * 60))}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">زمان مطالعه</p></div>
+        <div className="text-center py-2 sm:py-0"><p className="text-base sm:text-lg font-bold tabular-nums">{toPersianDigits(totals.totalTests)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تست حل‌شده</p></div>
+        <div className="text-center py-2 sm:py-0"><p className="text-base sm:text-lg font-bold tabular-nums">{toPersianDigits(completedCount)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تسک تکمیل‌شده</p></div>
       </section>
 
       {/* ===== Non-Study Activities overview — same selected range as the report ===== */}
@@ -538,17 +538,17 @@ export default function MinimalAnalyticsView({
           </div>
         </div>
         {sleepStats.nightCount > 0 ? (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div className="rounded-lg border border-dashed border-[#5B7FD9]/25 bg-[var(--bg-elevated)] px-3 py-2.5 text-center">
-              <p className="text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageNightMinutes != null ? minutesToHoursLabel(sleepStats.averageNightMinutes) : '—'}</p>
+              <p className="text-xs sm:text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageNightMinutes != null ? minutesToHoursLabel(sleepStats.averageNightMinutes) : '—'}</p>
               <p className="mt-0.5 text-[10px] text-[var(--foreground-muted)]">میانگین خواب شبانه</p>
             </div>
             <div className="rounded-lg border border-dashed border-[#5B7FD9]/25 bg-[var(--bg-elevated)] px-3 py-2.5 text-center">
-              <p className="text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageBedtime ? formatTimePersian(sleepStats.averageBedtime) : '—'}</p>
+              <p className="text-xs sm:text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageBedtime ? formatTimePersian(sleepStats.averageBedtime) : '—'}</p>
               <p className="mt-0.5 text-[10px] text-[var(--foreground-muted)]">میانگین ساعت خواب</p>
             </div>
             <div className="rounded-lg border border-dashed border-[#5B7FD9]/25 bg-[var(--bg-elevated)] px-3 py-2.5 text-center">
-              <p className="text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageWakeTime ? formatTimePersian(sleepStats.averageWakeTime) : '—'}</p>
+              <p className="text-xs sm:text-sm font-bold text-[#9DBBFF] tabular-nums">{sleepStats.averageWakeTime ? formatTimePersian(sleepStats.averageWakeTime) : '—'}</p>
               <p className="mt-0.5 text-[10px] text-[var(--foreground-muted)]">میانگین ساعت بیداری</p>
             </div>
           </div>
@@ -583,10 +583,10 @@ export default function MinimalAnalyticsView({
                   axisLine={false}
                   tickLine={false}
                   interval="preserveStartEnd"
-                  minTickGap={12}
-                  angle={dailyTrend.length > 8 ? -40 : 0}
-                  textAnchor={dailyTrend.length > 8 ? 'end' : 'middle'}
-                  height={dailyTrend.length > 8 ? 44 : 30}
+                  minTickGap={6}
+                  angle={dailyTrend.length > 6 ? -25 : 0}
+                  textAnchor={dailyTrend.length > 6 ? 'end' : 'middle'}
+                  height={dailyTrend.length > 6 ? 50 : 30}
                 />
                 <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
@@ -620,10 +620,10 @@ export default function MinimalAnalyticsView({
                      axisLine={false}
                      tickLine={false}
                      interval="preserveStartEnd"
-                     minTickGap={12}
-                     angle={dailyActivities.length > 8 ? -40 : 0}
-                     textAnchor={dailyActivities.length > 8 ? 'end' : 'middle'}
-                     height={dailyActivities.length > 8 ? 44 : 30}
+                     minTickGap={6}
+                     angle={dailyActivities.length > 6 ? -25 : 0}
+                     textAnchor={dailyActivities.length > 6 ? 'end' : 'middle'}
+                     height={dailyActivities.length > 6 ? 50 : 30}
                    />
                     <YAxis
                       tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
@@ -699,7 +699,7 @@ export default function MinimalAnalyticsView({
                       <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={courseOverview.map((item) => ({ ...item, hours: Math.round((item.minutes / 60) * 10) / 10 }))} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
                            <CartesianGrid vertical={false} stroke="var(--border)" />
-                           <XAxis dataKey="name" tick={{ fill: 'var(--foreground)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+                           <XAxis dataKey="name" tick={{ fill: 'var(--foreground)', fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveEnd" minTickGap={4} angle={courseOverview.length > 4 ? -20 : 0} textAnchor={courseOverview.length > 4 ? 'end' : 'middle'} height={courseOverview.length > 4 ? 48 : 30} />
                            <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                            <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
                            <Bar dataKey="hours" name="ساعت" radius={[5, 5, 0, 0]} maxBarSize={42}>
