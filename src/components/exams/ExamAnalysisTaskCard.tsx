@@ -10,7 +10,7 @@ import { LifecycleStatusBadge } from '@/components/shared/LifecycleStatusBadge';
 import { ExamTaskActionDialog } from '@/components/exams/ExamTaskActionDialog';
 
 export function ExamAnalysisTaskCard({ exam, task, isAdvisor, compact = false }: { exam: Exam; task: ExamAnalysisTask; isAdvisor: boolean; compact?: boolean }) {
-  const { updateExamAnalysisTask } = useAppStore();
+  const { updateExamAnalysisTask, deleteExamAnalysisTask } = useAppStore();
   const [minutes, setMinutes] = useState(task.actualTimeMinutes == null ? '' : String(task.actualTimeMinutes));
   const [actionOpen, setActionOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,6 +30,16 @@ export function ExamAnalysisTaskCard({ exam, task, isAdvisor, compact = false }:
       toast.error(error instanceof Error ? error.message : 'به‌روزرسانی تسک تحلیل ناموفق بود');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteExamAnalysisTask(exam.id, task.id);
+      toast.success('تسک تحلیل حذف شد');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'حذف تسک تحلیل ناموفق بود');
+      throw error;
     }
   };
 
@@ -107,6 +117,7 @@ export function ExamAnalysisTaskCard({ exam, task, isAdvisor, compact = false }:
         title={`تحلیل آزمون: ${exam.title}`}
         description={`${exam.subject} · متصل به آزمون`}
         onMoveToIncomplete={async () => { await update({ status: 'INCOMPLETE' }); }}
+        onDelete={handleDelete}
       />}
     </article>
   );

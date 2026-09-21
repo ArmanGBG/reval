@@ -358,6 +358,7 @@ interface AppState {
   updateExamParticipantStatus: (id: string, studentId: string, status: import('@/lib/types').ExamParticipantStatus) => Promise<void>;
   createExamAnalysisTask: (examId: string, input: { studentId: string; date: string; advisorNote?: string | null }) => Promise<ExamAnalysisTask>;
   updateExamAnalysisTask: (examId: string, input: { studentId: string; date?: string; advisorNote?: string | null; status?: ExamAnalysisTask['status']; actualTimeMinutes?: number | null }) => Promise<ExamAnalysisTask>;
+  deleteExamAnalysisTask: (examId: string, taskId: string) => Promise<void>;
   saveExamSubjectAnalysis: (examId: string, input: { studentId: string; subjectName: string; analyzed: boolean; note?: string | null }) => Promise<ExamSubjectAnalysis>;
   /** Deletes an exam via the API. Removes from cache on success. */
   deleteExam: (id: string) => Promise<void>;
@@ -1323,6 +1324,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
       return task;
     } catch (error) {
+      set({ exams: previous });
+      throw error;
+    }
+  },
+  deleteExamAnalysisTask: async (examId, taskId) => {
+    const previous = get().exams;
+    // Optimistic update — drop the task from the exam's analysisTasks array
+    // so the UI updates instantly (mirrors the create/update pattern).
+    set((state) => ({
+      exams: state.exams.map((exam) => exam.id === examId
+        ? { ...exam, analysisTasks: (exam.analysisTasks ?? []).filter((item) => item.id !== taskId) }
+        : exam),
+    }));
+    try {
+      await examService.deleteExamAnalysisTask(examId, taskId);
+    } catch (error) {
+      // Roll back the optimistic removal.
       set({ exams: previous });
       throw error;
     }

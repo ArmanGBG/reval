@@ -19,7 +19,7 @@ import { filterNonStudyActivitiesForRange } from '@/lib/non-study-activity-repor
 import { resolveDateRange } from '@/lib/analytics';
 import { computeSleepMetrics, formatTimePersian } from '@/lib/sleep';
 import { sumNonStudyMinutes, sumNonStudyMinutesByCategory } from '@/lib/non-study-activity';
-import { minutesToHoursLabel, toISODate, toPersianDigits } from '@/lib/persian-date';
+import { formatDurationCompact, minutesToHoursLabel, toISODate, toPersianDigits } from '@/lib/persian-date';
 import { PersianDateRangePicker } from '@/components/shared/PersianDateRangePicker';
 import { ACTIVITY_COLORS } from '@/lib/activity-styles';
 import { ExamHistory } from '@/components/exams/ExamHistory';
@@ -492,10 +492,22 @@ export default function MinimalAnalyticsView({
         <div className="mb-5"><PersianDateRangePicker value={customRange} onChange={setCustomRange} /></div>
       )}
 
-      <section className="mb-8 grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 divide-x-reverse divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] sm:px-2 py-4">
-        <div className="text-center py-2 sm:py-0"><p className="text-base sm:text-lg font-bold tabular-nums">{minutesToHoursLabel(Math.round(totals.totalHours * 60))}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">زمان مطالعه</p></div>
-        <div className="text-center py-2 sm:py-0"><p className="text-base sm:text-lg font-bold tabular-nums">{toPersianDigits(totals.totalTests)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تست حل‌شده</p></div>
-        <div className="text-center py-2 sm:py-0"><p className="text-base sm:text-lg font-bold tabular-nums">{toPersianDigits(completedCount)}</p><p className="mt-1 text-[10px] text-[var(--foreground-muted)]">تسک تکمیل‌شده</p></div>
+      <section className="mb-8 grid grid-cols-3 divide-x divide-x-reverse divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-1 sm:px-2 py-3 sm:py-4">
+        <div className="text-center px-1">
+          <p className="text-sm sm:text-lg font-bold tabular-nums leading-tight">
+            <span className="sm:hidden">{formatDurationCompact(Math.round(totals.totalHours * 60))}</span>
+            <span className="hidden sm:inline">{minutesToHoursLabel(Math.round(totals.totalHours * 60))}</span>
+          </p>
+          <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] text-[var(--foreground-muted)]">زمان مطالعه</p>
+        </div>
+        <div className="text-center px-1">
+          <p className="text-sm sm:text-lg font-bold tabular-nums leading-tight">{toPersianDigits(totals.totalTests)}</p>
+          <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] text-[var(--foreground-muted)]">تست حل‌شده</p>
+        </div>
+        <div className="text-center px-1">
+          <p className="text-sm sm:text-lg font-bold tabular-nums leading-tight">{toPersianDigits(completedCount)}</p>
+          <p className="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] text-[var(--foreground-muted)]">تسک تکمیل‌شده</p>
+        </div>
       </section>
 
       {/* ===== Non-Study Activities overview — same selected range as the report ===== */}

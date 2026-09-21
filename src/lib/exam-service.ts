@@ -119,6 +119,17 @@ export async function updateExamAnalysisTask(
   return (await res.json()).task as ExamAnalysisTask;
 }
 
+/**
+ * Permanently delete one ExamAnalysisTask record. The caller must be the
+ * owning student, the creator advisor, or a super admin (enforced by the
+ * API route). The examId is part of the URL so the route can confirm the
+ * task actually belongs to the requested exam.
+ */
+export async function deleteExamAnalysisTask(examId: string, taskId: string): Promise<void> {
+  const res = await apiFetch(`/api/exams/${examId}/analysis/${taskId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(await parseError(res));
+}
+
 export async function saveExamSubjectAnalysis(
   examId: string,
   input: { studentId: string; subjectName: string; analyzed: boolean; note?: string | null },

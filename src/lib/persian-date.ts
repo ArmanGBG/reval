@@ -183,6 +183,21 @@ export function minutesToHoursLabel(minutes: number): string {
   return `${toPersianDigits(hours)} ساعت و ${toPersianDigits(remainingMinutes)} دقیقه`;
 }
 
+// Compact duration format for space-constrained UI (mobile KPI cards, etc.).
+// Always fits within ~6 characters regardless of the duration:
+//   < 60 min   → "۴۵ د"
+//   < 600 min  → "۲س ۱۵د"
+//   ≥ 600 min  → "۱۲س"  (drop minutes to keep the cell readable)
+export function formatDurationCompact(minutes: number): string {
+  const totalMinutes = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  if (hours === 0) return `${toPersianDigits(remainingMinutes)} د`;
+  if (remainingMinutes === 0) return `${toPersianDigits(hours)}س`;
+  if (hours >= 10) return `${toPersianDigits(hours)}س`;
+  return `${toPersianDigits(hours)}س ${toPersianDigits(remainingMinutes)}د`;
+}
+
 // Convert minutes to hours number (for stats)
 export function minutesToHours(minutes: number): number {
   return Math.round((minutes / 60) * 10) / 10;

@@ -9,13 +9,14 @@ import {
   DialogContent,
 } from '@/components/ui/dialog';
 import { useAppStore } from '@/lib/store';
-import { Task, ActivityType, FieldType } from '@/lib/types';
+import { Task, ActivityType, FieldType, NonStudyActivity } from '@/lib/types';
 import { Subject } from '@/lib/subjects-types';
 import {
   TaskSubjectPicker,
   type TaskSelection,
 } from '@/components/shared/TaskSubjectPicker';
 import { ClassHomeworkDialog } from '@/components/plan/ClassHomeworkDialog';
+import { NonStudyActivityCard } from '@/components/plan/NonStudyActivityModal';
 import {
   PERSIAN_WEEKDAYS,
   PERSIAN_WEEKDAYS_SHORT,
@@ -54,6 +55,7 @@ interface WeekdayPlan {
   date: Date;
   dateStr: string;
   tasks: Task[];
+  activities: NonStudyActivity[];
 }
 
 interface WeeklyPlannerProps {
@@ -108,7 +110,8 @@ const TEST_QUICK_PICKS = [0, 20, 30, 40];
 // Main Component — reads REAL tasks from store, immediate sync
 // ============================================================
 export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, actor, inline = false }: WeeklyPlannerProps) {
-  const { user, tasks, exams, loadExams, addTask, updateTask, deleteTask, resetTask } = useAppStore();
+  const { user, tasks, exams, loadExams, addTask, updateTask, deleteTask, resetTask,
+          nonStudyActivities, loadNonStudyActivities, deleteNonStudyActivity } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
   const isAdvisorWorkspace = actor?.role === 'ADVISOR';
@@ -192,9 +195,12 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
           if (aPending !== bPending) return aPending - bPending;
           return a.order - b.order;
         });
-      return { date, dateStr, tasks: dayTasks };
+      const dayActivities = nonStudyActivities
+        .filter((a) => a.date === dateStr && a.studentId === studentId)
+        .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+      return { date, dateStr, tasks: dayTasks, activities: dayActivities };
     });
-  }, [displayDays, tasks, studentId]);
+  }, [displayDays, tasks, nonStudyActivities, studentId]);
 
   // ===== Fetch subjects =====
   const fetchSubjects = useCallback(async () => {
@@ -239,6 +245,12 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
   useEffect(() => {
     if (open) void loadExams({ studentId });
   }, [loadExams, open, studentId]);
+
+  // Load non-study activities for the same student so each day column can
+  // interleave them alongside study tasks (mirrors PlanView's daily behavior).
+  useEffect(() => {
+    if (open) void loadNonStudyActivities(studentId);
+  }, [loadNonStudyActivities, open, studentId]);
 
   // ===== Add subject to a day (IMMEDIATE — creates real task) =====
   const addSubjectToDay = async (dateStr: string, subject: QuickSubject) => {
@@ -440,6 +452,13 @@ export function WeeklyPlanner({ open, onOpenChange, onSelectDay, targetStudent, 
                      }
                    }
                  }}
+                 onDeleteActivity={(activityId) => {
+                   // Direct delete — non-study activities are lightweight, no
+                   // confirm dialog (matches the daily plan's behavior).
+                   void deleteNonStudyActivity(activityId).catch((error) => {
+                     toast.error(error instanceof Error ? error.message : 'حذف فعالیت غیردرسی ناموفق بود');
+                   });
+                 }}
               />
             ))}
           </div>
@@ -535,6 +554,7 @@ function DayColumn({
   onEdit,
   onToggleComplete,
   onHomework,
+  onDeleteActivity,
 }: {
   dayPlan: WeekdayPlan;
   exams: import('@/lib/types').Exam[];
@@ -551,10 +571,12 @@ function DayColumn({
   onEdit: (taskId: string) => void;
   onToggleComplete: (taskId: string) => void;
   onHomework?: (taskId: string) => void;
+  onDeleteActivity: (activityId: string) => void;
 }) {
   const dayName = getPersianWeekdayName(dayPlan.date);
   const dateLabel = formatPersianDate(dayPlan.date);
   const isTodayCell = isToday(dayPlan.date);
+  const isEmpty = dayPlan.tasks.length === 0 && exams.length === 0 && analysisTasks.length === 0 && dayPlan.activities.length === 0;
 
   return (
     <div className={`surface-1 rounded-xl overflow-hidden ${isTodayCell ? 'ring-1 ring-[var(--accent)]/40' : ''}`}>
@@ -579,30 +601,41 @@ function DayColumn({
         <ChevronLeft className="h-4 w-4 shrink-0 text-[var(--foreground-subtle)]" />
       </button>
 
-      {/* Tasks list */}
+      {/* Tasks list — study tasks, exams, analysis tasks, and non-study activities interleaved */}
       <div className="p-3 space-y-2 min-h-[88px]">
         {exams.map((exam) => (
           <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={!canComplete} compact />
         ))}
         {analysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={!canComplete} compact />)}
-        {dayPlan.tasks.length === 0 && exams.length === 0 && analysisTasks.length === 0 ? (
+        {isEmpty ? (
           <p className="text-[11px] text-[var(--foreground-subtle)] text-center py-4 border border-dashed border-[var(--border)] rounded-lg">
-            درسی ثبت نشده
+            چیزی ثبت نشده
           </p>
         ) : (
-          dayPlan.tasks.map((task) => (
-            <TaskChip
-              key={task.id}
-              task={task}
-              canManage={canManage(task)}
-              canEdit={canEdit(task)}
-              canComplete={canComplete}
-              onClick={() => onEdit(task.id)}
-              onRemove={() => onRemove(task.id)}
-              onToggleComplete={() => onToggleComplete(task.id)}
-              onHomework={onHomework ? () => onHomework(task.id) : undefined}
-            />
-          ))
+          <>
+            {dayPlan.tasks.map((task) => (
+              <TaskChip
+                key={task.id}
+                task={task}
+                canManage={canManage(task)}
+                canEdit={canEdit(task)}
+                canComplete={canComplete}
+                onClick={() => onEdit(task.id)}
+                onRemove={() => onRemove(task.id)}
+                onToggleComplete={() => onToggleComplete(task.id)}
+                onHomework={onHomework ? () => onHomework(task.id) : undefined}
+              />
+            ))}
+            {dayPlan.activities.map((activity) => (
+              <NonStudyActivityCard
+                key={activity.id}
+                category={activity.category}
+                durationMinutes={activity.durationMinutes}
+                compact
+                onDelete={() => onDeleteActivity(activity.id)}
+              />
+            ))}
+          </>
         )}
       </div>
 
