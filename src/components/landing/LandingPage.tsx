@@ -5,6 +5,7 @@ import { MotionConfig } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { Header } from './header';
 import { Hero } from './hero';
+import { PreviewSliderSection } from './preview-slider-section';
 import { ForStudents } from './for-students';
 import { InteractiveDemo } from './interactive-demo';
 import { Features } from './features';
@@ -191,6 +192,7 @@ export default function LandingPage() {
 
         <main className="relative z-10 flex-1">
           <Hero />
+          <PreviewSliderSection />
           <ForStudents />
           <InteractiveDemo />
           <Features />

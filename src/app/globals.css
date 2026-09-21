@@ -291,6 +291,17 @@ html:not([data-theme="light"]) .theme-logo-light {
   display: none;
 }
 
+/* Preview slider theme variants — same pattern as the logo. The landing
+   PreviewSlider renders both light and dark <Image> tags; only the one
+   matching the active data-theme is shown. The other is display:none so
+   the user never sees the wrong-theme screenshot. */
+[data-theme="light"] .theme-preview-dark {
+  display: none;
+}
+html:not([data-theme="light"]) .theme-preview-light {
+  display: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
