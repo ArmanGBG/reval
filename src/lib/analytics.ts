@@ -62,19 +62,22 @@ export function resolveDateRange(timeFilter: TimeFilter, now: Date = new Date())
 /**
  * Single source of truth for "which date represents this task in the report?".
  *
- * Completed tasks are bucketed by the date they were actually completed
- * (`updatedAt` truncated to YYYY-MM-DD), because that is when the real
- * study happened. Non-completed tasks (PENDING / SKIPPED / etc.) are
- * bucketed by their scheduled `date` since `updatedAt` would be misleading.
+ * Returns the task's SCHEDULED date (`t.date`). A task belongs to the period
+ * it was planned for, regardless of whether it was completed early or late.
+ * This matches the student's mental model: "show me what I planned for this
+ * period". The completion status (controlled separately by `isCompletedTask`)
+ * decides whether the task's hours/tests count toward the KPI — but the
+ * placement (which bucket, which range) is always the scheduled date.
  *
- * IMPORTANT: this helper MUST be used everywhere a task needs to be placed
- * into a date range or chart bucket — filterTasksForReport, buildDailyTrend,
- * buildActivityBreakdown. Previously these functions disagreed (filter used
- * updatedAt while chart buckets used t.date), which silently lost tasks at
- * month boundaries (e.g. scheduled شهریور 31 but completed مهر 1 morning).
+ * NOTE: We previously tried using `updatedAt` for completed tasks ("option A"),
+ * reasoning that the report should reflect when work was actually done. That
+ * broke the very common case of completing a future-scheduled task early: a
+ * task scheduled for مهر ۱ completed today (شهریور ۳۰) would have
+ * `updatedAt=شهریور ۳۰` and be filtered OUT of any مهر range — silently
+ * dropping every future-scheduled task that was ticked off ahead of time.
  */
 export function getReportDate(t: Task): string {
-  return t.status === 'COMPLETED' && t.updatedAt ? t.updatedAt.slice(0, 10) : t.date;
+  return t.date;
 }
 
 // ===== Task filtering =====
