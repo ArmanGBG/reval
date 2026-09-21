@@ -458,7 +458,7 @@ export default function MinimalAnalyticsView({
   }, [reportTasks, selectedCourse]);
 
   return (
-    <div dir="rtl" className={`mx-auto max-w-4xl ${embedded ? 'px-0 py-0' : 'px-4 py-6 md:px-0 md:py-8'}`}>
+    <div dir="rtl" className={`mx-auto w-full max-w-4xl ${embedded ? 'px-0 py-0' : 'px-4 py-6 md:px-0 md:py-8'}`}>
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-[var(--foreground)] md:text-3xl">گزارش مطالعه</h1>
         <p className="mt-1 text-sm text-[var(--foreground-muted)]">خلاصه عملکرد و فعالیت هر فصل</p>

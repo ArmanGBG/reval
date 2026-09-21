@@ -2,10 +2,86 @@
 
 import { useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle2, Circle, Loader2, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, Loader2, MessageSquare, Settings, Users } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { AdvisorDailyTask, StudentProfile } from '@/lib/types';
 import { toPersianDigits } from './advisor-helpers';
+
+// ===== Quick Actions grid =====
+// Mirrors the student dashboard's PLAN_SECTION_CARDS pattern: a compact
+// 4-card grid that deep-links to the advisor's most-used destinations.
+// Renders 2×2 on mobile and 1×4 on sm+ so it stays calm at every width.
+const QUICK_ACTION_CARDS: Array<{
+  label: string;
+  icon: typeof Users;
+  onClick: (api: { navigateTo: ReturnType<typeof useAppStore.getState>['navigateTo'] }) => void;
+  accent: 'green' | 'red' | 'blue' | 'muted';
+}> = [
+  {
+    label: 'لیست دانش‌آموزان',
+    icon: Users,
+    onClick: (api) => api.navigateTo({ view: 'advisor-students' }),
+    accent: 'green',
+  },
+  {
+    label: 'نیازمند مداخله',
+    icon: AlertTriangle,
+    onClick: (api) => api.navigateTo({ view: 'advisor-students', advisorFilter: 'intervention' }),
+    accent: 'red',
+  },
+  {
+    label: 'پیام‌ها',
+    icon: MessageSquare,
+    onClick: (api) => api.navigateTo({ view: 'advisor-messages' }),
+    accent: 'blue',
+  },
+  {
+    label: 'تنظیمات',
+    icon: Settings,
+    onClick: (api) => api.navigateTo({ view: 'advisor-settings' }),
+    accent: 'muted',
+  },
+];
+
+const QUICK_ACTION_STYLES: Record<(typeof QUICK_ACTION_CARDS)[number]['accent'], { text: string; ring: string; hoverBg: string }> = {
+  green: { text: 'text-[var(--accent)]', ring: 'hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)]', hoverBg: '' },
+  red: { text: 'text-[var(--danger)]', ring: 'hover:border-[var(--danger)]/40 hover:bg-[rgba(229,72,77,0.08)]', hoverBg: '' },
+  blue: { text: 'text-[#7EB8FF]', ring: 'hover:border-[#4DA3FF]/40 hover:bg-[#4DA3FF]/[0.06]', hoverBg: '' },
+  muted: { text: 'text-[var(--foreground-muted)]', ring: 'hover:border-[var(--border-strong)] hover:bg-[var(--bg-overlay)]', hoverBg: '' },
+};
+
+function QuickActionsGrid() {
+  const { navigateTo } = useAppStore();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3"
+      aria-label="دسترسی سریع"
+    >
+      {QUICK_ACTION_CARDS.map(({ label, icon: Icon, onClick, accent }, idx) => {
+        const styles = QUICK_ACTION_STYLES[accent];
+        return (
+          <motion.button
+            key={label}
+            type="button"
+            onClick={() => onClick({ navigateTo })}
+            whileTap={{ scale: 0.97 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1], delay: 0.04 * idx }}
+            className={`group flex min-h-[72px] flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/40 ${styles.ring}`}
+            aria-label={label}
+          >
+            <Icon className={`size-5 transition-colors ${styles.text}`} aria-hidden="true" />
+            <span className="text-xs font-semibold text-[var(--foreground)]">{label}</span>
+          </motion.button>
+        );
+      })}
+    </motion.div>
+  );
+}
 
 function dailySummary(student: StudentProfile) {
   const total = student.dailyTasks.length;
@@ -81,6 +157,9 @@ export function AdvisorDashboardHome() {
           <p className="mt-3 text-3xl font-black text-[var(--danger)]">{toPersianDigits(interventionCount)}</p>
         </div>
       </div>
+
+      {/* ===== Quick Actions — 4-card grid (2×2 on mobile, 1×4 on sm+) ===== */}
+      <QuickActionsGrid />
 
       <section className="surface-1 rounded-2xl border border-[var(--border)] overflow-hidden">
         <div className="px-4 py-4 md:px-5 border-b border-[var(--border)]">

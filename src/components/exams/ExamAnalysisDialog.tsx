@@ -21,7 +21,7 @@ export function ExamAnalysisDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { createExamAnalysisTask, updateExamAnalysisTask } = useAppStore();
+  const { createExamAnalysisTask, updateExamAnalysisTask, navigateTo, setSelectedDate } = useAppStore();
   const existing = exam.analysisTasks?.find((task) => task.studentId === studentId) ?? null;
   const [date, setDate] = useState(existing?.date ?? exam.date);
   const [advisorNote, setAdvisorNote] = useState(existing?.advisorNote ?? '');
@@ -33,13 +33,33 @@ export function ExamAnalysisDialog({
     setAdvisorNote(existing?.advisorNote ?? '');
   }, [exam.date, existing?.advisorNote, existing?.date, open]);
 
+  // Jump the user to the daily plan view pinned to the analysis task's date.
+  // - Student: opens the daily plan with the task's scheduled date selected.
+  // - Advisor: opens the selected student's workspace (their daily plan is
+  //   the default tab) so they can see the same task in context. The
+  //   AdvisorStudentDetail component syncs its `selectedDate` from the store
+  //   on mount, so setting it here is enough.
+  const goToPlan = () => {
+    const targetDate = existing?.date ?? date;
+    setSelectedDate(targetDate);
+    if (isAdvisor) {
+      navigateTo({ view: 'advisor-student-detail', selectedStudentId: studentId });
+    } else {
+      navigateTo({ view: 'plan', planTab: 'daily' });
+    }
+    onOpenChange(false);
+  };
+
   const save = async () => {
     setSaving(true);
     try {
       if (existing) {
         if (!isAdvisor) {
-          toast.info('تسک تحلیل این آزمون قبلاً به برنامه اضافه شده است');
-          onOpenChange(false);
+          // Student reopens an existing analysis task — jump straight to the
+          // daily plan view, pinned to the task's scheduled date. Previously
+          // this showed a misleading "already added" toast and closed the
+          // dialog without any navigation.
+          goToPlan();
           return;
         }
         await updateExamAnalysisTask(exam.id, { studentId, date, advisorNote: advisorNote.trim() || null });
@@ -69,7 +89,36 @@ export function ExamAnalysisDialog({
           {isAdvisor && <label className="block text-xs text-[var(--foreground-muted)]">توضیح مشاور (اختیاری)<textarea value={advisorNote} onChange={(event) => setAdvisorNote(event.target.value)} rows={4} placeholder="راهنمای تحلیل، بخش‌های مهم یا نکته‌ای برای دانش‌آموز" className="mt-1.5 w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 text-sm outline-none focus:border-[#E57373]/50" /></label>}
           {existing && !isAdvisor && <p className="rounded-xl border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-3 text-xs leading-6 text-[var(--foreground-muted)]">این تسک قبلاً ساخته شده و در برنامه قابل انجام، انتقال به ناقصی‌ها و ثبت زمان واقعی است.</p>}
         </div>
-        <DialogFooter><button type="button" disabled={saving} onClick={save} className="h-11 w-full rounded-xl bg-[#E57373] px-5 text-sm font-bold text-[#241315] disabled:opacity-50 sm:w-auto">{saving ? 'در حال ذخیره...' : existing ? isAdvisor ? 'ذخیره توضیحات' : 'مشاهده در برنامه' : 'افزودن تسک تحلیل'}</button></DialogFooter>
+        <DialogFooter>
+          {/* When the task already exists AND the advisor is editing, show two
+              buttons: a primary "save notes" (which calls save() →
+              updateExamAnalysisTask) and a secondary "go to plan" shortcut so
+              the advisor can jump straight to the student's daily plan
+              without re-saving. For students, the single primary button is
+              re-purposed as "go to plan" since they can't edit the note. */}
+          {existing && isAdvisor ? (
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={goToPlan}
+                className="h-11 w-full rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-5 text-sm font-bold text-[var(--foreground-muted)] transition-colors hover:border-[var(--accent)]/40 hover:text-[var(--accent)] disabled:opacity-50 sm:w-auto"
+              >
+                مشاهده در برنامه
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={save}
+                className="h-11 w-full rounded-xl bg-[#E57373] px-5 text-sm font-bold text-[#241315] disabled:opacity-50 sm:w-auto"
+              >
+                {saving ? 'در حال ذخیره...' : 'ذخیره توضیحات'}
+              </button>
+            </div>
+          ) : (
+            <button type="button" disabled={saving} onClick={save} className="h-11 w-full rounded-xl bg-[#E57373] px-5 text-sm font-bold text-[#241315] disabled:opacity-50 sm:w-auto">{saving ? 'در حال ذخیره...' : existing ? 'مشاهده در برنامه' : 'افزودن تسک تحلیل'}</button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
