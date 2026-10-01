@@ -99,6 +99,19 @@ export function splitPersianDateTimeFromISO(iso: string | undefined | null): { d
   return { datePart, timePart };
 }
 
+// Format connection duration string: e.g. "تاریخ اتصال: ۱۲ مهر (۲۰ روز پیش)"
+export function formatConnectionDuration(isoDate: string | Date | undefined | null): string {
+  if (!isoDate) return '—';
+  const d = new Date(isoDate);
+  if (isNaN(d.getTime())) return '—';
+  const jalaliDate = formatPersianDate(d);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  const relativeText = diffDays === 0 ? 'امروز' : `${toPersianDigits(diffDays)} روز پیش`;
+  return `تاریخ اتصال: ${jalaliDate} (${relativeText})`;
+}
+
 // Get ISO date string (YYYY-MM-DD) from Date — uses LOCAL date components
 // to avoid timezone off-by-one errors
 export function toISODate(date: Date): string {

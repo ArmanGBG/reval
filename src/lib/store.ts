@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity, PlanTab } from '@/lib/types';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, AdminAdvisor, UnassignedStudent, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity, PlanTab } from '@/lib/types';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
@@ -337,11 +337,18 @@ interface AppState {
   deletePlatformInstitute: (id: string) => Promise<void>;
 
   globalUsers: GlobalUser[];
-  loadGlobalUsers: () => Promise<void>;
+  loadGlobalUsers: (opts?: { sortBy?: string; order?: string; role?: string }) => Promise<void>;
   createGlobalUser: (input: { name: string; phone: string; role: Exclude<GlobalUserRole, 'institute_manager'>; instituteId?: string | null; grade?: string; major?: string }) => Promise<void>;
   updateGlobalUser: (id: string, updates: { status?: 'active' | 'suspended'; name?: string; role?: 'student' | 'advisor'; instituteId?: string | null; grade?: string; major?: string }) => Promise<void>;
   assignGlobalStudentAdvisor: (studentId: string, advisorId: string | null) => Promise<void>;
   deleteGlobalUser: (id: string) => Promise<void>;
+
+  adminAdvisors: AdminAdvisor[];
+  unassignedStudents: UnassignedStudent[];
+  adminAdvisorsLoading: boolean;
+  loadAdminAdvisors: () => Promise<void>;
+  assignStudentToAdminAdvisor: (advisorId: string, studentId: string) => Promise<void>;
+  removeStudentFromAdminAdvisor: (advisorId: string, studentId: string) => Promise<void>;
 
   // ===== Exams State =====
   // exams is a cache of exams visible to the current user.
@@ -1166,14 +1173,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   globalUsers: [],
-  loadGlobalUsers: async () => {
-    const res = await fetch('/api/users');
+  loadGlobalUsers: async (opts) => {
+    const params = new URLSearchParams();
+    if (opts?.sortBy) params.set('sortBy', opts.sortBy);
+    if (opts?.order) params.set('order', opts.order);
+    if (opts?.role) params.set('role', opts.role);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`/api/admin/users${queryString}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'بارگذاری کاربران ناموفق بود');
     set({ globalUsers: data.users });
   },
   createGlobalUser: async (input) => {
-    const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
+    const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'ایجاد کاربر ناموفق بود');
     set((state) => ({ globalUsers: [...state.globalUsers, data.user] }));
@@ -1195,6 +1207,120 @@ export const useAppStore = create<AppState>((set, get) => ({
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'حذف کاربر ناموفق بود');
     set((state) => ({ globalUsers: state.globalUsers.filter((item) => item.id !== id) }));
+  },
+
+  adminAdvisors: [],
+  unassignedStudents: [],
+  adminAdvisorsLoading: false,
+  loadAdminAdvisors: async () => {
+    set({ adminAdvisorsLoading: true });
+    try {
+      const res = await fetch('/api/admin/advisors');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'بارگذاری مشاوران ناموفق بود');
+      set({
+        adminAdvisors: data.advisors || [],
+        unassignedStudents: data.unassignedStudents || [],
+        adminAdvisorsLoading: false,
+      });
+    } catch (err) {
+      set({ adminAdvisorsLoading: false });
+      throw err;
+    }
+  },
+  assignStudentToAdminAdvisor: async (advisorId, studentId) => {
+    // Optimistic update in Zustand
+    const student = get().unassignedStudents.find((s) => s.id === studentId);
+    set((state) => ({
+      unassignedStudents: state.unassignedStudents.filter((s) => s.id !== studentId),
+      adminAdvisors: state.adminAdvisors.map((adv) => {
+        if (adv.id !== advisorId) return adv;
+        const newConnected = student
+          ? [
+              ...adv.connectedStudents,
+              {
+                id: student.id,
+                name: student.name,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                avatar: student.avatar,
+                phone: student.phone,
+                grade: student.grade,
+                major: student.major,
+                consistencyRate: 0,
+                connectedAt: new Date().toISOString(),
+              },
+            ]
+          : adv.connectedStudents;
+        return {
+          ...adv,
+          totalStudentsAssigned: newConnected.length,
+          connectedStudents: newConnected,
+        };
+      }),
+      globalUsers: state.globalUsers.map((u) =>
+        u.id === studentId ? { ...u, assignedAdvisorId: advisorId } : u,
+      ),
+    }));
+
+    const res = await fetch(`/api/admin/advisors/${advisorId}/students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      // Revert on error
+      void get().loadAdminAdvisors();
+      void get().loadGlobalUsers();
+      throw new Error(data.error || 'تخصیص دانش‌آموز ناموفق بود');
+    }
+  },
+  removeStudentFromAdminAdvisor: async (advisorId, studentId) => {
+    // Optimistic update in Zustand
+    const adv = get().adminAdvisors.find((a) => a.id === advisorId);
+    const removedStudent = adv?.connectedStudents.find((s) => s.id === studentId);
+
+    set((state) => ({
+      unassignedStudents: removedStudent
+        ? [
+            ...state.unassignedStudents,
+            {
+              id: removedStudent.id,
+              name: removedStudent.name,
+              firstName: removedStudent.firstName,
+              lastName: removedStudent.lastName,
+              avatar: removedStudent.avatar,
+              phone: removedStudent.phone,
+              grade: removedStudent.grade,
+              major: removedStudent.major,
+            },
+          ]
+        : state.unassignedStudents,
+      adminAdvisors: state.adminAdvisors.map((a) => {
+        if (a.id !== advisorId) return a;
+        const newConnected = a.connectedStudents.filter((s) => s.id !== studentId);
+        return {
+          ...a,
+          totalStudentsAssigned: newConnected.length,
+          connectedStudents: newConnected,
+        };
+      }),
+      globalUsers: state.globalUsers.map((u) =>
+        u.id === studentId ? { ...u, assignedAdvisorId: null } : u,
+      ),
+    }));
+
+    const res = await fetch(`/api/admin/advisors/${advisorId}/students/${studentId}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      // Revert on error
+      void get().loadAdminAdvisors();
+      void get().loadGlobalUsers();
+      throw new Error(data.error || 'حذف ارتباط ناموفق بود');
+    }
   },
 
   // ===== Exams State =====

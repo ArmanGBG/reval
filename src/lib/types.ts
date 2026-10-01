@@ -388,6 +388,55 @@ export interface GlobalUser {
   lastTaskInteraction: string | null;
   /** Daily completed-task counts for the trend window (oldest → newest) */
   activityTrend: ActivityDay[];
+  consistencyRate?: number;
+  createdAt?: string;
+}
+
+// ===== Admin Advisor Management Types =====
+export interface AdvisorConnectedStudent {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  phone: string;
+  grade: string | null;
+  major: string | null;
+  province?: string | null;
+  city?: string | null;
+  consistencyRate: number;
+  connectedAt: string;
+  connectionRequestId?: string | null;
+}
+
+export interface AdminAdvisor {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  phone: string;
+  publicCode: string;
+  role: string;
+  isActive: boolean;
+  status: UserAccountStatus;
+  createdAt: string;
+  updatedAt: string;
+  lastActive: string;
+  totalStudentsAssigned: number;
+  averageStudentConsistency: number;
+  connectedStudents: AdvisorConnectedStudent[];
+}
+
+export interface UnassignedStudent {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  phone: string;
+  grade: string | null;
+  major: string | null;
 }
 
 // ===== Notification Types =====
