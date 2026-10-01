@@ -17,6 +17,8 @@ export function isSmsSandbox(): boolean {
 }
 
 export async function sendOtpSms(phone: string, code: string): Promise<void> {
+  const isDev = process.env.NODE_ENV !== 'production';
+  if (isDev) return;
   const provider = getSmsProvider();
   if (provider === 'sandbox') return;
   if (provider === 'sms_ir') return sendSmsIrVerification(phone, code);

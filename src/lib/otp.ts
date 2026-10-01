@@ -30,7 +30,8 @@ export async function requestOtpDetails(phone: string, purpose: 'LOGIN' | 'SIGNU
     throw new Error('OTP_COOLDOWN');
   }
 
-  const code = crypto.randomInt(100000, 1000000).toString();
+  const isDev = process.env.NODE_ENV !== 'production';
+  const code = isDev ? '123456' : crypto.randomInt(100000, 1000000).toString();
   const challenge = await db.otpChallenge.create({
     data: {
       phone,
@@ -41,7 +42,11 @@ export async function requestOtpDetails(phone: string, purpose: 'LOGIN' | 'SIGNU
   });
 
   try {
-    await sendOtpSms(phone, code);
+    if (!isDev) {
+      await sendOtpSms(phone, code);
+    } else {
+      console.log(`🛠️ [SANDBOX MODE] OTP for ${phone} is: 123456`);
+    }
     return { code, challengeId: challenge.id };
   } catch (error) {
     await db.otpChallenge.delete({ where: { id: challenge.id } }).catch(() => {});
