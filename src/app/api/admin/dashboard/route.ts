@@ -1,9 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/api-auth';
+import { PERSIAN_MONTHS } from '@/lib/persian-date';
+import { toJalaali } from 'jalaali-js';
 
 // Next.js Route Cache: Cache this expensive dashboard aggregation for 30 minutes
 export const revalidate = 1800; 
+
+/**
+ * Accurately normalize UTC date to Asia/Tehran timezone before calculating Jalali month.
+ * Prevents the UTC day shift bug where timestamps near midnight shift by a few days.
+ */
+function getJalaliDateTehran(date: Date): { jy: number; jm: number; jd: number; monthName: string } {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tehran',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  });
+  const parts = formatter.formatToParts(date);
+  let gYear = date.getUTCFullYear();
+  let gMonth = date.getUTCMonth() + 1;
+  let gDay = date.getUTCDate();
+  for (const part of parts) {
+    if (part.type === 'year') gYear = parseInt(part.value, 10);
+    if (part.type === 'month') gMonth = parseInt(part.value, 10);
+    if (part.type === 'day') gDay = parseInt(part.value, 10);
+  }
+
+  const { jy, jm, jd } = toJalaali(gYear, gMonth, gDay);
+  return {
+    jy,
+    jm,
+    jd,
+    monthName: PERSIAN_MONTHS[jm - 1],
+  };
+}
 
 export async function GET(request: NextRequest) {
   // 1. Authorization: Only SUPER_ADMIN allowed
@@ -57,6 +89,7 @@ export async function GET(request: NextRequest) {
     // 3. Execute aggregations concurrently within Promise.all
     const [
       totalStudents,
+      totalAdvisors,
       periodSignups,
       dauTasks,
       activeMatches,
@@ -71,10 +104,14 @@ export async function GET(request: NextRequest) {
       tasksBaseline,
       // Trend data within date range
       periodTasks,
-      periodMatches
+      periodMatches,
+      // Monthly aggregation datasets
+      allUsersForMonthly,
+      allTasksForMonthly
     ] = await Promise.all([
-      // --- Vitals ---
+      // --- Vitals & Total Users ---
       db.user.count({ where: { role: 'STUDENT', deletedAt: null } }),
+      db.user.count({ where: { role: 'ADVISOR', deletedAt: null } }),
       db.user.count({
         where: {
           role: 'STUDENT',
@@ -173,6 +210,15 @@ export async function GET(request: NextRequest) {
           createdAt: { gte: startDate, lte: endDate }
         },
         select: { createdAt: true }
+      }),
+
+      // --- Monthly aggregation datasets ---
+      db.user.findMany({
+        where: { role: 'STUDENT', deletedAt: null },
+        select: { createdAt: true }
+      }),
+      db.task.findMany({
+        select: { createdAt: true }
       })
     ]);
 
@@ -245,6 +291,72 @@ export async function GET(request: NextRequest) {
       matchesTrend.push({ date, matches: matchCount });
     }
 
+    // --- Monthly Platform Growth (Jalali months starting from شهریور onwards) ---
+    const START_MONTH_INDEX = 6; // شهریور
+    const currentTehran = getJalaliDateTehran(now);
+
+    const monthlyMap = new Map<string, { month: string; monthIndex: number; year: number; newUsers: number; totalTasks: number }>();
+
+    // Seed months starting from شهریور (6) up to current month (or at least مهر 7)
+    const maxMonthIndex = Math.max(currentTehran.jm, 7);
+    for (let m = START_MONTH_INDEX; m <= maxMonthIndex; m++) {
+      const monthName = PERSIAN_MONTHS[m - 1];
+      const key = `${currentTehran.jy}-${m}`;
+      monthlyMap.set(key, {
+        month: monthName,
+        monthIndex: m,
+        year: currentTehran.jy,
+        newUsers: 0,
+        totalTasks: 0,
+      });
+    }
+
+    // Tally new users by normalized Jalali month
+    allUsersForMonthly.forEach((user) => {
+      const j = getJalaliDateTehran(user.createdAt);
+      if (j.jy === currentTehran.jy && j.jm >= START_MONTH_INDEX) {
+        const key = `${j.jy}-${j.jm}`;
+        if (!monthlyMap.has(key)) {
+          monthlyMap.set(key, {
+            month: j.monthName,
+            monthIndex: j.jm,
+            year: j.jy,
+            newUsers: 0,
+            totalTasks: 0,
+          });
+        }
+        monthlyMap.get(key)!.newUsers += 1;
+      }
+    });
+
+    // Tally tasks by normalized Jalali month
+    allTasksForMonthly.forEach((task) => {
+      const j = getJalaliDateTehran(task.createdAt);
+      if (j.jy === currentTehran.jy && j.jm >= START_MONTH_INDEX) {
+        const key = `${j.jy}-${j.jm}`;
+        if (!monthlyMap.has(key)) {
+          monthlyMap.set(key, {
+            month: j.monthName,
+            monthIndex: j.jm,
+            year: j.jy,
+            newUsers: 0,
+            totalTasks: 0,
+          });
+        }
+        monthlyMap.get(key)!.totalTasks += 1;
+      }
+    });
+
+    const sortedMonthly = Array.from(monthlyMap.values()).sort((a, b) => a.monthIndex - b.monthIndex);
+    const maxTasksInMonths = Math.max(1, ...sortedMonthly.map((m) => m.totalTasks));
+    const maxUsersInMonths = Math.max(1, ...sortedMonthly.map((m) => m.newUsers));
+
+    const monthlyGrowth = sortedMonthly.map((item) => ({
+      ...item,
+      taskPercentage: Math.min(100, Math.round((item.totalTasks / maxTasksInMonths) * 100)),
+      userPercentage: Math.min(100, Math.round((item.newUsers / maxUsersInMonths) * 100)),
+    }));
+
     // Consistency calculation
     const consistentStudents = periodConsistentTasks.filter((g) => g._count >= 3).length;
 
@@ -255,13 +367,19 @@ export async function GET(request: NextRequest) {
 
     // 5. Construct Final Response Payload
     const payload = {
+      summary: {
+        totalStudents,
+        totalAdvisors,
+      },
       vitals: {
         totalStudents,
+        totalAdvisors,
         todaySignups: periodSignups,
         dau,
         activeMatches,
         conversionRate
       },
+      monthlyGrowth,
       growthTrend,
       cumulativeGrowthTrend,
       cumulativeTasksTrend,

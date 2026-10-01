@@ -9,7 +9,9 @@ import {
   Target,
   Clock,
   ChevronLeft,
-  Loader2
+  Loader2,
+  GraduationCap,
+  TrendingUp,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -24,7 +26,8 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PersianDateRangePicker, PersianDateRangeValue } from '@/components/shared/PersianDateRangePicker';
-import { toISODate } from '@/lib/persian-date';
+import { toISODate, toPersianDigits } from '@/lib/persian-date';
+import { apiFetch } from '@/lib/api-client';
 
 // ==========================================
 // DATE FORMATTER (Native Jalali)
@@ -98,7 +101,7 @@ export default function SuperAdminDashboard() {
     const fetchDashboard = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/admin/dashboard?startDate=${dateRange.start}&endDate=${dateRange.end}`);
+        const res = await apiFetch(`/api/admin/dashboard?startDate=${dateRange.start}&endDate=${dateRange.end}`);
         if (res.ok) {
           const json = await res.json();
           setDashboardData(json);
@@ -188,6 +191,47 @@ export default function SuperAdminDashboard() {
       {dashboardData && (
         <div className={`transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           
+          {/* SUMMARY CARDS: TOTAL STUDENTS & TOTAL ADVISORS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {/* 1. کل دانش‌آموزان */}
+            <Card className="bg-zinc-950/50 border-zinc-800 shadow-none hover:border-zinc-700/80 transition-all rounded-2xl p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-zinc-400 text-xs font-medium mb-1.5">کل دانش‌آموزان</p>
+                  <div className="text-3xl font-extrabold text-white tracking-tight">
+                    {(dashboardData.summary?.totalStudents ?? dashboardData.vitals?.totalStudents ?? 0).toLocaleString('fa-IR')}
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    دانش‌آموزان ثبت‌نام‌شده در پلتفرم
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 shrink-0">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
+
+            {/* 2. کل مشاوران */}
+            <Card className="bg-zinc-950/50 border-zinc-800 shadow-none hover:border-zinc-700/80 transition-all rounded-2xl p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-zinc-400 text-xs font-medium mb-1.5">کل مشاوران</p>
+                  <div className="text-3xl font-extrabold text-white tracking-tight">
+                    {(dashboardData.summary?.totalAdvisors ?? dashboardData.vitals?.totalAdvisors ?? 0).toLocaleString('fa-IR')}
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    مشاوران تحصیلی فعال در سامانه
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 shrink-0">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
           {/* ROW 1: VITALS (5 CARDS) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             
@@ -331,6 +375,74 @@ export default function SuperAdminDashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* MONTHLY GROWTH SECTION (DYNAMIC JALALI AGGREGATION) */}
+          <Card className="bg-zinc-900/50 border-zinc-800 shadow-none mb-6">
+            <CardHeader className="pb-4 flex flex-row items-center justify-between border-b border-zinc-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold text-white">رشد پلتفرم (ماهانه)</CardTitle>
+                  <p className="text-xs text-zinc-400 mt-0.5">تفکیک فعالیت تسک‌ها و ثبت‌نام کاربران در ماه‌های شمسی</p>
+                </div>
+              </div>
+              <span className="text-xs text-zinc-500 font-medium px-2.5 py-1 rounded-full bg-zinc-950 border border-zinc-800">
+                سال تحصیلی جاری
+              </span>
+            </CardHeader>
+            <CardContent className="pt-5">
+              {dashboardData?.monthlyGrowth && dashboardData.monthlyGrowth.length > 0 ? (
+                <div className="space-y-4">
+                  {dashboardData.monthlyGrowth.map((monthItem: any, idx: number) => (
+                    <div
+                      key={monthItem.month ?? idx}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700/80 transition-all"
+                    >
+                      {/* Month Label */}
+                      <div className="flex items-center gap-2.5 sm:min-w-[100px] shrink-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                        <span className="text-sm font-bold text-white tracking-wide">{monthItem.month}</span>
+                      </div>
+
+                      {/* Center Progress Bar & User Count */}
+                      <div className="flex-1 min-w-0 px-1 sm:px-4">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span className="text-zinc-300 font-medium">
+                            {monthItem.newUsers?.toLocaleString('fa-IR')} <span className="text-zinc-400 font-normal">کاربر جدید</span>
+                          </span>
+                          <span className="text-zinc-500 text-[11px] tabular-nums">
+                            {toPersianDigits(monthItem.taskPercentage ?? 0)}٪ حجم فعالیت
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800/60">
+                          <div
+                            className="h-full bg-gradient-to-l from-green-400 to-green-600 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(34,197,94,0.35)]"
+                            style={{ width: `${Math.max(monthItem.taskPercentage ?? 0, 4)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Left (in RTL): Dark Metric Block with Task Count in Green */}
+                      <div className="flex items-center justify-end sm:justify-start">
+                        <div className="px-3.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800/90 flex items-center gap-2 shrink-0 shadow-inner">
+                          <span className="text-base font-extrabold text-green-400 tabular-nums">
+                            {monthItem.totalTasks?.toLocaleString('fa-IR')}
+                          </span>
+                          <span className="text-xs text-zinc-400 font-normal">تسک</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-sm text-zinc-500">
+                  اطلاعات ماهانه‌ای برای نمایش یافت نشد.
+                </div>
+              )}
             </CardContent>
           </Card>
 
