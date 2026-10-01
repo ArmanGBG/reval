@@ -177,14 +177,39 @@ export function getTodayJalali(now: Date = new Date()) {
   };
 }
 
+// Parse an ISO date string (YYYY-MM-DD) as a LOCAL date, not UTC.
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// Get today's local Date object strictly relying on browser local time
+export function getLocalToday(): Date {
+  return new Date();
+}
+
+// Get today's ISO date string (YYYY-MM-DD) strictly relying on browser local time
+export function getTodayISODate(date: Date = new Date()): string {
+  return toISODate(date);
+}
+
+// Get today's Jalali string strictly relying on local browser time (e.g. "۱۱ مهر ۱۴۰۵")
+export function getTodayJalaliString(date: Date = new Date()): string {
+  const j = toJalali(date);
+  return `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]} ${toPersianDigits(j.jy)}`;
+}
+
 // Check if two dates are the same day
 export function isSameDay(d1: Date, d2: Date): boolean {
   return toISODate(d1) === toISODate(d2);
 }
 
-// Check if a date is today
-export function isToday(date: Date): boolean {
-  return isSameDay(date, new Date());
+// Check if a date is today (accepts Date or YYYY-MM-DD string)
+export function isToday(date: Date | string, referenceToday: Date = new Date()): boolean {
+  if (typeof date === 'string') {
+    return date === toISODate(referenceToday);
+  }
+  return isSameDay(date, referenceToday);
 }
 
 // Get relative day label (امروز، فردا، یا نام روز)

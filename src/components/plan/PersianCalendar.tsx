@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { useAppStore } from '@/lib/store';
 import {
   PERSIAN_WEEKDAYS,
   PERSIAN_MONTHS,
@@ -32,16 +33,54 @@ export function PersianCalendar({
   taskCountByDate = {},
   completedCountByDate = {},
 }: PersianCalendarProps) {
-  const today = new Date();
-  const todayJalali = toJalali(today);
-  const [viewYear, setViewYear] = useState(todayJalali.jy);
-  const [viewMonth, setViewMonth] = useState(todayJalali.jm); // 1-12
+  const { checkDateRollover } = useAppStore();
+  const [currentLocalToday, setCurrentLocalToday] = useState(() => new Date());
+  const initialJalali = toJalali(currentLocalToday);
+  const [viewYear, setViewYear] = useState(initialJalali.jy);
+  const [viewMonth, setViewMonth] = useState(initialJalali.jm); // 1-12
 
+  // Sync view when selectedDate changes (e.g. from parent or date rollover)
   useEffect(() => {
     const selectedJalali = toJalali(parseLocalDate(selectedDate));
     setViewYear(selectedJalali.jy);
     setViewMonth(selectedJalali.jm);
   }, [selectedDate]);
+
+  // Handle Tab Visibility / Focus / Stale State (Midnight Rollover)
+  useEffect(() => {
+    const syncTodayAndRollover = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      // Re-calculate local browser time strictly relying on local Date (not UTC)
+      const now = new Date();
+      const currentIso = toISODate(now);
+      const prevIso = toISODate(currentLocalToday);
+
+      if (currentIso !== prevIso) {
+        setCurrentLocalToday(now);
+      }
+
+      // Trigger Zustand state rollover check
+      checkDateRollover();
+    };
+
+    // Run check on mount
+    syncTodayAndRollover();
+
+    document.addEventListener('visibilitychange', syncTodayAndRollover);
+    window.addEventListener('focus', syncTodayAndRollover);
+
+    // Periodic check every 30 seconds for foreground midnight transition
+    const interval = setInterval(syncTodayAndRollover, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', syncTodayAndRollover);
+      window.removeEventListener('focus', syncTodayAndRollover);
+      clearInterval(interval);
+    };
+  }, [checkDateRollover, currentLocalToday]);
 
   // Generate calendar grid for the month
   const calendarDays = useMemo(() => {
@@ -93,10 +132,15 @@ export function PersianCalendar({
   };
 
   const goToToday = () => {
-    setViewYear(todayJalali.jy);
-    setViewMonth(todayJalali.jm);
-    onSelect(toISODate(today));
+    const now = new Date();
+    setCurrentLocalToday(now);
+    const nowJalali = toJalali(now);
+    setViewYear(nowJalali.jy);
+    setViewMonth(nowJalali.jm);
+    onSelect(toISODate(now));
   };
+
+  const currentTodayISODate = toISODate(currentLocalToday);
 
   return (
     <div className="surface-1 rounded-2xl p-3">
@@ -109,12 +153,24 @@ export function PersianCalendar({
         >
           <ChevronRight className="w-4 h-4" />
         </button>
-        <button
-          onClick={goToToday}
-          className="text-sm font-bold text-[var(--foreground)] hover:text-[var(--accent)] transition-colors"
-        >
-          {PERSIAN_MONTHS[viewMonth - 1]} {toPersianDigits(viewYear)}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goToToday}
+            className="text-sm font-bold text-[var(--foreground)] hover:text-[var(--accent)] transition-colors"
+            title="برو به امروز"
+          >
+            {PERSIAN_MONTHS[viewMonth - 1]} {toPersianDigits(viewYear)}
+          </button>
+          {selectedDate !== currentTodayISODate && (
+            <button
+              onClick={goToToday}
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--bg-deep)] transition-colors"
+              title="انتقال به تاریخ امروز"
+            >
+              امروز
+            </button>
+          )}
+        </div>
         <button
           onClick={goToNextMonth}
           className="icon-btn w-7 h-7 rounded-lg flex items-center justify-center text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
@@ -143,7 +199,7 @@ export function PersianCalendar({
             return <div key={`empty-${idx}`} />;
           }
           const isSelected = dayInfo.dateStr === selectedDate;
-          const isTodayCell = isToday(dayInfo.date);
+          const isTodayCell = dayInfo.dateStr === currentTodayISODate;
           const taskCount = taskCountByDate[dayInfo.dateStr] || 0;
           const completedCount = completedCountByDate[dayInfo.dateStr] || 0;
           const allDone = taskCount > 0 && completedCount === taskCount;

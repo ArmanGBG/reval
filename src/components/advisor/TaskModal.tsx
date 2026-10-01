@@ -29,6 +29,7 @@ import { activitySelectedStyle } from '@/lib/activity-styles';
 import { FIELD_TYPE_STYLES } from '@/components/shared/FieldTypeBadge';
 import { buildClassTask, classSessionDetailsComplete, isClassTask } from '@/lib/class-task';
 import { normalizeNumericInput } from '@/lib/digits';
+import { toISODate } from '@/lib/persian-date';
 
 const TIME_QUICK_PICKS = [60, 90, 120];
 const TEST_QUICK_PICKS = [0, 20, 30, 40];
@@ -94,7 +95,7 @@ export function TaskModal({
     editTask?.targetTestCount ?? 0,
   );
   const [date, setDate] = useState(
-    editTask?.date ?? new Date().toISOString().split('T')[0],
+    editTask?.date ?? toISODate(new Date()),
   );
   const [teacherClassName, setTeacherClassName] = useState(editTask?.teacherClassName ?? '');
   const [sessionNumber, setSessionNumber] = useState(editTask?.sessionNumber ?? '');
@@ -138,7 +139,7 @@ export function TaskModal({
     setActivityTypes(editTask?.activityTypes ?? []);
     setTargetTimeMinutes(editTask && isClassTask(editTask) ? editTask.actualTimeMinutes ?? 0 : editTask?.targetTimeMinutes ?? 0);
     setTargetTestCount(editTask?.targetTestCount ?? 0);
-    setDate(editTask?.date ?? new Date().toISOString().split('T')[0]);
+    setDate(editTask?.date ?? toISODate(new Date()));
     setTeacherClassName(editTask?.teacherClassName ?? '');
     setSessionNumber(editTask?.sessionNumber ?? '');
     setBookName(editTask?.bookName ?? '');

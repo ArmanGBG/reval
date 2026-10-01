@@ -10,6 +10,7 @@ import { initSRSFields } from '@/lib/spaced-repetition';
 import { AuthError } from '@/lib/api-client';
 import { navigationUrl, pushNavigation } from '@/lib/navigation';
 import type { NavigationTarget } from '@/lib/navigation';
+import { toISODate } from '@/lib/persian-date';
 
 // ====================================================================
 // Flashcards persistence (localStorage)
@@ -283,9 +284,13 @@ interface AppState {
   advisorStudentsLoading: boolean;
   loadAdvisorStudents: (advisorId: string) => Promise<void>;
 
-  // Selected Date
+  // Selected Date & Today / Midnight Rollover
   selectedDate: string;
-  setSelectedDate: (date: string) => void;
+  currentDate: string;
+  todayDate: string;
+  isExplicitDateSelected: boolean;
+  setSelectedDate: (date: string, isExplicit?: boolean) => void;
+  checkDateRollover: () => boolean;
 
   // Flashcards
   flashcards: Flashcard[];
@@ -1020,12 +1025,47 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // Selected Date
-  selectedDate: (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })(),
-  setSelectedDate: (date) => set({ selectedDate: date }),
+  // Selected Date & Today Tracking (Timezone-Aware via local browser time)
+  selectedDate: toISODate(new Date()),
+  currentDate: toISODate(new Date()),
+  todayDate: toISODate(new Date()),
+  isExplicitDateSelected: false,
+
+  setSelectedDate: (date: string, isExplicit = true) => {
+    const today = toISODate(new Date());
+    set({
+      selectedDate: date,
+      isExplicitDateSelected: isExplicit && date !== today,
+    });
+  },
+
+  checkDateRollover: () => {
+    const now = new Date();
+    const newToday = toISODate(now);
+    const { todayDate, currentDate, selectedDate, isExplicitDateSelected } = get();
+    const prevToday = todayDate || currentDate;
+
+    // Check if date has rolled over past midnight
+    if (newToday !== prevToday) {
+      // If the user hasn't explicitly selected another past/future date,
+      // or was viewing the day that was today before midnight, shift to new today
+      const wasViewingToday = !isExplicitDateSelected || selectedDate === prevToday;
+
+      set({
+        todayDate: newToday,
+        currentDate: newToday,
+        ...(wasViewingToday
+          ? {
+              selectedDate: newToday,
+              isExplicitDateSelected: false,
+            }
+          : {}),
+      });
+
+      return true;
+    }
+    return false;
+  },
 
   // Flashcards — hydrate only user-created cards from localStorage.
   // Every card is guaranteed to have SRS fields (interval/repetition/easeFactor/dueDate).
@@ -1717,6 +1757,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 if (typeof window !== 'undefined') {
   queueMicrotask(() => {
     const state = useAppStore.getState();
+    state.checkDateRollover();
     if (state.onboardingComplete) {
       state.refreshNotifications();
     }
