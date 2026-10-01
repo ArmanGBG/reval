@@ -88,13 +88,15 @@ model ConnectionRequest {
 
 // ===== Message (Student <-> Advisor Communication) =====
 model Message {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   senderId   String
   receiverId String
-  subject    String?  // For student pre-defined topics ('سوال', 'گزارش کار', 'درخواست تماس')
+  subject    String?   // For student pre-defined topics ('سوال', 'گزارش کار', 'درخواست تماس')
   content    String
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  isRead     Boolean   @default(false)
+  isEdited   Boolean   @default(false)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
 
   sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
@@ -102,6 +104,7 @@ model Message {
   @@index([senderId])
   @@index([receiverId])
   @@index([createdAt])
+  @@index([deletedAt])
 }
 
 // ===== Institute =====

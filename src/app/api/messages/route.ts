@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
 
     const messages = await db.message.findMany({
       where: {
+        deletedAt: null,
         OR: [
           { senderId: ctx.userId, receiverId: advisorId },
           { senderId: advisorId, receiverId: ctx.userId },
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
     if (studentIdParam) {
       const messages = await db.message.findMany({
         where: {
+          deletedAt: null,
           OR: [
             { senderId: ctx.userId, receiverId: studentIdParam },
             { senderId: studentIdParam, receiverId: ctx.userId },
@@ -121,6 +123,7 @@ export async function GET(request: NextRequest) {
 
     const allMessages = await db.message.findMany({
       where: {
+        deletedAt: null,
         OR: [
           { senderId: ctx.userId },
           { receiverId: ctx.userId },
@@ -204,6 +207,7 @@ export async function GET(request: NextRequest) {
 
   // ===== SUPER_ADMIN (Fallback / Overview) =====
   const messages = await db.message.findMany({
+    where: { deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 100,
     include: {

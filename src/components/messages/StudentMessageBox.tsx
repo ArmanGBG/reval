@@ -16,10 +16,14 @@ import {
   RefreshCw,
   UserCheck,
   ArrowRight,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
-import { formatPersianDateTimeFromISO } from '@/lib/persian-date';
+import { splitPersianDateTimeFromISO } from '@/lib/persian-date';
 import * as messageService from '@/lib/message-service';
 import type { MessageItem, StudentAdvisorInfo } from '@/lib/message-service';
 import {
@@ -37,6 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +71,11 @@ export function StudentMessageBox() {
   const [subject, setSubject] = useState<SubjectOption>('سوال');
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
+
+  // Edit message state
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -130,6 +145,7 @@ export function StudentMessageBox() {
       subject,
       content: trimmed,
       isRead: false,
+      isEdited: false,
       createdAt: new Date().toISOString(),
       sender: {
         id: user?.id || 'me',
@@ -162,6 +178,71 @@ export function StudentMessageBox() {
       toast.error(err instanceof Error ? err.message : 'خطا در ارسال پیام');
     } finally {
       setSending(false);
+    }
+  };
+
+  // Start editing a message
+  const handleStartEdit = (msg: MessageItem) => {
+    setEditingMessageId(msg.id);
+    setEditingContent(msg.content);
+  };
+
+  // Cancel edit
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingContent('');
+  };
+
+  // Save edited message
+  const handleSaveEdit = async (messageId: string) => {
+    const trimmed = editingContent.trim();
+    if (!trimmed) {
+      toast.error('متن پیام نمی‌تواند خالی باشد');
+      return;
+    }
+
+    setSavingEdit(true);
+    const original = messages.find((m) => m.id === messageId);
+
+    // Optimistic update
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, content: trimmed, isEdited: true } : m,
+      ),
+    );
+    setEditingMessageId(null);
+
+    try {
+      const res = await messageService.editMessage(messageId, trimmed);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? res.message : m)),
+      );
+      toast.success('پیام با موفقیت ویرایش شد');
+    } catch (err) {
+      if (original) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? original : m)),
+        );
+      }
+      toast.error(err instanceof Error ? err.message : 'خطا در ویرایش پیام');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Delete message
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!window.confirm('آیا از حذف این پیام اطمینان دارید؟')) return;
+
+    const backup = messages;
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+    try {
+      await messageService.deleteMessage(messageId);
+      toast.success('پیام با موفقیت حذف شد');
+    } catch (err) {
+      setMessages(backup);
+      toast.error(err instanceof Error ? err.message : 'خطا در حذف پیام');
     }
   };
 
@@ -318,6 +399,8 @@ export function StudentMessageBox() {
               <AnimatePresence initial={false}>
                 {messages.map((msg) => {
                   const isSentByMe = msg.senderId === user?.id;
+                  const { datePart, timePart } = splitPersianDateTimeFromISO(msg.createdAt);
+                  const isEditingThis = editingMessageId === msg.id;
 
                   return (
                     <motion.div
@@ -335,7 +418,7 @@ export function StudentMessageBox() {
                             : 'bg-zinc-900/90 border border-zinc-800 text-zinc-100 rounded-bl-sm'
                         }`}
                       >
-                        {/* Header: Sender tag & Subject badge */}
+                        {/* Header: Sender tag, Subject badge & Structured Timestamp */}
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <div className="flex items-center gap-2">
                             <span
@@ -348,15 +431,97 @@ export function StudentMessageBox() {
                             {renderSubjectBadge(msg.subject)}
                           </div>
 
-                          <span className="text-[11px] text-zinc-500 font-mono" dir="ltr">
-                            {formatPersianDateTimeFromISO(msg.createdAt)}
-                          </span>
+                          {/* Fix RTL Timestamp Issue: Separate Date and Time + Edit/Delete Dropdown */}
+                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 shrink-0">
+                            {msg.isEdited && (
+                              <span className="text-[10px] text-zinc-500 font-medium ml-0.5">
+                                (ویرایش شده)
+                              </span>
+                            )}
+                            <span className="font-sans">{datePart}</span>
+                            <span className="text-zinc-600 font-bold">•</span>
+                            <span dir="ltr" className="font-mono text-zinc-400">
+                              {timePart}
+                            </span>
+
+                            {/* Dropdown Menu for Sender's message (Edit / Delete) */}
+                            {isSentByMe && !isEditingThis && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="p-1 -ml-1 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 rounded-md transition-colors"
+                                    title="گزینه‌ها"
+                                  >
+                                    <MoreVertical className="w-3.5 h-3.5" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="bg-zinc-900 border-zinc-800 text-zinc-200 min-w-[120px]"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={() => handleStartEdit(msg)}
+                                    className="cursor-pointer gap-2 text-xs focus:bg-zinc-800"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 text-sky-400" />
+                                    <span>ویرایش</span>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteMessage(msg.id)}
+                                    className="cursor-pointer gap-2 text-xs text-rose-400 focus:text-rose-300 focus:bg-rose-500/10"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>حذف</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Content */}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-zinc-200">
-                          {msg.content}
-                        </p>
+                        {/* Content OR Inline Edit Form */}
+                        {isEditingThis ? (
+                          <div className="space-y-2 mt-1">
+                            <Textarea
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              rows={3}
+                              className="w-full bg-zinc-950 border-zinc-700 text-zinc-100 text-sm rounded-lg p-2.5 focus-visible:border-emerald-500/50 resize-y min-h-[70px]"
+                            />
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={savingEdit}
+                                onClick={handleCancelEdit}
+                                className="h-7 px-2.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg inline-flex items-center gap-1"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>لغو</span>
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={savingEdit || !editingContent.trim()}
+                                onClick={() => handleSaveEdit(msg.id)}
+                                className="h-7 px-3 text-xs bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-lg shadow-sm inline-flex items-center gap-1"
+                              >
+                                {savingEdit ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="w-3.5 h-3.5" />
+                                )}
+                                <span>ذخیره</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap text-zinc-200">
+                            {msg.content}
+                          </p>
+                        )}
 
                         {/* Footer: Read Receipt for sent messages */}
                         {isSentByMe && (

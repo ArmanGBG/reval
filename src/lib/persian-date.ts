@@ -86,6 +86,19 @@ export function formatPersianDateTimeFromISO(iso: string | undefined | null): st
   return `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]} · ${toPersianDigits(hh)}:${toPersianDigits(mm)}`;
 }
 
+// Split an ISO datetime string into separate Persian date and time parts (fixes RTL timestamp squishing)
+export function splitPersianDateTimeFromISO(iso: string | undefined | null): { datePart: string; timePart: string } {
+  if (!iso) return { datePart: '—', timePart: '—' };
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return { datePart: '—', timePart: '—' };
+  const j = toJalali(date);
+  const datePart = `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]}`;
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const timePart = `${toPersianDigits(hh)}:${toPersianDigits(mm)}`;
+  return { datePart, timePart };
+}
+
 // Get ISO date string (YYYY-MM-DD) from Date — uses LOCAL date components
 // to avoid timezone off-by-one errors
 export function toISODate(date: Date): string {

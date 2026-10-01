@@ -19,6 +19,8 @@ export interface MessageItem {
   subject: string | null;
   content: string;
   isRead: boolean;
+  isEdited?: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   sender?: MessageSenderReceiver;
   receiver?: MessageSenderReceiver;
@@ -181,6 +183,42 @@ export async function markMessageRead(
   } catch {
     return { ok: false };
   }
+}
+
+/**
+ * Edit a message (PATCH /api/messages/[id])
+ */
+export async function editMessage(
+  messageId: string,
+  content: string,
+): Promise<{ message: MessageItem }> {
+  const res = await apiFetch(`/api/messages/${messageId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'خطا در ویرایش پیام');
+  }
+  return res.json();
+}
+
+/**
+ * Delete a message (DELETE /api/messages/[id])
+ */
+export async function deleteMessage(
+  messageId: string,
+): Promise<{ ok: boolean }> {
+  const res = await apiFetch(`/api/messages/${messageId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'خطا در حذف پیام');
+  }
+  return res.json();
 }
 
 // ===== Backwards Compatibility Methods =====
