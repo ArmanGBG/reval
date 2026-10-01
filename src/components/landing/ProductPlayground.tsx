@@ -193,68 +193,127 @@ function MockPlan() {
 
 function MockAnalytics() {
   const data = [
-    { name: 'شنبه', hours: 4.5 },
-    { name: 'یکشنبه', hours: 5.2 },
-    { name: 'دوشنبه', hours: 6.0 },
-    { name: 'سه‌شنبه', hours: 5.5 },
-    { name: 'چهارشنبه', hours: 7.1 },
-    { name: 'پنجشنبه', hours: 2.5 },
+    { name: 'شنبه', hours: 2.5 },
+    { name: 'یکشنبه', hours: 3.2 },
+    { name: 'دوشنبه', hours: 2.8 },
+    { name: 'سه‌شنبه', hours: 3.5 },
+    { name: 'چهارشنبه', hours: 4.1 },
+    { name: 'پنجشنبه', hours: 3.0 },
+    { name: 'جمعه', hours: 2.0 },
   ];
 
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-zinc-950 flex flex-col h-full overflow-hidden">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black text-zinc-100 mb-1">آنالیز پیشرفته</h1>
-        <p className="text-sm text-zinc-400">روند ساعت مطالعه در ۷ روز گذشته</p>
+    <div className="flex-1 p-6 lg:p-8 bg-[#131313] flex flex-col h-full overflow-hidden">
+      <div className="mb-6 flex flex-col items-end">
+        <h1 className="text-xl font-bold text-zinc-100 mb-1">نمای تحلیلی</h1>
+        <p className="text-[13px] text-zinc-400">زمان واقعی تسک‌های تکمیل‌شده در بازه انتخابی</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'میانگین روزانه', val: '۵.۱ ساعت' },
-          { label: 'کل هفته', val: '۳۰.۸ ساعت' },
-          { label: 'تست‌های زده شده', val: '۲۴۵ تست' },
-          { label: 'رشد نسبت به قبل', val: '+۱۲٪', color: 'text-emerald-500' },
-        ].map(stat => (
-          <div key={stat.label} className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl flex flex-col">
-            <span className="text-[11px] text-zinc-400 mb-1">{stat.label}</span>
-            <span className={`text-lg font-black ${stat.color || 'text-zinc-100'}`}>{stat.val}</span>
-          </div>
-        ))}
-      </div>
+      <div className="bg-[#1c1c1c] border border-zinc-800/60 rounded-2xl p-4 flex-1 flex flex-col">
+        {/* Tabs */}
+        <div className="flex items-center justify-end gap-1 bg-[#262626] rounded-xl p-1 mb-8 max-w-2xl ml-auto w-full">
+          {['روش مطالعه روزانه', 'تفکیک دروس', 'روند مطالعه'].map((tab, i) => (
+            <button key={tab} className={`flex-1 py-2 rounded-lg text-sm transition-colors ${i === 2 ? 'bg-[#141414] text-zinc-100 shadow-sm border border-black/20 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}>
+              {tab}
+            </button>
+          ))}
+        </div>
 
-      <div className="flex-1 min-h-[250px] w-full bg-zinc-900/30 border border-zinc-800 rounded-2xl p-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-            <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
-            <Tooltip 
-              cursor={{ fill: '#27272a' }} 
-              contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', textAlign: 'right' }} 
-              formatter={(value: number) => [`${value} ساعت`, 'مطالعه']}
-            />
-            <Bar dataKey="hours" fill="#10b981" radius={[4, 4, 0, 0]} animationDuration={1000} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="flex-1 w-full min-h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
+              <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} tickMargin={15} angle={-30} textAnchor="end" />
+              <YAxis tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} domain={[0, 4]} tickCount={5} />
+              <Tooltip 
+                cursor={{ fill: '#27272a' }} 
+                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', textAlign: 'right' }} 
+                formatter={(value: number) => [`${value} ساعت`, 'مطالعه']}
+              />
+              <Bar dataKey="hours" fill="#2563eb" radius={[4, 4, 0, 0]} animationDuration={1000} barSize={12} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
 }
 
 function MockSleep() {
+  const data = [
+    { name: 'شنبه', night: 6.5, nap: 1.0 },
+    { name: 'یکشنبه', night: 7.0, nap: 0 },
+    { name: 'دوشنبه', night: 5.5, nap: 1.5 },
+    { name: 'سه‌شنبه', night: 7.5, nap: 0 },
+    { name: 'چهارشنبه', night: 6.0, nap: 0.5 },
+    { name: 'پنجشنبه', night: 8.0, nap: 0 },
+    { name: 'جمعه', night: 6.5, nap: 1.0 },
+  ];
+
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-zinc-950 flex flex-col h-full items-center justify-center">
-      <div className="w-full max-w-sm bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 flex flex-col items-center">
-        <div className="relative flex size-40 items-center justify-center rounded-full border-[10px] border-indigo-500 shadow-[0_0_40px_rgba(99,102,241,0.15)] mb-6">
-          <div className="text-center">
-            <span className="text-4xl font-black text-zinc-100">۷.۵</span>
-            <span className="block text-xs text-zinc-400 mt-1">ساعت</span>
-          </div>
-          <Moon className="absolute -bottom-5 right-2 size-8 text-indigo-400 drop-shadow-lg bg-zinc-900 rounded-full p-1" />
+    <div className="flex-1 p-6 lg:p-8 bg-[#131313] flex flex-col h-full overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <button className="flex items-center gap-2 bg-[#1c1c2e] hover:bg-[#25253e] border border-indigo-500/30 text-indigo-300 px-4 py-2 rounded-xl text-sm transition-colors font-medium">
+          <Moon className="w-4 h-4" />
+          ثبت خواب
+        </button>
+
+        <div className="flex items-center gap-2">
+          {['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'].map((tab, i) => (
+            <button key={tab} className={`px-4 py-1.5 rounded-full text-[13px] border transition-colors ${i === 1 ? 'bg-[#1a2340] border-indigo-500/40 text-indigo-300 font-bold' : 'border-zinc-800 text-zinc-400 hover:text-zinc-200'}`}>
+              {tab}
+            </button>
+          ))}
         </div>
-        <h3 className="text-xl font-bold text-zinc-100 mb-2">کیفیت خواب: عالی</h3>
-        <p className="text-center text-sm text-zinc-400 leading-relaxed">
-          شما شب گذشته از ساعت ۲۳:۳۰ تا ۰۷:۰۰ استراحت کردید. ریتم خواب شما در بازه طلایی قرار دارد.
-        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {[
+          { label: 'میانگین ساعت بیداری', val: '۰۷:۱۵' },
+          { label: 'میانگین ساعت خواب', val: '۲۳:۴۵' },
+          { label: 'میانگین خواب شبانه', val: '۶.۷ ساعت' },
+        ].map(stat => (
+          <div key={stat.label} className="bg-[#1c1c1c] border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center">
+            <span className="text-xl font-bold text-zinc-100 mb-2">{stat.val}</span>
+            <span className="text-xs text-zinc-400">{stat.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div className="flex-1 min-h-[300px] bg-[#1c1c1c] border border-zinc-800/60 rounded-2xl p-6 flex flex-col">
+        <div className="flex items-start justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-200" />
+              <span className="text-xs text-zinc-400">چرت</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+              <span className="text-xs text-zinc-400">شبانه</span>
+            </div>
+          </div>
+          <div className="text-left">
+            <h3 className="text-base font-bold text-zinc-100">نمودار خواب</h3>
+            <p className="text-xs text-zinc-400 mt-1">طول خواب شبانه و چرت هر روز (ساعت)</p>
+          </div>
+        </div>
+
+        <div className="flex-1 w-full relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 0, right: 0, left: -25, bottom: 20 }}>
+              <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} tickMargin={15} />
+              <YAxis tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} tickCount={6} />
+              <Tooltip 
+                cursor={{ fill: '#27272a' }} 
+                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', textAlign: 'right' }} 
+              />
+              <Bar dataKey="night" stackId="a" fill="#818cf8" radius={[0, 0, 4, 4]} animationDuration={1000} barSize={16} />
+              <Bar dataKey="nap" stackId="a" fill="#fde68a" radius={[4, 4, 0, 0]} animationDuration={1000} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
