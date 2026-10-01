@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { 
@@ -19,8 +18,8 @@ import {
   Activity,
   MessageSquare
 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ==========================================
 // Types & Mock Data
@@ -108,7 +107,6 @@ interface FeatureConfig {
   label: string;
   tagline: string;
   icon: React.ComponentType<{ className?: string }>;
-  image: string;
   badgeText: string;
 }
 
@@ -119,7 +117,6 @@ const FEATURE_CONFIGS: FeatureConfig[] = [
     label: 'برنامه‌ریزی',
     tagline: 'چینش دقیق مباحث در باکس‌های مطالعاتی متناسب با توان ذهنی و کنکور',
     icon: CalendarCheck,
-    image: '/images/preview/dark/study-plan.webp',
     badgeText: 'تقویم هوشمند',
   },
   {
@@ -128,7 +125,6 @@ const FEATURE_CONFIGS: FeatureConfig[] = [
     label: 'آنالیز پیشرفته',
     tagline: 'رسم خودکار نمودارهای پیشرفت، ساعت مطالعه و بازدهی تستی بدون دفتر کاغذی',
     icon: BarChart3,
-    image: '/images/preview/dark/subject-analysis1.webp',
     badgeText: 'تحلیل لحظه‌ای',
   },
   {
@@ -137,7 +133,6 @@ const FEATURE_CONFIGS: FeatureConfig[] = [
     label: 'پایش خواب',
     tagline: 'ثبت منظم خواب شبانه و کشف همبستگی کیفیت استراحت با تمرکز روزانه',
     icon: Moon,
-    image: '/images/preview/dark/sleep-tracker.webp',
     badgeText: 'سلامت ذهن',
   },
   {
@@ -146,15 +141,147 @@ const FEATURE_CONFIGS: FeatureConfig[] = [
     label: 'پنل مشاور',
     tagline: 'ارسال بلادرنگ گزارش‌کار و تبدیل جلسات به گفت‌وگوهای راهبردی و موثر',
     icon: Users,
-    image: '/landing-shots/feature-advisor.webp',
     badgeText: 'نظارت دوطرفه',
   },
 ];
 
+// ==========================================
+// Mock UI Components
+// ==========================================
+
+function MockPlanningView({ completedTaskIds }: { completedTaskIds: string[] }) {
+  const blocks = [
+    { id: 'task-bio', time: '۰۸:۰۰ - ۰۹:۳۰', title: 'زیست‌شناسی ۳', type: 'تست آموزشی' },
+    { id: 'task-chem', time: '۰۹:۴۵ - ۱۰:۴۵', title: 'شیمی دوازدهم', type: 'مرور و جمع‌بندی' },
+    { id: 'task-phys', time: '۱۱:۰۰ - ۱۲:۳۰', title: 'فیزیک ۳', type: 'تست زمان‌دار' },
+  ];
+
+  return (
+    <div className="w-full h-full p-6 bg-transparent flex flex-col justify-center gap-3">
+      <h4 className="text-foreground font-bold mb-2">برنامه مطالعاتی امروز</h4>
+      {blocks.map((b) => {
+        const isDone = completedTaskIds.includes(b.id);
+        return (
+          <motion.div 
+            key={b.id} 
+            layout
+            className={`flex items-stretch rounded-xl border overflow-hidden transition-all duration-300 ${isDone ? 'bg-emerald-500/10 border-emerald-500/20 shadow-sm' : 'bg-background border-border shadow-sm'}`}
+          >
+            <div className={`w-1.5 transition-colors ${isDone ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+            <div className="flex-1 p-3 flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-bold transition-all ${isDone ? 'text-muted-foreground line-through opacity-70' : 'text-foreground'}`}>{b.title}</p>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">{b.time}</p>
+              </div>
+              <Badge variant="outline" className={`transition-colors ${isDone ? 'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-muted-foreground'}`}>
+                {isDone ? 'تکمیل شده' : b.type}
+              </Badge>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  )
+}
+
+function MockAnalyticsView({ completedTaskIds }: { completedTaskIds: string[] }) {
+  const bioCompleted = completedTaskIds.includes('task-bio');
+  const physCompleted = completedTaskIds.includes('task-phys');
+  const mathCompleted = completedTaskIds.includes('task-math');
+  const chemCompleted = completedTaskIds.includes('task-chem');
+
+  const data = [
+    { name: 'زیست', hours: bioCompleted ? 2.5 : 0.5, fill: '#10b981' },
+    { name: 'شیمی', hours: chemCompleted ? 1.5 : 0.5, fill: '#06b6d4' },
+    { name: 'فیزیک', hours: physCompleted ? 2 : 0, fill: '#f59e0b' },
+    { name: 'ریاضی', hours: mathCompleted ? 1.5 : 0, fill: '#a855f7' },
+  ];
+
+  return (
+    <div className="w-full h-full p-6 bg-transparent flex flex-col justify-center">
+      <h4 className="text-foreground font-bold mb-6">ساعت مطالعه دروس (امروز)</h4>
+      <div className="flex-1 min-h-[250px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
+            <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
+            <Tooltip 
+              cursor={{ fill: 'hsl(var(--muted))' }} 
+              contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))', textAlign: 'right' }} 
+              formatter={(value: number) => [`${value} ساعت`, 'مطالعه']}
+            />
+            <Bar dataKey="hours" radius={[6, 6, 0, 0]} animationDuration={1000} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function MockSleepTrackerView({ completedTaskIds }: { completedTaskIds: string[] }) {
+  const isSleepLogged = completedTaskIds.includes('task-sleep');
+  
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-transparent">
+      <div className={`relative flex size-36 items-center justify-center rounded-full border-[8px] transition-all duration-1000 ${isSleepLogged ? 'border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.2)]' : 'border-muted'}`}>
+         <div className="text-center">
+            <span className="text-4xl font-black text-foreground">{isSleepLogged ? '۷.۵' : '--'}</span>
+            <span className="block text-xs text-muted-foreground mt-1">ساعت خواب</span>
+         </div>
+         <Moon className={`absolute -bottom-4 right-0 size-8 transition-colors duration-1000 drop-shadow-md ${isSleepLogged ? 'text-indigo-500' : 'text-muted'}`} />
+      </div>
+      <div className="mt-8 text-center max-w-[250px]">
+         <h4 className="font-bold text-foreground mb-2">وضعیت انرژی روزانه</h4>
+         <p className="text-muted-foreground text-sm">
+           {isSleepLogged ? 'خواب شما در بازه طلایی قرار دارد. انرژی امروز: عالی ⚡' : 'هنوز خواب دیشب ثبت نشده است. برای پایش انرژی چک‌لیست را تیک بزنید.'}
+         </p>
+      </div>
+    </div>
+  )
+}
+
+function MockAdvisorView({ completedTaskIds }: { completedTaskIds: string[] }) {
+  const advisorNotified = completedTaskIds.includes('task-advisor');
+
+  return (
+    <div className="w-full h-full flex flex-col p-6 bg-transparent overflow-hidden">
+      <div className="flex items-center gap-3 border-b border-border/60 pb-4">
+         <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 font-bold text-lg">
+            م
+         </div>
+         <div>
+            <h4 className="font-bold text-foreground">دکتر محمدی (مشاور)</h4>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-0.5"><span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> آنلاین</p>
+         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 flex-1 justify-end pt-4">
+         <div className="self-start bg-muted rounded-2xl rounded-tr-sm p-3.5 max-w-[85%] text-sm text-foreground shadow-sm">
+            سلام خسته نباشی! گزارش کار امروزت رو برام بفرست تا با هم تحلیلش کنیم.
+         </div>
+         
+         <AnimatePresence>
+            {advisorNotified && (
+               <motion.div 
+                 initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+                 animate={{ opacity: 1, y: 0, scale: 1 }} 
+                 className="self-end bg-emerald-600 text-white rounded-2xl rounded-tl-sm p-3.5 max-w-[85%] text-sm shadow-md"
+               >
+                 سلام استاد! تسک‌های امروزم شامل زیست، شیمی و فیزیک رو تیک زدم. روی نمودار هم پیشرفتم ثبت شد!
+               </motion.div>
+            )}
+         </AnimatePresence>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+
 export function ProductPlayground() {
-  const [completedTaskIds, setCompletedTaskIds] = React.useState<string[]>([
-    'task-bio', // 1 task checked initially so user sees the progress bar active
-  ]);
+  const [completedTaskIds, setCompletedTaskIds] = React.useState<string[]>(['task-bio']);
   const [activeFeatureTab, setActiveFeatureTab] = React.useState<FeatureTabId>('planning');
   const reduceMotion = useReducedMotion();
 
@@ -168,7 +295,6 @@ export function ProductPlayground() {
       }
     });
 
-    // Automatically switch active tab to this task's feature if not already active
     const clickedTask = MOCK_TASKS.find((t) => t.id === taskId);
     if (clickedTask && clickedTask.featureId !== activeFeatureTab) {
       setActiveFeatureTab(clickedTask.featureId);
@@ -179,7 +305,6 @@ export function ProductPlayground() {
   const completedCount = completedTaskIds.length;
   const progressPercent = Math.round((completedCount / totalTasks) * 100);
 
-  // Compute stats from completed tasks
   const completedTasks = MOCK_TASKS.filter((t) => completedTaskIds.includes(t.id));
   const completedStudyMinutes = completedTasks
     .filter((t) => t.featureId !== 'sleep')
@@ -189,12 +314,20 @@ export function ProductPlayground() {
 
   const activeFeature = FEATURE_CONFIGS.find((f) => f.id === activeFeatureTab) || FEATURE_CONFIGS[0];
 
+  const renderActiveMockComponent = () => {
+    switch (activeFeature.id) {
+      case 'planning': return <MockPlanningView completedTaskIds={completedTaskIds} />;
+      case 'analytics': return <MockAnalyticsView completedTaskIds={completedTaskIds} />;
+      case 'sleep': return <MockSleepTrackerView completedTaskIds={completedTaskIds} />;
+      case 'advisor': return <MockAdvisorView completedTaskIds={completedTaskIds} />;
+    }
+  };
+
   return (
     <section 
       id="playground" 
       className="scroll-mt-20 py-20 sm:py-28 relative overflow-hidden border-t border-border/60"
     >
-      {/* Background ambient light */}
       <div className="pointer-events-none absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[130px]" />
       <div className="pointer-events-none absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
 
@@ -217,9 +350,8 @@ export function ProductPlayground() {
         {/* ========================================================
             TOP DOPAMINE HOOK: User Info & Main Progress Bar
             ======================================================== */}
-        <div className="mb-8 rounded-2xl border border-border bg-card/80 p-5 sm:p-6 backdrop-blur-xl shadow-xl">
+        <div className="mb-10 rounded-2xl border border-border bg-card/80 p-5 sm:p-6 backdrop-blur-xl shadow-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* User pill */}
             <div className="flex items-center gap-3">
               <div className="relative flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-base shadow-inner">
                 <span>روال</span>
@@ -238,7 +370,6 @@ export function ProductPlayground() {
               </div>
             </div>
 
-            {/* Score & Completed stats */}
             <div className="flex items-center gap-3 sm:gap-6 self-start sm:self-auto">
               <div className="flex flex-col items-start sm:items-end">
                 <span className="text-xs text-muted-foreground">ساعت ثبت‌شده</span>
@@ -263,7 +394,6 @@ export function ProductPlayground() {
             </div>
           </div>
 
-          {/* Glowing Animated Progress Bar */}
           <div className="mt-5 space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
@@ -286,7 +416,6 @@ export function ProductPlayground() {
               </span>
             </div>
 
-            {/* Custom high-performance animated progress bar */}
             <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted border border-border/80 p-0.5">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-l from-emerald-400 via-teal-400 to-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]"
@@ -299,42 +428,41 @@ export function ProductPlayground() {
         </div>
 
         {/* ========================================================
+            PRIMARY CONTROLLER: Feature Tabs Bar (Moved to Top)
+            ======================================================== */}
+        <div className="mb-8 flex justify-center w-full">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card/60 p-1.5 backdrop-blur-md shadow-sm w-full max-w-3xl">
+            {FEATURE_CONFIGS.map((feature) => {
+              const Icon = feature.icon;
+              const isActive = activeFeatureTab === feature.id;
+              return (
+                <button
+                  key={feature.id}
+                  type="button"
+                  onClick={() => setActiveFeatureTab(feature.id)}
+                  className={`group flex-1 flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-sm font-bold transition-all duration-300 outline-none ${
+                    isActive
+                      ? 'bg-background text-emerald-600 dark:text-emerald-400 shadow-sm border border-border/60 scale-[1.02]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Icon className={`size-4 transition-transform duration-300 ${isActive ? 'scale-110 text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                  <span className="truncate">{feature.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ========================================================
             TWO-COLUMN PLAYGROUND LAYOUT (RTL)
-            Right: Interactive Checklist / Feature Controllers
-            Left: Dynamic UI Visualizer
+            Right: Interactive Checklist
+            Left: Dynamic React UI Visualizer
             ======================================================== */}
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
-          {/* ----------------------------------------------------
-              RIGHT COLUMN: Interactive Checklist & Controllers
-              (Order 1 on mobile, visual right in RTL on desktop)
-              ---------------------------------------------------- */}
+          {/* RIGHT COLUMN: Interactive Checklist */}
           <div className="w-full lg:col-span-5 flex flex-col gap-5">
-            
-            {/* Feature Tabs Bar */}
-            <div className="flex items-center justify-between gap-1.5 rounded-xl border border-border/80 bg-card p-1.5 backdrop-blur-md">
-              {FEATURE_CONFIGS.map((feature) => {
-                const Icon = feature.icon;
-                const isActive = activeFeatureTab === feature.id;
-                return (
-                  <button
-                    key={feature.id}
-                    type="button"
-                    onClick={() => setActiveFeatureTab(feature.id)}
-                    className={`group flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 rounded-lg py-2 px-2 text-xs font-semibold transition-all duration-200 outline-none ${
-                      isActive
-                        ? 'bg-muted text-emerald-600 dark:text-emerald-400 shadow-sm border border-border/60'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                    }`}
-                  >
-                    <Icon className={`size-3.5 transition-transform group-hover:scale-110 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
-                    <span className="truncate">{feature.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Checklist Header */}
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 چک‌لیست تسک‌های روزانه (کلیک کن تا تیک بخوره)
@@ -354,7 +482,6 @@ export function ProductPlayground() {
               </button>
             </div>
 
-            {/* Tasks List */}
             <div className="flex flex-col gap-3">
               {MOCK_TASKS.map((task) => {
                 const isChecked = completedTaskIds.includes(task.id);
@@ -364,24 +491,14 @@ export function ProductPlayground() {
                   <motion.div
                     key={task.id}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      // Clicking anywhere on the card sets its feature tab active
-                      setActiveFeatureTab(task.featureId);
-                    }}
+                    onClick={() => setActiveFeatureTab(task.featureId)}
                     className={`group relative flex items-start gap-3.5 rounded-xl border p-3.5 sm:p-4 transition-all duration-200 cursor-pointer ${
                       isBelongingToActiveTab
                         ? 'border-emerald-500/40 bg-card shadow-sm ring-1 ring-emerald-500/20'
                         : 'border-border/80 bg-card/50 hover:border-border hover:bg-card/70'
                     }`}
                   >
-                    {/* Checkbox Container */}
-                    <div 
-                      className="pt-0.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleTask(task.id);
-                      }}
-                    >
+                    <div className="pt-0.5" onClick={(e) => { e.stopPropagation(); toggleTask(task.id); }}>
                       <motion.div
                         animate={isChecked ? { scale: [1, 1.25, 1] } : { scale: 1 }}
                         transition={{ duration: 0.25 }}
@@ -395,71 +512,38 @@ export function ProductPlayground() {
                       </motion.div>
                     </div>
 
-                    {/* Task Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 truncate">
-                          <span 
-                            className="size-2 rounded-full shrink-0" 
-                            style={{ backgroundColor: task.subjectColor }}
-                          />
-                          <h4 
-                            className={`text-sm font-bold truncate transition-all duration-300 ${
-                              isChecked 
-                                ? 'line-through text-muted-foreground opacity-60' 
-                                : 'text-foreground'
-                            }`}
-                          >
+                          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: task.subjectColor }} />
+                          <h4 className={`text-sm font-bold truncate transition-all duration-300 ${isChecked ? 'line-through text-muted-foreground opacity-60' : 'text-foreground'}`}>
                             {task.subject}
                           </h4>
                         </div>
-                        <Badge 
-                          variant="secondary" 
-                          className="shrink-0 text-[10px] py-0 px-2 font-normal bg-muted text-muted-foreground border-border/50"
-                        >
+                        <Badge variant="secondary" className="shrink-0 text-[10px] py-0 px-2 font-normal bg-muted text-muted-foreground border-border/50">
                           {task.badge}
                         </Badge>
                       </div>
 
-                      <p 
-                        className={`mt-1 text-xs transition-all duration-300 ${
-                          isChecked 
-                            ? 'line-through text-muted-foreground/80 opacity-60' 
-                            : 'text-muted-foreground'
-                        }`}
-                      >
+                      <p className={`mt-1 text-xs transition-all duration-300 ${isChecked ? 'line-through text-muted-foreground/80 opacity-60' : 'text-muted-foreground'}`}>
                         {task.topic}
                       </p>
 
                       <div className="mt-2.5 flex items-center gap-3 text-[11px] text-muted-foreground">
                         {task.featureId !== 'sleep' && task.featureId !== 'advisor' ? (
                           <>
-                            <span className="flex items-center gap-1">
-                              <Clock className="size-3" />
-                              {task.targetMinutes} دقیقه
-                            </span>
+                            <span className="flex items-center gap-1"><Clock className="size-3" />{task.targetMinutes} دقیقه</span>
                             <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <CheckCircle2 className="size-3" />
-                              {task.testCount} تست
-                            </span>
+                            <span className="flex items-center gap-1"><CheckCircle2 className="size-3" />{task.testCount} تست</span>
                           </>
                         ) : task.featureId === 'sleep' ? (
-                          <span className="flex items-center gap-1 text-indigo-500 dark:text-indigo-400">
-                            <Moon className="size-3" />
-                            ۷.۵ ساعت خواب ثبت‌شده
-                          </span>
+                          <span className="flex items-center gap-1 text-indigo-500 dark:text-indigo-400"><Moon className="size-3" />۷.۵ ساعت خواب ثبت‌شده</span>
                         ) : (
-                          <span className="flex items-center gap-1 text-pink-500 dark:text-pink-400">
-                            <MessageSquare className="size-3" />
-                            بازخورد مشاور آماده است
-                          </span>
+                          <span className="flex items-center gap-1 text-pink-500 dark:text-pink-400"><MessageSquare className="size-3" />بازخورد مشاور آماده است</span>
                         )}
-
                         {isChecked && (
                           <span className="mr-auto font-medium text-emerald-600 dark:text-emerald-400 text-[10px] flex items-center gap-1">
-                            <Check className="size-3" />
-                            انجام شد
+                            <Check className="size-3" /> انجام شد
                           </span>
                         )}
                       </div>
@@ -468,31 +552,24 @@ export function ProductPlayground() {
                 );
               })}
             </div>
-
-            {/* Quick helper tip */}
             <p className="text-center text-xs text-muted-foreground px-2 leading-relaxed">
-              💡 روی هر تسک کلیک کنی، نمای تخصصی اون در ستون روبرو بلافاصله باز می‌شه.
+              💡 روی هر تسک کلیک کنی، نمای تخصصی اون در بالا بلافاصله باز می‌شه.
             </p>
           </div>
 
-          {/* ----------------------------------------------------
-              LEFT COLUMN: Dynamic UI Visualizer
-              (Dynamically reacts to checkbox clicks and tab switching)
-              ---------------------------------------------------- */}
+          {/* LEFT COLUMN: Dynamic React UI Visualizer */}
           <div className="w-full lg:col-span-7">
-            <div className="rounded-2xl border border-border/90 bg-card/70 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="rounded-2xl border border-border/80 bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col h-full min-h-[450px]">
               
-              {/* Window Chrome Header */}
-              <div className="border-b border-border/80 bg-background/60 px-4 py-3 flex items-center justify-between gap-4">
+              <div className="border-b border-border/60 bg-background/40 px-4 py-3 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="size-2.5 rounded-full bg-red-500/60" />
                   <div className="size-2.5 rounded-full bg-amber-500/60" />
                   <div className="size-2.5 rounded-full bg-emerald-500/60" />
-                  <div className="mr-2 flex h-5.5 items-center rounded-md bg-muted px-3 text-[11px] font-mono text-muted-foreground border border-border/60">
+                  <div className="mr-2 flex h-5.5 items-center rounded-md bg-muted/60 px-3 text-[11px] font-mono text-muted-foreground border border-border/40">
                     revaledu.ir/{activeFeatureTab}
                   </div>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] py-0.5">
                     {activeFeature.badgeText}
@@ -500,8 +577,7 @@ export function ProductPlayground() {
                 </div>
               </div>
 
-              {/* Dynamic Feature Header & Realtime Stat Strip */}
-              <div className="p-5 sm:p-6 border-b border-border/60 bg-gradient-to-b from-card/40 to-transparent">
+              <div className="p-5 sm:p-6 border-b border-border/50 bg-gradient-to-b from-background/30 to-transparent">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
@@ -512,19 +588,16 @@ export function ProductPlayground() {
                       {activeFeature.tagline}
                     </p>
                   </div>
-
-                  {/* Micro stats tag */}
                   <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground border border-border/40">
-                      <Activity className="size-3 text-emerald-600 dark:text-emerald-400" />
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <Activity className="size-3" />
                       وضعیت: زنده
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Dynamic Screen Viewport with Crossfade */}
-              <div className="relative aspect-[16/10] sm:aspect-[16/9] w-full bg-zinc-950 overflow-hidden">
+              <div className="relative flex-1 w-full flex flex-col bg-transparent overflow-hidden p-4">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeFeature.id}
@@ -532,43 +605,9 @@ export function ProductPlayground() {
                     animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                     exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
                     transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="relative w-full h-full"
+                    className="relative w-full h-full flex flex-col rounded-xl border border-border/40 bg-card shadow-inner overflow-hidden"
                   >
-                    <Image
-                      src={activeFeature.image}
-                      alt={activeFeature.title}
-                      fill
-                      className="object-cover object-top"
-                      unoptimized={activeFeature.image.includes('landing-shots')}
-                      priority
-                    />
-
-                    {/* Interactive Realtime Overlay Card (Dopamine Trigger) */}
-                    <div className="absolute bottom-3 inset-x-3 sm:bottom-4 sm:inset-x-4 rounded-xl border border-zinc-800/90 bg-zinc-950/85 backdrop-blur-md p-3.5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 dark:border-zinc-800/90 dark:bg-zinc-950/85 bg-white/90 border-zinc-200">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="size-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                            همگام‌سازی لحظه‌ای با چک‌لیست شما
-                          </p>
-                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                            {completedCount === 0
-                              ? 'یک تسک را تیک بزنید تا بازخورد سیستم را ببینید.'
-                              : `${completedCount} تسک با موفقیت پردازش شد و آمار نمودارها به‌روزرسانی گردید.`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <Link
-                        href="#signup"
-                        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-3.5 py-1.5 text-xs font-bold text-zinc-950 transition-all shadow-md shrink-0 self-end sm:self-auto"
-                      >
-                        <span>ساخت این پنل برای خودم</span>
-                        <ArrowLeft className="size-3.5" />
-                      </Link>
-                    </div>
+                    {renderActiveMockComponent()}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -582,4 +621,5 @@ export function ProductPlayground() {
     </section>
   );
 }
+
 export default ProductPlayground;
