@@ -1,216 +1,238 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { 
-  CalendarCheck, 
-  BarChart3, 
-  Moon, 
-  Users, 
-  Check, 
-  Sparkles, 
-  Clock, 
-  CheckCircle2, 
-  ArrowLeft,
-  Flame,
-  Trophy,
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Home,
+  ClipboardList,
+  BarChart3,
+  Send,
+  History,
+  Wrench,
+  User,
+  CalendarDays,
+  ClipboardCheck,
   Activity,
-  MessageSquare
+  Moon,
+  FileText,
+  AlertCircle,
+  Clock,
+  Check,
+  FileText as FileTextIcon,
+  MessageSquareText,
+  UserRound,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-// ==========================================
-// Types & Mock Data
-// ==========================================
+export type TabId = 'dashboard' | 'plan' | 'analytics' | 'sleep' | 'advisor';
 
-export type FeatureTabId = 'planning' | 'analytics' | 'sleep' | 'advisor';
-
-export interface MockTask {
-  id: string;
-  featureId: FeatureTabId;
-  subject: string;
-  topic: string;
-  targetMinutes: number;
-  testCount: number;
-  subjectColor: string;
-  badge: string;
-}
-
-const MOCK_TASKS: MockTask[] = [
-  {
-    id: 'task-bio',
-    featureId: 'planning',
-    subject: 'زیست‌شناسی ۳',
-    topic: 'گفتار ۲: تنظیم بیان ژن و پروتئین‌سازی',
-    targetMinutes: 45,
-    testCount: 30,
-    subjectColor: '#10b981', // emerald
-    badge: 'تست آموزشی',
-  },
-  {
-    id: 'task-chem',
-    featureId: 'planning',
-    subject: 'شیمی دوازدهم',
-    topic: 'فصل اول: اسیدها و بازها و ثابت تعادل',
-    targetMinutes: 60,
-    testCount: 25,
-    subjectColor: '#06b6d4', // cyan
-    badge: 'مرور و جمع‌بندی',
-  },
-  {
-    id: 'task-phys',
-    featureId: 'analytics',
-    subject: 'فیزیک ۳',
-    topic: 'دینامیک پیشرفته: تکانه و قوانین نیوتون',
-    targetMinutes: 90,
-    testCount: 40,
-    subjectColor: '#f59e0b', // amber
-    badge: 'تست زمان‌دار',
-  },
-  {
-    id: 'task-math',
-    featureId: 'analytics',
-    subject: 'ریاضیات تجربی',
-    topic: 'کاربرد مشتق: نقاط بحرانی و اکسترمم‌های نسبی',
-    targetMinutes: 60,
-    testCount: 20,
-    subjectColor: '#a855f7', // purple
-    badge: 'تحلیل تیپ‌تست',
-  },
-  {
-    id: 'task-sleep',
-    featureId: 'sleep',
-    subject: 'پایش ریتم خواب',
-    topic: 'خواب شبانه ۲۳:۳۰ الی ۰۷:۰۰ (۷.۵ ساعت خواب مفید)',
-    targetMinutes: 450, // 7.5 hrs
-    testCount: 0,
-    subjectColor: '#6366f1', // indigo
-    badge: 'نظم شبانه‌روزی',
-  },
-  {
-    id: 'task-advisor',
-    featureId: 'advisor',
-    subject: 'ارتباط با مشاور',
-    topic: 'ارسال خودکار گزارش‌کار روزانه و دریافت فیدبک تحلیلی',
-    targetMinutes: 15,
-    testCount: 0,
-    subjectColor: '#ec4899', // pink
-    badge: 'بازخورد آنلاین',
-  },
-];
-
-interface FeatureConfig {
-  id: FeatureTabId;
-  title: string;
-  label: string;
-  tagline: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badgeText: string;
-}
-
-const FEATURE_CONFIGS: FeatureConfig[] = [
-  {
-    id: 'planning',
-    title: 'بودجه‌بندی و برنامه‌ریزی هوشمند',
-    label: 'برنامه‌ریزی',
-    tagline: 'چینش دقیق مباحث در باکس‌های مطالعاتی متناسب با توان ذهنی و کنکور',
-    icon: CalendarCheck,
-    badgeText: 'تقویم هوشمند',
-  },
-  {
-    id: 'analytics',
-    title: 'آنالیز دقیق ساعت و تست',
-    label: 'آنالیز پیشرفته',
-    tagline: 'رسم خودکار نمودارهای پیشرفت، ساعت مطالعه و بازدهی تستی بدون دفتر کاغذی',
-    icon: BarChart3,
-    badgeText: 'تحلیل لحظه‌ای',
-  },
-  {
-    id: 'sleep',
-    title: 'پایش الگوی خواب و سبک زندگی',
-    label: 'پایش خواب',
-    tagline: 'ثبت منظم خواب شبانه و کشف همبستگی کیفیت استراحت با تمرکز روزانه',
-    icon: Moon,
-    badgeText: 'سلامت ذهن',
-  },
-  {
-    id: 'advisor',
-    title: 'ارتباط زنده و شفاف با مشاور',
-    label: 'پنل مشاور',
-    tagline: 'ارسال بلادرنگ گزارش‌کار و تبدیل جلسات به گفت‌وگوهای راهبردی و موثر',
-    icon: Users,
-    badgeText: 'نظارت دوطرفه',
-  },
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'dashboard', label: 'داشبورد روزانه' },
+  { id: 'plan', label: 'برنامه‌ریزی مطالعاتی' },
+  { id: 'analytics', label: 'آنالیز پیشرفته دروس' },
+  { id: 'sleep', label: 'پایش الگوی خواب' },
+  { id: 'advisor', label: 'پنل اختصاصی مشاور' },
 ];
 
 // ==========================================
-// Mock UI Components
+// Mock UI Components (Dark Mode Fixed)
 // ==========================================
 
-function MockPlanningView({ completedTaskIds }: { completedTaskIds: string[] }) {
-  const blocks = [
-    { id: 'task-bio', time: '۰۸:۰۰ - ۰۹:۳۰', title: 'زیست‌شناسی ۳', type: 'تست آموزشی' },
-    { id: 'task-chem', time: '۰۹:۴۵ - ۱۰:۴۵', title: 'شیمی دوازدهم', type: 'مرور و جمع‌بندی' },
-    { id: 'task-phys', time: '۱۱:۰۰ - ۱۲:۳۰', title: 'فیزیک ۳', type: 'تست زمان‌دار' },
+function MockSidebar({ activeTab }: { activeTab: TabId }) {
+  const navItems = [
+    { id: 'dashboard', label: 'خانه', icon: Home },
+    { id: 'plan', label: 'برنامه من', icon: ClipboardList },
+    { id: 'advisor', label: 'ارتباط با مشاور', icon: Send },
+    { id: 'history', label: 'سوابق آزمون‌ها', icon: History },
+    { id: 'tools', label: 'ابزارها', icon: Wrench },
+    { id: 'analytics', label: 'تحلیل', icon: BarChart3 },
+    { id: 'settings', label: 'تنظیمات', icon: User },
   ];
 
   return (
-    <div className="w-full h-full p-6 bg-transparent flex flex-col justify-center gap-3">
-      <h4 className="text-foreground font-bold mb-2">برنامه مطالعاتی امروز</h4>
-      {blocks.map((b) => {
-        const isDone = completedTaskIds.includes(b.id);
-        return (
-          <motion.div 
-            key={b.id} 
-            layout
-            className={`flex items-stretch rounded-xl border overflow-hidden transition-all duration-300 ${isDone ? 'bg-emerald-500/10 border-emerald-500/20 shadow-sm' : 'bg-background border-border shadow-sm'}`}
-          >
-            <div className={`w-1.5 transition-colors ${isDone ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
-            <div className="flex-1 p-3 flex items-center justify-between">
-              <div>
-                <p className={`text-sm font-bold transition-all ${isDone ? 'text-muted-foreground line-through opacity-70' : 'text-foreground'}`}>{b.title}</p>
-                <p className="text-xs text-muted-foreground mt-1 font-mono">{b.time}</p>
-              </div>
-              <Badge variant="outline" className={`transition-colors ${isDone ? 'text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-muted-foreground'}`}>
-                {isDone ? 'تکمیل شده' : b.type}
-              </Badge>
+    <aside className="hidden md:flex flex-col w-64 border-l border-zinc-800 bg-zinc-950 shrink-0 select-none">
+      <div className="h-16 flex items-center justify-center px-5 border-b border-zinc-800">
+        <div className="relative h-11 w-full rounded-lg bg-emerald-500 flex items-center justify-center overflow-hidden">
+          <span className="text-zinc-950 font-black text-lg">روال</span>
+          <span className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/20" />
+        </div>
+      </div>
+
+      <div className="px-3 pt-4">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-semibold text-zinc-100">دانش‌آموز</span>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 px-3 py-4">
+        <ul className="flex flex-col gap-1">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            return (
+              <li key={item.id}>
+                <div className={`relative w-full flex items-center gap-3 rounded-xl px-3 h-11 transition-colors ${isActive ? 'text-emerald-500 font-semibold' : 'text-zinc-400'}`}>
+                  {isActive && (
+                    <motion.span layoutId="sidebar-pill" className="absolute inset-0 rounded-xl bg-emerald-500/10" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />
+                  )}
+                  {isActive && (
+                    <motion.span layoutId="sidebar-active" className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-l-full bg-emerald-500" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
+                  )}
+                  <Icon className={`relative w-5 h-5 shrink-0 ${isActive ? '' : 'opacity-80'}`} />
+                  <span className="relative text-sm">{item.label}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </aside>
+  );
+}
+
+function MockTaskCard({ subject, title, color, time, completed = false }: { subject: string; title: string; color: string; time: string; completed?: boolean }) {
+  return (
+    <div className={`group relative overflow-hidden rounded-xl p-4 md:p-5 border border-zinc-800 bg-zinc-900/50 ${completed ? 'opacity-60' : ''}`}>
+      <div className="relative z-10 flex flex-col justify-between gap-4 h-full">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+              <span className={`text-[11px] font-bold tracking-tight ${completed ? 'text-zinc-500' : 'text-zinc-300'}`}>{subject}</span>
             </div>
-          </motion.div>
-        );
-      })}
+            <h3 className={`text-sm font-bold leading-tight ${completed ? 'text-zinc-500 line-through' : 'text-zinc-100'}`}>{title}</h3>
+          </div>
+          <div className={`flex items-center justify-center w-6 h-6 rounded-md border ${completed ? 'bg-emerald-500 border-emerald-500 text-zinc-950' : 'border-zinc-700 text-transparent'}`}>
+            <Check className="w-4 h-4 stroke-[3]" />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-[11px] font-medium text-zinc-400 bg-zinc-800/50 px-2 py-1 rounded-md">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="font-mono">{time}</span>
+          </div>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
 
-function MockAnalyticsView({ completedTaskIds }: { completedTaskIds: string[] }) {
-  const bioCompleted = completedTaskIds.includes('task-bio');
-  const physCompleted = completedTaskIds.includes('task-phys');
-  const mathCompleted = completedTaskIds.includes('task-math');
-  const chemCompleted = completedTaskIds.includes('task-chem');
-
-  const data = [
-    { name: 'زیست', hours: bioCompleted ? 2.5 : 0.5, fill: '#10b981' },
-    { name: 'شیمی', hours: chemCompleted ? 1.5 : 0.5, fill: '#06b6d4' },
-    { name: 'فیزیک', hours: physCompleted ? 2 : 0, fill: '#f59e0b' },
-    { name: 'ریاضی', hours: mathCompleted ? 1.5 : 0, fill: '#a855f7' },
+function MockDashboard() {
+  const PLAN_SECTION_CARDS = [
+    { label: 'برنامه روز', icon: CalendarDays },
+    { label: 'آزمون‌ها', icon: ClipboardCheck },
+    { label: 'کارهای متفرقه', icon: Activity },
+    { label: 'خواب', icon: Moon },
+    { label: 'یادداشت‌ها', icon: FileText },
+    { label: 'تکمیل‌نشده', icon: AlertCircle },
   ];
 
   return (
-    <div className="w-full h-full p-6 bg-transparent flex flex-col justify-center">
-      <h4 className="text-foreground font-bold mb-6">ساعت مطالعه دروس (امروز)</h4>
-      <div className="flex-1 min-h-[250px] w-full">
+    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 bg-zinc-950 flex flex-col h-full">
+      <div className="mb-8">
+        <h1 className="text-2xl font-black text-zinc-100 mb-1">سلام آرمان 👋</h1>
+        <p className="text-sm text-zinc-400">امروز پنجشنبه، ۱۲ مهر. بریم سراغ تسک‌ها!</p>
+      </div>
+
+      <div className="mb-8 grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-3">
+        {PLAN_SECTION_CARDS.map(({ label, icon: Icon }) => (
+          <div key={label} className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-3 text-center h-20 sm:h-24">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+              <Icon className="h-4 w-4" strokeWidth={2.2} />
+            </span>
+            <span className="text-[10px] sm:text-xs font-semibold text-zinc-300">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
+          <CalendarDays className="w-5 h-5 text-emerald-500" />
+          تسک‌های امروز
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <MockTaskCard subject="زیست‌شناسی ۳" title="گفتار ۲: تنظیم بیان ژن" color="#10b981" time="45 دقیقه" completed />
+          <MockTaskCard subject="شیمی دوازدهم" title="فصل اول: اسیدها و بازها" color="#06b6d4" time="60 دقیقه" />
+          <MockTaskCard subject="فیزیک ۳" title="تکانه و قوانین نیوتون" color="#f59e0b" time="90 دقیقه" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MockPlan() {
+  return (
+    <div className="flex-1 p-6 lg:p-8 bg-zinc-950 flex flex-col h-full overflow-y-auto">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-black text-zinc-100">برنامه من</h1>
+        <div className="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300">
+          هفته دوم مهر
+        </div>
+      </div>
+      
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((day, i) => (
+          <div key={day} className={`flex-col items-center justify-center shrink-0 w-16 h-20 rounded-2xl border flex ${i === 5 ? 'bg-emerald-500 border-emerald-500 text-zinc-950' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>
+            <span className="text-[10px] font-bold">{day}</span>
+            <span className={`text-lg font-black mt-1 ${i === 5 ? 'text-zinc-950' : 'text-zinc-100'}`}>{i + 7}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        <MockTaskCard subject="ریاضیات تجربی" title="کاربرد مشتق: اکسترمم‌های نسبی" color="#a855f7" time="60 دقیقه" />
+        <MockTaskCard subject="زبان انگلیسی" title="واژگان درس اول" color="#3b82f6" time="30 دقیقه" />
+        <MockTaskCard subject="زیست‌شناسی ۳" title="مرور گفتار ۱" color="#10b981" time="45 دقیقه" />
+      </div>
+    </div>
+  );
+}
+
+function MockAnalytics() {
+  const data = [
+    { name: 'شنبه', hours: 4.5 },
+    { name: 'یکشنبه', hours: 5.2 },
+    { name: 'دوشنبه', hours: 6.0 },
+    { name: 'سه‌شنبه', hours: 5.5 },
+    { name: 'چهارشنبه', hours: 7.1 },
+    { name: 'پنجشنبه', hours: 2.5 },
+  ];
+
+  return (
+    <div className="flex-1 p-6 lg:p-8 bg-zinc-950 flex flex-col h-full overflow-hidden">
+      <div className="mb-8">
+        <h1 className="text-2xl font-black text-zinc-100 mb-1">آنالیز پیشرفته</h1>
+        <p className="text-sm text-zinc-400">روند ساعت مطالعه در ۷ روز گذشته</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'میانگین روزانه', val: '۵.۱ ساعت' },
+          { label: 'کل هفته', val: '۳۰.۸ ساعت' },
+          { label: 'تست‌های زده شده', val: '۲۴۵ تست' },
+          { label: 'رشد نسبت به قبل', val: '+۱۲٪', color: 'text-emerald-500' },
+        ].map(stat => (
+          <div key={stat.label} className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-2xl flex flex-col">
+            <span className="text-[11px] text-zinc-400 mb-1">{stat.label}</span>
+            <span className={`text-lg font-black ${stat.color || 'text-zinc-100'}`}>{stat.val}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 min-h-[250px] w-full bg-zinc-900/30 border border-zinc-800 rounded-2xl p-4">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
-            <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
+          <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+            <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} axisLine={false} tickLine={false} />
             <Tooltip 
-              cursor={{ fill: 'hsl(var(--muted))' }} 
-              contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))', textAlign: 'right' }} 
+              cursor={{ fill: '#27272a' }} 
+              contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', textAlign: 'right' }} 
               formatter={(value: number) => [`${value} ساعت`, 'مطالعه']}
             />
-            <Bar dataKey="hours" radius={[6, 6, 0, 0]} animationDuration={1000} />
+            <Bar dataKey="hours" fill="#10b981" radius={[4, 4, 0, 0]} animationDuration={1000} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -218,62 +240,64 @@ function MockAnalyticsView({ completedTaskIds }: { completedTaskIds: string[] })
   );
 }
 
-function MockSleepTrackerView({ completedTaskIds }: { completedTaskIds: string[] }) {
-  const isSleepLogged = completedTaskIds.includes('task-sleep');
-  
+function MockSleep() {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-transparent">
-      <div className={`relative flex size-36 items-center justify-center rounded-full border-[8px] transition-all duration-1000 ${isSleepLogged ? 'border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.2)]' : 'border-muted'}`}>
-         <div className="text-center">
-            <span className="text-4xl font-black text-foreground">{isSleepLogged ? '۷.۵' : '--'}</span>
-            <span className="block text-xs text-muted-foreground mt-1">ساعت خواب</span>
-         </div>
-         <Moon className={`absolute -bottom-4 right-0 size-8 transition-colors duration-1000 drop-shadow-md ${isSleepLogged ? 'text-indigo-500' : 'text-muted'}`} />
-      </div>
-      <div className="mt-8 text-center max-w-[250px]">
-         <h4 className="font-bold text-foreground mb-2">وضعیت انرژی روزانه</h4>
-         <p className="text-muted-foreground text-sm">
-           {isSleepLogged ? 'خواب شما در بازه طلایی قرار دارد. انرژی امروز: عالی ⚡' : 'هنوز خواب دیشب ثبت نشده است. برای پایش انرژی چک‌لیست را تیک بزنید.'}
-         </p>
+    <div className="flex-1 p-6 lg:p-8 bg-zinc-950 flex flex-col h-full items-center justify-center">
+      <div className="w-full max-w-sm bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 flex flex-col items-center">
+        <div className="relative flex size-40 items-center justify-center rounded-full border-[10px] border-indigo-500 shadow-[0_0_40px_rgba(99,102,241,0.15)] mb-6">
+          <div className="text-center">
+            <span className="text-4xl font-black text-zinc-100">۷.۵</span>
+            <span className="block text-xs text-zinc-400 mt-1">ساعت</span>
+          </div>
+          <Moon className="absolute -bottom-5 right-2 size-8 text-indigo-400 drop-shadow-lg bg-zinc-900 rounded-full p-1" />
+        </div>
+        <h3 className="text-xl font-bold text-zinc-100 mb-2">کیفیت خواب: عالی</h3>
+        <p className="text-center text-sm text-zinc-400 leading-relaxed">
+          شما شب گذشته از ساعت ۲۳:۳۰ تا ۰۷:۰۰ استراحت کردید. ریتم خواب شما در بازه طلایی قرار دارد.
+        </p>
       </div>
     </div>
-  )
+  );
 }
 
-function MockAdvisorView({ completedTaskIds }: { completedTaskIds: string[] }) {
-  const advisorNotified = completedTaskIds.includes('task-advisor');
-
+function MockAdvisor() {
   return (
-    <div className="w-full h-full flex flex-col p-6 bg-transparent overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-border/60 pb-4">
-         <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20 font-bold text-lg">
-            م
-         </div>
-         <div>
-            <h4 className="font-bold text-foreground">دکتر محمدی (مشاور)</h4>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-0.5"><span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> آنلاین</p>
-         </div>
+    <div className="flex-1 bg-zinc-950 flex flex-col h-full overflow-hidden relative">
+      <div className="h-16 border-b border-zinc-800 bg-zinc-900/40 px-6 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 font-bold">
+            <UserRound className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-zinc-100 text-sm">دکتر محمدی (مشاور)</h4>
+            <p className="text-xs text-emerald-500 font-medium flex items-center gap-1 mt-0.5"><span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> آنلاین</p>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4 flex-1 justify-end pt-4">
-         <div className="self-start bg-muted rounded-2xl rounded-tr-sm p-3.5 max-w-[85%] text-sm text-foreground shadow-sm">
-            سلام خسته نباشی! گزارش کار امروزت رو برام بفرست تا با هم تحلیلش کنیم.
-         </div>
-         
-         <AnimatePresence>
-            {advisorNotified && (
-               <motion.div 
-                 initial={{ opacity: 0, y: 10, scale: 0.95 }} 
-                 animate={{ opacity: 1, y: 0, scale: 1 }} 
-                 className="self-end bg-emerald-600 text-white rounded-2xl rounded-tl-sm p-3.5 max-w-[85%] text-sm shadow-md"
-               >
-                 سلام استاد! تسک‌های امروزم شامل زیست، شیمی و فیزیک رو تیک زدم. روی نمودار هم پیشرفتم ثبت شد!
-               </motion.div>
-            )}
-         </AnimatePresence>
+      <div className="flex-1 p-6 flex flex-col justify-end gap-4 bg-[url('/noise.png')] bg-repeat opacity-90">
+        <div className="self-center bg-zinc-900 border border-zinc-800 rounded-full px-3 py-1 text-[10px] text-zinc-500 mb-2">امروز</div>
+        <div className="self-start bg-zinc-800 rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-sm">
+          <p className="text-sm text-zinc-100 leading-relaxed">سلام خسته نباشی! گزارش کار امروزت عالی بود. فقط برای فیزیک سعی کن تست‌های زمان‌دار بیشتری بزنی.</p>
+          <span className="text-[10px] text-zinc-400 mt-2 block">۱۴:۳۰</span>
+        </div>
+        
+        <div className="self-end bg-emerald-600 rounded-2xl rounded-tl-sm p-4 max-w-[80%] shadow-md">
+          <p className="text-sm text-white leading-relaxed">سلام استاد چشم! برای فیزیک فردا یه باکس ۴۵ دقیقه‌ای تست زمان‌دار اضافه کردم به برنامه.</p>
+          <span className="text-[10px] text-emerald-200 mt-2 block text-right">۱۴:۳۵</span>
+        </div>
+      </div>
+      
+      <div className="p-4 bg-zinc-950 border-t border-zinc-800">
+        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
+          <input type="text" placeholder="پیام خود را بنویسید..." className="bg-transparent flex-1 outline-none text-sm text-zinc-100 h-8 placeholder:text-zinc-600" disabled />
+          <button className="w-8 h-8 rounded-lg bg-emerald-500 text-zinc-950 flex items-center justify-center">
+            <Send className="w-4 h-4 ml-0.5" />
+          </button>
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ==========================================
@@ -281,340 +305,73 @@ function MockAdvisorView({ completedTaskIds }: { completedTaskIds: string[] }) {
 // ==========================================
 
 export function ProductPlayground() {
-  const [completedTaskIds, setCompletedTaskIds] = React.useState<string[]>(['task-bio']);
-  const [activeFeatureTab, setActiveFeatureTab] = React.useState<FeatureTabId>('planning');
-  const reduceMotion = useReducedMotion();
+  const [activeTab, setActiveTab] = React.useState<TabId>('dashboard');
 
-  const toggleTask = (taskId: string) => {
-    setCompletedTaskIds((prev) => {
-      const isAlready = prev.includes(taskId);
-      if (isAlready) {
-        return prev.filter((id) => id !== taskId);
-      } else {
-        return [...prev, taskId];
-      }
-    });
-
-    const clickedTask = MOCK_TASKS.find((t) => t.id === taskId);
-    if (clickedTask && clickedTask.featureId !== activeFeatureTab) {
-      setActiveFeatureTab(clickedTask.featureId);
-    }
-  };
-
-  const totalTasks = MOCK_TASKS.length;
-  const completedCount = completedTaskIds.length;
-  const progressPercent = Math.round((completedCount / totalTasks) * 100);
-
-  const completedTasks = MOCK_TASKS.filter((t) => completedTaskIds.includes(t.id));
-  const completedStudyMinutes = completedTasks
-    .filter((t) => t.featureId !== 'sleep')
-    .reduce((acc, t) => acc + t.targetMinutes, 0);
-  const completedStudyHours = (completedStudyMinutes / 60).toFixed(1);
-  const completedTests = completedTasks.reduce((acc, t) => acc + t.testCount, 0);
-
-  const activeFeature = FEATURE_CONFIGS.find((f) => f.id === activeFeatureTab) || FEATURE_CONFIGS[0];
-
-  const renderActiveMockComponent = () => {
-    switch (activeFeature.id) {
-      case 'planning': return <MockPlanningView completedTaskIds={completedTaskIds} />;
-      case 'analytics': return <MockAnalyticsView completedTaskIds={completedTaskIds} />;
-      case 'sleep': return <MockSleepTrackerView completedTaskIds={completedTaskIds} />;
-      case 'advisor': return <MockAdvisorView completedTaskIds={completedTaskIds} />;
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard': return <MockDashboard />;
+      case 'plan': return <MockPlan />;
+      case 'analytics': return <MockAnalytics />;
+      case 'sleep': return <MockSleep />;
+      case 'advisor': return <MockAdvisor />;
     }
   };
 
   return (
-    <section 
-      id="playground" 
-      className="scroll-mt-20 py-20 sm:py-28 relative overflow-hidden border-t border-border/60"
-    >
-      <div className="pointer-events-none absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[130px]" />
-      <div className="pointer-events-none absolute bottom-0 left-1/4 h-[400px] w-[400px] rounded-full bg-teal-500/5 blur-[120px]" />
-
-      <div className="mx-auto max-w-6xl px-5 sm:px-8 relative z-10">
+    <section id="playground" className="scroll-mt-20 py-20 sm:py-28 relative border-t border-border/60">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 relative z-10">
         
-        {/* Section Title */}
         <div className="mb-12 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 backdrop-blur-md mb-4">
-            <Sparkles className="size-3.5 animate-pulse" />
-            <span>محیط اپ، قدم به قدم</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground tracking-tight text-balance">
-            قبل از ثبت‌نام، حس خوب «روی روال بودن» رو تجربه کن
+          <h2 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight text-balance">
+            محیط اپلیکیشن روال
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm sm:text-base leading-relaxed text-balance">
-            تسک‌های روزانه‌ی <span className="text-emerald-600 dark:text-emerald-400 font-bold">«دوست روالی من»</span> رو تیک بزن تا ثبت سریع، پر شدن نوار پیشرفت و نمودارهای لحظه‌ای رو لمس کنی.
+          <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm sm:text-base leading-relaxed">
+            محیطی تمیز، سریع و بدون حواس‌پرتی که دقیقاً برای نیازهای یک دانش‌آموز حرفه‌ای طراحی شده است.
           </p>
         </div>
 
-        {/* ========================================================
-            TOP DOPAMINE HOOK: User Info & Main Progress Bar
-            ======================================================== */}
-        <div className="mb-10 rounded-2xl border border-border bg-card/80 p-5 sm:p-6 backdrop-blur-xl shadow-xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-base shadow-inner">
-                <span>روال</span>
-                <span className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 border-2 border-background" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-foreground text-base sm:text-lg">دوست روالی من</h3>
-                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] py-0 px-2 font-medium">
-                    کنکوری هدفمند
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  برنامه‌ی اختصاصی امروز • پنجشنبه، ۱۲ مهر
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 sm:gap-6 self-start sm:self-auto">
-              <div className="flex flex-col items-start sm:items-end">
-                <span className="text-xs text-muted-foreground">ساعت ثبت‌شده</span>
-                <span className="text-sm sm:text-base font-bold text-foreground">
-                  {completedStudyHours} از ۴.۵ ساعت
-                </span>
-              </div>
-              <div className="h-7 w-px bg-border" />
-              <div className="flex flex-col items-start sm:items-end">
-                <span className="text-xs text-muted-foreground">تست کارشده</span>
-                <span className="text-sm sm:text-base font-bold text-foreground">
-                  {completedTests} از ۱۱۵ تست
-                </span>
-              </div>
-              <div className="h-7 w-px bg-border" />
-              <div className="flex flex-col items-start sm:items-end">
-                <span className="text-xs text-muted-foreground">پیشرفت کل</span>
-                <span className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400">
-                  {progressPercent}٪
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5 font-medium">
-                {progressPercent === 100 ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                    <Trophy className="size-3.5" />
-                    فوق‌العاده است! تمام برنامه‌ی امروز روال شد!
-                  </span>
-                ) : progressPercent >= 50 ? (
-                  <span className="text-teal-600 dark:text-teal-400 font-medium flex items-center gap-1">
-                    <Flame className="size-3.5 text-amber-500" />
-                    بیش از نیمی از مسیر امروز رو رفتی؛ ادامه بده!
-                  </span>
-                ) : (
-                  <span>با زدن تیک هر تسک، بازدهی و نوار پیشرفتت رشد می‌کنه</span>
-                )}
-              </span>
-              <span className="font-semibold text-foreground">
-                {completedCount} از {totalTasks} تسک تکمیل شد
-              </span>
-            </div>
-
-            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted border border-border/80 p-0.5">
-              <motion.div
-                className="h-full rounded-full bg-gradient-to-l from-emerald-400 via-teal-400 to-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]"
-                initial={false}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ type: 'spring', stiffness: 90, damping: 18 }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================
-            PRIMARY CONTROLLER: Feature Tabs Bar (Moved to Top)
-            ======================================================== */}
+        {/* TOP TABS */}
         <div className="mb-8 flex justify-center w-full">
-          <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card/60 p-1.5 backdrop-blur-md shadow-sm w-full max-w-3xl">
-            {FEATURE_CONFIGS.map((feature) => {
-              const Icon = feature.icon;
-              const isActive = activeFeatureTab === feature.id;
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card/60 p-1.5 backdrop-blur-md shadow-sm w-full max-w-4xl">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
               return (
                 <button
-                  key={feature.id}
-                  type="button"
-                  onClick={() => setActiveFeatureTab(feature.id)}
-                  className={`group flex-1 flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-sm font-bold transition-all duration-300 outline-none ${
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`group flex-1 py-2.5 px-3 rounded-xl text-sm font-bold transition-all duration-300 outline-none ${
                     isActive
-                      ? 'bg-background text-emerald-600 dark:text-emerald-400 shadow-sm border border-border/60 scale-[1.02]'
+                      ? 'bg-emerald-500 text-zinc-950 shadow-md scale-[1.02]'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                   }`}
                 >
-                  <Icon className={`size-4 transition-transform duration-300 ${isActive ? 'scale-110 text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
-                  <span className="truncate">{feature.label}</span>
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ========================================================
-            TWO-COLUMN PLAYGROUND LAYOUT (RTL)
-            Right: Interactive Checklist
-            Left: Dynamic React UI Visualizer
-            ======================================================== */}
-        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        {/* MAIN APP REPLICA WINDOW */}
+        <div dir="rtl" className="w-full aspect-[4/3] md:aspect-[16/10] lg:aspect-[16/9] max-h-[800px] bg-zinc-950 border border-zinc-800 rounded-3xl shadow-[0_30px_100px_-20px_rgba(0,0,0,0.6)] overflow-hidden flex flex-row">
+          {/* Mock Sidebar (Desktop) */}
+          <MockSidebar activeTab={activeTab} />
           
-          {/* RIGHT COLUMN: Interactive Checklist */}
-          <div className="w-full lg:col-span-5 flex flex-col gap-5">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                چک‌لیست تسک‌های روزانه (کلیک کن تا تیک بخوره)
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (completedTaskIds.length === totalTasks) {
-                    setCompletedTaskIds([]);
-                  } else {
-                    setCompletedTaskIds(MOCK_TASKS.map((t) => t.id));
-                  }
-                }}
-                className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors font-medium"
+          {/* Mock Main Content */}
+          <div className="flex-1 relative overflow-hidden bg-zinc-950">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+                transition={{ duration: 0.25, ease: [0.2, 1, 0.3, 1] }}
+                className="absolute inset-0 w-full h-full"
               >
-                {completedTaskIds.length === totalTasks ? 'خالی کردن همه' : 'تیک زدن همه'}
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {MOCK_TASKS.map((task) => {
-                const isChecked = completedTaskIds.includes(task.id);
-                const isBelongingToActiveTab = task.featureId === activeFeatureTab;
-
-                return (
-                  <motion.div
-                    key={task.id}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveFeatureTab(task.featureId)}
-                    className={`group relative flex items-start gap-3.5 rounded-xl border p-3.5 sm:p-4 transition-all duration-200 cursor-pointer ${
-                      isBelongingToActiveTab
-                        ? 'border-emerald-500/40 bg-card shadow-sm ring-1 ring-emerald-500/20'
-                        : 'border-border/80 bg-card/50 hover:border-border hover:bg-card/70'
-                    }`}
-                  >
-                    <div className="pt-0.5" onClick={(e) => { e.stopPropagation(); toggleTask(task.id); }}>
-                      <motion.div
-                        animate={isChecked ? { scale: [1, 1.25, 1] } : { scale: 1 }}
-                        transition={{ duration: 0.25 }}
-                        className={`flex size-5 items-center justify-center rounded-md border transition-all ${
-                          isChecked
-                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                            : 'border-muted-foreground/40 bg-background hover:border-emerald-500/50'
-                        }`}
-                      >
-                        {isChecked && <Check className="size-3.5 stroke-[3]" />}
-                      </motion.div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 truncate">
-                          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: task.subjectColor }} />
-                          <h4 className={`text-sm font-bold truncate transition-all duration-300 ${isChecked ? 'line-through text-muted-foreground opacity-60' : 'text-foreground'}`}>
-                            {task.subject}
-                          </h4>
-                        </div>
-                        <Badge variant="secondary" className="shrink-0 text-[10px] py-0 px-2 font-normal bg-muted text-muted-foreground border-border/50">
-                          {task.badge}
-                        </Badge>
-                      </div>
-
-                      <p className={`mt-1 text-xs transition-all duration-300 ${isChecked ? 'line-through text-muted-foreground/80 opacity-60' : 'text-muted-foreground'}`}>
-                        {task.topic}
-                      </p>
-
-                      <div className="mt-2.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-                        {task.featureId !== 'sleep' && task.featureId !== 'advisor' ? (
-                          <>
-                            <span className="flex items-center gap-1"><Clock className="size-3" />{task.targetMinutes} دقیقه</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1"><CheckCircle2 className="size-3" />{task.testCount} تست</span>
-                          </>
-                        ) : task.featureId === 'sleep' ? (
-                          <span className="flex items-center gap-1 text-indigo-500 dark:text-indigo-400"><Moon className="size-3" />۷.۵ ساعت خواب ثبت‌شده</span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-pink-500 dark:text-pink-400"><MessageSquare className="size-3" />بازخورد مشاور آماده است</span>
-                        )}
-                        {isChecked && (
-                          <span className="mr-auto font-medium text-emerald-600 dark:text-emerald-400 text-[10px] flex items-center gap-1">
-                            <Check className="size-3" /> انجام شد
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-            <p className="text-center text-xs text-muted-foreground px-2 leading-relaxed">
-              💡 روی هر تسک کلیک کنی، نمای تخصصی اون در بالا بلافاصله باز می‌شه.
-            </p>
+                {renderContent()}
+              </motion.div>
+            </AnimatePresence>
           </div>
-
-          {/* LEFT COLUMN: Dynamic React UI Visualizer */}
-          <div className="w-full lg:col-span-7">
-            <div className="rounded-2xl border border-border/80 bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col h-full min-h-[450px]">
-              
-              <div className="border-b border-border/60 bg-background/40 px-4 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="size-2.5 rounded-full bg-red-500/60" />
-                  <div className="size-2.5 rounded-full bg-amber-500/60" />
-                  <div className="size-2.5 rounded-full bg-emerald-500/60" />
-                  <div className="mr-2 flex h-5.5 items-center rounded-md bg-muted/60 px-3 text-[11px] font-mono text-muted-foreground border border-border/40">
-                    revaledu.ir/{activeFeatureTab}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] py-0.5">
-                    {activeFeature.badgeText}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="p-5 sm:p-6 border-b border-border/50 bg-gradient-to-b from-background/30 to-transparent">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
-                      <activeFeature.icon className="size-5 text-emerald-600 dark:text-emerald-400" />
-                      {activeFeature.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl">
-                      {activeFeature.tagline}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <Activity className="size-3" />
-                      وضعیت: زنده
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative flex-1 w-full flex flex-col bg-transparent overflow-hidden p-4">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeFeature.id}
-                    initial={reduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
-                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
-                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                    className="relative w-full h-full flex flex-col rounded-xl border border-border/40 bg-card shadow-inner overflow-hidden"
-                  >
-                    {renderActiveMockComponent()}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-            </div>
-          </div>
-
         </div>
 
       </div>

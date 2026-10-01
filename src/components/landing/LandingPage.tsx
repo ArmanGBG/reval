@@ -308,7 +308,7 @@ function LandingHero() {
         </motion.div>
 
         <motion.div initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative mt-16 w-full max-w-5xl md:mt-24">
-          <div className="pointer-events-none absolute -inset-4 z-0 rounded-[2.5rem] bg-gradient-to-b from-emerald-500/20 via-emerald-500/5 to-transparent blur-2xl opacity-60" />
+          <div className="pointer-events-none absolute -inset-10 z-0 rounded-[3rem] bg-gradient-to-b from-emerald-500/30 via-emerald-500/10 to-transparent blur-[120px] opacity-20" />
           <div className="relative z-10 overflow-hidden rounded-2xl border border-border/80 bg-card/80 p-2 shadow-2xl backdrop-blur-2xl sm:p-3">
             <div className="mb-2 flex items-center gap-2 px-2 sm:mb-3">
               <div className="size-2.5 sm:size-3 rounded-full bg-red-500/80" />
@@ -320,27 +320,14 @@ function LandingHero() {
               <div className="w-12" />
             </div>
             <div className="relative aspect-[16/9] sm:aspect-[16/10] lg:aspect-[16/9] w-full overflow-hidden rounded-xl bg-background">
-              {/* Show light theme screenshot in light mode and dark theme in dark mode natively via tailwind */}
-              <div className="block dark:hidden">
-                <Image 
-                  src="/images/preview/light/dashboard.webp" 
-                  alt="نمای داشبورد روال" 
-                  fill
-                  className="object-cover object-top" 
-                  style={{ maskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)' }} 
-                  priority 
-                />
-              </div>
-              <div className="hidden dark:block">
-                <Image 
-                  src="/images/preview/dark/dashboard.webp" 
-                  alt="نمای داشبورد روال" 
-                  fill
-                  className="object-cover object-top" 
-                  style={{ maskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)' }} 
-                  priority 
-                />
-              </div>
+              <Image 
+                src="/images/preview/dark/dashboard.webp" 
+                alt="نمای داشبورد روال" 
+                fill
+                className="object-cover object-top" 
+                style={{ maskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)' }} 
+                priority 
+              />
             </div>
           </div>
         </motion.div>
