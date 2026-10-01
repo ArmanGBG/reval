@@ -3,13 +3,14 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence, useReducedMotion, MotionConfig } from 'framer-motion';
-import { Menu, X, Send, Instagram, ArrowLeft, CheckCircle2, BarChart3, Users, Zap, LayoutDashboard } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion, useInView, MotionConfig } from 'framer-motion';
+import { Menu, X, Send, Instagram, ArrowLeft, CheckCircle2, BarChart3, Users, Zap, LayoutDashboard, BookOpen, UserCheck, Clock } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Logo } from './logo';
 import { ProductPlayground } from './ProductPlayground';
 import { AdvisorsPage } from './advisors-page';
 import { TeamPage } from './team-page';
+import { FloatingLines } from './floating-lines';
 
 // ----------------------------------------------------------------------
 // MAIN EXPORT
@@ -95,7 +96,11 @@ export default function LandingPage() {
   if (landingView === 'advisors') {
     return (
       <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
-        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400">
+        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise">
+          {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
+          <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
+          {!isMobile && <FloatingLines />}
+
           <LandingHeader 
             onAdvisorsClick={handleAdvisorsClick} 
             onTeamClick={handleTeamClick} 
@@ -117,7 +122,11 @@ export default function LandingPage() {
   if (landingView === 'team') {
     return (
       <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
-        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400">
+        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise">
+          {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
+          <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
+          {!isMobile && <FloatingLines />}
+
           <LandingHeader 
             onAdvisorsClick={handleAdvisorsClick} 
             onTeamClick={handleTeamClick} 
@@ -138,27 +147,11 @@ export default function LandingPage() {
 
   return (
     <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
-      <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400" dir="rtl">
-        {/* Global Dynamic Background Effects */}
-        <div className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center overflow-hidden" aria-hidden="true">
-          {/* Subtle grid pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-          
-          {/* Dynamic slow-moving green orb */}
-          <motion.div 
-            className="absolute h-[60vh] w-[60vw] rounded-full bg-emerald-500/10 blur-[100px] sm:blur-[140px]"
-            animate={{ 
-              x: ["-10%", "10%", "-10%"],
-              y: ["-10%", "5%", "-10%"],
-              scale: [1, 1.05, 1],
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          />
-        </div>
+      <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise" dir="rtl">
+        {/* Dynamic Background from main branch */}
+        {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
+        <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
+        {!isMobile && <FloatingLines />}
 
         <LandingHeader 
           onAdvisorsClick={handleAdvisorsClick} 
@@ -171,6 +164,7 @@ export default function LandingPage() {
           <LandingBentoFeatures />
           <LandingSocialProof />
           <ProductPlayground />
+          <LandingMoreAboutReval onTeamClick={handleTeamClick} />
           <LandingCta />
         </main>
         
@@ -502,6 +496,178 @@ function LandingSocialProof() {
   );
 }
 
+
+// ----------------------------------------------------------------------
+// MORE ABOUT REVAL ("بیشتر با رِوال آشنا شو")
+// ----------------------------------------------------------------------
+
+const TELEGRAM_HANDLE = process.env.NEXT_PUBLIC_ADVISOR_TELEGRAM_HANDLE || "RevalSupport";
+const TELEGRAM_URL = `https://t.me/${TELEGRAM_HANDLE}`;
+const INSTAGRAM_HANDLE = "reval_academy_";
+const INSTAGRAM_URL = `https://instagram.com/${INSTAGRAM_HANDLE}`;
+const teamEaseOut = [0.16, 1, 0.3, 1] as const;
+
+function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <section
+      id="team"
+      className="relative scroll-mt-16 border-t border-zinc-800 bg-zinc-950 py-24 sm:py-32"
+      dir="rtl"
+    >
+      <div className="mx-auto max-w-5xl px-5 sm:px-8">
+        <motion.div
+          ref={ref}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: reduceMotion ? 0.12 : 0.6, ease: teamEaseOut }}
+        >
+          <div className="mb-12 max-w-2xl text-right">
+            <span className="text-xs font-bold text-emerald-400">بخش‌های نهایی</span>
+            <h2 className="mt-3 text-balance text-3xl font-black leading-tight text-zinc-100 sm:text-5xl">
+              بیشتر با رِوال آشنا شو
+            </h2>
+          </div>
+
+          {/* 2x2 grid of boxes (desktop) / single column (mobile) */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
+            {/* ===== Box 1: Team intro with CTA ===== */}
+            <TeamBox
+              index={0}
+              eyebrow="بچه‌های تیم رِوال"
+              icon={<Users className="size-5" strokeWidth={2.2} aria-hidden="true" />}
+              title="ما کی هستیم؟"
+              body="ما تیمی هستیم که خودمون مسیر سختِ آموزش رو رفتیم و حالا با بررسی مشکلات شما و کمک گرفتن از متخصصین، می‌خوایم یه ابزارِ واقعی و به‌دردبخور برای درس خوندن بسازیم."
+            >
+              <button
+                type="button"
+                onClick={onTeamClick}
+                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
+              >
+                داستانِ ما رو بشنو
+                <ArrowLeft className="size-3.5 flip-rtl transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+              </button>
+            </TeamBox>
+
+            {/* ===== Box 2: Articles (tag: coming soon) ===== */}
+            <TeamBox
+              index={1}
+              eyebrow="مقالات و جستارها"
+              icon={<BookOpen className="size-5" strokeWidth={2.2} aria-hidden="true" />}
+              title="خوندنی‌های رِوال"
+              body="مقاله‌ها و یادداشت‌های خودمونی و کاربردی درباره‌ی روش‌های تمرکز، فرار از کمال‌گرایی و اینکه چطور کمتر حرص بخوریم و بهتر یاد بگیریم."
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-medium text-zinc-400">
+                <Clock className="size-3.5" aria-hidden="true" />
+                به‌زودی منتشر می‌شود
+              </span>
+            </TeamBox>
+
+            {/* ===== Box 3: Choose advisor — CTA to Telegram ===== */}
+            <TeamBox
+              index={2}
+              eyebrow="انتخاب مشاور"
+              icon={<UserCheck className="size-5" strokeWidth={2.2} aria-hidden="true" />}
+              title="پیدا کردنِ یه مشاورِ مخصوص خودت"
+              body="اینجا می‌تونی رزومه‌ی مشاورهای مختلف رو ببینی، نظر بقیه‌ی بچه‌ها رو بخونی و مشاوری رو انتخاب کنی که دقیقا حرفت رو می‌فهمه و باهات جوره."
+            >
+              <a
+                href={TELEGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
+              >
+                <Send className="size-3.5" aria-hidden="true" />
+                ارتباط با مشاور
+                <ArrowLeft className="size-3.5 flip-rtl transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+              </a>
+            </TeamBox>
+
+            {/* ===== Box 4: Contact + social ===== */}
+            <TeamBox
+              index={3}
+              eyebrow="ارتباط با ما و شبکه‌های اجتماعی"
+              icon={<Send className="size-5" strokeWidth={2.2} aria-hidden="true" />}
+              title="صدای شما رو می‌شنویم!"
+              body="مشتاقِ شنیدن نظرات، پیشنهادها و دغدغه‌هات هستیم. برای باخبر شدن از آپدیت‌های جدیدِ پلتفرم و خوندنِ نکاتِ کوتاه، توی شبکه‌های اجتماعی کنارمون باش."
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={TELEGRAM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
+                >
+                  <Send className="size-3.5" aria-hidden="true" />
+                  پشتیبانی و راه‌های ارتباطی
+                  <ArrowLeft className="size-3.5 flip-rtl transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+                </a>
+                <a
+                  href={INSTAGRAM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="اینستاگرام روال"
+                  className="inline-flex size-10 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-emerald-400 transition-all hover:border-emerald-500/50 hover:bg-emerald-500/10"
+                >
+                  <Instagram className="size-4" aria-hidden="true" />
+                </a>
+              </div>
+            </TeamBox>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function TeamBox({
+  index,
+  eyebrow,
+  icon,
+  title,
+  body,
+  children,
+}: {
+  index: number;
+  eyebrow: string;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  children?: React.ReactNode;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{
+        duration: reduceMotion ? 0.12 : 0.45,
+        delay: reduceMotion ? 0 : index * 0.08,
+        ease: teamEaseOut,
+      }}
+      className="group flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 transition-colors duration-300 hover:border-emerald-500/40 sm:p-7"
+    >
+      <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-colors group-hover:bg-emerald-500 group-hover:text-zinc-950">
+        {icon}
+      </div>
+      <p className="mt-4 text-xs font-bold text-emerald-400">{eyebrow}</p>
+      <h3 className="mt-2 text-base font-black leading-snug text-zinc-100 sm:text-lg">
+        {title}
+      </h3>
+      <p className="mt-2 flex-1 text-sm leading-8 text-zinc-400">
+        {body}
+      </p>
+      <div className="mt-5">{children}</div>
+    </motion.div>
+  );
+}
 
 // ----------------------------------------------------------------------
 // CTA
