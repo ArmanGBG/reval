@@ -192,7 +192,7 @@ export function ProductPlayground() {
   return (
     <section 
       id="playground" 
-      className="scroll-mt-20 py-20 sm:py-28 relative overflow-hidden border-t border-zinc-800/60"
+      className="scroll-mt-20 py-20 sm:py-28 relative overflow-hidden border-t border-border/60"
     >
       {/* Background ambient light */}
       <div className="pointer-events-none absolute -top-40 right-1/4 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[130px]" />
@@ -202,37 +202,37 @@ export function ProductPlayground() {
         
         {/* Section Title */}
         <div className="mb-12 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 backdrop-blur-md mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 backdrop-blur-md mb-4">
             <Sparkles className="size-3.5 animate-pulse" />
             <span>پلی‌گراند تعاملی روال • Product Playground</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-zinc-100 tracking-tight text-balance">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground tracking-tight text-balance">
             قبل از ثبت‌نام، حس خوب «روی روال بودن» رو تجربه کن
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-zinc-400 text-sm sm:text-base leading-relaxed text-balance">
-            تسک‌های روزانه‌ی <span className="text-emerald-400 font-bold">«دوست روالی من»</span> رو تیک بزن تا ثبت سریع، پر شدن نوار پیشرفت و نمودارهای لحظه‌ای رو لمس کنی.
+          <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm sm:text-base leading-relaxed text-balance">
+            تسک‌های روزانه‌ی <span className="text-emerald-600 dark:text-emerald-400 font-bold">«دوست روالی من»</span> رو تیک بزن تا ثبت سریع، پر شدن نوار پیشرفت و نمودارهای لحظه‌ای رو لمس کنی.
           </p>
         </div>
 
         {/* ========================================================
             TOP DOPAMINE HOOK: User Info & Main Progress Bar
             ======================================================== */}
-        <div className="mb-8 rounded-2xl border border-zinc-800/90 bg-zinc-900/80 p-5 sm:p-6 backdrop-blur-xl shadow-xl">
+        <div className="mb-8 rounded-2xl border border-border bg-card/80 p-5 sm:p-6 backdrop-blur-xl shadow-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {/* User pill */}
             <div className="flex items-center gap-3">
-              <div className="relative flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-400 font-black text-base shadow-inner">
+              <div className="relative flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-black text-base shadow-inner">
                 <span>روال</span>
-                <span className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 border-2 border-zinc-900" />
+                <span className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 border-2 border-background" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-zinc-100 text-base sm:text-lg">دوست روالی من</h3>
-                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[11px] py-0 px-2 font-medium">
+                  <h3 className="font-bold text-foreground text-base sm:text-lg">دوست روالی من</h3>
+                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] py-0 px-2 font-medium">
                     کنکوری هدفمند
                   </Badge>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   برنامه‌ی اختصاصی امروز • پنجشنبه، ۱۲ مهر
                 </p>
               </div>
@@ -241,22 +241,22 @@ export function ProductPlayground() {
             {/* Score & Completed stats */}
             <div className="flex items-center gap-3 sm:gap-6 self-start sm:self-auto">
               <div className="flex flex-col items-start sm:items-end">
-                <span className="text-xs text-zinc-400">ساعت ثبت‌شده</span>
-                <span className="text-sm sm:text-base font-bold text-zinc-200">
+                <span className="text-xs text-muted-foreground">ساعت ثبت‌شده</span>
+                <span className="text-sm sm:text-base font-bold text-foreground">
                   {completedStudyHours} از ۴.۵ ساعت
                 </span>
               </div>
-              <div className="h-7 w-px bg-zinc-800" />
+              <div className="h-7 w-px bg-border" />
               <div className="flex flex-col items-start sm:items-end">
-                <span className="text-xs text-zinc-400">تست کارشده</span>
-                <span className="text-sm sm:text-base font-bold text-zinc-200">
+                <span className="text-xs text-muted-foreground">تست کارشده</span>
+                <span className="text-sm sm:text-base font-bold text-foreground">
                   {completedTests} از ۱۱۵ تست
                 </span>
               </div>
-              <div className="h-7 w-px bg-zinc-800" />
+              <div className="h-7 w-px bg-border" />
               <div className="flex flex-col items-start sm:items-end">
-                <span className="text-xs text-zinc-400">پیشرفت کل</span>
-                <span className="text-sm sm:text-base font-extrabold text-emerald-400">
+                <span className="text-xs text-muted-foreground">پیشرفت کل</span>
+                <span className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400">
                   {progressPercent}٪
                 </span>
               </div>
@@ -265,31 +265,31 @@ export function ProductPlayground() {
 
           {/* Glowing Animated Progress Bar */}
           <div className="mt-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-zinc-400">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5 font-medium">
                 {progressPercent === 100 ? (
-                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                     <Trophy className="size-3.5" />
                     فوق‌العاده است! تمام برنامه‌ی امروز روال شد!
                   </span>
                 ) : progressPercent >= 50 ? (
-                  <span className="text-teal-400 font-medium flex items-center gap-1">
-                    <Flame className="size-3.5 text-amber-400" />
+                  <span className="text-teal-600 dark:text-teal-400 font-medium flex items-center gap-1">
+                    <Flame className="size-3.5 text-amber-500" />
                     بیش از نیمی از مسیر امروز رو رفتی؛ ادامه بده!
                   </span>
                 ) : (
                   <span>با زدن تیک هر تسک، بازدهی و نوار پیشرفتت رشد می‌کنه</span>
                 )}
               </span>
-              <span className="font-semibold text-zinc-300">
+              <span className="font-semibold text-foreground">
                 {completedCount} از {totalTasks} تسک تکمیل شد
               </span>
             </div>
 
             {/* Custom high-performance animated progress bar */}
-            <div className="relative h-3 w-full overflow-hidden rounded-full bg-zinc-950/80 border border-zinc-800/80 p-0.5">
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted border border-border/80 p-0.5">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-l from-emerald-400 via-teal-400 to-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.7)]"
+                className="h-full rounded-full bg-gradient-to-l from-emerald-400 via-teal-400 to-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]"
                 initial={false}
                 animate={{ width: `${progressPercent}%` }}
                 transition={{ type: 'spring', stiffness: 90, damping: 18 }}
@@ -312,7 +312,7 @@ export function ProductPlayground() {
           <div className="w-full lg:col-span-5 flex flex-col gap-5">
             
             {/* Feature Tabs Bar */}
-            <div className="flex items-center justify-between gap-1.5 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-1.5 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-1.5 rounded-xl border border-border/80 bg-card p-1.5 backdrop-blur-md">
               {FEATURE_CONFIGS.map((feature) => {
                 const Icon = feature.icon;
                 const isActive = activeFeatureTab === feature.id;
@@ -323,11 +323,11 @@ export function ProductPlayground() {
                     onClick={() => setActiveFeatureTab(feature.id)}
                     className={`group flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 rounded-lg py-2 px-2 text-xs font-semibold transition-all duration-200 outline-none ${
                       isActive
-                        ? 'bg-zinc-800 text-emerald-400 shadow-md border border-zinc-700/60'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                        ? 'bg-muted text-emerald-600 dark:text-emerald-400 shadow-sm border border-border/60'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                     }`}
                   >
-                    <Icon className={`size-3.5 transition-transform group-hover:scale-110 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                    <Icon className={`size-3.5 transition-transform group-hover:scale-110 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
                     <span className="truncate">{feature.label}</span>
                   </button>
                 );
@@ -336,7 +336,7 @@ export function ProductPlayground() {
 
             {/* Checklist Header */}
             <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 چک‌لیست تسک‌های روزانه (کلیک کن تا تیک بخوره)
               </span>
               <button
@@ -348,7 +348,7 @@ export function ProductPlayground() {
                     setCompletedTaskIds(MOCK_TASKS.map((t) => t.id));
                   }
                 }}
-                className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+                className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors font-medium"
               >
                 {completedTaskIds.length === totalTasks ? 'خالی کردن همه' : 'تیک زدن همه'}
               </button>
@@ -370,8 +370,8 @@ export function ProductPlayground() {
                     }}
                     className={`group relative flex items-start gap-3.5 rounded-xl border p-3.5 sm:p-4 transition-all duration-200 cursor-pointer ${
                       isBelongingToActiveTab
-                        ? 'border-emerald-500/40 bg-zinc-900/90 shadow-md ring-1 ring-emerald-500/20'
-                        : 'border-zinc-800/80 bg-zinc-900/50 hover:border-zinc-700/80 hover:bg-zinc-900/70'
+                        ? 'border-emerald-500/40 bg-card shadow-sm ring-1 ring-emerald-500/20'
+                        : 'border-border/80 bg-card/50 hover:border-border hover:bg-card/70'
                     }`}
                   >
                     {/* Checkbox Container */}
@@ -387,8 +387,8 @@ export function ProductPlayground() {
                         transition={{ duration: 0.25 }}
                         className={`flex size-5 items-center justify-center rounded-md border transition-all ${
                           isChecked
-                            ? 'bg-emerald-500 border-emerald-500 text-zinc-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-                            : 'border-zinc-700 bg-zinc-950 hover:border-emerald-500/50'
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                            : 'border-muted-foreground/40 bg-background hover:border-emerald-500/50'
                         }`}
                       >
                         {isChecked && <Check className="size-3.5 stroke-[3]" />}
@@ -406,8 +406,8 @@ export function ProductPlayground() {
                           <h4 
                             className={`text-sm font-bold truncate transition-all duration-300 ${
                               isChecked 
-                                ? 'line-through text-zinc-500 opacity-60' 
-                                : 'text-zinc-100'
+                                ? 'line-through text-muted-foreground opacity-60' 
+                                : 'text-foreground'
                             }`}
                           >
                             {task.subject}
@@ -415,7 +415,7 @@ export function ProductPlayground() {
                         </div>
                         <Badge 
                           variant="secondary" 
-                          className="shrink-0 text-[10px] py-0 px-2 font-normal bg-zinc-800/60 text-zinc-300 border-zinc-700/50"
+                          className="shrink-0 text-[10px] py-0 px-2 font-normal bg-muted text-muted-foreground border-border/50"
                         >
                           {task.badge}
                         </Badge>
@@ -424,14 +424,14 @@ export function ProductPlayground() {
                       <p 
                         className={`mt-1 text-xs transition-all duration-300 ${
                           isChecked 
-                            ? 'line-through text-zinc-500/80 opacity-60' 
-                            : 'text-zinc-400'
+                            ? 'line-through text-muted-foreground/80 opacity-60' 
+                            : 'text-muted-foreground'
                         }`}
                       >
                         {task.topic}
                       </p>
 
-                      <div className="mt-2.5 flex items-center gap-3 text-[11px] text-zinc-500">
+                      <div className="mt-2.5 flex items-center gap-3 text-[11px] text-muted-foreground">
                         {task.featureId !== 'sleep' && task.featureId !== 'advisor' ? (
                           <>
                             <span className="flex items-center gap-1">
@@ -445,19 +445,19 @@ export function ProductPlayground() {
                             </span>
                           </>
                         ) : task.featureId === 'sleep' ? (
-                          <span className="flex items-center gap-1 text-indigo-400">
+                          <span className="flex items-center gap-1 text-indigo-500 dark:text-indigo-400">
                             <Moon className="size-3" />
                             ۷.۵ ساعت خواب ثبت‌شده
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-pink-400">
+                          <span className="flex items-center gap-1 text-pink-500 dark:text-pink-400">
                             <MessageSquare className="size-3" />
                             بازخورد مشاور آماده است
                           </span>
                         )}
 
                         {isChecked && (
-                          <span className="mr-auto font-medium text-emerald-400 text-[10px] flex items-center gap-1">
+                          <span className="mr-auto font-medium text-emerald-600 dark:text-emerald-400 text-[10px] flex items-center gap-1">
                             <Check className="size-3" />
                             انجام شد
                           </span>
@@ -470,7 +470,7 @@ export function ProductPlayground() {
             </div>
 
             {/* Quick helper tip */}
-            <p className="text-center text-xs text-zinc-500 px-2 leading-relaxed">
+            <p className="text-center text-xs text-muted-foreground px-2 leading-relaxed">
               💡 روی هر تسک کلیک کنی، نمای تخصصی اون در ستون روبرو بلافاصله باز می‌شه.
             </p>
           </div>
@@ -480,43 +480,43 @@ export function ProductPlayground() {
               (Dynamically reacts to checkbox clicks and tab switching)
               ---------------------------------------------------- */}
           <div className="w-full lg:col-span-7">
-            <div className="rounded-2xl border border-zinc-800/90 bg-zinc-900/70 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="rounded-2xl border border-border/90 bg-card/70 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col">
               
               {/* Window Chrome Header */}
-              <div className="border-b border-zinc-800/80 bg-zinc-950/60 px-4 py-3 flex items-center justify-between gap-4">
+              <div className="border-b border-border/80 bg-background/60 px-4 py-3 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="size-2.5 rounded-full bg-red-500/60" />
                   <div className="size-2.5 rounded-full bg-amber-500/60" />
                   <div className="size-2.5 rounded-full bg-emerald-500/60" />
-                  <div className="mr-2 flex h-5.5 items-center rounded-md bg-zinc-900 px-3 text-[11px] font-mono text-zinc-400 border border-zinc-800/60">
+                  <div className="mr-2 flex h-5.5 items-center rounded-md bg-muted px-3 text-[11px] font-mono text-muted-foreground border border-border/60">
                     revaledu.ir/{activeFeatureTab}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-[11px] py-0.5">
+                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] py-0.5">
                     {activeFeature.badgeText}
                   </Badge>
                 </div>
               </div>
 
               {/* Dynamic Feature Header & Realtime Stat Strip */}
-              <div className="p-5 sm:p-6 border-b border-zinc-800/60 bg-gradient-to-b from-zinc-900/40 to-transparent">
+              <div className="p-5 sm:p-6 border-b border-border/60 bg-gradient-to-b from-card/40 to-transparent">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-zinc-100 flex items-center gap-2">
-                      <activeFeature.icon className="size-5 text-emerald-400" />
+                    <h3 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
+                      <activeFeature.icon className="size-5 text-emerald-600 dark:text-emerald-400" />
                       {activeFeature.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-xl">
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl">
                       {activeFeature.tagline}
                     </p>
                   </div>
 
                   {/* Micro stats tag */}
                   <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-zinc-800/80 px-2.5 py-1 text-xs font-medium text-zinc-300 border border-zinc-700/40">
-                      <Activity className="size-3 text-emerald-400" />
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-xs font-medium text-foreground border border-border/40">
+                      <Activity className="size-3 text-emerald-600 dark:text-emerald-400" />
                       وضعیت: زنده
                     </span>
                   </div>
@@ -544,16 +544,16 @@ export function ProductPlayground() {
                     />
 
                     {/* Interactive Realtime Overlay Card (Dopamine Trigger) */}
-                    <div className="absolute bottom-3 inset-x-3 sm:bottom-4 sm:inset-x-4 rounded-xl border border-zinc-800/90 bg-zinc-950/85 backdrop-blur-md p-3.5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="absolute bottom-3 inset-x-3 sm:bottom-4 sm:inset-x-4 rounded-xl border border-zinc-800/90 bg-zinc-950/85 backdrop-blur-md p-3.5 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 dark:border-zinc-800/90 dark:bg-zinc-950/85 bg-white/90 border-zinc-200">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                           <CheckCircle2 className="size-4" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-zinc-200">
+                          <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
                             همگام‌سازی لحظه‌ای با چک‌لیست شما
                           </p>
-                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                             {completedCount === 0
                               ? 'یک تسک را تیک بزنید تا بازخورد سیستم را ببینید.'
                               : `${completedCount} تسک با موفقیت پردازش شد و آمار نمودارها به‌روزرسانی گردید.`}
