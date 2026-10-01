@@ -47,7 +47,7 @@ model User {
   createdTasks               Task[]                @relation("TaskCreator")
   createdExams               Exam[]                @relation("ExamCreator")
   sentMessages               Message[]             @relation("SentMessages")
-  readMessages               MessageRead[]         @relation("ReadMessages")
+  receivedMessages           Message[]             @relation("ReceivedMessages")
   sentConnectionRequests     ConnectionRequest[]   @relation("ConnectionRequestStudent")
   receivedConnectionRequests ConnectionRequest[]   @relation("ConnectionRequestAdvisor")
   platformSettings           PlatformSetting[]      @relation("PlatformSettingUpdater")
@@ -86,32 +86,22 @@ model ConnectionRequest {
   @@index([advisorId, status])
 }
 
-// ===== Message (advisor/super-admin → student) =====
+// ===== Message (Student <-> Advisor Communication) =====
 model Message {
-  id          String        @id @default(cuid())
-  senderId    String // the User who sent it
-  recipientId String? // null = broadcast to all students; non-null = specific student
-  title       String
-  body        String
-  // readReceipts stored as a separate table so each student has independent read state
-  readBy      MessageRead[]
-  sender      User          @relation("SentMessages", fields: [senderId], references: [id])
-  createdAt   DateTime      @default(now())
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  subject    String?  // For student pre-defined topics ('سوال', 'گزارش کار', 'درخواست تماس')
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  @@index([recipientId])
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
   @@index([createdAt])
-}
-
-model MessageRead {
-  id        String   @id @default(cuid())
-  messageId String
-  userId    String // the student who read it
-  readAt    DateTime @default(now())
-
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User    @relation("ReadMessages", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId])
 }
 
 // ===== Institute =====

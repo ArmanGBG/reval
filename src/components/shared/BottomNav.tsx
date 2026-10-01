@@ -17,12 +17,14 @@ import {
   BookOpen,
   LogOut,
   History,
+  Send,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'خانه', icon: Home },
   { view: 'plan', label: 'برنامه', icon: ClipboardList },
+  { view: 'messages', label: 'پیام‌ها', icon: Send },
   { view: 'exam-history', label: 'آزمون‌ها', icon: History },
   { view: 'tools', label: 'ابزارها', icon: Wrench },
   { view: 'analytics', label: 'گزارش', icon: BarChart3 },
@@ -32,6 +34,7 @@ const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ 
 const ADVISOR_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'advisor-dashboard', label: 'داشبورد', icon: LayoutDashboard },
   { view: 'advisor-students', label: 'دانش‌آموزان', icon: Users },
+  { view: 'advisor-messages', label: 'پیام‌ها', icon: Send },
   { view: 'advisor-settings', label: 'تنظیمات', icon: Settings },
 ];
 

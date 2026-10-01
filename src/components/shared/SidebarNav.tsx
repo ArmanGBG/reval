@@ -29,6 +29,7 @@ import NotificationCenter from './NotificationCenter';
 const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'خانه', icon: Home },
   { view: 'plan', label: 'برنامه من', icon: ClipboardList },
+  { view: 'messages', label: 'صندوق پیام', icon: Send },
   { view: 'exam-history', label: 'سابقه آزمون‌ها', icon: History },
   { view: 'tools', label: 'ابزارها', icon: Wrench },
   { view: 'analytics', label: 'گزارش', icon: BarChart3 },

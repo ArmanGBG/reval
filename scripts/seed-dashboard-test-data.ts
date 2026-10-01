@@ -59,7 +59,7 @@ async function seed() {
 
   // 4. Create Advisors
   console.log('Creating 5 advisors...');
-  const createdAdvisors = [];
+  const createdAdvisors: any[] = [];
   for (let i = 0; i < advisorData.length; i++) {
     const adv = advisorData[i];
     const createdAt = new Date(baseStartDate.getTime() + adv.dayOffset * 86400000 + (i * 3600000));
@@ -85,7 +85,7 @@ async function seed() {
 
   // 5. Create Students
   console.log('Creating 30 students...');
-  const createdStudents = [];
+  const createdStudents: any[] = [];
   for (let i = 0; i < studentNames.length; i++) {
     const st = studentNames[i];
     const phone = `0912100${String(i + 1).padStart(4, '0')}`;

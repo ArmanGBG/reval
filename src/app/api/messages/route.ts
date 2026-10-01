@@ -1,293 +1,297 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, requireRole } from '@/lib/api-auth';
+import { requireAuth } from '@/lib/api-auth';
 
 // ===== GET /api/messages =====
-// Two modes:
-//   1. STUDENT (default) — returns the student's inbox: messages where
-//      recipientId === ctx.userId OR recipientId === null (broadcast).
-//      Includes a `read` boolean (true if a MessageRead exists for this user).
-//      Sorted by createdAt DESC.
-//   2. ADVISOR / SUPER_ADMIN with `?sentBy=me` — returns messages the
-//      current user sent (senderId === ctx.userId). Sorted by createdAt DESC.
-//
-// Response shape: { messages: MessageRow[] }
+// - STUDENT: Returns the thread between student and their assigned advisor
+// - ADVISOR: Returns threads grouped by student, or a specific student's thread if ?studentId=...
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requireAuth(request);
   if (error || !ctx) return error;
 
   const { searchParams } = new URL(request.url);
-  const sentByMe = searchParams.get('sentBy') === 'me';
+  const studentIdParam = searchParams.get('studentId');
 
-  // ===== Mode 2: sent messages (advisor / super-admin only) =====
-  if (sentByMe) {
-    if (ctx.user.role !== 'ADVISOR' && ctx.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json(
-        { error: 'دسترسی غیرمجاز' },
-        { status: 403 },
-      );
-    }
-    const sent = await db.message.findMany({
-      where: { senderId: ctx.userId },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+  // ===== STUDENT =====
+  if (ctx.user.role === 'STUDENT') {
+    const student = await db.user.findUnique({
+      where: { id: ctx.userId },
       select: {
         id: true,
-        senderId: true,
-        recipientId: true,
-        title: true,
-        body: true,
-        createdAt: true,
-        readBy: { select: { userId: true } },
+        assignedAdvisorId: true,
+        assignedAdvisor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            role: true,
+          },
+        },
       },
     });
-    const messages = sent.map((m) => ({
-      id: m.id,
-      senderId: m.senderId,
-      recipientId: m.recipientId,
-      title: m.title,
-      body: m.body,
-      createdAt: m.createdAt.toISOString(),
-      readCount: m.readBy.length,
-    }));
-    return NextResponse.json({ messages });
+
+    if (!student?.assignedAdvisorId || !student.assignedAdvisor) {
+      return NextResponse.json({
+        messages: [],
+        advisor: null,
+        hasAdvisor: false,
+      });
+    }
+
+    const advisorId = student.assignedAdvisorId;
+
+    const messages = await db.message.findMany({
+      where: {
+        OR: [
+          { senderId: ctx.userId, receiverId: advisorId },
+          { senderId: advisorId, receiverId: ctx.userId },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: {
+          select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+        },
+        receiver: {
+          select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      messages,
+      advisor: student.assignedAdvisor,
+      hasAdvisor: true,
+    });
   }
 
-  // ===== Mode 1: inbox — only students have an inbox =====
-  if (ctx.user.role !== 'STUDENT') {
-    return NextResponse.json(
-      { error: 'دسترسی غیرمجاز' },
-      { status: 403 },
-    );
+  // ===== ADVISOR =====
+  if (ctx.user.role === 'ADVISOR') {
+    // If querying a single student thread
+    if (studentIdParam) {
+      const messages = await db.message.findMany({
+        where: {
+          OR: [
+            { senderId: ctx.userId, receiverId: studentIdParam },
+            { senderId: studentIdParam, receiverId: ctx.userId },
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
+        include: {
+          sender: {
+            select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+          },
+          receiver: {
+            select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+          },
+        },
+      });
+
+      const student = await db.user.findUnique({
+        where: { id: studentIdParam },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+          grade: true,
+          major: true,
+        },
+      });
+
+      return NextResponse.json({
+        messages,
+        student,
+      });
+    }
+
+    // Otherwise, fetch all assigned students and messages to group by student
+    const assignedStudents = await db.user.findMany({
+      where: { assignedAdvisorId: ctx.userId, role: 'STUDENT', deletedAt: null },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        avatar: true,
+        grade: true,
+        major: true,
+      },
+    });
+
+    const allMessages = await db.message.findMany({
+      where: {
+        OR: [
+          { senderId: ctx.userId },
+          { receiverId: ctx.userId },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        sender: {
+          select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+        },
+        receiver: {
+          select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+        },
+      },
+    });
+
+    // Group messages by student
+    const studentMap = new Map<string, {
+      student: { id: string; firstName: string; lastName: string | null; avatar: string; grade?: string | null; major?: string | null };
+      messages: typeof allMessages;
+      lastMessage: (typeof allMessages)[0] | null;
+      unreadCount: number;
+    }>();
+
+    // Initialize all assigned students
+    for (const s of assignedStudents) {
+      studentMap.set(s.id, {
+        student: s,
+        messages: [],
+        lastMessage: null,
+        unreadCount: 0,
+      });
+    }
+
+    // Populate messages
+    for (const msg of allMessages) {
+      const otherId = msg.senderId === ctx.userId ? msg.receiverId : msg.senderId;
+      if (!studentMap.has(otherId)) {
+        const studentInfo = msg.senderId === otherId ? msg.sender : msg.receiver;
+        studentMap.set(otherId, {
+          student: {
+            id: otherId,
+            firstName: studentInfo.firstName,
+            lastName: studentInfo.lastName,
+            avatar: studentInfo.avatar,
+          },
+          messages: [],
+          lastMessage: null,
+          unreadCount: 0,
+        });
+      }
+
+      const thread = studentMap.get(otherId)!;
+      thread.messages.push(msg);
+      if (!thread.lastMessage) {
+        thread.lastMessage = msg;
+      }
+      if (msg.receiverId === ctx.userId && !msg.isRead) {
+        thread.unreadCount += 1;
+      }
+    }
+
+    // Sort messages in each thread ascending (oldest to newest)
+    for (const thread of studentMap.values()) {
+      thread.messages.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    }
+
+    // Sort threads: those with unread messages first, then by lastMessage createdAt desc
+    const threads = Array.from(studentMap.values()).sort((a, b) => {
+      if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
+      const timeA = a.lastMessage ? a.lastMessage.createdAt.getTime() : 0;
+      const timeB = b.lastMessage ? b.lastMessage.createdAt.getTime() : 0;
+      return timeB - timeA;
+    });
+
+    return NextResponse.json({
+      threads,
+      assignedStudents,
+    });
   }
 
-  const rows = await db.message.findMany({
-    where: {
-      OR: [
-        { recipientId: ctx.userId },
-        { recipientId: null },
-      ],
-    },
+  // ===== SUPER_ADMIN (Fallback / Overview) =====
+  const messages = await db.message.findMany({
     orderBy: { createdAt: 'desc' },
     take: 100,
-    select: {
-      id: true,
-      senderId: true,
-      recipientId: true,
-      title: true,
-      body: true,
-      createdAt: true,
-      sender: { select: { id: true, firstName: true, lastName: true, role: true } },
-      readBy: { where: { userId: ctx.userId }, select: { userId: true } },
+    include: {
+      sender: { select: { id: true, firstName: true, lastName: true, avatar: true, role: true } },
+      receiver: { select: { id: true, firstName: true, lastName: true, avatar: true, role: true } },
     },
-  });
-
-  const messages = rows.map((m) => {
-    const fullName = [m.sender?.firstName, m.sender?.lastName].filter(Boolean).join(' ').trim();
-    return {
-      id: m.id,
-      senderId: m.senderId,
-      senderName: fullName || null,
-      senderRole: m.sender?.role ?? null,
-      recipientId: m.recipientId,
-      title: m.title,
-      body: m.body,
-      createdAt: m.createdAt.toISOString(),
-      read: m.readBy.length > 0,
-    };
   });
 
   return NextResponse.json({ messages });
 }
 
 // ===== POST /api/messages =====
-// Send a message. Body: { recipientId: string | null, title: string, body: string }
-//
-// Authorization:
-//   - ADVISOR: recipientId must be one of their assigned students.
-//              If recipientId === null (broadcast), creates one Message
-//              row PER assigned student so the student inbox query finds them.
-//   - SUPER_ADMIN: recipientId can be any student OR null (true broadcast —
-//                  one Message row with recipientId=null).
-//
-// Validation:
-//   - title: non-empty, max 120 chars
-//   - body: non-empty, max 2000 chars
+// Send a message between Student and Advisor
 export async function POST(request: NextRequest) {
-  const { ctx, error } = await requireRole(request, ['ADVISOR', 'SUPER_ADMIN']);
+  const { ctx, error } = await requireAuth(request);
   if (error || !ctx) return error;
 
   try {
     const body = await request.json();
-    const title: unknown = body.title;
-    const messageBody: unknown = body.body;
-    const recipientId: unknown = body.recipientId;
+    const content = typeof body.content === 'string' ? body.content.trim() : '';
+    const subject = typeof body.subject === 'string' ? body.subject.trim() : null;
+    let receiverId: string | null = typeof body.receiverId === 'string' ? body.receiverId.trim() : null;
 
-    if (typeof title !== 'string' || title.trim().length === 0 || title.length > 120) {
-      return NextResponse.json(
-        { error: 'عنوان پیام الزامی است و حداکثر ۱۲۰ نویسه است' },
-        { status: 400 },
-      );
-    }
-    if (typeof messageBody !== 'string' || messageBody.trim().length === 0 || messageBody.length > 2000) {
-      return NextResponse.json(
-        { error: 'متن پیام الزامی است و حداکثر ۲۰۰۰ نویسه است' },
-        { status: 400 },
-      );
-    }
-    if (recipientId !== null && typeof recipientId !== 'string') {
-      return NextResponse.json(
-        { error: 'گیرنده نامعتبر است' },
-        { status: 400 },
-      );
+    if (!content) {
+      return NextResponse.json({ error: 'متن پیام الزامی است' }, { status: 400 });
     }
 
-    const cleanTitle = title.trim();
-    const cleanBody = messageBody.trim();
+    if (content.length > 3000) {
+      return NextResponse.json({ error: 'متن پیام حداکثر ۳۰۰۰ نویسه است' }, { status: 400 });
+    }
 
-    if (ctx.user.role === 'ADVISOR') {
-      // Advisor broadcast: send to ALL assigned students (one Message per student)
-      if (recipientId === null) {
-        const assignedStudents = await db.user.findMany({
-          where: { assignedAdvisorId: ctx.userId, role: 'STUDENT', isActive: true },
-          select: { id: true },
-        });
-        if (assignedStudents.length === 0) {
-          return NextResponse.json(
-            { error: 'هیچ دانش‌آموزی به شما اختصاص داده نشده است' },
-            { status: 400 },
-          );
-        }
-        // Create one Message per assigned student
-        const created = await db.$transaction(
-          assignedStudents.map((s) =>
-            db.message.create({
-              data: {
-                senderId: ctx.userId,
-                recipientId: s.id,
-                title: cleanTitle,
-                body: cleanBody,
-              },
-            }),
-          ),
-        );
-        const first = created[0];
-        return NextResponse.json(
-          {
-            message: {
-              id: first.id,
-              senderId: first.senderId,
-              recipientId: first.recipientId,
-              title: first.title,
-              body: first.body,
-              createdAt: first.createdAt.toISOString(),
-            },
-            broadcastCount: created.length,
-          },
-          { status: 201 },
-        );
-      }
-
-      // Advisor → single student: verify ownership
+    // STUDENT sending to Advisor
+    if (ctx.user.role === 'STUDENT') {
       const student = await db.user.findUnique({
-        where: { id: recipientId },
-        select: { id: true, role: true, assignedAdvisorId: true },
+        where: { id: ctx.userId },
+        select: { assignedAdvisorId: true },
       });
-      if (!student || student.role !== 'STUDENT' || student.assignedAdvisorId !== ctx.userId) {
+
+      if (!student?.assignedAdvisorId) {
         return NextResponse.json(
-          { error: 'این دانش‌آموز به شما اختصاص ندارد' },
-          { status: 403 },
+          { error: 'شما هنوز مشاوری ندارید. لطفاً ابتدا مشاور انتخاب کنید' },
+          { status: 400 },
         );
       }
-      const created = await db.message.create({
-        data: {
-          senderId: ctx.userId,
-          recipientId: student.id,
-          title: cleanTitle,
-          body: cleanBody,
-        },
+
+      receiverId = student.assignedAdvisorId;
+    } else if (ctx.user.role === 'ADVISOR') {
+      if (!receiverId) {
+        return NextResponse.json({ error: 'شناسه دانش‌آموز الزامی است' }, { status: 400 });
+      }
+
+      const targetStudent = await db.user.findUnique({
+        where: { id: receiverId },
+        select: { id: true, assignedAdvisorId: true, role: true },
       });
-      return NextResponse.json(
-        {
-          message: {
-            id: created.id,
-            senderId: created.senderId,
-            recipientId: created.recipientId,
-            title: created.title,
-            body: created.body,
-            createdAt: created.createdAt.toISOString(),
-          },
-          broadcastCount: 1,
-        },
-        { status: 201 },
-      );
+
+      if (!targetStudent || targetStudent.role !== 'STUDENT') {
+        return NextResponse.json({ error: 'دانش‌آموز یافت نشد' }, { status: 404 });
+      }
+    } else if (ctx.user.role === 'SUPER_ADMIN') {
+      if (!receiverId) {
+        return NextResponse.json({ error: 'گیرنده پیام الزامی است' }, { status: 400 });
+      }
+    } else {
+      return NextResponse.json({ error: 'دسترسی غیرمجاز' }, { status: 403 });
     }
 
-    // SUPER_ADMIN
-    if (recipientId === null) {
-      // True broadcast — single Message row with recipientId=null
-      const created = await db.message.create({
-        data: {
-          senderId: ctx.userId,
-          recipientId: null,
-          title: cleanTitle,
-          body: cleanBody,
-        },
-      });
-      return NextResponse.json(
-        {
-          message: {
-            id: created.id,
-            senderId: created.senderId,
-            recipientId: created.recipientId,
-            title: created.title,
-            body: created.body,
-            createdAt: created.createdAt.toISOString(),
-          },
-          broadcastCount: null,
-        },
-        { status: 201 },
-      );
-    }
-
-    // Super-admin → specific student
-    const student = await db.user.findUnique({
-      where: { id: recipientId },
-      select: { id: true, role: true },
-    });
-    if (!student || student.role !== 'STUDENT') {
-      return NextResponse.json(
-        { error: 'دانش‌آموز یافت نشد' },
-        { status: 404 },
-      );
-    }
-    const created = await db.message.create({
+    const message = await db.message.create({
       data: {
         senderId: ctx.userId,
-        recipientId: student.id,
-        title: cleanTitle,
-        body: cleanBody,
+        receiverId,
+        subject,
+        content,
+        isRead: false,
+      },
+      include: {
+        sender: {
+          select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+        },
+        receiver: {
+          select: { id: true, firstName: true, lastName: true, avatar: true, role: true },
+        },
       },
     });
-    return NextResponse.json(
-      {
-        message: {
-          id: created.id,
-          senderId: created.senderId,
-          recipientId: created.recipientId,
-          title: created.title,
-          body: created.body,
-          createdAt: created.createdAt.toISOString(),
-        },
-        broadcastCount: 1,
-      },
-      { status: 201 },
-    );
-  } catch (cause) {
-    console.error('POST /api/messages error:', cause);
-    return NextResponse.json(
-      { error: 'خطا در ارسال پیام' },
-      { status: 500 },
-    );
+
+    return NextResponse.json({ message }, { status: 201 });
+  } catch (err) {
+    console.error('Error creating message:', err);
+    return NextResponse.json({ error: 'خطا در ثبت پیام' }, { status: 500 });
   }
 }

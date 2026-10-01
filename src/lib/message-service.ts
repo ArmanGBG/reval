@@ -1,14 +1,65 @@
 // ===== Message Service =====
-// Single source of truth for all message API operations.
+// Single source of truth for all student-advisor messaging operations.
 // Follows the same pattern as task-service.ts.
-//
-// The Zustand store (refreshNotifications, markNotificationRead) calls these
-// functions to fetch the student's DB-backed inbox and to persist read state.
 
 import { apiFetch } from '@/lib/api-client';
 
-// ===== InboxMessage =====
-// A message addressed to the current student (or broadcast to all students).
+export interface MessageSenderReceiver {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  role: string;
+}
+
+export interface MessageItem {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  subject: string | null;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  sender?: MessageSenderReceiver;
+  receiver?: MessageSenderReceiver;
+}
+
+export interface StudentAdvisorInfo {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  role: string;
+  grade?: string | null;
+  major?: string | null;
+}
+
+export interface StudentThreadResponse {
+  messages: MessageItem[];
+  advisor: StudentAdvisorInfo | null;
+  hasAdvisor: boolean;
+}
+
+export interface AdvisorThread {
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    avatar: string;
+    grade?: string | null;
+    major?: string | null;
+  };
+  messages: MessageItem[];
+  lastMessage: MessageItem | null;
+  unreadCount: number;
+}
+
+export interface AdvisorThreadsResponse {
+  threads: AdvisorThread[];
+  assignedStudents: StudentAdvisorInfo[];
+}
+
+// ===== Legacy Types for Compatibility =====
 export interface InboxMessage {
   id: string;
   senderId: string;
@@ -17,46 +68,26 @@ export interface InboxMessage {
   recipientId: string | null;
   title: string;
   body: string;
-  createdAt: string; // ISO date string
+  createdAt: string;
   read: boolean;
 }
 
-// ===== SentMessage =====
-// A message the current advisor/super-admin has sent.
 export interface SentMessage {
   id: string;
   senderId: string;
   recipientId: string | null;
   title: string;
   body: string;
-  createdAt: string; // ISO date string
-  readCount: number; // number of students who've read it
+  createdAt: string;
+  readCount: number;
 }
 
-// ===== Send Message Payload =====
-export interface SendMessagePayload {
-  recipientId: string | null;
-  title: string;
-  body: string;
-}
+// ===== API Methods =====
 
-// ===== Send Message Response =====
-export interface SendMessageResponse {
-  message: {
-    id: string;
-    senderId: string;
-    recipientId: string | null;
-    title: string;
-    body: string;
-    createdAt: string;
-  };
-  broadcastCount: number | null; // null = super-admin broadcast (true broadcast)
-}
-
-// ===== loadInboxMessages =====
-// Fetch the current student's inbox (recipientId = me OR recipientId = null).
-// Returns InboxMessage[] sorted by createdAt DESC.
-export async function loadInboxMessages(): Promise<InboxMessage[]> {
+/**
+ * Fetch thread between logged-in student and their advisor
+ */
+export async function getStudentThread(): Promise<StudentThreadResponse> {
   const res = await apiFetch('/api/messages', {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -65,56 +96,146 @@ export async function loadInboxMessages(): Promise<InboxMessage[]> {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'خطا در بارگذاری پیام‌ها');
   }
-  const data = await res.json();
-  const messages = Array.isArray(data.messages) ? data.messages : [];
-  return messages as InboxMessage[];
+  return res.json();
 }
 
-// ===== loadSentMessages =====
-// Fetch messages the current advisor/super-admin has sent.
-// Returns SentMessage[] sorted by createdAt DESC.
-export async function loadSentMessages(): Promise<SentMessage[]> {
-  const res = await apiFetch('/api/messages?sentBy=me', {
+/**
+ * Fetch threads for advisor (grouped by student)
+ */
+export async function getAdvisorThreads(): Promise<AdvisorThreadsResponse> {
+  const res = await apiFetch('/api/messages', {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'خطا در بارگذاری پیام‌های ارسالی');
+    throw new Error(data.error || 'خطا در بارگذاری گفتگوها');
   }
-  const data = await res.json();
-  const messages = Array.isArray(data.messages) ? data.messages : [];
-  return messages as SentMessage[];
+  return res.json();
 }
 
-// ===== sendMessage =====
-// Send a message. Returns the created message + broadcastCount.
-export async function sendMessage(
-  payload: SendMessagePayload,
-): Promise<SendMessageResponse> {
+/**
+ * Fetch messages with a specific student for advisor
+ */
+export async function getAdvisorStudentMessages(
+  studentId: string,
+): Promise<{ messages: MessageItem[]; student: StudentAdvisorInfo | null }> {
+  const res = await apiFetch(`/api/messages?studentId=${encodeURIComponent(studentId)}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'خطا در بارگذاری پیام‌های دانش‌آموز');
+  }
+  return res.json();
+}
+
+/**
+ * Send a message (student -> advisor OR advisor -> student)
+ */
+export async function sendMessage(payload: {
+  receiverId?: string | null;
+  recipientId?: string | null;
+  subject?: string | null;
+  title?: string | null;
+  content?: string;
+  body?: string;
+}): Promise<{ message: MessageItem }> {
+  const effectiveReceiverId = payload.receiverId || payload.recipientId || undefined;
+  const effectiveSubject = payload.subject || payload.title || undefined;
+  const effectiveContent = payload.content || payload.body || '';
+
   const res = await apiFetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      receiverId: effectiveReceiverId,
+      subject: effectiveSubject,
+      content: effectiveContent,
+    }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'خطا در ارسال پیام');
   }
-  return (await res.json()) as SendMessageResponse;
+  return res.json();
 }
 
-// ===== markMessageRead =====
-// Mark a message as read for the current student. Idempotent (uses upsert
-// server-side). Fire-and-forget from the caller's perspective — errors
-// are swallowed so they don't break the optimistic UI update.
-export async function markMessageRead(messageId: string): Promise<void> {
+/**
+ * Mark a message as read (PATCH /api/messages/[id]/read)
+ */
+export async function markMessageRead(
+  messageId: string,
+): Promise<{ ok: boolean; message?: MessageItem }> {
   try {
-    await apiFetch(`/api/messages/${messageId}/read`, {
+    const res = await apiFetch(`/api/messages/${messageId}/read`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false };
+    }
+    return res.json();
   } catch {
-    // Fire-and-forget — the optimistic UI state already reflects the read.
+    return { ok: false };
+  }
+}
+
+// ===== Backwards Compatibility Methods =====
+
+export async function loadInboxMessages(): Promise<InboxMessage[]> {
+  try {
+    const data = await getStudentThread();
+    if (!data.messages) return [];
+    return data.messages
+      .filter((m) => m.sender?.role === 'ADVISOR' || m.sender?.role === 'SUPER_ADMIN')
+      .map((m) => ({
+        id: m.id,
+        senderId: m.senderId,
+        senderName: `${m.sender?.firstName || ''} ${m.sender?.lastName || ''}`.trim() || 'مشاور',
+        senderRole: m.sender?.role || 'ADVISOR',
+        recipientId: m.receiverId,
+        title: m.subject || 'پیام از مشاور',
+        body: m.content,
+        createdAt: m.createdAt,
+        read: m.isRead,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export async function loadSentMessages(): Promise<SentMessage[]> {
+  try {
+    const res = await apiFetch('/api/messages', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data.threads && Array.isArray(data.threads)) {
+      const sent: SentMessage[] = [];
+      for (const t of data.threads) {
+        for (const m of t.messages) {
+          if (m.sender?.role === 'ADVISOR') {
+            sent.push({
+              id: m.id,
+              senderId: m.senderId,
+              recipientId: m.receiverId,
+              title: m.subject || 'پیام',
+              body: m.content,
+              createdAt: m.createdAt,
+              readCount: m.isRead ? 1 : 0,
+            });
+          }
+        }
+      }
+      return sent.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    return [];
+  } catch {
+    return [];
   }
 }

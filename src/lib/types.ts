@@ -4,7 +4,7 @@
 export type UserRole = 'STUDENT' | 'ADVISOR' | 'INSTITUTE_MANAGER' | 'SUPER_ADMIN';
 
 // Student views (personal command center)
-export type StudentView = 'dashboard' | 'plan' | 'exam-history' | 'tools' | 'analytics' | 'settings';
+export type StudentView = 'dashboard' | 'plan' | 'exam-history' | 'tools' | 'analytics' | 'settings' | 'messages';
 
 // Advisor views (CRM/management panel)
 export type AdvisorView = 'advisor-dashboard' | 'advisor-students' | 'advisor-student-detail' | 'advisor-settings' | 'advisor-messages';
