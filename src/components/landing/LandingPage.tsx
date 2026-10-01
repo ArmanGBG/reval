@@ -393,7 +393,7 @@ function LandingBentoFeatures() {
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-black text-foreground sm:text-4xl">برای دانش‌آموزان</h2>
-          <p className="mt-4 text-muted-foreground text-sm sm:text-base">همه ابزارهایی که برای رسیدن به اوج تمرکز و مدیریت زمان نیاز داری.</p>
+          <p className="mt-4 text-muted-foreground text-sm sm:text-base">همه ابزارهایی که برای ساختن یک مسیر مطالعاتی موفق و منظم نیاز داری.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">

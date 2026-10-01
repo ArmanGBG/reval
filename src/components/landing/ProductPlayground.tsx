@@ -204,7 +204,7 @@ export function ProductPlayground() {
         <div className="mb-12 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 backdrop-blur-md mb-4">
             <Sparkles className="size-3.5 animate-pulse" />
-            <span>پلی‌گراند تعاملی روال • Product Playground</span>
+            <span>محیط اپ، قدم به قدم</span>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-foreground tracking-tight text-balance">
             قبل از ثبت‌نام، حس خوب «روی روال بودن» رو تجربه کن
