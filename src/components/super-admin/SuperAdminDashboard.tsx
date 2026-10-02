@@ -1,444 +1,650 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
-import { useAppStore } from '@/lib/store';
+import React, { useEffect, useState } from 'react';
 import {
-  Building2,
   Users,
+  UserPlus,
+  Flame,
+  ShieldCheck,
+  Target,
+  Clock,
+  ChevronLeft,
+  Loader2,
   GraduationCap,
   TrendingUp,
-  Activity,
-  Zap,
-  Crown,
-  ShieldCheck,
-  AlertOctagon,
-  Sparkles,
 } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+} from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PersianDateRangePicker, PersianDateRangeValue } from '@/components/shared/PersianDateRangePicker';
+import { toISODate, toPersianDigits } from '@/lib/persian-date';
+import { apiFetch } from '@/lib/api-client';
 
-interface MonthBucket {
-  label: string;
-  key: string;
-  users: number;
-  institutes: number;
-  tasks: number;
-  exams: number;
-  messages: number;
-}
+// ==========================================
+// DATE FORMATTER (Native Jalali)
+// ==========================================
 
-interface MetricsResponse {
-  months: MonthBucket[];
-  snapshot: {
-    totalUsers: number;
-    totalInstitutes: number;
-    totalStudents: number;
-    totalAdvisors: number;
-    totalTasks: number;
-    totalExams: number;
-  };
-}
+const formatToJalali = (dateStr: string) => {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('fa-IR', { month: 'long', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+};
 
-function toPersianDigits(num: number | string): string {
-  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-  return num.toString().split('').map((d) => persianDigits[parseInt(d)] ?? d).join('');
-}
+// ==========================================
+// CUSTOM TOOLTIPS
+// ==========================================
+
+const CustomTooltip = ({ active, payload, label, unit, color = '#22c55e' }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl shadow-xl min-w-[130px]" dir="rtl">
+        <p className="text-zinc-400 text-xs mb-1.5">{label}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+          <p className="text-zinc-50 font-bold text-sm">
+            {payload[0].value?.toLocaleString('fa-IR')} <span className="font-normal text-zinc-400 text-xs">{unit}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const FunnelTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-xl shadow-xl min-w-[140px]" dir="rtl">
+        <p className="text-zinc-400 text-xs mb-1.5">{payload[0].payload.name}</p>
+        <p className="text-zinc-50 font-bold text-sm">
+          {payload[0].value?.toLocaleString('fa-IR')} <span className="font-normal text-zinc-400 text-xs">کاربر</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
 
 export default function SuperAdminDashboard() {
-  const { platformInstitutes, globalUsers, loadPlatformInstitutes, loadGlobalUsers } = useAppStore();
-  useEffect(() => { loadPlatformInstitutes().catch(() => {}); loadGlobalUsers().catch(() => {}); }, [loadPlatformInstitutes, loadGlobalUsers]);
+  // 1. Manage Persian Date Range State (defaults to last 30 days)
+  const [dateRange, setDateRange] = useState<PersianDateRangeValue>(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+      start: toISODate(start),
+      end: toISODate(end),
+    };
+  });
 
-  // ===== Real monthly analytics from /api/admin/metrics =====
-  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
-  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 2. Fetch data with dateRange in dependency array
   useEffect(() => {
-    let active = true;
-    (async () => {
-      setMetricsLoading(true);
+    const fetchDashboard = async () => {
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/admin/metrics?months=6');
-        const data = await res.json();
-        if (!active) return;
-        if (res.ok && data && Array.isArray(data.months)) {
-          setMetrics(data as MetricsResponse);
+        const res = await apiFetch(`/api/admin/dashboard?startDate=${dateRange.start}&endDate=${dateRange.end}`);
+        if (res.ok) {
+          const json = await res.json();
+          setDashboardData(json);
         }
-      } catch {
-        // silent fail — chart falls back to a friendly empty state
+      } catch (error) {
+        console.error('Failed to fetch dashboard data', error);
       } finally {
-        if (active) setMetricsLoading(false);
+        setIsLoading(false);
       }
-    })();
-    return () => { active = false; };
-  }, []);
+    };
 
-  // Platform-wide KPIs
-  const kpis = useMemo(() => {
-    const totalInstitutes = platformInstitutes.length;
-    const activeInstitutes = platformInstitutes.filter((i) => i.status === 'active').length;
-    const totalStudents = globalUsers.filter((user) => user.role === 'student').length;
-    const totalAdvisors = globalUsers.filter((user) => user.role === 'advisor').length;
-    const avgCompletion = totalInstitutes > 0
-      ? Math.round(platformInstitutes.reduce((s, i) => s + i.avgCompletionRate, 0) / totalInstitutes)
-      : 0;
-    const activeUsers = globalUsers.filter((u) => u.status === 'active').length;
-    const suspendedUsers = globalUsers.filter((u) => u.status === 'suspended').length;
-    const proInstitutes = platformInstitutes.filter((i) => i.subscriptionPlan === 'pro' || i.subscriptionPlan === 'enterprise').length;
+    fetchDashboard();
+  }, [dateRange]);
 
-    return { totalInstitutes, activeInstitutes, totalStudents, totalAdvisors, avgCompletion, activeUsers, suspendedUsers, proInstitutes };
-  }, [platformInstitutes, globalUsers]);
+  // 3. Format Date labels using Native Jalali toLocaleDateString
+  const formattedDailyGrowth = dashboardData?.growthTrend?.map((item: any) => ({
+    ...item,
+    formattedDate: formatToJalali(item.date),
+  })) || [];
 
-  // Subscription distribution
-  const subscriptionDist = useMemo(() => {
-    const dist: Record<string, number> = { free: 0, basic: 0, pro: 0, enterprise: 0 };
-    platformInstitutes.forEach((i) => { dist[i.subscriptionPlan] = (dist[i.subscriptionPlan] || 0) + 1; });
-    return dist;
-  }, [platformInstitutes]);
+  const formattedCumulativeGrowth = dashboardData?.cumulativeGrowthTrend?.map((item: any) => ({
+    ...item,
+    formattedDate: formatToJalali(item.date),
+  })) || [];
 
-  const SUB_LABELS: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    free: { label: 'رایگان', color: 'text-muted-foreground', bg: 'bg-zinc-500/15', dot: 'bg-zinc-500' },
-    basic: { label: 'پایه', color: 'text-muted-foreground', bg: 'bg-white/5', dot: 'bg-muted-foreground' },
-    pro: { label: 'حرفه‌ای', color: 'text-gold', bg: 'bg-gold/15', dot: 'bg-gold' },
-    enterprise: { label: 'سازمانی', color: 'text-gold', bg: 'bg-gold/15', dot: 'bg-gold' },
-  };
+  const formattedCumulativeTasks = dashboardData?.cumulativeTasksTrend?.map((item: any) => ({
+    ...item,
+    formattedDate: formatToJalali(item.date),
+  })) || [];
 
-  // Role distribution
-  const roleDist = useMemo(() => {
-    const dist: Record<string, number> = { student: 0, advisor: 0, institute_manager: 0 };
-    globalUsers.forEach((u) => { dist[u.role] = (dist[u.role] || 0) + 1; });
-    return dist;
-  }, [globalUsers]);
+  const formattedMatchesTrend = dashboardData?.matchesTrend?.map((item: any) => ({
+    ...item,
+    formattedDate: formatToJalali(item.date),
+  })) || [];
 
-  // Institute status distribution
-  const instituteStatusDist = useMemo(() => {
-    const dist: Record<string, number> = { active: 0, suspended: 0, trial: 0 };
-    platformInstitutes.forEach((i) => { dist[i.status] = (dist[i.status] || 0) + 1; });
-    return dist;
-  }, [platformInstitutes]);
+  const funnelData = dashboardData?.activationFunnel ? [
+    { name: 'ثبت‌نام', value: dashboardData.activationFunnel.registered || 0 },
+    { name: 'تایید شماره', value: dashboardData.activationFunnel.verified || 0 },
+    { name: 'اولین فعالیت', value: dashboardData.activationFunnel.activated || 0 },
+    { name: 'دریافت مشاور', value: dashboardData.activationFunnel.matched || 0 },
+  ] : [];
 
-  // Max value for engagement bars normalization (peak of new users per month)
-  const monthlyUsers = metrics?.months ?? [];
-  const maxMonthlyUsers = Math.max(1, ...monthlyUsers.map((m) => m.users));
-  const maxMonthlyInstitutes = Math.max(1, ...monthlyUsers.map((m) => m.institutes));
+  // Sparkline data from recent daily signups
+  const sparklineData = formattedDailyGrowth.slice(-7).map((d: any) => ({ value: d.signups }));
 
-  const kpiCards = [
-    {
-      label: 'موسسات فعال',
-      value: `${toPersianDigits(kpis.activeInstitutes)}`,
-      sub: `از ${toPersianDigits(kpis.totalInstitutes)}`,
-      icon: Building2,
-      tint: 'bg-gold/15 text-gold',
-      featured: true,
-    },
-    {
-      label: 'کل دانش‌آموزان',
-      value: toPersianDigits(kpis.totalStudents),
-      sub: 'در پلتفرم',
-      icon: GraduationCap,
-      tint: 'bg-mint/15 text-mint',
-      featured: false,
-    },
-    {
-      label: 'کل مشاوران',
-      value: toPersianDigits(kpis.totalAdvisors),
-      sub: 'در پلتفرم',
-      icon: Users,
-      tint: 'bg-white/5 text-muted-foreground',
-      featured: false,
-    },
-    {
-      label: 'میانگین تکمیل',
-      value: `${toPersianDigits(kpis.avgCompletion)}٪`,
-      sub: 'پلتفرم',
-      icon: TrendingUp,
-      tint: 'bg-gold/15 text-gold',
-      featured: false,
-    },
-  ];
+  // Pending Requests (placeholder empty state)
+  const pendingRequests: any[] = [];
 
   return (
-    <div className="space-y-5 md:space-y-6 animate-fade-in-up">
-      {/* ============ God Mode Hero Header ============ */}
-      <header className="relative surface-1 edge-highlight rounded-[20px] p-5 md:p-7 overflow-hidden">
-        <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 md:w-14 md:h-14 rounded-[14px] bg-gold/15 border border-gold/25 flex items-center justify-center shrink-0">
-              <Crown className="w-6 h-6 md:w-7 md:h-7 text-gold" />
+    <div className="min-h-screen bg-zinc-950 p-6 md:p-8 font-sans text-zinc-50" dir="rtl">
+      
+      {/* HEADER */}
+      <header className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="bg-zinc-900 p-2 rounded-lg border border-zinc-800">
+              <ShieldCheck className="w-6 h-6 text-green-500" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg md:text-2xl font-bold text-foreground leading-tight">داشبورد آماری کلان</h1>
-                <span className="inline-flex items-center gap-1 text-[10px] md:text-[11px] font-bold px-2 py-0.5 rounded-full bg-gold/15 text-gold border border-gold/30">
-                  <ShieldCheck className="w-3 h-3" />
-                  GOD MODE
-                </span>
-              </div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">نمای کلی پلتفرم روال — همه موسسات و کاربران</p>
-            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">داشبورد کلان مدیریتی</h1>
           </div>
+          <p className="text-zinc-400 text-sm">نمای لحظه‌ای شاخص‌های کلیدی عملکرد (KPIs) پلتفرم روال</p>
+        </div>
 
-          {/* Live status pill */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-[var(--bg-overlay)] border border-[var(--border)]">
-            <span className="w-2 h-2 rounded-full bg-mint animate-pulse" />
-            <span className="text-xs text-muted-foreground">سیستم فعال</span>
-          </div>
+        {/* Existing Custom Persian Date Range Picker */}
+        <div className="relative z-30">
+          <PersianDateRangePicker
+            value={dateRange}
+            onChange={(nextRange) => {
+              if (nextRange) {
+                setDateRange(nextRange);
+              }
+            }}
+            maxDays={90}
+          />
         </div>
       </header>
 
-      {/* ============ 4 KPI Cards (top row) ============ */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        {kpiCards.map((kpi, idx) => {
-          const Icon = kpi.icon;
-          return (
-            <motion.div
-              key={kpi.label}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.04 * idx, duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-              className={`card-hover edge-highlight rounded-[16px] p-4 md:p-5 relative overflow-hidden ${
-                kpi.featured
-                  ? 'bg-[var(--gold-soft)] border border-gold/25'
-                  : 'surface-1'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-9 h-9 md:w-10 md:h-10 rounded-[10px] flex items-center justify-center ${kpi.tint}`}>
-                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
+      {/* LOADING STATE */}
+      {isLoading && !dashboardData && (
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <Loader2 className="w-10 h-10 text-green-500 animate-spin mb-4" />
+          <p className="text-zinc-400 text-sm">در حال دریافت اطلاعات سیستم...</p>
+        </div>
+      )}
+
+      {/* DASHBOARD CONTENT */}
+      {dashboardData && (
+        <div className={`transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+          
+          {/* SUMMARY CARDS: TOTAL STUDENTS & TOTAL ADVISORS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {/* 1. کل دانش‌آموزان */}
+            <Card className="bg-zinc-950/50 border-zinc-800 shadow-none hover:border-zinc-700/80 transition-all rounded-2xl p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-zinc-400 text-xs font-medium mb-1.5">کل دانش‌آموزان</p>
+                  <div className="text-3xl font-extrabold text-white tracking-tight">
+                    {(dashboardData.summary?.totalStudents ?? dashboardData.vitals?.totalStudents ?? 0).toLocaleString('fa-IR')}
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    دانش‌آموزان ثبت‌نام‌شده در پلتفرم
+                  </p>
                 </div>
-                {kpi.featured && (
-                  <span className="text-[10px] text-gold font-bold uppercase tracking-wide">VIP</span>
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 shrink-0">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
+
+            {/* 2. کل مشاوران */}
+            <Card className="bg-zinc-950/50 border-zinc-800 shadow-none hover:border-zinc-700/80 transition-all rounded-2xl p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-zinc-400 text-xs font-medium mb-1.5">کل مشاوران</p>
+                  <div className="text-3xl font-extrabold text-white tracking-tight">
+                    {(dashboardData.summary?.totalAdvisors ?? dashboardData.vitals?.totalAdvisors ?? 0).toLocaleString('fa-IR')}
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    مشاوران تحصیلی فعال در سامانه
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 shrink-0">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* ROW 1: VITALS (5 CARDS) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            
+            {/* 1. DAU */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none overflow-hidden relative">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-zinc-400 text-sm font-medium">کاربران فعال روزانه</CardTitle>
+                <Users className="w-4 h-4 text-zinc-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {dashboardData.vitals?.dau?.toLocaleString('fa-IR')}
+                </div>
+                <p className="text-xs text-green-500 flex items-center gap-1">
+                  آمار لحظه‌ای سیستم
+                </p>
+                {/* Dynamic Sparkline */}
+                {sparklineData.length > 0 && (
+                  <div className="h-12 w-full mt-2 absolute bottom-0 left-0 right-0 opacity-40 pointer-events-none" dir="ltr">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={sparklineData}>
+                        <defs>
+                          <linearGradient id="sparklineGreen" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
+                            <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2} fill="url(#sparklineGreen)" isAnimationActive={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
-              </div>
-              <p className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{kpi.value}</p>
-              <p className="text-xs md:text-sm text-muted-foreground mt-1">{kpi.label}</p>
-              <p className="text-[10px] md:text-[11px] text-muted-foreground/70 mt-0.5">{kpi.sub}</p>
-            </motion.div>
-          );
-        })}
-      </section>
+              </CardContent>
+            </Card>
 
-      {/* ============ Main 12-col Grid: Growth Chart + Subscription Distribution ============ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
-        {/* Growth Chart (col-span-8) */}
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-8 surface-1 edge-highlight rounded-[16px] p-4 md:p-6"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-gold" />
-              <h3 className="text-sm md:text-base font-semibold text-foreground">رشد پلتفرم (ماهانه)</h3>
-            </div>
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-mint" /> کاربر جدید
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-muted-foreground" /> آموزشگاه جدید
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {metricsLoading ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-gold" />
-                <span>در حال بارگذاری آمار ماهانه...</span>
-              </div>
-            ) : monthlyUsers.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-xs">
-                هنوز داده‌ای برای نمایش رشد ماهانه ثبت نشده است.
-              </div>
-            ) : (
-              monthlyUsers.map((item, idx) => {
-                return (
-                  <div key={`${item.key}-${idx}`} className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground w-10 md:w-12 text-left tabular-nums">{item.label}</span>
-                    <div className="flex-1 flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(item.users / maxMonthlyUsers) * 100}%` }}
-                            transition={{ duration: 0.7, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                            className="h-full bg-mint rounded-full"
-                          />
-                        </div>
-                        <span className="text-[11px] text-muted-foreground w-7 tabular-nums">{toPersianDigits(item.users)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(item.institutes / maxMonthlyInstitutes) * 100}%` }}
-                            transition={{ duration: 0.7, delay: idx * 0.06 + 0.05, ease: [0.16, 1, 0.3, 1] }}
-                            className="h-full bg-muted-foreground rounded-full"
-                          />
-                        </div>
-                        <span className="text-[11px] text-muted-foreground/60 w-7 tabular-nums">{toPersianDigits(item.institutes)}</span>
-                      </div>
-                    </div>
-                    <div className="text-center min-w-[44px] md:min-w-[52px] px-2 py-1 rounded-[8px] bg-gold/10 border border-gold/15">
-                      <span className="text-sm md:text-base font-bold text-gold tabular-nums">{toPersianDigits(item.tasks)}</span>
-                      <p className="text-[9px] text-muted-foreground/70">تسک</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </motion.section>
-
-        {/* Subscription Distribution (col-span-4) */}
-        <motion.aside
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="lg:col-span-4 surface-1 rounded-[16px] p-4 md:p-6 self-start"
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Zap className="w-4 h-4 text-gold" />
-            <h3 className="text-sm md:text-base font-semibold text-foreground">توزیع اشتراک‌ها</h3>
-          </div>
-
-          {/* Stacked bar */}
-          <div className="flex gap-0.5 h-3 rounded-full overflow-hidden mb-4 bg-[var(--bg-overlay)]">
-            {Object.entries(subscriptionDist).map(([plan, count]) => {
-              if (count === 0) return null;
-              return (
-                <div
-                  key={plan}
-                  className={`${SUB_LABELS[plan].dot} transition-all`}
-                  style={{ width: `${kpis.totalInstitutes > 0 ? (count / kpis.totalInstitutes) * 100 : 0}%` }}
-                />
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="space-y-2.5">
-            {Object.entries(subscriptionDist).map(([plan, count]) => {
-              const cfg = SUB_LABELS[plan];
-              const pct = kpis.totalInstitutes > 0 ? Math.round((count / kpis.totalInstitutes) * 100) : 0;
-              return (
-                <div key={plan} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                    <span className={`text-xs ${cfg.color}`}>{cfg.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground/70 tabular-nums">{toPersianDigits(pct)}٪</span>
-                    <span className="text-xs font-bold text-foreground tabular-nums">{toPersianDigits(count)}</span>
-                  </div>
+            {/* 2. Today's / Period Signups */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-zinc-400 text-sm font-medium">ثبت‌نام‌های دوره</CardTitle>
+                <UserPlus className="w-4 h-4 text-zinc-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {dashboardData.vitals?.todaySignups?.toLocaleString('fa-IR')}
                 </div>
-              );
-            })}
+                <p className="text-xs text-zinc-500 flex items-center gap-1">
+                  کل دانشجویان: {dashboardData.vitals?.totalStudents?.toLocaleString('fa-IR')}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 3. Consistency Rate */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-zinc-400 text-sm font-medium">کاربران مستمر</CardTitle>
+                <Flame className="w-4 h-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {dashboardData.consistency?.weeklyConsistentStudents?.toLocaleString('fa-IR')}
+                </div>
+                <p className="text-xs text-zinc-500 flex items-center gap-1">
+                  +۳ فعالیت در دوره
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 4. Active Consultations */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-zinc-400 text-sm font-medium">مشاوره‌های فعال</CardTitle>
+                <ShieldCheck className="w-4 h-4 text-zinc-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white mb-1">
+                  {dashboardData.vitals?.activeMatches?.toLocaleString('fa-IR')}
+                </div>
+                <p className="text-xs text-zinc-500 flex items-center gap-1">
+                  ارتباطات تایید شده
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* 5. NEW: Conversion Rate */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-zinc-400 text-sm font-medium">نرخ تبدیل به مشاوره</CardTitle>
+                <Target className="w-4 h-4 text-emerald-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-emerald-400 mb-1">
+                  {dashboardData.vitals?.conversionRate?.toLocaleString('fa-IR') ?? '۰'}٪
+                </div>
+                <p className="text-xs text-zinc-500 flex items-center gap-1">
+                  از کل کاربران ثبت‌نامی
+                </p>
+              </CardContent>
+            </Card>
+
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[var(--border)] flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-gold shrink-0" />
-            <p className="text-[11px] text-muted-foreground">
-              <span className="text-gold font-bold">{toPersianDigits(kpis.proInstitutes)}</span> موسسه اشتراک پولی
-            </p>
-          </div>
-        </motion.aside>
-      </div>
-
-      {/* ============ 2-col Breakdowns ============ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {/* Role Distribution */}
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="surface-1 rounded-[16px] p-4 md:p-6"
-        >
-          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Users className="w-4 h-4 text-gold" />
-            توزیع نقش‌ها
-          </h3>
-          <div className="space-y-3">
-            {[
-              { label: 'دانش‌آموز', value: roleDist.student || 0, color: 'text-mint', bg: 'bg-mint' },
-              { label: 'مشاور', value: roleDist.advisor || 0, color: 'text-muted-foreground', bg: 'bg-muted-foreground' },
-              { label: 'مدیر آموزشگاه', value: roleDist.institute_manager || 0, color: 'text-gold', bg: 'bg-gold' },
-            ].map((role) => {
-              const total = (roleDist.student || 0) + (roleDist.advisor || 0) + (roleDist.institute_manager || 0);
-              const pct = total > 0 ? Math.round((role.value / total) * 100) : 0;
-              return (
-                <div key={role.label}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-muted-foreground">{role.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold ${role.color} tabular-nums`}>{toPersianDigits(role.value)}</span>
-                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">{toPersianDigits(pct)}٪</span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-[var(--bg-overlay)] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${role.bg} rounded-full transition-all`}
-                      style={{ width: `${pct}%` }}
+          {/* ROW 2: MAIN DAILY GROWTH CHART */}
+          <Card className="bg-zinc-900/50 border-zinc-800 shadow-none mb-6">
+            <CardHeader>
+              <CardTitle className="text-base font-bold text-white">روند روزانه ثبت‌نام کاربران</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px] w-full" dir="ltr">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={formattedDailyGrowth} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorDailySignups" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis 
+                      dataKey="formattedDate" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} 
+                      dy={10}
                     />
-                  </div>
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }}
+                    />
+                    <Tooltip 
+                      content={<CustomTooltip unit="ثبت‌نام" color="#22c55e" />} 
+                      cursor={{ stroke: '#3f3f46', strokeWidth: 1, strokeDasharray: '4 4' }} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="signups" 
+                      stroke="#22c55e" 
+                      strokeWidth={3} 
+                      fillOpacity={1} 
+                      fill="url(#colorDailySignups)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* MONTHLY GROWTH SECTION (DYNAMIC JALALI AGGREGATION) */}
+          <Card className="bg-zinc-900/50 border-zinc-800 shadow-none mb-6">
+            <CardHeader className="pb-4 flex flex-row items-center justify-between border-b border-zinc-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                  <TrendingUp className="w-4 h-4" />
                 </div>
-              );
-            })}
-          </div>
-        </motion.section>
+                <div>
+                  <CardTitle className="text-base font-bold text-white">رشد پلتفرم (ماهانه)</CardTitle>
+                  <p className="text-xs text-zinc-400 mt-0.5">تفکیک فعالیت تسک‌ها و ثبت‌نام کاربران در ماه‌های شمسی</p>
+                </div>
+              </div>
+              <span className="text-xs text-zinc-500 font-medium px-2.5 py-1 rounded-full bg-zinc-950 border border-zinc-800">
+                سال تحصیلی جاری
+              </span>
+            </CardHeader>
+            <CardContent className="pt-5">
+              {dashboardData?.monthlyGrowth && dashboardData.monthlyGrowth.length > 0 ? (
+                <div className="space-y-4">
+                  {dashboardData.monthlyGrowth.map((monthItem: any, idx: number) => (
+                    <div
+                      key={monthItem.month ?? idx}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700/80 transition-all"
+                    >
+                      {/* Month Label */}
+                      <div className="flex items-center gap-2.5 sm:min-w-[100px] shrink-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                        <span className="text-sm font-bold text-white tracking-wide">{monthItem.month}</span>
+                      </div>
 
-        {/* Institute Status */}
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="surface-1 rounded-[16px] p-4 md:p-6"
-        >
-          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-gold" />
-            وضعیت موسسات
-          </h3>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-[10px] bg-[var(--success)]/10 border border-[var(--success)]/15 p-3 text-center">
-              <div className="w-8 h-8 rounded-[8px] bg-[var(--success)]/15 flex items-center justify-center mx-auto mb-2">
-                <ShieldCheck className="w-4 h-4 text-[var(--success)]" />
-              </div>
-              <p className="text-lg font-bold text-[var(--success)] tabular-nums">{toPersianDigits(instituteStatusDist.active || 0)}</p>
-              <p className="text-[10px] text-muted-foreground">فعال</p>
-            </div>
-            <div className="rounded-[10px] bg-[var(--warning)]/10 border border-[var(--warning)]/15 p-3 text-center">
-              <div className="w-8 h-8 rounded-[8px] bg-[var(--warning)]/15 flex items-center justify-center mx-auto mb-2">
-                <Activity className="w-4 h-4 text-[var(--warning)]" />
-              </div>
-              <p className="text-lg font-bold text-[var(--warning)] tabular-nums">{toPersianDigits(instituteStatusDist.trial || 0)}</p>
-              <p className="text-[10px] text-muted-foreground">آزمایشی</p>
-            </div>
-            <div className="rounded-[10px] bg-[var(--danger)]/10 border border-[var(--danger)]/15 p-3 text-center">
-              <div className="w-8 h-8 rounded-[8px] bg-[var(--danger)]/15 flex items-center justify-center mx-auto mb-2">
-                <AlertOctagon className="w-4 h-4 text-[var(--danger)]" />
-              </div>
-              <p className="text-lg font-bold text-[var(--danger)] tabular-nums">{toPersianDigits(instituteStatusDist.suspended || 0)}</p>
-              <p className="text-[10px] text-muted-foreground">معلق</p>
-            </div>
-          </div>
-        </motion.section>
-      </div>
+                      {/* Center Progress Bar & User Count */}
+                      <div className="flex-1 min-w-0 px-1 sm:px-4">
+                        <div className="flex items-center justify-between text-xs mb-1.5">
+                          <span className="text-zinc-300 font-medium">
+                            {monthItem.newUsers?.toLocaleString('fa-IR')} <span className="text-zinc-400 font-normal">کاربر جدید</span>
+                          </span>
+                          <span className="text-zinc-500 text-[11px] tabular-nums">
+                            {toPersianDigits(monthItem.taskPercentage ?? 0)}٪ حجم فعالیت
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden border border-zinc-800/60">
+                          <div
+                            className="h-full bg-gradient-to-l from-green-400 to-green-600 rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(34,197,94,0.35)]"
+                            style={{ width: `${Math.max(monthItem.taskPercentage ?? 0, 4)}%` }}
+                          />
+                        </div>
+                      </div>
 
-      {/* ============ Quick Stats Row ============ */}
-      <section className="grid grid-cols-3 gap-3">
-        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-gold/15">
-          <p className="text-[10px] md:text-xs text-muted-foreground mb-1">کاربران فعال</p>
-          <p className="text-base md:text-lg font-bold text-gold tabular-nums">{toPersianDigits(kpis.activeUsers)}</p>
+                      {/* Left (in RTL): Dark Metric Block with Task Count in Green */}
+                      <div className="flex items-center justify-end sm:justify-start">
+                        <div className="px-3.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800/90 flex items-center gap-2 shrink-0 shadow-inner">
+                          <span className="text-base font-extrabold text-green-400 tabular-nums">
+                            {monthItem.totalTasks?.toLocaleString('fa-IR')}
+                          </span>
+                          <span className="text-xs text-zinc-400 font-normal">تسک</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-sm text-zinc-500">
+                  اطلاعات ماهانه‌ای برای نمایش یافت نشد.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ROW 3: NEW CHARTS GRID (2 COLUMNS) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            {/* Chart A: Cumulative Signups Growth */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-base font-bold text-white">رشد تجمعی کاربران (Cumulative Growth)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[260px] w-full" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={formattedCumulativeGrowth} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCumulativeUsers" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="formattedDate" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} 
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }}
+                      />
+                      <Tooltip 
+                        content={<CustomTooltip unit="کاربر تجمعی" color="#14b8a6" />} 
+                        cursor={{ stroke: '#3f3f46', strokeWidth: 1, strokeDasharray: '4 4' }} 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="total" 
+                        stroke="#14b8a6" 
+                        strokeWidth={3} 
+                        fillOpacity={1} 
+                        fill="url(#colorCumulativeUsers)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chart B: Cumulative Tasks Trend */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-base font-bold text-white">روند تجمعی تسک‌ها (Tasks Engagement)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[260px] w-full" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={formattedCumulativeTasks} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCumulativeTasks" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="formattedDate" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} 
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }}
+                      />
+                      <Tooltip 
+                        content={<CustomTooltip unit="تسک تجمعی" color="#8b5cf6" />} 
+                        cursor={{ stroke: '#3f3f46', strokeWidth: 1, strokeDasharray: '4 4' }} 
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="totalTasks" 
+                        stroke="#8b5cf6" 
+                        strokeWidth={3} 
+                        fillOpacity={1} 
+                        fill="url(#colorCumulativeTasks)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* ROW 4: MATCHES TREND & ACTIVATION FUNNEL */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            {/* Chart C: Connections / Matches Trend */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-base font-bold text-white">روند روزانه تخصیص به مشاور</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[260px] w-full" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={formattedMatchesTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={24}>
+                      <XAxis 
+                        dataKey="formattedDate" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }} 
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#71717a', fontSize: 12, fontFamily: 'inherit' }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip 
+                        content={<CustomTooltip unit="اتصال جدید" color="#22c55e" />} 
+                        cursor={{ fill: '#27272a' }} 
+                      />
+                      <Bar dataKey="matches" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Activation Funnel */}
+            <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-base font-bold text-white">قیف تبدیل دوره (Activation Funnel)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[260px] w-full" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={funnelData} layout="vertical" margin={{ top: 0, right: 20, left: 30, bottom: 0 }} barSize={28}>
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#e4e4e7', fontSize: 13, fontFamily: 'inherit' }} 
+                        width={90}
+                      />
+                      <Tooltip content={<FunnelTooltip />} cursor={{ fill: '#27272a' }} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {funnelData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={`rgba(34, 197, 94, ${1 - index * 0.2})`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+          </div>
+
+          {/* ROW 5: RECENT REQUESTS */}
+          <Card className="bg-zinc-900/50 border-zinc-800 shadow-none">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base font-bold text-white">درخواست‌های مشاوره اخیر</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pendingRequests.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-900 border border-zinc-800/60 hover:border-zinc-700 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center">
+                          <Clock className="w-4 h-4 text-zinc-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-zinc-200">{req.name}</p>
+                          <p className="text-xs text-zinc-500">{req.time}</p>
+                        </div>
+                      </div>
+                      <button className="text-zinc-400 hover:text-white p-1 rounded-md hover:bg-zinc-800 transition-colors">
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 opacity-60">
+                  <ShieldCheck className="w-10 h-10 text-zinc-700 mb-2" />
+                  <p className="text-sm text-zinc-400 text-center">درخواستی در انتظار تایید نیست.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
-        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-[var(--danger)]/15">
-          <p className="text-[10px] md:text-xs text-muted-foreground mb-1">معلق</p>
-          <p className="text-base md:text-lg font-bold text-[var(--danger)] tabular-nums">{toPersianDigits(kpis.suspendedUsers)}</p>
-        </div>
-        <div className="surface-1 rounded-[12px] p-3 md:p-4 text-center card-hover border border-gold/15">
-          <p className="text-[10px] md:text-xs text-muted-foreground mb-1">اشتراک پولی</p>
-          <p className="text-base md:text-lg font-bold text-gold tabular-nums">{toPersianDigits(kpis.proInstitutes)}</p>
-        </div>
-      </section>
+      )}
     </div>
   );
 }

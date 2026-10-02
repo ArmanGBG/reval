@@ -39,6 +39,7 @@ model User {
   tasks                      Task[]
   nonStudyActivities         NonStudyActivity[]
   sleepRecords               SleepRecord[]
+  schoolPresences            SchoolPresence[]
   examParticipants           ExamParticipant[]
   examResults                ExamResult[]
   examAnalysisTasks          ExamAnalysisTask[]    @relation("ExamAnalysisTaskStudent")
@@ -47,7 +48,7 @@ model User {
   createdTasks               Task[]                @relation("TaskCreator")
   createdExams               Exam[]                @relation("ExamCreator")
   sentMessages               Message[]             @relation("SentMessages")
-  readMessages               MessageRead[]         @relation("ReadMessages")
+  receivedMessages           Message[]             @relation("ReceivedMessages")
   sentConnectionRequests     ConnectionRequest[]   @relation("ConnectionRequestStudent")
   receivedConnectionRequests ConnectionRequest[]   @relation("ConnectionRequestAdvisor")
   platformSettings           PlatformSetting[]      @relation("PlatformSettingUpdater")
@@ -86,32 +87,25 @@ model ConnectionRequest {
   @@index([advisorId, status])
 }
 
-// ===== Message (advisor/super-admin → student) =====
+// ===== Message (Student <-> Advisor Communication) =====
 model Message {
-  id          String        @id @default(cuid())
-  senderId    String // the User who sent it
-  recipientId String? // null = broadcast to all students; non-null = specific student
-  title       String
-  body        String
-  // readReceipts stored as a separate table so each student has independent read state
-  readBy      MessageRead[]
-  sender      User          @relation("SentMessages", fields: [senderId], references: [id])
-  createdAt   DateTime      @default(now())
+  id         String    @id @default(cuid())
+  senderId   String
+  receiverId String
+  subject    String?   // For student pre-defined topics ('سوال', 'گزارش کار', 'درخواست تماس')
+  content    String
+  isRead     Boolean   @default(false)
+  isEdited   Boolean   @default(false)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
 
-  @@index([recipientId])
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
   @@index([createdAt])
-}
-
-model MessageRead {
-  id        String   @id @default(cuid())
-  messageId String
-  userId    String // the student who read it
-  readAt    DateTime @default(now())
-
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User    @relation("ReadMessages", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId])
+  @@index([deletedAt])
 }
 
 // ===== Institute =====
@@ -169,6 +163,8 @@ model Task {
   // Class homework — when set, this educational-test task is the homework
   // assigned by a class/video task (self-relation, one homework per class).
   classHomeworkOfId String? @unique
+  isSchoolTask      Boolean         @default(false)
+  schoolPresenceId  String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -182,6 +178,7 @@ model Task {
   topicModeSubtopics TaskTopicModeSubtopic[]
   classHomeworkOf    Task?                   @relation("ClassHomework", fields: [classHomeworkOfId], references: [id], onDelete: Cascade)
   homeworkForClass   Task?                   @relation("ClassHomework")
+  schoolPresence     SchoolPresence?         @relation(fields: [schoolPresenceId], references: [id], onDelete: SetNull)
 }
 
 model TaskTopic {
@@ -232,6 +229,25 @@ model SleepRecord {
 
   @@unique([studentId, date, type])
   @@index([studentId, date])
+}
+
+// ===== School Presence =====
+// Daily school presence record for students (one per day).
+model SchoolPresence {
+  id              String   @id @default(cuid())
+  userId          String
+  date            String   // ISO date string (YYYY-MM-DD)
+  startTime       String   // HH:mm (e.g. "07:30")
+  endTime         String   // HH:mm (e.g. "14:00")
+  durationMinutes Int      // calculated duration in minutes
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 // ===== Exam =====

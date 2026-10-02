@@ -5,6 +5,7 @@ export {
   buildActivityBreakdown as computeActivityBreakdown,
   buildDailyTrend,
   buildDailyTrend as computeDailyTrend,
+  buildSchoolDailyTrend,
   buildSubjectDistribution,
   buildSubjectDistribution as computeSubjectDistribution,
   computeKpiTotals,

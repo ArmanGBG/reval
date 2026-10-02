@@ -41,6 +41,8 @@ export interface CreateTaskPayload {
   advisorNote?: string | null;
   /** When set, this educational-test task is the homework of the referenced class/video task. */
   classHomeworkOfId?: string | null;
+  isSchoolTask?: boolean;
+  schoolPresenceId?: string | null;
 }
 
 export type UpdateTaskPayload = Omit<Partial<CreateTaskPayload>, 'studentId' | 'createdBy' | 'createdById' | 'subjectId' | 'topic'> & {
@@ -180,6 +182,8 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     classHomeworkOf: raw.classHomeworkOf && typeof raw.classHomeworkOf === 'object'
       ? raw.classHomeworkOf as NonNullable<Task['classHomeworkOf']>
       : null,
+    isSchoolTask: Boolean(raw.isSchoolTask),
+    schoolPresenceId: (raw.schoolPresenceId as string | null) ?? null,
   };
 }
 

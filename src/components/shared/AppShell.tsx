@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import BottomNav from './BottomNav';
@@ -28,12 +28,37 @@ import FocusMode from './FocusMode';
  *   the FocusMode portal so student keeps their plan / Pomodoro visible.
  */
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { userRole, currentView, onboardingComplete, focusMode } = useAppStore();
+  const { userRole, currentView, onboardingComplete, focusMode, checkDateRollover } = useAppStore();
 
   // Register global keyboard shortcuts.
   // Must be called unconditionally (Rules of Hooks); the hook itself
   // bails out early when the user is not yet logged in.
   useKeyboardShortcuts();
+
+  // Midnight Date Rollover listener (visibilitychange & window focus)
+  useEffect(() => {
+    const handleSync = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+      checkDateRollover();
+    };
+
+    // Run check on mount
+    handleSync();
+
+    document.addEventListener('visibilitychange', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    // Periodic check every 60 seconds
+    const interval = setInterval(handleSync, 60000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleSync);
+      window.removeEventListener('focus', handleSync);
+      clearInterval(interval);
+    };
+  }, [checkDateRollover]);
 
   const isLoggedIn = onboardingComplete && userRole !== undefined;
   if (!isLoggedIn) {

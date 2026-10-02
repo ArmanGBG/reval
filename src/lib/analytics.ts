@@ -6,7 +6,7 @@
  * All functions are side-effect-free and deterministic given the same inputs.
  */
 
-import type { Task, FieldType, ActivityType } from '@/lib/types';
+import type { Task, FieldType, ActivityType, SchoolPresence } from '@/lib/types';
 import {
   PERSIAN_WEEKDAYS,
   PERSIAN_MONTHS,
@@ -252,6 +252,99 @@ export function buildDailyTrend(tasks: Task[], timeFilter: TimeFilter, now: Date
     const tests = dayTasks.reduce((s, t) => s + (t.actualTestCount ?? 0), 0);
     const dayLabel = jalaliDayLabel(d);
     result.push({ day: dayLabel, hours: Math.round((minutes / 60) * 10) / 10, tests });
+  }
+  return result;
+}
+
+/**
+ * Builds daily school presence trend matching the exact timeframe and buckets of buildDailyTrend.
+ */
+export function buildSchoolDailyTrend(
+  presences: SchoolPresence[],
+  timeFilter: TimeFilter,
+  now: Date = new Date(),
+  customRange?: { start: string; end: string } | null,
+): DailyDatum[] {
+  if (timeFilter === 'روزانه' || timeFilter === 'هفته جاری') {
+    const weekDays = getWeekDays(now);
+    return PERSIAN_WEEKDAYS.map((dayName, i) => {
+      const dayStr = toISODate(weekDays[i]);
+      const dayPresences = presences.filter((p) => p.date === dayStr);
+      const minutes = dayPresences.reduce((s, p) => s + (p.durationMinutes ?? 0), 0);
+      return { day: dayName, hours: Math.round((minutes / 60) * 10) / 10, tests: 0 };
+    });
+  }
+
+  if (timeFilter === 'ماهانه') {
+    const j = getTodayJalali(now);
+    const daysInMonth = getDaysInJalaliMonth(j.jy, j.jm);
+    const first = getFirstDayOfJalaliMonth(j.jy, j.jm);
+    const bucketCount = 6;
+    const bucketSize = Math.ceil(daysInMonth / bucketCount);
+    const buckets: DailyDatum[] = [];
+    for (let b = 0; b < bucketCount; b++) {
+      const startDay = b * bucketSize + 1;
+      const endDay = Math.min(startDay + bucketSize - 1, daysInMonth);
+      if (startDay > daysInMonth) break;
+      const start = new Date(first);
+      start.setDate(first.getDate() + startDay - 1);
+      const end = new Date(first);
+      end.setDate(first.getDate() + endDay - 1);
+      const startStr = toISODate(start);
+      const endStr = toISODate(end);
+      const bucketPresences = presences.filter((p) => p.date >= startStr && p.date <= endStr);
+      const minutes = bucketPresences.reduce((s, p) => s + (p.durationMinutes ?? 0), 0);
+      buckets.push({
+        day: `${toPersianDigits(startDay)}–${toPersianDigits(endDay)}`,
+        hours: Math.round((minutes / 60) * 10) / 10,
+        tests: 0,
+      });
+    }
+    return buckets;
+  }
+
+  if (customRange) {
+    const start = new Date(`${customRange.start}T00:00:00`);
+    const end = new Date(`${customRange.end}T00:00:00`);
+    const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+
+    const dayData: DailyDatum[] = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const dayStr = toISODate(cursor);
+      const dayPresences = presences.filter((p) => p.date === dayStr);
+      const minutes = dayPresences.reduce((sum, p) => sum + (p.durationMinutes ?? 0), 0);
+      dayData.push({ day: jalaliDayLabel(cursor), hours: Math.round((minutes / 60) * 10) / 10, tests: 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    if (totalDays <= 16) return dayData;
+
+    const bucketSize = Math.ceil(totalDays / 12);
+    const result: DailyDatum[] = [];
+    for (let index = 0; index < dayData.length; index += bucketSize) {
+      const bucket = dayData.slice(index, index + bucketSize);
+      const firstDate = new Date(start);
+      firstDate.setDate(start.getDate() + index);
+      const label = jalaliDayLabel(firstDate);
+      result.push({
+        day: label,
+        hours: Math.round((bucket.reduce((s, d) => s + d.hours, 0)) * 10) / 10,
+        tests: 0,
+      });
+    }
+    return result;
+  }
+
+  // بازه دلخواه بدون تاریخ — ۱۴ روز اخیر
+  const result: DailyDatum[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dayStr = toISODate(d);
+    const dayPresences = presences.filter((p) => p.date === dayStr);
+    const minutes = dayPresences.reduce((s, p) => s + (p.durationMinutes ?? 0), 0);
+    const dayLabel = jalaliDayLabel(d);
+    result.push({ day: dayLabel, hours: Math.round((minutes / 60) * 10) / 10, tests: 0 });
   }
   return result;
 }

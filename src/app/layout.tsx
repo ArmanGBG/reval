@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { KeyboardLayoutHint } from "@/components/shared/KeyboardLayoutHint";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 export const metadata: Metadata = {
   title: "روال | Reval — مسیر مطالعه‌ات رو هموار کن",
@@ -26,6 +27,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body
@@ -43,6 +46,7 @@ export default function RootLayout({
         {children}
         <KeyboardLayoutHint />
         <Toaster />
+        {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   );

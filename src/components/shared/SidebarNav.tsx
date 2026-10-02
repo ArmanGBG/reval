@@ -24,11 +24,24 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { LogoMark } from '@/components/landing/logo';
 import NotificationCenter from './NotificationCenter';
+import { APP_VERSION } from '@/config/site';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 // ===== Nav configs per role =====
 const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'خانه', icon: Home },
   { view: 'plan', label: 'برنامه من', icon: ClipboardList },
+  { view: 'messages', label: 'صندوق پیام', icon: Send },
   { view: 'exam-history', label: 'سابقه آزمون‌ها', icon: History },
   { view: 'tools', label: 'ابزارها', icon: Wrench },
   { view: 'analytics', label: 'گزارش', icon: BarChart3 },
@@ -68,6 +81,14 @@ const ROLE_LABEL: Record<UserRole, { label: string; sub: string }> = {
 export default function SidebarNav() {
   const { currentView, navigateTo, userRole, user, logout } = useAppStore();
   const [collapsed, setCollapsed] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    logout();
+  };
 
   const navItems =
     userRole === 'SUPER_ADMIN'
@@ -199,17 +220,40 @@ export default function SidebarNav() {
         )}
 
         {/* Logout button */}
-        <button
-          onClick={async () => {
-            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
-            logout();
-          }}
-          className="nav-item-hover mt-2 w-full flex items-center justify-center gap-2 rounded-lg h-9 text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs transition-colors"
-          title="خروج از حساب"
-        >
-          <LogOut className="w-4 h-4" />
-          {!collapsed && <span>خروج</span>}
-        </button>
+        <div className="hidden md:block w-full">
+          <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="nav-item-hover mt-2 w-full hidden md:flex items-center justify-center gap-2 rounded-lg h-9 text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs transition-colors"
+                title="خروج از حساب"
+                aria-label="خروج از حساب"
+              >
+                <LogOut className="w-4 h-4" />
+                {!collapsed && <span>خروج</span>}
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl" className="bg-zinc-950 border-zinc-800 text-zinc-100">
+              <AlertDialogHeader className="text-right sm:text-right">
+                <AlertDialogTitle className="text-zinc-100">خروج از حساب کاربری</AlertDialogTitle>
+                <AlertDialogDescription className="text-zinc-400">
+                  آیا مطمئن هستید که میخواهید از حساب خود خارج شوید؟
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
+                <AlertDialogCancel className="border-zinc-800 bg-transparent text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100">
+                  انصراف
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleLogout}
+                  className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0 shadow-none"
+                >
+                  خروج
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         {/* Collapse toggle */}
         <button
@@ -218,6 +262,15 @@ export default function SidebarNav() {
         >
           {collapsed ? '«' : '» فشرده'}
         </button>
+
+        {/* App Version */}
+        {!collapsed && (
+          <div className="mt-1.5 text-center">
+            <span className="text-[10px] font-mono text-[var(--foreground-subtle)] opacity-60 tabular-nums" dir="ltr">
+              v{APP_VERSION}
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );

@@ -69,10 +69,34 @@ const userSelect = {
 export async function GET(request: NextRequest) {
   const { ctx, error } = await requireRole(request, ['SUPER_ADMIN']);
   if (error || !ctx) return error;
-  const requestedRole = new URL(request.url).searchParams.get('role');
+  const { searchParams } = new URL(request.url);
+  const sortBy = searchParams.get('sortBy') || 'createdAt';
+  const order = (searchParams.get('order') || 'desc').toLowerCase();
+  const requestedRole = searchParams.get('role');
   const role = requestedRole === 'STUDENT' || requestedRole === 'ADVISOR' || requestedRole === 'INSTITUTE_MANAGER' ? requestedRole : undefined;
-  const users = await db.user.findMany({ where: { deletedAt: null, role: role ?? { in: ['STUDENT', 'ADVISOR', 'INSTITUTE_MANAGER'] } }, orderBy: { createdAt: 'desc' }, select: userSelect });
-  return NextResponse.json({ users: users.map(serializeUser) });
+  const users = await db.user.findMany({ where: { deletedAt: null, role: role ?? { in: ['STUDENT', 'ADVISOR', 'INSTITUTE_MANAGER'] } }, select: userSelect });
+  const serialized = users.map(serializeUser);
+
+  const isAsc = order === 'asc';
+  serialized.sort((a, b) => {
+    if (sortBy === 'alphabetical' || sortBy === 'name') {
+      const cmp = a.name.localeCompare(b.name, 'fa');
+      return isAsc ? cmp : -cmp;
+    }
+    if (sortBy === 'totalTasks') {
+      const diff = (a.totalTasks ?? 0) - (b.totalTasks ?? 0);
+      return isAsc ? diff : -diff;
+    }
+    if (sortBy === 'consistencyRate') {
+      const diff = (a.completionRate ?? 0) - (b.completionRate ?? 0);
+      return isAsc ? diff : -diff;
+    }
+    const timeA = new Date(a.joinDate).getTime();
+    const timeB = new Date(b.joinDate).getTime();
+    return isAsc ? timeA - timeB : timeB - timeA;
+  });
+
+  return NextResponse.json({ users: serialized });
 }
 
 export async function POST(request: NextRequest) {

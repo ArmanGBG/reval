@@ -27,7 +27,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import type { PlanTab } from '@/lib/types';
+import { isGraduate, type PlanTab } from '@/lib/types';
+import SchoolDayContainer from './SchoolDayContainer';
 import ManualEntrySheet from './ManualEntrySheet';
 import { WeeklyPlanner } from './WeeklyPlanner';
 import { NonStudyActivityModal, NonStudyActivityCard } from './NonStudyActivityModal';
@@ -314,6 +315,7 @@ export default function PlanView({
     nonStudyActivities,
     loadNonStudyActivities,
     deleteNonStudyActivity,
+    loadSchoolPresences,
   } = useAppStore();
   const currentStudentId = useCurrentStudentId();
   const studentId = targetStudent?.id ?? currentStudentId;
@@ -385,7 +387,23 @@ export default function PlanView({
     void loadNonStudyActivities(studentId).catch(() => {});
   }, [loadNonStudyActivities, studentId]);
 
+  useEffect(() => {
+    if (studentId) {
+      void loadSchoolPresences(studentId).catch(() => {});
+    }
+  }, [loadSchoolPresences, studentId]);
+
+  const [isCreatingSchoolTask, setIsCreatingSchoolTask] = useState(false);
+
   const openNewTask = useCallback(() => {
+    setIsCreatingSchoolTask(false);
+    setResumingLocalDraft(null);
+    setDraftSessionId(crypto.randomUUID());
+    setAddDrawerOpen(true);
+  }, []);
+
+  const openNewSchoolTask = useCallback(() => {
+    setIsCreatingSchoolTask(true);
     setResumingLocalDraft(null);
     setDraftSessionId(crypto.randomUUID());
     setAddDrawerOpen(true);
@@ -428,6 +446,18 @@ export default function PlanView({
       });
   }, [tasks, selectedDate, studentId]);
 
+  const isStudentGraduate = isGraduate(targetStudent?.grade ?? useAppStore.getState().user?.grade);
+
+  const schoolTasks = useMemo(
+    () => (isStudentGraduate ? [] : filteredTasks.filter((t) => t.isSchoolTask)),
+    [filteredTasks, isStudentGraduate],
+  );
+
+  const homeTasks = useMemo(
+    () => (isStudentGraduate ? filteredTasks : filteredTasks.filter((t) => !t.isSchoolTask)),
+    [filteredTasks, isStudentGraduate],
+  );
+
   // Today's non-study activities (mixed into the daily plan list)
   const dayActivities = useMemo(
     () => nonStudyActivities
@@ -441,12 +471,12 @@ export default function PlanView({
   // task created before it, so the timeline reads chronologically while
   // completed/skipped tasks stay at the bottom.
   const dayActivityExtras = useMemo(() => {
-    const pendingCount = filteredTasks.filter((t) => t.completed === null).length;
+    const pendingCount = homeTasks.filter((t) => t.completed === null).length;
     return dayActivities.map((activity) => {
       const ts = activity.createdAt ?? '';
       let pos = pendingCount;
       for (let i = 0; i < pendingCount; i++) {
-        if ((filteredTasks[i].createdAt ?? '') > ts) { pos = i; break; }
+        if ((homeTasks[i].createdAt ?? '') > ts) { pos = i; break; }
       }
       return {
         key: `activity-${activity.id}`,
@@ -461,7 +491,7 @@ export default function PlanView({
         ),
       };
     });
-  }, [dayActivities, deleteNonStudyActivity, filteredTasks]);
+  }, [dayActivities, deleteNonStudyActivity, homeTasks]);
 
   // Incomplete tasks (detailsCompleted === false) for this student — shown in
   // the "ناقصی‌ها" tab. Sorted by creation order (most recent first).
@@ -722,13 +752,29 @@ export default function PlanView({
 
             {/* Task Cards */}
             <div className="space-y-3">
+              <SchoolDayContainer
+                selectedDate={selectedDate}
+                studentId={studentId}
+                grade={targetStudent?.grade}
+                schoolTasks={schoolTasks}
+                onAddSchoolTask={openNewSchoolTask}
+                onCompleteTask={handleComplete}
+                onSkipTask={handleSkip}
+                onDeleteTask={handleDeleteTask}
+                onActionTask={setActionTaskId}
+                onSettingsTask={setSettingsTaskId}
+                onResetTask={handleReset}
+                onEditTask={setDetailsTaskId}
+                onHomeworkTask={setHomeworkTaskId}
+                getCapabilities={getTaskCapabilities}
+              />
               {dailyExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
               {dailyAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
-              {filteredTasks.length === 0 && dayActivities.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
+              {homeTasks.length === 0 && dayActivities.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 && schoolTasks.length === 0 ? (
                 <EmptyState />
-              ) : filteredTasks.length > 0 ? (
+              ) : homeTasks.length > 0 ? (
                 <SortableTaskList
-                  tasks={filteredTasks}
+                  tasks={homeTasks}
                   extras={dayActivityExtras}
                   onComplete={handleComplete}
                   onSkip={handleSkip}
@@ -867,13 +913,29 @@ export default function PlanView({
 
             {/* ===== Right: Task List ===== */}
             <div className="lg:col-span-2 space-y-3">
+              <SchoolDayContainer
+                selectedDate={selectedDate}
+                studentId={studentId}
+                grade={targetStudent?.grade}
+                schoolTasks={schoolTasks}
+                onAddSchoolTask={openNewSchoolTask}
+                onCompleteTask={handleComplete}
+                onSkipTask={handleSkip}
+                onDeleteTask={handleDeleteTask}
+                onActionTask={setActionTaskId}
+                onSettingsTask={setSettingsTaskId}
+                onResetTask={handleReset}
+                onEditTask={setDetailsTaskId}
+                onHomeworkTask={setHomeworkTaskId}
+                getCapabilities={getTaskCapabilities}
+              />
               {dailyExams.map((exam) => <ExamCard key={exam.id} exam={exam} studentId={studentId} canManageResult={isAdvisorWorkspace} compact />)}
               {dailyAnalysisTasks.map(({ exam, task }) => <ExamAnalysisTaskCard key={task.id} exam={exam} task={task} isAdvisor={isAdvisorWorkspace} compact />)}
-              {filteredTasks.length === 0 && dayActivities.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 ? (
+              {homeTasks.length === 0 && dayActivities.length === 0 && dailyExams.length === 0 && dailyAnalysisTasks.length === 0 && schoolTasks.length === 0 ? (
                 <EmptyState />
-              ) : filteredTasks.length > 0 ? (
+              ) : homeTasks.length > 0 ? (
                 <SortableTaskList
-                  tasks={filteredTasks}
+                  tasks={homeTasks}
                   extras={dayActivityExtras}
                   onComplete={handleComplete}
                   onSkip={handleSkip}
@@ -939,8 +1001,12 @@ export default function PlanView({
         open={addDrawerOpen}
         onOpenChange={(nextOpen) => {
           setAddDrawerOpen(nextOpen);
-          if (!nextOpen) refreshLocalDrafts();
+          if (!nextOpen) {
+            refreshLocalDrafts();
+            setIsCreatingSchoolTask(false);
+          }
         }}
+        isSchoolTask={isCreatingSchoolTask}
         selectedDate={resumingLocalDraft?.selectedDate || selectedDate}
         existingTaskCount={tasks.filter((t) => t.date === (resumingLocalDraft?.selectedDate || selectedDate) && t.studentId === studentId).length}
         onSubmit={handleManualSubmit}

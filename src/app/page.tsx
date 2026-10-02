@@ -13,6 +13,7 @@ import AnalyticsView from '@/components/analytics/MinimalAnalyticsView';
 import { ExamHistory } from '@/components/exams/ExamHistory';
 import { useCurrentStudentId } from '@/lib/student-utils';
 import SettingsView from '@/components/settings/SettingsView';
+import StudentMessageBox from '@/components/messages/StudentMessageBox';
 import InstituteDashboard from '@/components/institute/InstituteDashboard';
 import InstituteAdvisors from '@/components/institute/InstituteAdvisors';
 import InstituteStudents from '@/components/institute/InstituteStudents';
@@ -252,6 +253,7 @@ export default function Home() {
     // Student
     if (currentView === 'dashboard') return <Dashboard />;
     if (currentView === 'plan') return <PlanView initialTab={planTab ?? undefined} />;
+    if (currentView === 'messages') return <StudentMessageBox />;
     if (currentView === 'exam-history') return <ExamHistory studentId={currentStudentId} isAdvisor={false} />;
     if (currentView === 'tools') return <ToolsHub />;
     if (currentView === 'analytics') return <AnalyticsView />;

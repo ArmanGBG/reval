@@ -43,7 +43,7 @@ const EMPTY_PICKER_DRAFT: TaskSubjectPickerDraftState = {
  * User can do a "quick save" after step 2 (subject selected) → creates draft with detailsCompleted=false.
  * Or continue to step 3 and save a complete task with detailsCompleted=true.
  */
-export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, onDraftChange, draftSessionId, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null, persistFormDraft = true, allowDraftSave = true, canEditAdvisorNote = createdBy === 'advisor' }: {
+export default function ManualEntrySheet({ open, onOpenChange, selectedDate, existingTaskCount, onSubmit, onSaved, onDraftChange, draftSessionId, studentId: studentIdProp, grade, major, createdBy = 'student', createdById = null, mode = 'create', initialTask = null, persistFormDraft = true, allowDraftSave = true, canEditAdvisorNote = createdBy === 'advisor', isSchoolTask = false }: {
   open: boolean; onOpenChange: (open: boolean) => void; selectedDate: string;
   existingTaskCount: number; onSubmit: (task: Task) => Promise<void> | void;
   studentId?: string; grade?: string; major?: string; createdBy?: 'student' | 'advisor'; createdById?: string | null;
@@ -51,6 +51,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
   persistFormDraft?: boolean;
   allowDraftSave?: boolean;
   canEditAdvisorNote?: boolean;
+  isSchoolTask?: boolean;
   onSaved?: (task: Task) => void;
   onDraftChange?: () => void;
   draftSessionId?: string;
@@ -295,6 +296,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
         order: initialTask?.order ?? existingTaskCount + 1,
         createdBy: initialTask?.createdBy ?? createdBy,
         createdById: initialTask?.createdById ?? createdById,
+        isSchoolTask: isSchoolTask || Boolean(initialTask?.isSchoolTask),
       });
     }
     return {
@@ -329,6 +331,7 @@ export default function ManualEntrySheet({ open, onOpenChange, selectedDate, exi
     bookName: bookName || null,
     testDescription: testDescription || null,
     advisorNote: canEditAdvisorNote ? advisorNote.trim() || null : initialTask?.advisorNote ?? null,
+    isSchoolTask: isSchoolTask || Boolean(initialTask?.isSchoolTask),
       // `doSave(full)` passes the real completion flag: editing a homework
       // (or any) task to fill its details must flip detailsCompleted to true
       // even though the stored task had it false.

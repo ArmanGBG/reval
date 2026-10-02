@@ -21,8 +21,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const isDev = process.env.NODE_ENV !== 'production';
     const { code, challengeId } = await requestOtpDetails(phone, purpose);
-    return NextResponse.json({ message: isSmsSandbox() ? 'کد تست ساخته شد' : 'کد تایید ارسال شد', challengeId, ...(isSmsSandbox() ? { testCode: code } : {}) });
+    return NextResponse.json({
+      message: isDev || isSmsSandbox() ? 'کد تست ساخته شد' : 'کد تایید ارسال شد',
+      challengeId,
+      ...(isDev || isSmsSandbox() ? { testCode: code } : {}),
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'OTP_COOLDOWN') {
       return NextResponse.json({ error: 'لطفاً برای ارسال مجدد کمی صبر کنید' }, { status: 429 });

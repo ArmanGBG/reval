@@ -116,6 +116,8 @@ export async function PATCH(
       'bookName',
       'testDescription',
       'advisorNote',
+      'isSchoolTask',
+      'schoolPresenceId',
     ];
 
     const data = taskPatchData(body, allowed);
@@ -363,13 +365,14 @@ export async function PATCH(
     const parsed = parseTaskResponse({ ...task });
     return NextResponse.json({ task: parsed });
   } catch (error) {
-    console.error('PATCH /api/tasks/[taskId] error:', error);
+    console.error('[PATCH /api/tasks/[taskId] error]:', error);
     // Prisma not-found error on update
     if (error instanceof Error && error.message.includes('Record not found')) {
       return NextResponse.json({ error: 'وظیفه یافت نشد' }, { status: 404 });
     }
+    const message = error instanceof Error ? error.message : 'خطا در به‌روزرسانی وظیفه';
     return NextResponse.json(
-      { error: 'خطا در به‌روزرسانی وظیفه' },
+      { error: message },
       { status: 500 },
     );
   }

@@ -27,8 +27,12 @@ import {
   CheckCircle2,
   ListChecks,
   RefreshCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   type LucideIcon,
 } from 'lucide-react';
+import { AdvisorsManagement } from './AdvisorsManagement';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,14 +75,20 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; ic
   institute_manager: { label: 'مدیر آموزشگاه', color: 'text-gold', bg: 'bg-gold/15', icon: UserCheck },
 };
 
+type SortField = 'createdAt' | 'alphabetical' | 'totalTasks' | 'consistencyRate';
+type SortOrder = 'asc' | 'desc';
+
 export default function SuperAdminUsers() {
   const { globalUsers, deleteGlobalUser, createGlobalUser, loadGlobalUsers, platformInstitutes, loadPlatformInstitutes, navigateTo } = useAppStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'students' | 'advisors'>('students');
+  const [sortBy, setSortBy] = useState<SortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadGlobalUsers();
+      await loadGlobalUsers({ sortBy, order: sortOrder });
       toast.success('لیست کاربران به‌روزرسانی شد');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'به‌روزرسانی لیست ناموفق بود');
@@ -90,11 +100,33 @@ export default function SuperAdminUsers() {
   };
 
   useEffect(() => {
-    loadGlobalUsers().catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری کاربران انجام نشد'));
+    loadGlobalUsers({ sortBy, order: sortOrder }).catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری کاربران انجام نشد'));
     loadPlatformInstitutes().catch((error) => toast.error(error instanceof Error ? error.message : 'بارگذاری آموزشگاه‌ها انجام نشد'));
   }, [loadGlobalUsers, loadPlatformInstitutes]);
+
+  const handleSortToggle = (field: SortField) => {
+    let nextOrder: SortOrder = 'desc';
+    if (sortBy === field) {
+      nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      nextOrder = field === 'alphabetical' ? 'asc' : 'desc';
+    }
+    setSortBy(field);
+    setSortOrder(nextOrder);
+    void loadGlobalUsers({ sortBy: field, order: nextOrder });
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortBy !== field) {
+      return <ArrowUpDown className="w-3 h-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />;
+    }
+    return sortOrder === 'asc'
+      ? <ArrowUp className="w-3 h-3 text-gold shrink-0" />
+      : <ArrowDown className="w-3 h-3 text-gold shrink-0" />;
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | GlobalUserRole>('all');
+  const [filterRole, setFilterRole] = useState<'all' | GlobalUserRole>('student');
   const [filterInstitute, setFilterInstitute] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | UserAccountStatus>('all');
   const [filterProvince, setFilterProvince] = useState<string>('all');
@@ -165,8 +197,24 @@ export default function SuperAdminUsers() {
       result = result.filter((u) => (u.province ?? '') === filterProvince);
     }
 
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'alphabetical') {
+        cmp = a.name.localeCompare(b.name, 'fa');
+      } else if (sortBy === 'totalTasks') {
+        cmp = (a.totalTasks ?? 0) - (b.totalTasks ?? 0);
+      } else if (sortBy === 'consistencyRate') {
+        cmp = (a.completionRate ?? 0) - (b.completionRate ?? 0);
+      } else {
+        const timeA = new Date(a.createdAt || a.joinDate || 0).getTime();
+        const timeB = new Date(b.createdAt || b.joinDate || 0).getTime();
+        cmp = timeA - timeB;
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
     return result;
-  }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus, filterProvince]);
+  }, [globalUsers, searchQuery, filterRole, filterInstitute, filterStatus, filterProvince, sortBy, sortOrder]);
 
   const handleViewUser = (id: string) => {
     navigateTo({ view: 'sa-user-detail', selectedGlobalUserId: id });
@@ -288,7 +336,9 @@ export default function SuperAdminUsers() {
               </span>
             </div>
             <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
-              {toPersianDigits(globalUsers.length)} کاربر در کل پلتفرم
+              {activeSubTab === 'students'
+                ? `${toPersianDigits(filteredUsers.length)} دانش‌آموز در لیست`
+                : 'مدیریت و ارتباط مشاوران با دانش‌آموزان'}
             </p>
           </div>
         </div>
@@ -317,6 +367,42 @@ export default function SuperAdminUsers() {
           <button onClick={() => setShowAdvisorForm((value) => !value)} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/15 text-gold border border-gold/25 text-sm font-bold"><Plus className="w-4 h-4" />کاربر جدید</button>
         </div>
       </header>
+
+      {/* ============ Sub-tabs (لیست دانش‌آموزان / مدیریت مشاوران) ============ */}
+      <div className="flex items-center gap-1.5 surface-1 p-1.5 rounded-2xl border border-[var(--border)] w-fit max-w-full">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSubTab('students');
+            setFilterRole('student');
+          }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${
+            activeSubTab === 'students'
+              ? 'bg-gold text-[var(--bg-deep)] shadow-sm shadow-gold/20'
+              : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span>لیست دانش‌آموزان</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('advisors')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${
+            activeSubTab === 'advisors'
+              ? 'bg-gold text-[var(--bg-deep)] shadow-sm shadow-gold/20'
+              : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          <span>مدیریت مشاوران</span>
+        </button>
+      </div>
+
+      {activeSubTab === 'advisors' ? (
+        <AdvisorsManagement />
+      ) : (
+        <>
 
       {showAdvisorForm && <div className="surface-1 rounded-2xl p-4 border border-gold/25 space-y-3">
         <div className="flex items-center justify-between"><h3 className="font-bold">ایجاد کاربر در دیتابیس</h3><button onClick={() => setShowAdvisorForm(false)}><X className="w-4 h-4" /></button></div>
@@ -383,6 +469,29 @@ export default function SuperAdminUsers() {
               <option value="active">فعال</option>
               <option value="suspended">معلق</option>
             </select>
+            <div className="flex items-center gap-1.5 bg-[var(--bg-overlay)] border border-[var(--border)] rounded-[10px] px-2.5 py-1 min-w-[160px]">
+              <ArrowUpDown className="w-3.5 h-3.5 text-gold shrink-0" />
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => {
+                  const [field, order] = e.target.value.split('-') as [SortField, SortOrder];
+                  setSortBy(field);
+                  setSortOrder(order);
+                  void loadGlobalUsers({ sortBy: field, order });
+                }}
+                className="w-full bg-transparent text-xs text-foreground/90 focus:outline-none cursor-pointer py-1.5"
+                aria-label="مرتب‌سازی کاربران"
+              >
+                <option value="createdAt-desc">جدیدترین عضویت</option>
+                <option value="createdAt-asc">قدیمی‌ترین عضویت</option>
+                <option value="alphabetical-asc">الفبا (الف تا ی)</option>
+                <option value="alphabetical-desc">الفبا (ی تا الف)</option>
+                <option value="totalTasks-desc">بیشترین تسک‌ها</option>
+                <option value="totalTasks-asc">کمترین تسک‌ها</option>
+                <option value="consistencyRate-desc">بالاترین نرخ تعهد</option>
+                <option value="consistencyRate-asc">پایین‌ترین نرخ تعهد</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -449,7 +558,7 @@ export default function SuperAdminUsers() {
       {/* ============ Dense Table (Desktop) ============ */}
       <div className="hidden lg:block surface-1 rounded-[16px] overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[2.5fr_1.5fr_2fr_0.8fr_0.8fr_1fr_1.2fr_1.8fr_0.8fr_0.8fr] gap-2 px-4 py-3 text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wide border-b border-[var(--border)] bg-[var(--bg-base)]/40">
+        <div className="grid grid-cols-[2.5fr_1.5fr_2fr_0.8fr_0.8fr_1fr_1.2fr_1.8fr_0.8fr_0.8fr] gap-2 px-4 py-3 text-[10px] text-muted-foreground/70 font-semibold uppercase tracking-wide border-b border-[var(--border)] bg-[var(--bg-base)]/40 items-center">
           <div className="flex items-center gap-2">
             <Checkbox
               checked={filteredUsers.length > 0 ? allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false : false}
@@ -458,14 +567,52 @@ export default function SuperAdminUsers() {
               aria-label="انتخاب همه کاربران"
               className="border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold data-[state=indeterminate]:bg-gold/60"
             />
-            <span>کاربر</span>
+            <button
+              type="button"
+              onClick={() => handleSortToggle('alphabetical')}
+              className="flex items-center gap-1 hover:text-foreground transition-colors group cursor-pointer"
+              title="مرتب‌سازی بر اساس نام"
+            >
+              <span>کاربر</span>
+              {renderSortIcon('alphabetical')}
+            </button>
           </div>
           <div>نقش</div>
           <div>آموزشگاه</div>
-          <div className="text-center">کل</div>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => handleSortToggle('totalTasks')}
+              className="inline-flex items-center justify-center gap-1 hover:text-foreground transition-colors group cursor-pointer"
+              title="مرتب‌سازی بر اساس کل تسک‌ها"
+            >
+              <span>کل</span>
+              {renderSortIcon('totalTasks')}
+            </button>
+          </div>
           <div className="text-center">انجام</div>
-          <div className="text-center">نرخ</div>
-          <div className="text-center">آخرین فعالیت</div>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => handleSortToggle('consistencyRate')}
+              className="inline-flex items-center justify-center gap-1 hover:text-foreground transition-colors group cursor-pointer"
+              title="مرتب‌سازی بر اساس نرخ تعهد و پیوستگی"
+            >
+              <span>نرخ</span>
+              {renderSortIcon('consistencyRate')}
+            </button>
+          </div>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => handleSortToggle('createdAt')}
+              className="inline-flex items-center justify-center gap-1 hover:text-foreground transition-colors group cursor-pointer"
+              title="مرتب‌سازی بر اساس تاریخ عضویت"
+            >
+              <span>آخرین فعالیت</span>
+              {renderSortIcon('createdAt')}
+            </button>
+          </div>
           <div className="text-center">روند پایبندی</div>
           <div className="text-center">وضعیت</div>
           <div className="text-right">عملیات</div>
@@ -691,6 +838,8 @@ export default function SuperAdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </>
+      )}
     </div>
   );
 }

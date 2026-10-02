@@ -11,6 +11,7 @@ import { useAppStore } from '@/lib/store';
 import ConnectionManager from '@/components/shared/ConnectionManager';
 import { Grade, Major, Ticket } from '@/lib/types';
 import { AVATARS } from '@/lib/constants/avatars';
+import { APP_VERSION } from '@/config/site';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -293,7 +294,12 @@ function AboutSection() {
         <h2 className="text-base font-bold text-[var(--foreground)]">درباره اپ</h2>
       </div>
       <div className="surface-1 edge-highlight rounded-[var(--radius-lg)] p-5 text-center space-y-1">
-        <p className="text-[var(--foreground)] text-sm font-bold">روال نسخه ۱.۰.۰</p>
+        <p className="text-[var(--foreground)] text-sm font-bold">
+          روال نسخه {APP_VERSION}{' '}
+          <span className="text-xs font-mono font-normal text-[var(--foreground-muted)] tabular-nums" dir="ltr">
+            (v{APP_VERSION})
+          </span>
+        </p>
         <p className="text-[var(--foreground-muted)] text-xs">ساخته شده برای دانش‌آموزان ایران</p>
       </div>
     </section>

@@ -86,6 +86,32 @@ export function formatPersianDateTimeFromISO(iso: string | undefined | null): st
   return `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]} · ${toPersianDigits(hh)}:${toPersianDigits(mm)}`;
 }
 
+// Split an ISO datetime string into separate Persian date and time parts (fixes RTL timestamp squishing)
+export function splitPersianDateTimeFromISO(iso: string | undefined | null): { datePart: string; timePart: string } {
+  if (!iso) return { datePart: '—', timePart: '—' };
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return { datePart: '—', timePart: '—' };
+  const j = toJalali(date);
+  const datePart = `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]}`;
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const timePart = `${toPersianDigits(hh)}:${toPersianDigits(mm)}`;
+  return { datePart, timePart };
+}
+
+// Format connection duration string: e.g. "تاریخ اتصال: ۱۲ مهر (۲۰ روز پیش)"
+export function formatConnectionDuration(isoDate: string | Date | undefined | null): string {
+  if (!isoDate) return '—';
+  const d = new Date(isoDate);
+  if (isNaN(d.getTime())) return '—';
+  const jalaliDate = formatPersianDate(d);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  const relativeText = diffDays === 0 ? 'امروز' : `${toPersianDigits(diffDays)} روز پیش`;
+  return `تاریخ اتصال: ${jalaliDate} (${relativeText})`;
+}
+
 // Get ISO date string (YYYY-MM-DD) from Date — uses LOCAL date components
 // to avoid timezone off-by-one errors
 export function toISODate(date: Date): string {
@@ -151,14 +177,39 @@ export function getTodayJalali(now: Date = new Date()) {
   };
 }
 
+// Parse an ISO date string (YYYY-MM-DD) as a LOCAL date, not UTC.
+export function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// Get today's local Date object strictly relying on browser local time
+export function getLocalToday(): Date {
+  return new Date();
+}
+
+// Get today's ISO date string (YYYY-MM-DD) strictly relying on browser local time
+export function getTodayISODate(date: Date = new Date()): string {
+  return toISODate(date);
+}
+
+// Get today's Jalali string strictly relying on local browser time (e.g. "۱۱ مهر ۱۴۰۵")
+export function getTodayJalaliString(date: Date = new Date()): string {
+  const j = toJalali(date);
+  return `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]} ${toPersianDigits(j.jy)}`;
+}
+
 // Check if two dates are the same day
 export function isSameDay(d1: Date, d2: Date): boolean {
   return toISODate(d1) === toISODate(d2);
 }
 
-// Check if a date is today
-export function isToday(date: Date): boolean {
-  return isSameDay(date, new Date());
+// Check if a date is today (accepts Date or YYYY-MM-DD string)
+export function isToday(date: Date | string, referenceToday: Date = new Date()): boolean {
+  if (typeof date === 'string') {
+    return date === toISODate(referenceToday);
+  }
+  return isSameDay(date, referenceToday);
 }
 
 // Get relative day label (امروز، فردا، یا نام روز)

@@ -99,25 +99,81 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'برای این کلاس قبلاً تکلیف ثبت شده است' }, { status: 409 });
       }
     }
-    const task = await db.task.create({ data: {
-      studentId: body.studentId, subjectId: curriculum.subject.id, subject: curriculum.subject.name, subjectColor: curriculum.subject.color,
-       topic: curriculum.topic, fieldType: isTaskFieldType(body.fieldType) ? body.fieldType : null, activityTypes: Array.isArray(body.activityTypes) ? JSON.stringify(body.activityTypes) : null,
-      targetTimeMinutes: typeof body.targetTimeMinutes === 'number' ? body.targetTimeMinutes : null, actualTimeMinutes: typeof body.actualTimeMinutes === 'number' ? body.actualTimeMinutes : null,
-      targetTestCount: typeof body.targetTestCount === 'number' ? body.targetTestCount : null, actualTestCount: typeof body.actualTestCount === 'number' ? body.actualTestCount : null,
-      status, completed: body.completed === true ? true : body.completed === false ? false : null, detailsCompleted: body.detailsCompleted,
-      date: body.date, order: body.order, createdBy: permission.createdBy, createdById: permission.createdBy === 'advisor' ? ctx.userId : null,
-      chapterId: curriculum.chapterId, topicId: curriculum.topicId,
-      topicModeId: curriculum.topicModeId, curriculumMode: curriculum.mode,
-      pageStart: curriculum.pageStart, pageEnd: curriculum.pageEnd,
+    const isSchool = Boolean(body.isSchoolTask);
+    let schoolPresenceIdToLink: string | null = null;
+
+    // Separate school logic: only execute school presence lookup if isSchoolTask is true
+    if (isSchool) {
+      if (typeof body.schoolPresenceId === 'string' && body.schoolPresenceId.trim() !== '') {
+        schoolPresenceIdToLink = body.schoolPresenceId.trim();
+      } else {
+        // Optional lookup of existing school presence for this student and date
+        try {
+          const presence = await db.schoolPresence.findUnique({
+            where: {
+              userId_date: {
+                userId: body.studentId,
+                date: body.date,
+              },
+            },
+            select: { id: true },
+          });
+          if (presence) {
+            schoolPresenceIdToLink = presence.id;
+          }
+        } catch (schoolLookupErr) {
+          console.error('[POST /api/tasks] Optional schoolPresence lookup error:', schoolLookupErr);
+        }
+      }
+    }
+
+    const taskData: Parameters<typeof db.task.create>[0]['data'] = {
+      studentId: body.studentId,
+      subjectId: curriculum.subject.id,
+      subject: curriculum.subject.name,
+      subjectColor: curriculum.subject.color,
+      topic: curriculum.topic,
+      fieldType: isTaskFieldType(body.fieldType) ? body.fieldType : null,
+      activityTypes: Array.isArray(body.activityTypes) ? JSON.stringify(body.activityTypes) : null,
+      targetTimeMinutes: typeof body.targetTimeMinutes === 'number' ? body.targetTimeMinutes : null,
+      actualTimeMinutes: typeof body.actualTimeMinutes === 'number' ? body.actualTimeMinutes : null,
+      targetTestCount: typeof body.targetTestCount === 'number' ? body.targetTestCount : null,
+      actualTestCount: typeof body.actualTestCount === 'number' ? body.actualTestCount : null,
+      status,
+      completed: body.completed === true ? true : body.completed === false ? false : null,
+      detailsCompleted: body.detailsCompleted,
+      date: body.date,
+      order: body.order,
+      createdBy: permission.createdBy,
+      createdById: permission.createdBy === 'advisor' ? ctx.userId : null,
+      chapterId: curriculum.chapterId,
+      topicId: curriculum.topicId,
+      topicModeId: curriculum.topicModeId,
+      curriculumMode: curriculum.mode,
+      pageStart: curriculum.pageStart,
+      pageEnd: curriculum.pageEnd,
       teacherClassName: hasClassVideo && typeof body.teacherClassName === 'string' ? body.teacherClassName.trim() || null : null,
       sessionNumber: hasClassVideo && typeof body.sessionNumber === 'string' ? body.sessionNumber.trim() || null : null,
       bookName: hasTestDetails && typeof body.bookName === 'string' ? body.bookName.trim() || null : null,
       testDescription: hasTestDetails && typeof body.testDescription === 'string' ? body.testDescription.trim() || null : null,
       advisorNote: permission.createdBy === 'advisor' && typeof body.advisorNote === 'string' ? body.advisorNote.trim() || null : null,
       classHomeworkOfId: isClassHomework ? body.classHomeworkOfId : null,
+      isSchoolTask: isSchool,
+      schoolPresenceId: isSchool ? schoolPresenceIdToLink : null,
       topics: { create: curriculum.topicIds.map((topicId) => ({ topicId })) },
       topicModeSubtopics: { create: curriculum.subtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId })) },
-    }, include: taskTopicInclude });
+    };
+
+    let task;
+    try {
+      task = await db.task.create({
+        data: taskData,
+        include: taskTopicInclude,
+      });
+    } catch (prismaCreateError) {
+      console.error('[POST /api/tasks prisma.task.create error]:', prismaCreateError);
+      throw prismaCreateError;
+    }
 
     // Save suggestions for teacher/class name and book name
     const suggestionPromises: Promise<void>[] = [];
@@ -171,7 +227,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ task: parseTaskResponse({ ...task }) }, { status: 201 });
   } catch (cause) {
-    console.error('POST /api/tasks error:', cause);
-    return NextResponse.json({ error: 'خطا در ایجاد وظیفه' }, { status: 500 });
+    console.error('[POST /api/tasks CRITICAL error]:', cause);
+    const message = cause instanceof Error ? cause.message : 'خطا در ایجاد وظیفه';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

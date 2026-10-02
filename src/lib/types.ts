@@ -4,7 +4,7 @@
 export type UserRole = 'STUDENT' | 'ADVISOR' | 'INSTITUTE_MANAGER' | 'SUPER_ADMIN';
 
 // Student views (personal command center)
-export type StudentView = 'dashboard' | 'plan' | 'exam-history' | 'tools' | 'analytics' | 'settings';
+export type StudentView = 'dashboard' | 'plan' | 'exam-history' | 'tools' | 'analytics' | 'settings' | 'messages';
 
 // Advisor views (CRM/management panel)
 export type AdvisorView = 'advisor-dashboard' | 'advisor-students' | 'advisor-student-detail' | 'advisor-settings' | 'advisor-messages';
@@ -44,6 +44,26 @@ export interface NonStudyActivity {
   date: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ===== School Presence =====
+// Record of daily school presence (one per day per student).
+export interface SchoolPresence {
+  id: string;
+  userId: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  startTime: string; // HH:mm (e.g. "07:30")
+  endTime: string; // HH:mm (e.g. "14:00")
+  durationMinutes: number; // presence duration in minutes
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Returns true if the user's grade is 'فارغ‌التحصیل' (graduate) */
+export function isGraduate(grade?: string | null): boolean {
+  if (!grade) return false;
+  const clean = grade.replace(/[\u200c\s]/g, '');
+  return clean === 'فارغالتحصیل' || clean.includes('فارغالتحصیل');
 }
 
 export interface User {
@@ -100,6 +120,8 @@ export interface Task {
   // Class homework link — when set, this educational-test task is the
   // homework of the referenced class/video task (one per class).
   classHomeworkOfId?: string | null;
+  isSchoolTask?: boolean;
+  schoolPresenceId?: string | null;
   /** Homework task assigned by this class task (present on class tasks). */
   homeworkForClass?: { id: string; date: string; status: TaskStatus } | null;
   /** The class this homework task belongs to (present on homework tasks). */
@@ -388,6 +410,55 @@ export interface GlobalUser {
   lastTaskInteraction: string | null;
   /** Daily completed-task counts for the trend window (oldest → newest) */
   activityTrend: ActivityDay[];
+  consistencyRate?: number;
+  createdAt?: string;
+}
+
+// ===== Admin Advisor Management Types =====
+export interface AdvisorConnectedStudent {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  phone: string;
+  grade: string | null;
+  major: string | null;
+  province?: string | null;
+  city?: string | null;
+  consistencyRate: number;
+  connectedAt: string;
+  connectionRequestId?: string | null;
+}
+
+export interface AdminAdvisor {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  phone: string;
+  publicCode: string;
+  role: string;
+  isActive: boolean;
+  status: UserAccountStatus;
+  createdAt: string;
+  updatedAt: string;
+  lastActive: string;
+  totalStudentsAssigned: number;
+  averageStudentConsistency: number;
+  connectedStudents: AdvisorConnectedStudent[];
+}
+
+export interface UnassignedStudent {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string | null;
+  avatar: string;
+  phone: string;
+  grade: string | null;
+  major: string | null;
 }
 
 // ===== Notification Types =====

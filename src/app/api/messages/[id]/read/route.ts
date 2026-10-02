@@ -3,12 +3,8 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/api-auth';
 
 // ===== PATCH /api/messages/[id]/read =====
-// Marks a message as read for the current user (STUDENT only).
-// Verifies the message is addressed to the student (recipientId === userId
-// OR recipientId === null for broadcasts). Uses upsert so calling it twice
-// is idempotent.
-//
-// Response shape: { ok: true }
+// Marks a message as isRead: true for the recipient.
+// Response shape: { ok: true, message }
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -16,19 +12,18 @@ export async function PATCH(
   const { ctx, error } = await requireAuth(request);
   if (error || !ctx) return error;
 
-  if (ctx.user.role !== 'STUDENT') {
+  const { id: messageId } = await params;
+
+  if (!messageId) {
     return NextResponse.json(
-      { error: 'دسترسی غیرمجاز' },
-      { status: 403 },
+      { error: 'شناسه پیام الزامی است' },
+      { status: 400 },
     );
   }
 
-  const { id: messageId } = await params;
-
-  // Verify the message exists and is addressed to this student
+  // Verify the message exists
   const message = await db.message.findUnique({
     where: { id: messageId },
-    select: { id: true, recipientId: true },
   });
 
   if (!message) {
@@ -38,27 +33,22 @@ export async function PATCH(
     );
   }
 
-  if (message.recipientId !== null && message.recipientId !== ctx.userId) {
+  // Only the receiver (or SUPER_ADMIN) can mark the message as read
+  if (message.receiverId !== ctx.userId && ctx.user.role !== 'SUPER_ADMIN') {
     return NextResponse.json(
-      { error: 'این پیام به شما ارسال نشده است' },
+      { error: 'دسترسی غیرمجاز: شما گیرنده این پیام نیستید' },
       { status: 403 },
     );
   }
 
-  // Upsert the MessageRead record (idempotent)
-  await db.messageRead.upsert({
-    where: {
-      messageId_userId: {
-        messageId,
-        userId: ctx.userId,
-      },
-    },
-    create: {
-      messageId,
-      userId: ctx.userId,
-    },
-    update: {},
+  if (message.isRead) {
+    return NextResponse.json({ ok: true, message });
+  }
+
+  const updated = await db.message.update({
+    where: { id: messageId },
+    data: { isRead: true },
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, message: updated });
 }
