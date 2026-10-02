@@ -50,8 +50,8 @@ function MockSidebar({ activeTab }: { activeTab: TabId }) {
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 border-l border-zinc-800 bg-zinc-950 shrink-0 select-none">
-      <div className="h-16 flex items-center justify-center px-5 border-b border-zinc-800">
+    <aside className="hidden md:flex flex-col w-60 border-l border-border/80 bg-background shrink-0 select-none font-yekan" dir="rtl">
+      <div className="h-16 flex items-center justify-center px-5 border-b border-border/80">
         <div className="relative h-11 w-full rounded-lg bg-emerald-500 flex items-center justify-center overflow-hidden">
           <span className="text-zinc-950 font-black text-lg">روال</span>
           <span className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/20" />
@@ -59,10 +59,10 @@ function MockSidebar({ activeTab }: { activeTab: TabId }) {
       </div>
 
       <div className="px-3 pt-4">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+        <div className="rounded-xl border border-border/80 bg-card p-3">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-semibold text-zinc-100">دانش‌آموز</span>
+            <span className="text-xs font-semibold text-foreground">دانش‌آموز</span>
           </div>
         </div>
       </div>
@@ -74,7 +74,7 @@ function MockSidebar({ activeTab }: { activeTab: TabId }) {
             const Icon = item.icon;
             return (
               <li key={item.id}>
-                <div className={`relative w-full flex items-center gap-3 rounded-xl px-3 h-11 transition-colors ${isActive ? 'text-emerald-500 font-semibold' : 'text-zinc-400'}`}>
+                <div className={`relative w-full flex items-center gap-3 rounded-xl px-3 h-11 transition-colors ${isActive ? 'text-emerald-500 font-semibold' : 'text-muted-foreground'}`}>
                   {isActive && (
                     <motion.span layoutId="sidebar-pill" className="absolute inset-0 rounded-xl bg-emerald-500/10" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />
                   )}
@@ -95,22 +95,22 @@ function MockSidebar({ activeTab }: { activeTab: TabId }) {
 
 function MockTaskCard({ subject, title, color, time, completed = false }: { subject: string; title: string; color: string; time: string; completed?: boolean }) {
   return (
-    <div className={`group relative overflow-hidden rounded-xl p-4 md:p-5 border border-zinc-800 bg-zinc-900/50 ${completed ? 'opacity-60' : ''}`}>
+    <div className={`group relative overflow-hidden rounded-xl p-4 md:p-5 border border-border/80 bg-card/50 ${completed ? 'opacity-60' : ''}`}>
       <div className="relative z-10 flex flex-col justify-between gap-4 h-full">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-1.5 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-              <span className={`text-[11px] font-bold tracking-tight ${completed ? 'text-zinc-500' : 'text-zinc-300'}`}>{subject}</span>
+              <span className={`text-[11px] font-bold tracking-tight ${completed ? 'text-muted-foreground/50' : 'text-muted-foreground/80'}`}>{subject}</span>
             </div>
-            <h3 className={`text-sm font-bold leading-tight ${completed ? 'text-zinc-500 line-through' : 'text-zinc-100'}`}>{title}</h3>
+            <h3 className={`text-sm font-bold leading-tight ${completed ? 'text-muted-foreground/50 line-through' : 'text-foreground'}`}>{title}</h3>
           </div>
-          <div className={`flex items-center justify-center w-6 h-6 rounded-md border ${completed ? 'bg-emerald-500 border-emerald-500 text-zinc-950' : 'border-zinc-700 text-transparent'}`}>
+          <div className={`flex items-center justify-center w-6 h-6 rounded-md border ${completed ? 'bg-emerald-500 border-emerald-500 text-zinc-950' : 'border-border text-transparent'}`}>
             <Check className="w-4 h-4 stroke-[3]" />
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-[11px] font-medium text-zinc-400 bg-zinc-800/50 px-2 py-1 rounded-md">
+          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
             <Clock className="w-3.5 h-3.5" />
             <span className="font-mono">{time}</span>
           </div>
@@ -131,25 +131,25 @@ function MockDashboard() {
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 bg-zinc-950 flex flex-col h-full">
+    <div className="flex-1  p-6 lg:p-8 bg-background flex flex-col min-h-full">
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-zinc-100 mb-1">سلام آرمان 👋</h1>
-        <p className="text-sm text-zinc-400">امروز پنجشنبه، ۱۲ مهر. بریم سراغ تسک‌ها!</p>
+        <h1 className="text-2xl font-black text-foreground mb-1">سلام آرمان 👋</h1>
+        <p className="text-sm text-muted-foreground">امروز پنجشنبه، ۱۲ مهر. بریم سراغ تسک‌ها!</p>
       </div>
 
-      <div className="mb-8 grid grid-cols-3 sm:grid-cols-6 gap-2.5 sm:gap-3">
+      <div className="mb-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {PLAN_SECTION_CARDS.map(({ label, icon: Icon }) => (
-          <div key={label} className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-3 text-center h-20 sm:h-24">
+          <div key={label} className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-border/80 bg-card/40 p-3 text-center h-20 sm:h-24">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
               <Icon className="h-4 w-4" strokeWidth={2.2} />
             </span>
-            <span className="text-[10px] sm:text-xs font-semibold text-zinc-300">{label}</span>
+            <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground/80">{label}</span>
           </div>
         ))}
       </div>
 
       <div>
-        <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-emerald-500" />
           تسک‌های امروز
         </h2>
@@ -165,19 +165,19 @@ function MockDashboard() {
 
 function MockPlan() {
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-zinc-950 flex flex-col h-full overflow-y-auto">
+    <div className="flex-1 p-4 sm:p-7 pt-4 bg-background flex flex-col min-h-full font-yekan w-full" dir="rtl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-black text-zinc-100">برنامه من</h1>
-        <div className="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300">
+        <h1 className="text-2xl font-black text-foreground">برنامه من</h1>
+        <div className="px-3 py-1 rounded-full bg-card border border-border/80 text-xs font-medium text-muted-foreground/80">
           هفته دوم مهر
         </div>
       </div>
       
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'].map((day, i) => (
-          <div key={day} className={`flex-col items-center justify-center shrink-0 w-16 h-20 rounded-2xl border flex ${i === 5 ? 'bg-emerald-500 border-emerald-500 text-zinc-950' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>
+          <div key={day} className={`flex-col items-center justify-center shrink-0 w-16 h-20 rounded-2xl border flex ${i === 5 ? 'bg-emerald-500 border-emerald-500 text-zinc-950' : 'bg-card border-border/80 text-muted-foreground'}`}>
             <span className="text-[10px] font-bold">{day}</span>
-            <span className={`text-lg font-black mt-1 ${i === 5 ? 'text-zinc-950' : 'text-zinc-100'}`}>{i + 7}</span>
+            <span className={`text-lg font-black mt-1 ${i === 5 ? 'text-zinc-950' : 'text-foreground'}`}>{i + 7}</span>
           </div>
         ))}
       </div>
@@ -203,30 +203,37 @@ function MockAnalytics() {
   ];
 
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-[#131313] flex flex-col h-full overflow-hidden">
-      <div className="mb-6 flex flex-col items-end">
-        <h1 className="text-xl font-bold text-zinc-100 mb-1">نمای تحلیلی</h1>
-        <p className="text-[13px] text-zinc-400">زمان واقعی تسک‌های تکمیل‌شده در بازه انتخابی</p>
+    <div className="flex-1 w-full p-4 sm:p-7 bg-background flex flex-col min-h-full font-yekan" dir="rtl">
+      <div className="mb-4 sm:mb-6 flex flex-col items-start pt-1">
+        <h1 className="text-xl font-bold text-foreground mb-1">نمای تحلیلی</h1>
+        <p className="text-[13px] text-muted-foreground">زمان واقعی تسک‌های تکمیل‌شده در بازه انتخابی</p>
       </div>
 
-      <div className="bg-[#1c1c1c] border border-zinc-800/60 rounded-2xl p-4 flex-1 flex flex-col">
+      <div className="bg-card/60 border border-border/80 rounded-2xl p-4 sm:p-6 pt-4 flex-1 flex flex-col">
         {/* Tabs */}
-        <div className="flex items-center justify-end gap-1 bg-[#262626] rounded-xl p-1 mb-8 max-w-2xl ml-auto w-full">
+        <div className="flex items-center justify-start sm:justify-end gap-1 bg-muted/60 rounded-xl p-1 mb-6 max-w-2xl w-full">
           {['روش مطالعه روزانه', 'تفکیک دروس', 'روند مطالعه'].map((tab, i) => (
-            <button key={tab} className={`flex-1 py-2 rounded-lg text-sm transition-colors ${i === 2 ? 'bg-[#141414] text-zinc-100 shadow-sm border border-black/20 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}>
+            <button key={tab} className={`flex-1 py-2 rounded-lg text-sm transition-colors ${i === 2 ? 'bg-background text-foreground shadow-sm border border-border/60 font-bold' : 'text-muted-foreground hover:text-foreground/90'}`}>
               {tab}
             </button>
           ))}
         </div>
 
-        <div className="flex-1 w-full min-h-[250px]">
+        <div className="w-full min-h-[300px] h-[300px] relative">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
               <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} tickMargin={15} angle={-30} textAnchor="end" />
               <YAxis tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} domain={[0, 4]} tickCount={5} />
               <Tooltip 
-                cursor={{ fill: '#27272a' }} 
-                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', textAlign: 'right' }} 
+                cursor={{ fill: 'var(--muted)' }} 
+                contentStyle={{ 
+                  backgroundColor: 'var(--card, #18181b)', 
+                  borderColor: 'var(--border, #27272a)', 
+                  borderRadius: '12px', 
+                  color: 'var(--foreground, #f4f4f5)', 
+                  textAlign: 'right',
+                  boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.15)'
+                }} 
                 formatter={(value: number) => [`${value} ساعت`, 'مطالعه']}
               />
               <Bar dataKey="hours" fill="#2563eb" radius={[4, 4, 0, 0]} animationDuration={1000} barSize={12} />
@@ -250,17 +257,17 @@ function MockSleep() {
   ];
 
   return (
-    <div className="flex-1 p-6 lg:p-8 bg-[#131313] flex flex-col h-full overflow-y-auto">
+    <div className="flex-1 p-5 sm:p-7 bg-background flex flex-col min-h-full font-yekan" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <button className="flex items-center gap-2 bg-[#1c1c2e] hover:bg-[#25253e] border border-indigo-500/30 text-indigo-300 px-4 py-2 rounded-xl text-sm transition-colors font-medium">
+        <button className="flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-4 py-2 rounded-xl text-sm transition-colors font-medium">
           <Moon className="w-4 h-4" />
           ثبت خواب
         </button>
 
         <div className="flex items-center gap-2">
           {['روزانه', 'هفته جاری', 'ماهانه', 'بازه دلخواه'].map((tab, i) => (
-            <button key={tab} className={`px-4 py-1.5 rounded-full text-[13px] border transition-colors ${i === 1 ? 'bg-[#1a2340] border-indigo-500/40 text-indigo-300 font-bold' : 'border-zinc-800 text-zinc-400 hover:text-zinc-200'}`}>
+            <button key={tab} className={`px-4 py-1.5 rounded-full text-[13px] border transition-colors ${i === 1 ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300 font-bold' : 'border-border/80 text-muted-foreground hover:text-foreground/90'}`}>
               {tab}
             </button>
           ))}
@@ -268,46 +275,53 @@ function MockSleep() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {[
           { label: 'میانگین ساعت بیداری', val: '۰۷:۱۵' },
           { label: 'میانگین ساعت خواب', val: '۲۳:۴۵' },
           { label: 'میانگین خواب شبانه', val: '۶.۷ ساعت' },
         ].map(stat => (
-          <div key={stat.label} className="bg-[#1c1c1c] border border-zinc-800/60 p-5 rounded-2xl flex flex-col items-center justify-center">
-            <span className="text-xl font-bold text-zinc-100 mb-2">{stat.val}</span>
-            <span className="text-xs text-zinc-400">{stat.label}</span>
+          <div key={stat.label} className="bg-card/60 border border-border/80 p-5 rounded-2xl flex flex-col items-center justify-center">
+            <span className="text-xl font-bold text-foreground mb-2">{stat.val}</span>
+            <span className="text-xs text-muted-foreground">{stat.label}</span>
           </div>
         ))}
       </div>
 
       {/* Chart */}
-      <div className="flex-1 min-h-[300px] bg-[#1c1c1c] border border-zinc-800/60 rounded-2xl p-6 flex flex-col">
+      <div className="flex-1 min-h-[300px] bg-card/60 border border-border/80 rounded-2xl p-6 flex flex-col">
         <div className="flex items-start justify-between mb-8">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-200" />
-              <span className="text-xs text-zinc-400">چرت</span>
+              <span className="text-xs text-muted-foreground">چرت</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-indigo-400" />
-              <span className="text-xs text-zinc-400">شبانه</span>
+              <span className="text-xs text-muted-foreground">شبانه</span>
             </div>
           </div>
           <div className="text-left">
-            <h3 className="text-base font-bold text-zinc-100">نمودار خواب</h3>
-            <p className="text-xs text-zinc-400 mt-1">طول خواب شبانه و چرت هر روز (ساعت)</p>
+            <h3 className="text-base font-bold text-foreground">نمودار خواب</h3>
+            <p className="text-xs text-muted-foreground mt-1">طول خواب شبانه و چرت هر روز (ساعت)</p>
           </div>
         </div>
 
-        <div className="flex-1 w-full relative">
+        <div className="w-full min-h-[300px] h-[300px] relative">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 0, right: 0, left: -25, bottom: 20 }}>
               <XAxis dataKey="name" tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} tickMargin={15} />
               <YAxis tick={{ fill: '#71717a', fontSize: 11, fontFamily: 'inherit' }} axisLine={false} tickLine={false} tickCount={6} />
               <Tooltip 
-                cursor={{ fill: '#27272a' }} 
-                contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#f4f4f5', textAlign: 'right' }} 
+                cursor={{ fill: 'var(--muted)' }} 
+                contentStyle={{ 
+                  backgroundColor: 'var(--card, #18181b)', 
+                  borderColor: 'var(--border, #27272a)', 
+                  borderRadius: '12px', 
+                  color: 'var(--foreground, #f4f4f5)', 
+                  textAlign: 'right',
+                  boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.15)'
+                }} 
               />
               <Bar dataKey="night" stackId="a" fill="#818cf8" radius={[0, 0, 4, 4]} animationDuration={1000} barSize={16} />
               <Bar dataKey="nap" stackId="a" fill="#fde68a" radius={[4, 4, 0, 0]} animationDuration={1000} />
@@ -321,24 +335,24 @@ function MockSleep() {
 
 function MockAdvisor() {
   return (
-    <div className="flex-1 bg-zinc-950 flex flex-col h-full overflow-hidden relative">
-      <div className="h-16 border-b border-zinc-800 bg-zinc-900/40 px-6 flex items-center justify-between sticky top-0 z-10">
+    <div className="flex-1 w-full bg-background flex flex-col min-h-full relative">
+      <div className="h-16 border-b border-border/80 bg-card/40 px-6 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20 font-bold">
             <UserRound className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-zinc-100 text-sm">دکتر محمدی (مشاور)</h4>
+            <h4 className="font-bold text-foreground text-sm">دکتر محمدی (مشاور)</h4>
             <p className="text-xs text-emerald-500 font-medium flex items-center gap-1 mt-0.5"><span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> آنلاین</p>
           </div>
         </div>
       </div>
 
       <div className="flex-1 p-6 flex flex-col justify-end gap-4 bg-[url('/noise.png')] bg-repeat opacity-90">
-        <div className="self-center bg-zinc-900 border border-zinc-800 rounded-full px-3 py-1 text-[10px] text-zinc-500 mb-2">امروز</div>
-        <div className="self-start bg-zinc-800 rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-sm">
-          <p className="text-sm text-zinc-100 leading-relaxed">سلام خسته نباشی! گزارش کار امروزت عالی بود. فقط برای فیزیک سعی کن تست‌های زمان‌دار بیشتری بزنی.</p>
-          <span className="text-[10px] text-zinc-400 mt-2 block">۱۴:۳۰</span>
+        <div className="self-center bg-card border border-border/80 rounded-full px-3 py-1 text-[10px] text-muted-foreground/50 mb-2">امروز</div>
+        <div className="self-start bg-muted rounded-2xl rounded-tr-sm p-4 max-w-[80%] shadow-sm">
+          <p className="text-sm text-foreground leading-relaxed">سلام خسته نباشی! گزارش کار امروزت عالی بود. فقط برای فیزیک سعی کن تست‌های زمان‌دار بیشتری بزنی.</p>
+          <span className="text-[10px] text-muted-foreground mt-2 block">۱۴:۳۰</span>
         </div>
         
         <div className="self-end bg-emerald-600 rounded-2xl rounded-tl-sm p-4 max-w-[80%] shadow-md">
@@ -347,9 +361,9 @@ function MockAdvisor() {
         </div>
       </div>
       
-      <div className="p-4 bg-zinc-950 border-t border-zinc-800">
-        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
-          <input type="text" placeholder="پیام خود را بنویسید..." className="bg-transparent flex-1 outline-none text-sm text-zinc-100 h-8 placeholder:text-zinc-600" disabled />
+      <div className="p-4 bg-background border-t border-border/80">
+        <div className="flex items-center gap-2 bg-card border border-border/80 rounded-xl px-4 py-2">
+          <input type="text" placeholder="پیام خود را بنویسید..." className="bg-transparent flex-1 outline-none text-sm text-foreground h-8 placeholder:text-zinc-600" disabled />
           <button className="w-8 h-8 rounded-lg bg-emerald-500 text-zinc-950 flex items-center justify-center">
             <Send className="w-4 h-4 ml-0.5" />
           </button>
@@ -377,7 +391,7 @@ export function ProductPlayground() {
   };
 
   return (
-    <section id="playground" className="scroll-mt-20 py-20 sm:py-28 relative border-t border-border/60">
+    <section id="playground" className="scroll-mt-20 py-20 sm:py-28 relative border-t border-border/60 font-yekan" dir="rtl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 relative z-10">
         
         <div className="mb-12 text-center">
@@ -391,14 +405,14 @@ export function ProductPlayground() {
 
         {/* TOP TABS */}
         <div className="mb-8 flex justify-center w-full">
-          <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 rounded-2xl border border-border/80 bg-card/60 p-1.5 backdrop-blur-md shadow-sm w-full max-w-4xl">
+          <div className="flex w-full items-center justify-start sm:justify-center gap-1.5 overflow-x-auto flex-nowrap scrollbar-hide no-scrollbar rounded-2xl border border-border/80 bg-card/60 p-1.5 backdrop-blur-md shadow-sm max-w-4xl">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`group flex-1 py-2.5 px-3 rounded-xl text-sm font-bold transition-all duration-300 outline-none ${
+                  className={`group whitespace-nowrap flex-shrink-0 py-2.5 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 outline-none ${
                     isActive
                       ? 'bg-emerald-500 text-zinc-950 shadow-md scale-[1.02]'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
@@ -412,12 +426,14 @@ export function ProductPlayground() {
         </div>
 
         {/* MAIN APP REPLICA WINDOW */}
-        <div dir="rtl" className="w-full aspect-[4/3] md:aspect-[16/10] lg:aspect-[16/9] max-h-[800px] bg-zinc-950 border border-zinc-800 rounded-3xl shadow-[0_30px_100px_-20px_rgba(0,0,0,0.6)] overflow-hidden flex flex-row">
-          {/* Mock Sidebar (Desktop) */}
-          <MockSidebar activeTab={activeTab} />
+        <div dir="rtl" className="w-full aspect-[4/3] md:aspect-[16/10] lg:aspect-[16/9] max-h-[800px] bg-background border border-border/80 rounded-3xl shadow-[0_30px_100px_-20px_rgba(0,0,0,0.6)] overflow-hidden flex flex-row">
+          {/* Mock Sidebar (Desktop only) */}
+          <div className="hidden md:block shrink-0">
+            <MockSidebar activeTab={activeTab} />
+          </div>
           
           {/* Mock Main Content */}
-          <div className="flex-1 relative overflow-hidden bg-zinc-950">
+          <div className="flex-1 relative overflow-y-auto overflow-x-hidden bg-background scrollbar-hide">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -425,7 +441,7 @@ export function ProductPlayground() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
                 transition={{ duration: 0.25, ease: [0.2, 1, 0.3, 1] }}
-                className="absolute inset-0 w-full h-full"
+                className="w-full min-h-full relative"
               >
                 {renderContent()}
               </motion.div>

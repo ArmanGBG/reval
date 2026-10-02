@@ -39,6 +39,7 @@ model User {
   tasks                      Task[]
   nonStudyActivities         NonStudyActivity[]
   sleepRecords               SleepRecord[]
+  schoolPresences            SchoolPresence[]
   examParticipants           ExamParticipant[]
   examResults                ExamResult[]
   examAnalysisTasks          ExamAnalysisTask[]    @relation("ExamAnalysisTaskStudent")
@@ -162,6 +163,8 @@ model Task {
   // Class homework — when set, this educational-test task is the homework
   // assigned by a class/video task (self-relation, one homework per class).
   classHomeworkOfId String? @unique
+  isSchoolTask      Boolean         @default(false)
+  schoolPresenceId  String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -175,6 +178,7 @@ model Task {
   topicModeSubtopics TaskTopicModeSubtopic[]
   classHomeworkOf    Task?                   @relation("ClassHomework", fields: [classHomeworkOfId], references: [id], onDelete: Cascade)
   homeworkForClass   Task?                   @relation("ClassHomework")
+  schoolPresence     SchoolPresence?         @relation(fields: [schoolPresenceId], references: [id], onDelete: SetNull)
 }
 
 model TaskTopic {
@@ -225,6 +229,25 @@ model SleepRecord {
 
   @@unique([studentId, date, type])
   @@index([studentId, date])
+}
+
+// ===== School Presence =====
+// Daily school presence record for students (one per day).
+model SchoolPresence {
+  id              String   @id @default(cuid())
+  userId          String
+  date            String   // ISO date string (YYYY-MM-DD)
+  startTime       String   // HH:mm (e.g. "07:30")
+  endTime         String   // HH:mm (e.g. "14:00")
+  durationMinutes Int      // calculated duration in minutes
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 // ===== Exam =====

@@ -128,6 +128,8 @@ export async function POST(request: NextRequest) {
         bookName: hasTestDetails && typeof t.bookName === 'string' ? t.bookName.trim() || null : null,
         testDescription: hasTestDetails && typeof t.testDescription === 'string' ? t.testDescription.trim() || null : null,
         advisorNote: permission.createdBy === 'advisor' && typeof t.advisorNote === 'string' ? t.advisorNote.trim() || null : null,
+        isSchoolTask: Boolean(t.isSchoolTask),
+        schoolPresenceId: typeof t.schoolPresenceId === 'string' ? t.schoolPresenceId : null,
       });
     }
 
@@ -171,6 +173,8 @@ export async function POST(request: NextRequest) {
             bookName: (t.bookName as string | null) ?? null,
             testDescription: (t.testDescription as string | null) ?? null,
             advisorNote: (t.advisorNote as string | null) ?? null,
+            isSchoolTask: Boolean(t.isSchoolTask),
+            schoolPresenceId: (t.schoolPresenceId as string | null) ?? null,
             topics: { create: Array.isArray(t.topicIds) ? t.topicIds.map((topicId) => ({ topicId: topicId as string })) : [] },
             topicModeSubtopics: { create: Array.isArray(t.topicModeSubtopicIds) ? t.topicModeSubtopicIds.map((topicModeSubtopicId) => ({ topicModeSubtopicId: topicModeSubtopicId as string })) : [] },
           },
@@ -199,9 +203,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ tasks: parsed }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/tasks/batch error:', error);
+    console.error('[POST /api/tasks/batch CRITICAL error]:', error);
+    const message = error instanceof Error ? error.message : 'خطا در ایجاد دسته‌ای وظایف';
     return NextResponse.json(
-      { error: 'خطا در ایجاد دسته‌ای وظایف' },
+      { error: message },
       { status: 500 },
     );
   }

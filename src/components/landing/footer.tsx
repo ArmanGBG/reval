@@ -5,6 +5,7 @@ import { motion, useInView, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { Send, Instagram } from "lucide-react";
 import { Logo } from "./logo";
+import { APP_VERSION } from "@/config/site";
 
 // ===== Footer =====
 // Standard footer with:
@@ -130,11 +131,14 @@ export function Footer({
           </div>
         </motion.div>
 
-        {/* ===== Copyright ===== */}
-        <div className="mt-8 border-t border-border/30 pt-6 text-center">
+        {/* ===== Copyright & Version ===== */}
+        <div className="mt-8 border-t border-border/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-right">
           <p className="text-xs text-muted-foreground/60">
             © <span className="nums">۱۴۰۵</span> روال — تمام حقوق محفوظ است.
           </p>
+          <span className="text-[11px] font-mono text-muted-foreground/50 tabular-nums" dir="ltr">
+            v{APP_VERSION}
+          </span>
         </div>
       </div>
     </footer>

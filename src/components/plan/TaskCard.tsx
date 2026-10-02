@@ -142,6 +142,11 @@ export default function TaskCard({
               >
                 {task.createdBy === 'advisor' ? 'مشاور' : 'خودم'}
               </span>
+              {task.isSchoolTask && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0 border border-blue-500/30 bg-blue-500/10 text-blue-400">
+                  مدرسه
+                </span>
+              )}
               <LifecycleStatusBadge status={lifecycleStatus} />
             </div>
 
@@ -197,40 +202,40 @@ export default function TaskCard({
             </div>}
 
             {/* Target Metrics — hours instead of minutes */}
-            {task.detailsCompleted && task.targetTimeMinutes != null && <div className="flex items-center gap-3 text-xs text-[var(--foreground-muted)]">
+            {task.detailsCompleted && task.targetTimeMinutes != null && <div className={`flex items-center gap-3 text-xs ${task.isSchoolTask ? 'text-blue-300' : 'text-[var(--foreground-muted)]'}`}>
               <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
+                <Clock className={`w-3.5 h-3.5 ${task.isSchoolTask ? 'text-blue-400' : 'text-[var(--foreground-subtle)]'}`} />
                 {minutesToHoursLabel(task.targetTimeMinutes)}
               </span>
               {(task.targetTestCount ?? 0) > 0 && (
                 <>
-                  <span className="w-px h-3 bg-[var(--border)]" />
+                  <span className={`w-px h-3 ${task.isSchoolTask ? 'bg-blue-500/30' : 'bg-[var(--border)]'}`} />
                   <span className="flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
+                    <FileText className={`w-3.5 h-3.5 ${task.isSchoolTask ? 'text-blue-400' : 'text-[var(--foreground-subtle)]'}`} />
                     {toPersianDigits(task.targetTestCount ?? 0)} تست
                   </span>
                 </>
               )}
             </div>}
             {isClassTask(task) && !isCompleted && task.actualTimeMinutes != null && (
-              <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)]">
-                <Clock className="w-3.5 h-3.5 text-[var(--foreground-subtle)]" />
+              <div className={`flex items-center gap-1.5 text-xs ${task.isSchoolTask ? 'text-blue-300' : 'text-[var(--foreground-muted)]'}`}>
+                <Clock className={`w-3.5 h-3.5 ${task.isSchoolTask ? 'text-blue-400' : 'text-[var(--foreground-subtle)]'}`} />
                 زمان جلسه: {minutesToHoursLabel(task.actualTimeMinutes)}
               </div>
             )}
 
             {/* Actual Metrics (if completed) */}
             {isCompleted && (task.actualTimeMinutes !== null || task.actualTestCount !== null) && (
-              <div className="flex items-center gap-3 text-xs text-[var(--accent)] mt-2 pt-2 border-t border-[var(--border)]">
+              <div className={`flex items-center gap-3 text-xs ${task.isSchoolTask ? 'text-blue-400' : 'text-[var(--accent)]'} mt-2 pt-2 border-t border-[var(--border)]`}>
                 {task.actualTimeMinutes !== null && (
                   <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                    <span className={`w-1.5 h-1.5 rounded-full ${task.isSchoolTask ? 'bg-blue-400' : 'bg-[var(--accent)]'}`} />
                     واقعی: {minutesToHoursLabel(task.actualTimeMinutes)}
                   </span>
                 )}
                 {task.actualTestCount !== null && (
                   <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                    <span className={`w-1.5 h-1.5 rounded-full ${task.isSchoolTask ? 'bg-blue-400' : 'bg-[var(--accent)]'}`} />
                     واقعی: {toPersianDigits(task.actualTestCount)} تست
                   </span>
                 )}

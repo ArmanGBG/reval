@@ -46,6 +46,7 @@ export function buildClassTask({
   order,
   createdBy,
   createdById,
+  isSchoolTask,
 }: {
   id: string;
   studentId: string;
@@ -60,6 +61,7 @@ export function buildClassTask({
   order: number;
   createdBy: Task['createdBy'];
   createdById: string | null;
+  isSchoolTask?: boolean;
 }): Task {
   return {
     id,
@@ -92,5 +94,6 @@ export function buildClassTask({
     sessionNumber: sessionNumber.trim(),
     detailsCompleted: false,
     advisorNote: advisorNote?.trim() || null,
+    isSchoolTask: Boolean(isSchoolTask),
   };
 }

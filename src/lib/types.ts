@@ -46,6 +46,26 @@ export interface NonStudyActivity {
   updatedAt?: string;
 }
 
+// ===== School Presence =====
+// Record of daily school presence (one per day per student).
+export interface SchoolPresence {
+  id: string;
+  userId: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  startTime: string; // HH:mm (e.g. "07:30")
+  endTime: string; // HH:mm (e.g. "14:00")
+  durationMinutes: number; // presence duration in minutes
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Returns true if the user's grade is 'فارغ‌التحصیل' (graduate) */
+export function isGraduate(grade?: string | null): boolean {
+  if (!grade) return false;
+  const clean = grade.replace(/[\u200c\s]/g, '');
+  return clean === 'فارغالتحصیل' || clean.includes('فارغالتحصیل');
+}
+
 export interface User {
   id: string;
   firstName: string;
@@ -100,6 +120,8 @@ export interface Task {
   // Class homework link — when set, this educational-test task is the
   // homework of the referenced class/video task (one per class).
   classHomeworkOfId?: string | null;
+  isSchoolTask?: boolean;
+  schoolPresenceId?: string | null;
   /** Homework task assigned by this class task (present on class tasks). */
   homeworkForClass?: { id: string; date: string; status: TaskStatus } | null;
   /** The class this homework task belongs to (present on homework tasks). */

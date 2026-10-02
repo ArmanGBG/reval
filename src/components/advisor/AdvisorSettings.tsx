@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { AppearanceSection } from '@/components/settings/AppearanceSection';
 import { ProvinceCityPicker } from '@/components/shared/ProvinceCityPicker';
 import { AVATARS } from '@/lib/constants/avatars';
+import { APP_VERSION } from '@/config/site';
 import { toast } from 'sonner';
 
 // ===== Advisor Settings =====
@@ -215,7 +216,13 @@ export function AdvisorSettings() {
 
       {/* Version */}
       <div className="text-center space-y-1 pb-4 pt-2">
-        <p className="text-[var(--foreground-muted)] text-sm font-medium">روال نسخه ۱.۰.۰ — پنل مشاور</p>
+        <p className="text-[var(--foreground-muted)] text-sm font-medium">
+          روال نسخه {APP_VERSION}{' '}
+          <span className="font-mono text-xs tabular-nums" dir="ltr">
+            (v{APP_VERSION})
+          </span>{' '}
+          — پنل مشاور
+        </p>
         <p className="text-[var(--foreground-subtle)] text-xs">ساخته شده برای مشاوران تحصیلی</p>
       </div>
     </div>

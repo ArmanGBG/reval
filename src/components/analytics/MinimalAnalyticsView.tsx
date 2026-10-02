@@ -13,8 +13,8 @@ import {
   YAxis,
 } from 'recharts';
 import { useAppStore } from '@/lib/store';
-import type { ActivityType, Task } from '@/lib/types';
-import { buildActivityBreakdown, buildDailyTrend, buildSubjectDistribution, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
+import { ActivityType, Task, isGraduate } from '@/lib/types';
+import { buildActivityBreakdown, buildDailyTrend, buildSchoolDailyTrend, buildSubjectDistribution, filterTasksForReport, computeKpiTotals } from '@/lib/reporting/task-report-service';
 import { filterNonStudyActivitiesForRange } from '@/lib/non-study-activity-report';
 import { resolveDateRange } from '@/lib/analytics';
 import { computeSleepMetrics, formatTimePersian } from '@/lib/sleep';
@@ -271,10 +271,19 @@ export default function MinimalAnalyticsView({
   studentId: studentIdProp,
   isAdvisor = false,
 }: MinimalAnalyticsViewProps = {}) {
-  const { tasks: storeTasks, user, nonStudyActivities, sleepRecords } = useAppStore();
+  const { tasks: storeTasks, user, nonStudyActivities, sleepRecords, schoolPresences, loadSchoolPresences } = useAppStore();
   const tasks = tasksOverride ?? storeTasks;
   const ownStudentId = useCurrentStudentId();
   const studentId = studentIdProp ?? ownStudentId;
+  const effectiveGrade = academicContext?.grade ?? user?.grade;
+  const isStudentGraduate = isGraduate(effectiveGrade);
+
+  useEffect(() => {
+    if (studentId && !isStudentGraduate) {
+      void loadSchoolPresences(studentId).catch(() => {});
+    }
+  }, [studentId, isStudentGraduate, loadSchoolPresences]);
+
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(initialTimeFilter);
   const [reportView, setReportView] = useState<ReportView>(initialReportView);
   const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
@@ -348,6 +357,16 @@ export default function MinimalAnalyticsView({
     () => buildDailyTrend(reportTasks, timeFilter, new Date(), customRange),
     [reportTasks, timeFilter, customRange],
   );
+  const relevantSchoolPresences = useMemo(() => {
+    return schoolPresences.filter((p) => !p.userId || p.userId === studentId);
+  }, [schoolPresences, studentId]);
+  const schoolDailyTrend = useMemo(
+    () => (isStudentGraduate ? [] : buildSchoolDailyTrend(relevantSchoolPresences, timeFilter, new Date(), customRange)),
+    [isStudentGraduate, relevantSchoolPresences, timeFilter, customRange],
+  );
+  const schoolTotalHours = useMemo(() => {
+    return Math.round(schoolDailyTrend.reduce((sum, item) => sum + item.hours, 0) * 10) / 10;
+  }, [schoolDailyTrend]);
   const subjectDistribution = useMemo(() => buildSubjectDistribution(reportTasks), [reportTasks]);
   const dailyActivities = useMemo(
     () => buildActivityBreakdown(reportTasks, timeFilter, new Date(), customRange),
@@ -585,26 +604,67 @@ export default function MinimalAnalyticsView({
           ))}
         </div>
         {reportView === 'روند مطالعه' && (
-          <div className="h-60" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="var(--border)" />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                  minTickGap={6}
-                  angle={dailyTrend.length > 6 ? -25 : 0}
-                  textAnchor={dailyTrend.length > 6 ? 'end' : 'middle'}
-                  height={dailyTrend.length > 6 ? 50 : 30}
-                />
-                <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
-                <Bar dataKey="hours" name="ساعت مطالعه" fill="var(--accent)" radius={[5, 5, 0, 0]} maxBarSize={34} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="space-y-6">
+            <div className="h-60" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                 <BarChart data={dailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--border)" />
+                  <XAxis
+                    dataKey="day"
+                    tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                    minTickGap={6}
+                    angle={dailyTrend.length > 6 ? -25 : 0}
+                    textAnchor={dailyTrend.length > 6 ? 'end' : 'middle'}
+                    height={dailyTrend.length > 6 ? 50 : 30}
+                  />
+                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
+                  <Bar dataKey="hours" name="ساعت مطالعه" fill="var(--accent)" radius={[5, 5, 0, 0]} maxBarSize={34} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {!isStudentGraduate && (
+              <div className="pt-5 border-t border-[var(--border)]">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-semibold text-[var(--foreground)]">ساعت حضور در مدرسه</h4>
+                    <p className="mt-0.5 text-[11px] text-[var(--foreground-muted)]">
+                      مقایسه روزهای درسی با روند مطالعه مفید
+                    </p>
+                  </div>
+                  {schoolTotalHours > 0 && (
+                    <span className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-400">
+                      مجموع حضور: {toPersianDigits(schoolTotalHours)} ساعت
+                    </span>
+                  )}
+                </div>
+                <div className="h-56" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={schoolDailyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                      <CartesianGrid vertical={false} stroke="var(--border)" />
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval="preserveStartEnd"
+                        minTickGap={6}
+                        angle={schoolDailyTrend.length > 6 ? -25 : 0}
+                        textAnchor={schoolDailyTrend.length > 6 ? 'end' : 'middle'}
+                        height={schoolDailyTrend.length > 6 ? 50 : 30}
+                      />
+                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<ReportTooltip unit="ساعت" />} cursor={{ fill: 'var(--border)' }} />
+                      <Bar dataKey="hours" name="ساعت مدرسه" fill="#3b82f6" radius={[5, 5, 0, 0]} maxBarSize={34} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
         )}
         {reportView === 'تفکیک دروس' && (

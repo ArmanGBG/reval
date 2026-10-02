@@ -2,9 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion, useInView, MotionConfig } from 'framer-motion';
-import { Menu, X, Send, Instagram, ArrowLeft, CheckCircle2, BarChart3, Users, Zap, LayoutDashboard, BookOpen, UserCheck, Clock } from 'lucide-react';
+import { Menu, X, Send, Instagram, ArrowLeft, CheckCircle2, BarChart3, Users, Zap, LayoutDashboard, BookOpen, UserCheck, Clock, Sun, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Logo } from './logo';
 import { ProductPlayground } from './ProductPlayground';
@@ -16,10 +15,10 @@ import { FloatingLines } from './floating-lines';
 // MAIN EXPORT
 // ----------------------------------------------------------------------
 
-export default function LandingPage() {
+export default function LandingPage({ initialView = 'main' }: { initialView?: 'main' | 'advisors' | 'team' } = {}) {
   const setCurrentView = useAppStore((s) => s.setCurrentView);
   const [isMobile, setIsMobile] = React.useState(true);
-  const [landingView, setLandingView] = React.useState<'main' | 'advisors' | 'team'>('main');
+  const [landingView, setLandingView] = React.useState<'main' | 'advisors' | 'team'>(initialView);
 
   React.useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -56,6 +55,10 @@ export default function LandingPage() {
       const hash = window.location.hash;
       if (hash in AUTH_HASHES) {
         setCurrentView(AUTH_HASHES[hash]);
+      } else if (hash === '#advisors') {
+        setLandingView('advisors');
+      } else if (hash === '#team' || hash === '#about' || hash === '#story') {
+        setLandingView('team');
       }
     };
 
@@ -89,6 +92,10 @@ export default function LandingPage() {
   }, []);
 
   const handleBackToMain = React.useCallback(() => {
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.location.href = '/';
+      return;
+    }
     setLandingView('main');
     window.scrollTo(0, 0);
   }, []);
@@ -96,15 +103,17 @@ export default function LandingPage() {
   if (landingView === 'advisors') {
     return (
       <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
-        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise">
+        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise" dir="rtl">
           {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
           <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
           {!isMobile && <FloatingLines />}
 
           <LandingHeader 
-            onAdvisorsClick={handleAdvisorsClick} 
-            onTeamClick={handleTeamClick} 
-            onPlaygroundClick={handlePlaygroundClick} 
+            landingView={landingView}
+            setLandingView={setLandingView}
+            onAdvisorsClick={handleAdvisorsClick}
+            onTeamClick={handleTeamClick}
+            onPlaygroundClick={handlePlaygroundClick}
           />
           <main className="relative z-10 flex-1 pt-20">
             <AdvisorsPage onBack={handleBackToMain} />
@@ -122,15 +131,17 @@ export default function LandingPage() {
   if (landingView === 'team') {
     return (
       <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
-        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise">
+        <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise" dir="rtl">
           {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
           <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
           {!isMobile && <FloatingLines />}
 
           <LandingHeader 
-            onAdvisorsClick={handleAdvisorsClick} 
-            onTeamClick={handleTeamClick} 
-            onPlaygroundClick={handlePlaygroundClick} 
+            landingView={landingView}
+            setLandingView={setLandingView}
+            onAdvisorsClick={handleAdvisorsClick}
+            onTeamClick={handleTeamClick}
+            onPlaygroundClick={handlePlaygroundClick}
           />
           <main className="relative z-10 flex-1 pt-20">
             <TeamPage onBack={handleBackToMain} />
@@ -148,24 +159,26 @@ export default function LandingPage() {
   return (
     <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
       <div className="landing-page relative isolate flex min-h-screen flex-col overflow-x-clip bg-background font-yekan text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-600 dark:selection:text-emerald-400 md:noise" dir="rtl">
-        {/* Dynamic Background from main branch */}
+        {/* Dynamic Background */}
         {!isMobile && <div className="aurora pointer-events-none fixed inset-0 z-0 opacity-35" aria-hidden="true" />}
         <div className="pointer-events-none fixed inset-0 z-0 bg-background/25" aria-hidden="true" />
         {!isMobile && <FloatingLines />}
 
         <LandingHeader 
-          onAdvisorsClick={handleAdvisorsClick} 
-          onTeamClick={handleTeamClick} 
-          onPlaygroundClick={handlePlaygroundClick} 
-        />
+            landingView={landingView}
+            setLandingView={setLandingView}
+            onAdvisorsClick={handleAdvisorsClick}
+            onTeamClick={handleTeamClick}
+            onPlaygroundClick={handlePlaygroundClick}
+          />
 
         <main className="relative z-10 flex-1">
           <LandingHero />
-          <LandingBentoFeatures />
-          <LandingSocialProof />
+          <LandingStatsBar />
+          <LandingProblemSolution />
           <ProductPlayground />
-          <LandingMoreAboutReval onTeamClick={handleTeamClick} />
           <LandingCta />
+          <LandingMoreAboutReval onTeamClick={handleTeamClick} />
         </main>
         
         <LandingFooter 
@@ -183,16 +196,21 @@ export default function LandingPage() {
 // ----------------------------------------------------------------------
 
 function LandingHeader({ 
-  onAdvisorsClick, 
-  onTeamClick, 
-  onPlaygroundClick 
+  landingView = 'main',
+  setLandingView,
+  onAdvisorsClick,
+  onTeamClick,
+  onPlaygroundClick,
 }: {
-  onAdvisorsClick: () => void;
-  onTeamClick: () => void;
-  onPlaygroundClick: () => void;
+  landingView?: 'main' | 'advisors' | 'team';
+  setLandingView?: (view: 'main' | 'advisors' | 'team') => void;
+  onAdvisorsClick?: () => void;
+  onTeamClick?: () => void;
+  onPlaygroundClick?: () => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
+  const { theme, toggleTheme } = useAppStore();
 
   React.useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -201,65 +219,190 @@ function LandingHeader({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = [
-    { label: 'پلی‌گراند و امکانات', action: onPlaygroundClick },
-    { label: 'مشاوران', action: onAdvisorsClick },
-    { label: 'تیم ما', action: onTeamClick },
-  ];
+  const handleScrollTo = (id: string) => {
+    setOpen(false);
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.location.href = `/#${id}`;
+      return;
+    }
+    if (setLandingView && landingView !== 'main') {
+      setLandingView('main');
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-background/80 backdrop-blur-xl border-b border-border/60 shadow-sm' : 'bg-transparent'}`}>
+    <header
+      dir="rtl"
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 font-yekan ${
+        scrolled ? 'bg-background/80 backdrop-blur-xl border-b border-border/60 shadow-sm' : 'bg-transparent'
+      }`}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+        {/* Right side: Brand Logo */}
         <Link href="#top" className="flex items-center gap-2 outline-none group" onClick={() => setOpen(false)}>
           <Logo size={26} variant="auto" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
-            <button key={item.label} onClick={item.action} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-              {item.label}
-            </button>
-          ))}
+        {/* Center: Desktop Navigation Links */}
+        <nav className="hidden md:flex items-center gap-7">
+          <button
+            type="button"
+            onClick={() => handleScrollTo('solutions')}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+          >
+            راه‌حل‌ها
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScrollTo('playground')}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+          >
+            امکانات رِوال
+          </button>
+          <button
+            type="button"
+            onClick={onAdvisorsClick}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+          >
+            برای مشاوران
+          </button>
+          <button
+            type="button"
+            onClick={onTeamClick}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+          >
+            داستان رِوال
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScrollTo('contact')}
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+          >
+            ارتباط با ما
+          </button>
         </nav>
 
+        {/* Left side: Desktop Auth Buttons */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="#login" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground px-2 py-1.5">
+                    <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+            aria-label="تغییر تم"
+          >
+            {theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
+          </button>
+          <Link
+            href="#login"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground px-2 py-1.5"
+          >
             ورود
           </Link>
-          <Link href="#signup" className="group relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_-5px_rgba(16,185,129,0.4)]">
-            ثبت‌نام / ورود
+          <Link
+            href="#signup"
+            className="group relative inline-flex h-9 items-center justify-center gap-2 overflow-hidden rounded-xl bg-emerald-500 px-4 text-sm font-semibold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_20px_-5px_rgba(16,185,129,0.4)]"
+          >
+            ثبت‌نام
           </Link>
         </div>
 
-        <button className="md:hidden text-muted-foreground hover:text-foreground" onClick={() => setOpen(true)} aria-label="منو">
+        {/* Mobile Hamburger Button */}
+        <button
+          className="md:hidden text-muted-foreground hover:text-foreground"
+          onClick={() => setOpen(true)}
+          aria-label="منو"
+        >
           <Menu className="size-6" />
         </button>
       </div>
 
+      {/* Mobile Drawer */}
       <AnimatePresence>
         {open && (
-           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 md:hidden bg-background/95 backdrop-blur-xl flex flex-col p-6">
-             <div className="flex items-center justify-between mb-8">
-               <Logo size={26} variant="auto" />
-               <button className="text-muted-foreground hover:text-foreground" onClick={() => setOpen(false)} aria-label="بستن منو">
-                 <X className="size-6" />
-               </button>
-             </div>
-             <nav className="flex flex-col gap-4 text-lg font-medium text-muted-foreground">
-               {navItems.map((item) => (
-                 <button key={item.label} onClick={() => { item.action(); setOpen(false); }} className="text-right py-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                   {item.label}
-                 </button>
-               ))}
-               <div className="h-px w-full bg-border/60 my-2" />
-               <Link href="#login" onClick={() => setOpen(false)} className="text-right py-2 hover:text-foreground transition-colors">
-                 ورود
-               </Link>
-               <Link href="#signup" onClick={() => setOpen(false)} className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 text-base font-semibold text-emerald-950 shadow-[0_0_24px_-4px_rgba(16,185,129,0.5)]">
-                 ثبت‌نام / ورود
-               </Link>
-             </nav>
-           </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 md:hidden bg-background/95 backdrop-blur-xl flex flex-col p-6 font-yekan"
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <Logo size={26} variant="auto" />
+              <button
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setOpen(false)}
+                aria-label="بستن منو"
+              >
+                <X className="size-6" />
+              </button>
+            </div>
+            <nav className="flex flex-col gap-4 text-lg font-medium text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => handleScrollTo('solutions')}
+                className="text-right py-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                راه‌حل‌ها
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollTo('playground')}
+                className="text-right py-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                امکانات رِوال
+              </button>
+              <button
+                type="button"
+                onClick={() => { setOpen(false); onAdvisorsClick?.(); }}
+                className="text-right py-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+              >
+                برای مشاوران
+              </button>
+              <button
+                type="button"
+                onClick={() => { setOpen(false); onTeamClick?.(); }}
+                className="text-right py-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+              >
+                داستان رِوال
+              </button>
+              <button
+                type="button"
+                onClick={() => handleScrollTo('contact')}
+                className="text-right py-2 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >
+                ارتباط با ما
+              </button>
+              <div className="h-px w-full bg-border/60 my-2" />
+              <Link
+                href="#login"
+                onClick={() => setOpen(false)}
+                className="text-right py-2 hover:text-foreground transition-colors"
+              >
+                ورود
+              </Link>
+              <div className="flex items-center justify-between py-2 border-y border-border/40 my-2">
+                <span className="text-sm font-medium">تغییر تم</span>
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-full bg-muted/30 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="تغییر تم"
+                >
+                  {theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
+                </button>
+              </div>
+              <Link
+                href="#signup"
+                onClick={() => setOpen(false)}
+                className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 text-base font-semibold text-emerald-950 shadow-[0_0_24px_-4px_rgba(16,185,129,0.5)]"
+              >
+                ثبت‌نام
+              </Link>
+            </nav>
+          </motion.div>
         )}
       </AnimatePresence>
     </header>
@@ -272,230 +415,229 @@ function LandingHeader({
 
 function LandingHero() {
   const reduceMotion = useReducedMotion();
-  return (
-    <section id="top" className="relative pt-32 pb-20 sm:pt-40 sm:pb-24">
-      <div className="mx-auto flex w-full max-w-6xl flex-col items-center px-5 text-center sm:px-8">
-        <motion.div initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 backdrop-blur-md">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
-            </span>
-            نسل جدید پلتفرم هوشمند مدیریت مطالعه
-          </div>
-          <h1 className="text-balance text-4xl font-black leading-[1.2] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-            ما اینجاییم <br />
-            <span className="bg-gradient-to-l from-emerald-500 via-teal-400 to-emerald-400 bg-clip-text text-transparent">همه چی بیفته رو روال!</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-base font-normal leading-relaxed text-muted-foreground sm:text-lg">
-            روال یک میز کار مدرن و بدون حواس‌پرتی است؛ جایی که برنامه‌ریزی شخصی‌سازی‌شده، آنالیز جزئی دروس و ارتباط مؤثر با مشاور در یک ساختار یکپارچه قرار می‌گیرند.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="#signup" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-8 text-base font-bold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_32px_-6px_rgba(16,185,129,0.5)] sm:w-auto">
-              <ArrowLeft className="size-5" />
-              شروع رایگان و ساخت برنامه
-            </Link>
-            <Link href="#playground" className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/60 px-8 text-base font-medium text-foreground transition-all hover:bg-card/80 hover:border-border/80 sm:w-auto">
-              تست محیط اپلیکیشن (Playground)
-            </Link>
-          </div>
-        </motion.div>
 
-        <motion.div initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative mt-16 w-full max-w-5xl md:mt-24">
-          <div className="pointer-events-none absolute -inset-10 z-0 rounded-[3rem] bg-gradient-to-b from-emerald-500/30 via-emerald-500/10 to-transparent blur-[120px] opacity-20" />
-          <div className="relative z-10 overflow-hidden rounded-2xl border border-border/80 bg-card/80 p-2 shadow-2xl backdrop-blur-2xl sm:p-3">
-            <div className="mb-2 flex items-center gap-2 px-2 sm:mb-3">
-              <div className="size-2.5 sm:size-3 rounded-full bg-red-500/80" />
-              <div className="size-2.5 sm:size-3 rounded-full bg-amber-500/80" />
-              <div className="size-2.5 sm:size-3 rounded-full bg-emerald-500/80" />
-              <div className="mx-auto flex h-5 items-center justify-center rounded bg-muted/60 px-3 text-[10px] text-muted-foreground sm:h-6 sm:text-[11px] border border-border/40">
-                app.revaledu.ir
-              </div>
-              <div className="w-12" />
-            </div>
-            <div className="relative aspect-[16/9] sm:aspect-[16/10] lg:aspect-[16/9] w-full overflow-hidden rounded-xl bg-background">
-              <Image 
-                src="/images/preview/dark/dashboard.webp" 
-                alt="نمای داشبورد روال" 
-                fill
-                className="object-cover object-top" 
-                style={{ maskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, black 65%, transparent 100%)' }} 
-                priority 
-              />
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-// ----------------------------------------------------------------------
-// SPOTLIGHT CARD (Linear-style Mouse Tracking)
-// ----------------------------------------------------------------------
-function SpotlightCard({ children, className = "" }: { children: React.ReactNode, className?: string }) {
-  const divRef = React.useRef<HTMLDivElement>(null);
-  const [position, setPosition] = React.useState({ x: 0, y: 0 });
-  const [opacity, setOpacity] = React.useState(0);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!divRef.current) return;
-    const rect = divRef.current.getBoundingClientRect();
-    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  const handlePlaygroundScroll = () => {
+    document.getElementById('playground')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <div
-      ref={divRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setOpacity(1)}
-      onMouseLeave={() => setOpacity(0)}
-      className={`relative overflow-hidden rounded-2xl border border-border bg-card/60 backdrop-blur-sm transition-colors hover:border-border/80 ${className}`}
-    >
-      <div
-        className="pointer-events-none absolute -inset-px transition-opacity duration-300"
-        style={{
-          opacity,
-          background: `radial-gradient(400px circle at ${position.x}px ${position.y}px, rgba(16,185,129,0.08), transparent 40%)`,
-        }}
-      />
-      <div className="relative h-full">{children}</div>
-    </div>
-  );
-}
+    <section id="top" className="relative pt-32 pb-14 sm:pt-44 sm:pb-20 overflow-hidden font-yekan" dir="rtl">
+      {/* Subtle, premium animated ambient background behind text */}
+      <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center overflow-hidden" aria-hidden="true">
+        <motion.div
+          animate={reduceMotion ? undefined : {
+            scale: [1, 1.15, 1],
+            opacity: [0.35, 0.55, 0.35],
+            x: [0, 30, -20, 0],
+            y: [0, -25, 20, 0],
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-1/4 h-[420px] w-[420px] rounded-full bg-gradient-to-tr from-emerald-500/25 via-teal-500/15 to-transparent blur-[120px] sm:h-[620px] sm:w-[620px] sm:blur-[160px]"
+        />
+        <motion.div
+          animate={reduceMotion ? undefined : {
+            scale: [1.1, 0.95, 1.1],
+            opacity: [0.25, 0.45, 0.25],
+            x: [0, -30, 25, 0],
+            y: [0, 20, -15, 0],
+          }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-1/4 h-[380px] w-[380px] rounded-full bg-gradient-to-bl from-teal-400/20 via-emerald-600/10 to-transparent blur-[110px] sm:h-[540px] sm:w-[540px] sm:blur-[150px]"
+        />
+      </div>
 
-// ----------------------------------------------------------------------
-// BENTO FEATURES
-// ----------------------------------------------------------------------
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center px-5 text-center sm:px-8">
+        <motion.div
+          initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col items-center"
+        >
+          <h1 className="text-balance text-4xl font-black leading-[1.25] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+            یادگیری هدفمند،{' '}
+            <span className="bg-gradient-to-l from-emerald-400 via-teal-300 to-emerald-500 bg-clip-text text-transparent">
+              روی رِوال!
+            </span>
+          </h1>
 
-function LandingBentoFeatures() {
-  return (
-    <section className="relative py-20 sm:py-28">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-black text-foreground sm:text-4xl">برای دانش‌آموزان</h2>
-          <p className="mt-4 text-muted-foreground text-sm sm:text-base">همه ابزارهایی که برای ساختن یک مسیر مطالعاتی موفق و منظم نیاز داری.</p>
-        </div>
+          <p className="mx-auto mt-6 max-w-2xl text-balance text-base font-normal leading-relaxed text-muted-foreground sm:text-lg sm:leading-8">
+            رِوال میز کار شخصیِ تو برای یادگیریه. جایی که برنامه‌‌ریزی و آنالیز دقیق فعالیت یک دانش‌آموز انجام میشه و دقیقا به مشاوری وصل می‌شی که دغدغه‌هات رو می‌فهمه.
+          </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">
-          {/* Card 1 */}
-          <SpotlightCard className="md:col-span-2 p-8 flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
-              <LayoutDashboard className="size-6" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground mb-2">داشبورد هوشمند</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                نگاهی سریع به وضعیت روزانه‌ات. تسک‌های امروز، پیام‌های خوانده‌نشده، و وضعیت پیشرفت هفته در یک نگاه برای حفظ تمرکز.
-              </p>
-            </div>
-          </SpotlightCard>
-
-          {/* Card 2 */}
-          <SpotlightCard className="p-8 flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center mb-4 text-teal-600 dark:text-teal-400">
-              <Zap className="size-6" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground mb-2">ثبت سریع عملکرد</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                بدون اتلاف وقت، تست‌ها و ساعت مطالعه‌ات رو با یک کلیک ثبت کن.
-              </p>
-            </div>
-          </SpotlightCard>
-
-          {/* Card 3 */}
-          <SpotlightCard className="p-8 flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400">
-              <BarChart3 className="size-6" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground mb-2">آنالیز دقیق ساعت و تست</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                نمودارهای لحظه‌ای از عملکرد شما در هر درس.
-              </p>
-            </div>
-          </SpotlightCard>
-
-          {/* Card 4 */}
-          <SpotlightCard className="md:col-span-2 p-8 flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400">
-              <Users className="size-6" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-foreground mb-2">ارتباط یکپارچه با مشاور</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                برنامه‌ات مستقیماً از سمت مشاور به پنل شما ارسال می‌شه. گزارش‌کارهای آخر شب خودکار ایجاد می‌شن و نیازی به تایپ و ارسال دستی در تلگرام نیست.
-              </p>
-            </div>
-          </SpotlightCard>
-        </div>
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row w-full sm:w-auto">
+            <Link
+              href="#signup"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-8 text-base font-bold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_32px_-6px_rgba(16,185,129,0.5)] sm:w-auto"
+            >
+              <ArrowLeft className="size-5" />
+              ثبت‌نام
+            </Link>
+            <button
+              type="button"
+              onClick={handlePlaygroundScroll}
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/60 px-8 text-base font-medium text-foreground transition-all hover:bg-card/80 hover:border-border/80 sm:w-auto cursor-pointer"
+            >
+              امکانات سایت
+            </button>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
 }
 
 // ----------------------------------------------------------------------
-// SOCIAL PROOF
+// STATS BAR (Replaces Testimonials immediately below Hero)
 // ----------------------------------------------------------------------
 
-function LandingSocialProof() {
-  const testimonials = [
+function LandingStatsBar() {
+  const reduceMotion = useReducedMotion();
+  const stats = [
     {
-      text: "نظم دادن به درس‌هام همیشه برام کابوس بود، ولی روال دقیقا همون چیزی بود که نیاز داشتم. خفن‌ترین ویژگیش تحلیل‌های دقیقشه!",
-      author: "علی",
-      role: "پایه دوازدهم",
-      avatar: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
-      letter: "ع"
+      value: '+1000',
+      label: 'دانش‌آموز ثبت‌نام کردن',
+      fullText: '+1000 دانش‌آموز ثبت‌نام کردن',
+      icon: Users,
     },
     {
-      text: "ارتباط با مشاورم خیلی سریع‌تر و راحت‌تر شده. دیگه نیازی نیست آخر هفته‌ها دفتر برنامه‌ریزی کاغذی ببرم آموزشگاه.",
-      author: "سارا",
-      role: "فارغ‌التحصیل تجربی",
-      avatar: "bg-pink-500/20 text-pink-600 dark:text-pink-400",
-      letter: "س"
+      value: '+4000',
+      label: 'تسک در روال ثبت شده',
+      fullText: '+4000 تسک در روال ثبت شده',
+      icon: CheckCircle2,
     },
     {
-      text: "واقعاً حس خوبی میده وقتی تیک تسک‌ها رو می‌زنم و نوار سبز پر می‌شه. انگار بازیه ولی واقعاً دارم درس می‌خونم!",
-      author: "مبینا",
-      role: "پایه یازدهم ریاضی",
-      avatar: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
-      letter: "م"
+      value: '+50',
+      label: 'دانش‌آموز به مشاور اختصاصی خودشون وصل شدن',
+      fullText: '+50 دانش‌آموز به مشاور اختصاصی خودشون وصل شدن',
+      icon: UserCheck,
+    },
+  ];
+
+  return (
+    <section className="relative z-20 mx-auto w-full max-w-5xl px-5 sm:px-8 pb-16 sm:pb-24 font-yekan" dir="rtl">
+      <motion.div
+        initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.6 }}
+        className="relative overflow-hidden rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xl shadow-2xl shadow-black/20"
+      >
+        {/* Subtle top border gradient accent */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+
+        <div className="grid grid-cols-1 divide-y divide-border/60 sm:grid-cols-3 sm:divide-y-0 sm:divide-x sm:divide-x-reverse">
+          {stats.map((stat, idx) => (
+            <div
+              key={idx}
+              aria-label={stat.fullText}
+              className="group flex flex-col items-center justify-center p-6 sm:p-7 text-center transition-colors duration-300 hover:bg-accent/30"
+            >
+              <div className="mb-3.5 flex size-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm transition-transform duration-300 group-hover:scale-105">
+                <stat.icon className="size-5" />
+              </div>
+              <div className="text-3xl sm:text-4xl font-black tracking-tight text-foreground bg-gradient-to-l from-emerald-400 via-teal-300 to-emerald-500 bg-clip-text text-transparent font-yekan">
+                {stat.value}
+              </div>
+              <p className="mt-2 text-sm sm:text-base font-medium text-muted-foreground leading-relaxed max-w-[220px]">
+                {stat.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+
+// ----------------------------------------------------------------------
+// PROBLEM / SOLUTION
+// ----------------------------------------------------------------------
+
+function LandingProblemSolution() {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(0);
+  const reduceMotion = useReducedMotion();
+
+  const problems = [
+    {
+      problem: "برنامه‌ریزیم خیلی بی‌نظمه و هر روز کلی از وقتم فقط صرفِ نوشتن و خط زدنِ برنامه میشه...",
+      solutionTitle: "میزکار اختصاصی کنکور",
+      solution: "تودولیست اختصاصی کنکور که تمام نیاز های برنامه ریزی دانش آموز رو درنظر می گیره تا تمام تمرکزت روی «انجام دادن» باشه، نه «نوشتن». تازه با فیدبک های خودتون دوره ای هم آپدیت میشه :)"
+    },
+    {
+      problem: "نمی‌دونم باگِ درس خوندنم کجاست! اصلاً نمی‌فهمم برای هر مبحث واقعاً چقدر وقت گذاشتم...",
+      solutionTitle: "آنالیز دقیق فعالیت و مطالعه",
+      solution: "نمودارهای تحلیلی که بهت نشون میده روی هر درس چقدر زمان گذاشتی، چقدر تست زدی و بازدهی واقعیت چقدر بوده."
+    },
+    {
+      problem: "گوشیم بزرگترین دشمنمه! نمی‌تونم تمرکز کنم و ثبتِ ساعت مطالعه‌ام همیشه با حواس‌پرتی همراهه...",
+      solutionTitle: "فضایی به دور از حواس‌پرتی",
+      solution: "محیطی مینیمال، آرام و بدون ویژگی های اضافه که حواستو پرت کنن، اینجا مخصوص ثبت عملکردته تا درگیرِ فضای مجازی نشی."
+    },
+    {
+      problem: "هم پیدا کردن مشاور خوب سخته، هم از فرستادن گزارش‌کارهای نامنظمِ هر شبه خسته شدم...",
+      solutionTitle: "ارتباط یکپارچه با مشاور",
+      solution: "اتصال مستقیم به بهترین مشاوران (که توسط ما تایید میشن و بر اساس شرایط شما انتخاب میشن) و ارسال خودکارِ گزارش‌ها. مشاورت هر لحظه داشبورد تو رو می‌بینه و برات پیام و برنامه میذاره."
     }
   ];
 
   return (
-    <section className="relative border-y border-border/60 bg-muted/30 py-16 sm:py-24 overflow-hidden">
-      <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-black text-foreground">
-            تجربه کسانی که زودتر <span className="text-emerald-600 dark:text-emerald-400">روالی</span> شدن 🚀
-          </h2>
+    <section id="solutions" className="relative scroll-mt-20 py-20 sm:py-28 font-yekan" dir="rtl">
+      <div className="mx-auto max-w-4xl px-5 sm:px-8">
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-black text-foreground sm:text-4xl">رِوال چه مشکلی رو حل می‌کنه؟</h2>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t, idx) => (
-            <div key={idx} className="relative rounded-2xl bg-card border border-border p-6 shadow-sm flex flex-col">
-              <p className="text-muted-foreground text-sm leading-relaxed mb-6 flex-1">
-                «{t.text}»
-              </p>
-              <div className="flex items-center gap-3 mt-auto">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${t.avatar}`}>
-                  {t.letter}
-                </div>
-                <div>
-                  <h4 className="font-bold text-foreground text-sm">{t.author}</h4>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
-              </div>
-            </div>
+
+        <div className="flex flex-col gap-4">
+          {problems.map((item, idx) => (
+            <motion.div
+              key={idx}
+              initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4, delay: idx * 0.1 }}
+              className={`overflow-hidden rounded-2xl border transition-colors ${openIndex === idx ? 'border-emerald-500/50 bg-card shadow-md' : 'border-border/60 bg-card/40 hover:border-border/80 hover:bg-card/60'}`}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+                className="flex w-full items-center justify-between p-5 sm:p-6 text-right outline-none cursor-pointer"
+              >
+                <span className="text-base sm:text-lg font-bold text-foreground pr-3 border-r-4 border-transparent data-[active=true]:border-emerald-500 transition-colors" data-active={openIndex === idx}>
+                  {item.problem}
+                </span>
+                <span className="ml-2 flex-shrink-0 text-muted-foreground">
+                  {openIndex === idx ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
+                </span>
+              </button>
+              <AnimatePresence initial={false}>
+                {openIndex === idx && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="px-5 sm:px-6 pb-6 pt-2">
+                      <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-5">
+                        <h4 className="text-emerald-600 dark:text-emerald-400 font-bold mb-2 flex items-center gap-2 text-base">
+                          <CheckCircle2 className="size-5" />
+                          {item.solutionTitle}
+                        </h4>
+                        <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
+                          {item.solution}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           ))}
         </div>
       </div>
     </section>
   );
 }
-
 
 // ----------------------------------------------------------------------
 // MORE ABOUT REVAL ("بیشتر با رِوال آشنا شو")
@@ -514,8 +656,8 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
 
   return (
     <section
-      id="team"
-      className="relative scroll-mt-16 border-t border-zinc-800 bg-zinc-950 py-24 sm:py-32"
+      id="contact"
+      className="relative scroll-mt-16 border-t border-border bg-background py-24 sm:py-32"
       dir="rtl"
     >
       <div className="mx-auto max-w-5xl px-5 sm:px-8">
@@ -527,7 +669,7 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
         >
           <div className="mb-12 max-w-2xl text-right">
             <span className="text-xs font-bold text-emerald-400">بخش‌های نهایی</span>
-            <h2 className="mt-3 text-balance text-3xl font-black leading-tight text-zinc-100 sm:text-5xl">
+            <h2 className="mt-3 text-balance text-3xl font-black leading-tight text-foreground sm:text-5xl">
               بیشتر با رِوال آشنا شو
             </h2>
           </div>
@@ -545,7 +687,7 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
               <button
                 type="button"
                 onClick={onTeamClick}
-                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
+                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)] cursor-pointer"
               >
                 داستانِ ما رو بشنو
                 <ArrowLeft className="size-3.5 flip-rtl transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
@@ -560,7 +702,7 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
               title="خوندنی‌های رِوال"
               body="مقاله‌ها و یادداشت‌های خودمونی و کاربردی درباره‌ی روش‌های تمرکز، فرار از کمال‌گرایی و اینکه چطور کمتر حرص بخوریم و بهتر یاد بگیریم."
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-medium text-zinc-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 <Clock className="size-3.5" aria-hidden="true" />
                 به‌زودی منتشر می‌شود
               </span>
@@ -578,7 +720,7 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
                 href={TELEGRAM_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
+                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
               >
                 <Send className="size-3.5" aria-hidden="true" />
                 ارتباط با مشاور
@@ -599,7 +741,7 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
                   href={TELEGRAM_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
+                  className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-emerald-500 px-4 text-xs font-bold text-emerald-950 transition-all hover:bg-emerald-400 hover:scale-[1.02] shadow-[0_0_20px_-4px_rgba(16,185,129,0.3)]"
                 >
                   <Send className="size-3.5" aria-hidden="true" />
                   پشتیبانی و راه‌های ارتباطی
@@ -610,7 +752,7 @@ function LandingMoreAboutReval({ onTeamClick }: { onTeamClick: () => void }) {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="اینستاگرام روال"
-                  className="inline-flex size-10 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/50 text-emerald-400 transition-all hover:border-emerald-500/50 hover:bg-emerald-500/10"
+                  className="inline-flex size-10 items-center justify-center rounded-full border border-border bg-card/60 text-emerald-400 transition-all hover:border-emerald-500/50 hover:bg-emerald-500/10"
                 >
                   <Instagram className="size-4" aria-hidden="true" />
                 </a>
@@ -652,16 +794,16 @@ function TeamBox({
         delay: reduceMotion ? 0 : index * 0.08,
         ease: teamEaseOut,
       }}
-      className="group flex flex-col rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 transition-colors duration-300 hover:border-emerald-500/40 sm:p-7"
+      className="group flex flex-col rounded-2xl border border-border bg-card/60 p-6 transition-colors duration-300 hover:border-emerald-500/40 sm:p-7"
     >
-      <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-colors group-hover:bg-emerald-500 group-hover:text-zinc-950">
+      <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 transition-colors group-hover:bg-emerald-500 group-hover:text-emerald-950">
         {icon}
       </div>
       <p className="mt-4 text-xs font-bold text-emerald-400">{eyebrow}</p>
-      <h3 className="mt-2 text-base font-black leading-snug text-zinc-100 sm:text-lg">
+      <h3 className="mt-2 text-base font-black leading-snug text-foreground sm:text-lg">
         {title}
       </h3>
-      <p className="mt-2 flex-1 text-sm leading-8 text-zinc-400">
+      <p className="mt-2 flex-1 text-sm leading-8 text-muted-foreground">
         {body}
       </p>
       <div className="mt-5">{children}</div>
@@ -682,7 +824,7 @@ function LandingCta() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px] opacity-30" />
           
           <div className="relative z-10">
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">شروع سریع در کمتر از ۲ دقیقه</span>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">ثبت نام و استفاده از تمامی قابلیت های روال رایگانه!</span>
             <h2 className="mt-4 text-3xl font-black text-foreground sm:text-5xl">آماده‌ای درس خوندنت رو بندازی روی روال؟</h2>
             <p className="mx-auto mt-4 max-w-xl text-muted-foreground text-sm sm:text-base leading-relaxed">
               همین امروز به صدها دانش‌آموز و مشاور بپیوند که با روال، مطالعه‌شون رو هوشمند و هدفمند مدیریت می‌کنن.
@@ -695,11 +837,7 @@ function LandingCta() {
                 ورود به حساب کاربری
               </Link>
             </div>
-            <div className="mt-6 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
-               <span>بدون نیاز به کارت بانکی</span>
-               <span>•</span>
-               <span>شروع کاملاً رایگان</span>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -735,10 +873,23 @@ function LandingFooter({
 
           <div className="flex flex-col items-center gap-6 md:items-end">
             <nav className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm font-medium text-muted-foreground">
-              <button onClick={onPlaygroundClick} className="hover:text-foreground transition-colors">پلی‌گراند روال</button>
-              <button onClick={onAdvisorsClick} className="hover:text-foreground transition-colors">مشاوران</button>
-              <button onClick={onTeamClick} className="hover:text-foreground transition-colors">تیم ما</button>
-              <Link href="#login" className="hover:text-foreground transition-colors">ورود</Link>
+              <button onClick={() => {
+                if (typeof window !== 'undefined' && window.location.pathname !== '/') window.location.href = '/#solutions';
+                else {
+                  onPlaygroundClick(); // Reset to main view if needed
+                  setTimeout(() => document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                }
+              }} className="hover:text-foreground transition-colors cursor-pointer">راه‌حل‌ها</button>
+              <button onClick={onPlaygroundClick} className="hover:text-foreground transition-colors cursor-pointer">امکانات رِوال</button>
+              <button onClick={onAdvisorsClick} className="hover:text-foreground transition-colors cursor-pointer">برای مشاوران</button>
+              <button onClick={onTeamClick} className="hover:text-foreground transition-colors cursor-pointer">داستان رِوال</button>
+              <button onClick={() => {
+                if (typeof window !== 'undefined' && window.location.pathname !== '/') window.location.href = '/#contact';
+                else {
+                  onPlaygroundClick(); // Reset to main view if needed
+                  setTimeout(() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                }
+              }} className="hover:text-foreground transition-colors cursor-pointer">ارتباط با ما</button>
             </nav>
             <div className="flex items-center gap-4">
               <a href="https://t.me/RevalSupport" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors" aria-label="پشتیبانی تلگرام">

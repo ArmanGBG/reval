@@ -17,6 +17,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { AppearanceSection } from '@/components/settings/AppearanceSection';
+import { APP_VERSION } from '@/config/site';
 
 function toPersianDigits(num: number | string): string {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -225,7 +226,7 @@ export default function SuperAdminSettings() {
           <div className="space-y-2">
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <span className="text-xs text-muted-foreground">نسخه پلتفرم</span>
-              <span className="text-xs text-foreground font-bold tabular-nums" dir="ltr">v0.2.1</span>
+              <span className="text-xs text-foreground font-bold tabular-nums" dir="ltr">v{APP_VERSION}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-[var(--bg-overlay)] rounded-[10px] border border-[var(--border)]">
               <span className="text-xs text-muted-foreground">آخرین بروزرسانی</span>

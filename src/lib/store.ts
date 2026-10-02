@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, AdminAdvisor, UnassignedStudent, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity, PlanTab } from '@/lib/types';
+import { ViewName, UserRole, User, Task, Flashcard, Ticket, InstituteAdvisor, InstituteStudent, InstituteProfile, PlatformInstitute, GlobalUser, GlobalUserRole, AdminAdvisor, UnassignedStudent, Exam, ExamAnalysisTask, ExamSubjectAnalysis, StudentProfile, Notification, NotificationType, NonStudyActivity, PlanTab, SchoolPresence } from '@/lib/types';
 import * as taskService from '@/lib/task-service';
 import * as examService from '@/lib/exam-service';
 import * as messageService from '@/lib/message-service';
 import * as nonStudyActivityService from '@/lib/non-study-activity-service';
 import * as sleepService from '@/lib/sleep-service';
+import * as schoolPresenceService from '@/lib/school-presence-service';
 import type { SleepRecordData } from '@/lib/sleep';
 import { initSRSFields } from '@/lib/spaced-repetition';
 import { AuthError } from '@/lib/api-client';
@@ -276,6 +277,14 @@ interface AppState {
   saveNap: (payload: sleepService.SaveNapPayload) => Promise<void>;
   /** Deletes a sleep record. Optimistic + revert on error. */
   deleteSleepRecord: (id: string) => Promise<void>;
+
+  // ===== School Presence (API-backed cache) =====
+  schoolPresences: SchoolPresence[];
+  schoolPresenceLoading: boolean;
+  schoolPresenceError: string | null;
+  loadSchoolPresences: (studentId: string) => Promise<void>;
+  saveSchoolPresence: (payload: schoolPresenceService.SaveSchoolPresencePayload) => Promise<void>;
+  deleteSchoolPresence: (id: string) => Promise<void>;
 
   // ===== Advisor: real students from DB =====
   // Fetched from /api/students?advisorId=... on login or dashboard mount.
@@ -637,6 +646,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       loadedStudentId: null,
       nonStudyActivities: [],
       sleepRecords: [],
+      schoolPresences: [],
       advisorStudents: [],
     });
   },
@@ -715,6 +725,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       testDescription: task.testDescription ?? null,
       ...(task.createdBy === 'advisor' ? { advisorNote: task.advisorNote ?? null } : {}),
       classHomeworkOfId: task.classHomeworkOfId ?? null,
+      isSchoolTask: Boolean(task.isSchoolTask),
+      schoolPresenceId: task.schoolPresenceId ?? null,
     };
 
     try {
@@ -773,6 +785,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       bookName: task.bookName ?? null,
       testDescription: task.testDescription ?? null,
       ...(task.createdBy === 'advisor' ? { advisorNote: task.advisorNote ?? null } : {}),
+      classHomeworkOfId: task.classHomeworkOfId ?? null,
+      isSchoolTask: Boolean(task.isSchoolTask),
+      schoolPresenceId: task.schoolPresenceId ?? null,
     }));
 
     try {
@@ -996,6 +1011,55 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       if (err instanceof AuthError) throw err;
       throw new Error(err instanceof Error ? err.message : 'خطا در حذف رکورد خواب');
+    }
+  },
+
+  // ===== School Presence =====
+  schoolPresences: [],
+  schoolPresenceLoading: false,
+  schoolPresenceError: null,
+
+  loadSchoolPresences: async (studentId) => {
+    set({ schoolPresenceLoading: true, schoolPresenceError: null });
+    try {
+      const records = await schoolPresenceService.loadSchoolPresences(studentId);
+      set({ schoolPresences: records, schoolPresenceLoading: false });
+    } catch (err) {
+      if (err instanceof AuthError) {
+        set({ schoolPresenceLoading: false });
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'خطا در بارگذاری ساعات مدرسه';
+      set({ schoolPresenceLoading: false, schoolPresenceError: msg });
+    }
+  },
+
+  saveSchoolPresence: async (payload) => {
+    try {
+      const record = await schoolPresenceService.saveSchoolPresence(payload);
+      set((state) => ({
+        schoolPresences: [
+          ...state.schoolPresences.filter((r) => !(r.userId === record.userId && r.date === record.date)),
+          record,
+        ],
+      }));
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      throw new Error(err instanceof Error ? err.message : 'خطا در ثبت ساعت مدرسه');
+    }
+  },
+
+  deleteSchoolPresence: async (id) => {
+    const original = get().schoolPresences.find((r) => r.id === id);
+    set((state) => ({ schoolPresences: state.schoolPresences.filter((r) => r.id !== id) }));
+    try {
+      await schoolPresenceService.deleteSchoolPresence(id);
+    } catch (err) {
+      if (original) {
+        set((state) => ({ schoolPresences: [...state.schoolPresences, original] }));
+      }
+      if (err instanceof AuthError) throw err;
+      throw new Error(err instanceof Error ? err.message : 'خطا در حذف ساعت مدرسه');
     }
   },
 

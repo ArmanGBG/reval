@@ -20,6 +20,18 @@ import {
   Send,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const STUDENT_NAV: { view: ViewName; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { view: 'dashboard', label: 'خانه', icon: Home },
@@ -55,6 +67,14 @@ const SUPER_ADMIN_NAV: { view: ViewName; label: string; icon: React.ComponentTyp
 
 export default function BottomNav() {
   const { currentView, navigateTo, userRole, logout } = useAppStore();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    logout();
+  };
 
   const navItems =
     userRole === 'SUPER_ADMIN'
@@ -127,17 +147,39 @@ export default function BottomNav() {
         })}
 
         {/* Logout button */}
-        <button
-          onClick={async () => {
-            try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
-            logout();
-          }}
-          className="nav-item-hover relative flex min-h-[48px] min-w-0 flex-1 shrink flex-col items-center justify-center gap-1 rounded-xl px-0.5 text-red-400"
-          aria-label="خروج"
-        >
-          <LogOut className="relative w-[22px] h-[22px]" />
-          <span className="relative text-[10px] leading-none font-medium">خروج</span>
-        </button>
+        <div className="hidden md:flex">
+          <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="nav-item-hover relative hidden md:flex min-h-[48px] min-w-0 flex-1 shrink flex-col items-center justify-center gap-1 rounded-xl px-0.5 text-red-400"
+                aria-label="خروج"
+              >
+                <LogOut className="relative w-[22px] h-[22px]" />
+                <span className="relative text-[10px] leading-none font-medium">خروج</span>
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl" className="bg-zinc-950 border-zinc-800 text-zinc-100">
+              <AlertDialogHeader className="text-right sm:text-right">
+                <AlertDialogTitle className="text-zinc-100">خروج از حساب کاربری</AlertDialogTitle>
+                <AlertDialogDescription className="text-zinc-400">
+                  آیا مطمئن هستید که میخواهید از حساب خود خارج شوید؟
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
+                <AlertDialogCancel className="border-zinc-800 bg-transparent text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100">
+                  انصراف
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleLogout}
+                  className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0 shadow-none"
+                >
+                  خروج
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </nav>
   );
